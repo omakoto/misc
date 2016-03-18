@@ -4,6 +4,8 @@ set -e
 
 # TOOD: Rewrite all in perl.
 # TODO: Add completion helper and find from recent logs.
+# TODO: Fix in_zenlog -- it won't be true if a new terminal is opened
+# as a child process.
 
 #
 # zenlog:
@@ -27,7 +29,7 @@ name=$(basename "$0")
 
 shell_helper=0
 log_dir=${ZENLOG_DIR:-${TMP:-/tmp}/zenlog/}
-buffering="-f"
+buffering=0
 
 while getopts "sd:b" opt; do
   case "$opt" in
@@ -35,7 +37,7 @@ while getopts "sd:b" opt; do
     d) log_dir="$OPTARG" ;;
 
     # enable buffering
-    b) buffering="" ;;
+    b) buffering=1 ;;
     *) exit 1
   esac
 done
@@ -76,12 +78,16 @@ if (( $IN_ZENLOG )) ; then
   echo "$name: Error: already in zenlog." 1>&2
   exit 1
 fi
-export IN_ZENLOG=1
 
+export IN_ZENLOG=1
 export log_dir
+export buffering
+
 echo "$name: Logging to $log_dir ..."
 
-script -q $buffering >(perl -w <(cat <<'EOF'
+(( $buffering )) || nobuf_opt=-f
+
+script -q $nobuf_opt >(perl -w <(cat <<'EOF'
 #line 75
 use strict;
 use English;
@@ -90,7 +96,8 @@ use POSIX qw(strftime);
 use File::Path qw(make_path);
 use File::Basename;
 
-my $LOG_DIR = $ENV{log_dir};
+my $log_dir = $ENV{log_dir};
+my $buffering = $ENV{buffering};
 
 my ($raw, $san, $raw_name, $san_name);
 
@@ -107,7 +114,7 @@ sub open_log() {
 
   my $t = time;
   my $filename = sprintf('%s/%s.%03d-%s-%d',
-      $LOG_DIR,
+      $log_dir,
       strftime('%Y-%m-%d/%H:%M:%S', localtime($t)),
       ($t - int($t)) * 1000, $$, $seq++);
 
@@ -117,10 +124,12 @@ sub open_log() {
   $san_name = "${filename}-san.log";
 
   open($raw, ">$raw_name");
-  $raw->autoflush();
-
   open($san, ">$san_name");
-  $san->autoflush();
+
+  if (!$buffering) {
+    $raw->autoflush();
+    $san->autoflush();
+  }
 }
 
 sub write_log($) {
