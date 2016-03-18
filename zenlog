@@ -1,0 +1,81 @@
+#!/bin/bash
+
+set -e
+
+# Usage:
+#
+# . <(zenlog -s) 
+#    Source the support commands.
+#
+# zenlog [-d LOG_DIR]
+#    Start a new shell, logging all the command output.
+
+shell_helper=0
+log_dir=${TMP:-/tmp}/zenlog/
+
+while getopts "sd:" opt; do
+  case "$opt" in
+    s) shell_helper=1 ;;
+    d) log_dir="$OPTARG"
+  esac
+done
+shift $(($OPTIND - 1))
+
+if (( $shell_helper )) ; then
+  echo '
+iyayo() {
+  echo -en "\\e[0m\\e[2m\\e[0m"
+  "${@}"
+  return 1
+}
+alias 184=iyayo
+
+prompt_marker() {
+  echo -e "\e[0m\e[1m\e[0m"
+}
+'
+  exit 0
+fi
+
+script >(perl -we '   
+use strict;
+use English;
+use Time::HiRes qw(time);
+use POSIX qw(strftime);
+use Getopt::Std qw(getopts);
+use File::Path qw(make_path);
+
+my %OPTS = ();
+getopts("d:", \%OPTS);
+my $LOG_DIR = $OPTS{d};
+
+my $out;
+
+sub open_log() {
+  $out->close() if defined $out;
+  my $t = time;
+  my $dir = sprintf("%s/%s", $LOG_DIR,
+      strftime("%Y-%m-%d", localtime($t)));
+  my $file = sprintf("%s.\%04d-$$.log",
+      strftime("%H:%M:%S", localtime($t)),
+      ($t-int($t))*10000, $$);
+  make_path($dir);
+  open($out, ">$dir/$file"); 
+  $out->autoflush();
+}
+
+open_log();
+while (defined(my $l = <>)) {
+  if ($l =~ /\x1b\[0m\x1b\[1m\x1b\[0m/) {
+    $out->print($PREMATCH) if defined $out;
+    open_log();
+  } elsif ($l =~ /^\x1b\[0m\x1b\[2m\x1b\[0m/) {
+    $out->close();
+    undef $out;
+  }
+
+  $out->print($l) if defined $out;
+}
+
+' -- -d "$log_dir")
+
