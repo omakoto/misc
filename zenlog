@@ -13,9 +13,11 @@ set -e
 #
 # Usage:
 #
-# zenlog [-d LOG_DIR]
+# zenlog [-d LOG_DIR] [-b]
 #    Start a new shell, logging all the command output in a separate
 #    file.
+#
+#    -b:  enable buffering.
 #
 # . <(zenlog -s)
 #    Source the support commands.
@@ -25,29 +27,34 @@ name=$(basename "$0")
 
 shell_helper=0
 log_dir=${ZENLOG_DIR:-${TMP:-/tmp}/zenlog/}
+buffering="-f"
 
-while getopts "sd:" opt; do
+while getopts "sd:b" opt; do
   case "$opt" in
     s) shell_helper=1 ;;
-    d) log_dir="$OPTARG"
+    d) log_dir="$OPTARG" ;;
+
+    # enable buffering
+    b) buffering="" ;;
+    *) exit 1
   esac
 done
 shift $(($OPTIND - 1))
 
 if (( $shell_helper )) ; then
   cat <<'EOF'
-# Show it in the prompt.  zenlog cut log files with this marker.
+# Show it in the prompt.  zenlog uses it to split log files.
 zenlog_prompt_marker() {
   echo -e '\e[0m\e[1m\e[0m'
 }
 
-_zenlog_iyayo() {
+# execute command without logging output.
+zenlog_iyayo() {
   echo -en '\e[0m\e[2m\e[0m'
   "${@}"
   return 1
 }
-# execute command without logging output.
-alias 184=_zenlog_iyayo
+alias 184=zenlog_iyayo
 
 # Use it to echo back the entire command in pre-exec hook.
 # (Optional)
@@ -74,7 +81,7 @@ export IN_ZENLOG=1
 export log_dir
 echo "$name: Logging to $log_dir ..."
 
-script -qf >(perl -w <(cat <<'EOF'
+script -q $buffering >(perl -w <(cat <<'EOF'
 #line 75
 use strict;
 use English;
