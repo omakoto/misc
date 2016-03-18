@@ -5,7 +5,8 @@ set -e
 # TOOD: Rewrite all in perl.
 # TODO: Add completion helper and find from recent logs.
 # TODO: Fix in_zenlog -- it won't be true if a new terminal is opened
-# as a child process.
+#   as a child process.  Need to get the name of tty created by script
+#   -- how?
 
 #
 # zenlog:
