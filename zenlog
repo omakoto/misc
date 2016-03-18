@@ -24,6 +24,7 @@ set -e
 # . <(zenlog -s)
 #    Source the support commands.
 #
+# Sample logs are under zenlog-sample-log/.
 
 name=$(basename "$0")
 
