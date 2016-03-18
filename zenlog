@@ -55,6 +55,10 @@ zenlog_echo_command() {
   echo -en "\e[0m\e[3m\e[0m\x1b[1;36m${*}\e[0m\e[4m\e[0m"
   echo -e "\x1b[0m"
 }
+
+in_zenlog() {
+  (( $IN_ZENLOG ))
+}
 EOF
   exit 0
 fi
@@ -67,9 +71,7 @@ if (( $IN_ZENLOG )) ; then
 fi
 export IN_ZENLOG=1
 
-
 export log_dir
-
 echo "$name: Logging to $log_dir ..."
 
 script -qf >(perl -w <(cat <<'EOF'
