@@ -4,9 +4,6 @@ set -e
 
 # TOOD: Rewrite all in perl.
 # TODO: Add completion helper and find from recent logs.
-# TODO: Fix in_zenlog -- it won't be true if a new terminal is opened
-#   as a child process.  Need to get the name of tty created by script
-#   -- how?
 
 #
 # zenlog:
@@ -68,7 +65,7 @@ zenlog_echo_command() {
 }
 
 in_zenlog() {
-  (( $IN_ZENLOG ))
+  [[ "$ZENLOG_TTY" == $(tty) ]]
 }
 EOF
   exit 0
@@ -76,12 +73,11 @@ fi
 
 # Start
 
-if (( $IN_ZENLOG )) ; then
+if [[ -n "$ZENLOG_TTY" ]] ; then
   echo "$name: Error: already in zenlog." 1>&2
   exit 1
 fi
 
-export IN_ZENLOG=1
 export log_dir
 export buffering
 
@@ -89,8 +85,11 @@ echo "$name: Logging to $log_dir ..."
 
 (( $buffering )) || nobuf_opt=-f
 
-script -q $nobuf_opt >(perl -w <(cat <<'EOF'
-#line 75
+# TODO export... may not work on all shell.
+script -q $nobuf_opt \
+    -c 'export ZENLOG_TTY=$(tty); $SHELL -l' \
+    >(perl -w <(cat <<'EOF'
+#line 91
 use strict;
 use Time::HiRes qw(time);
 use POSIX qw(strftime);
@@ -146,8 +145,8 @@ sub write_log($) {
         )
         !!gx;
   # Also clean up CL/LFs.
-  $l =~ s! \x0d+\x0a !\x0a!gx;       # Remove end-of-line CRs.
-  $l =~ s! \x0d !\x0a!gx; # Replace orphan CRs with LFs.
+  $l =~ s! \s* \x0d* \x0a !\x0a!gx;       # Remove end-of-line CRs.
+  $l =~ s! \s* \x0d !\x0a!gx;             # Replace orphan CRs with LFs.
   $san->print($l) if defined $san;
 }
 
