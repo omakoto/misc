@@ -5,17 +5,26 @@ set -e
 # TOOD: Rewrite all in perl.
 # TODO: Add completion helper and find from recent logs.
 
-# Usage:
 #
-# . <(zenlog -s) 
-#    Source the support commands.
+# zenlog:
+#
+# Using script, log the entire console input/output into a separate
+# file for each command.
+#
+# Usage:
 #
 # zenlog [-d LOG_DIR]
 #    Start a new shell, logging all the command output in a separate
 #    file.
+#
+# . <(zenlog -s)
+#    Source the support commands.
+#
+
+name=$(basename "$0")
 
 shell_helper=0
-log_dir=${TMP:-/tmp}/zenlog/
+log_dir=${ZENLOG_DIR:-${TMP:-/tmp}/zenlog/}
 
 while getopts "sd:" opt; do
   case "$opt" in
@@ -27,8 +36,7 @@ shift $(($OPTIND - 1))
 
 if (( $shell_helper )) ; then
   cat <<'EOF'
-# Show it in the prompt.  It must be placed at the beginning of a 
-# line.
+# Show it in the prompt.  zenlog cut log files with this marker.
 zenlog_prompt_marker() {
   echo -e '\e[0m\e[1m\e[0m'
 }
@@ -42,18 +50,30 @@ _zenlog_iyayo() {
 alias 184=_zenlog_iyayo
 
 # Use it to echo back the entire command in pre-exec hook.
+# (Optional)
 zenlog_echo_command() {
-  echo -e "\e[0m\e[3m\e[0m${*}\e[0m\e[4m\e[0m"
+  echo -en "\e[0m\e[3m\e[0m\x1b[1;36m${*}\e[0m\e[4m\e[0m"
+  echo -e "\x1b[0m"
 }
 EOF
   exit 0
 fi
 
+# Start
+
+if (( $IN_ZENLOG )) ; then
+  echo "$name: Error: already in zenlog." 1>&2
+  exit 1
+fi
+export IN_ZENLOG=1
+
 
 export log_dir
 
-script -f >(perl -w <(cat <<'EOF'
-#line 54
+echo "$name: Logging to $log_dir ..."
+
+script -qf >(perl -w <(cat <<'EOF'
+#line 75
 use strict;
 use English;
 use Time::HiRes qw(time);
@@ -63,7 +83,7 @@ use File::Basename;
 
 my $LOG_DIR = $ENV{log_dir};
 
-my ($raw, $san);
+my ($raw, $san, $raw_name, $san_name);
 
 sub close_log() {
   $raw->close() if defined $raw;
@@ -75,19 +95,22 @@ sub close_log() {
 my $seq = 0;
 sub open_log() {
   close_log();
- 
+
   my $t = time;
-  my $filename = sprintf('%s/%s.\%03d-%s-%d',
+  my $filename = sprintf('%s/%s.%03d-%s-%d',
       $LOG_DIR,
       strftime('%Y-%m-%d/%H:%M:%S', localtime($t)),
       ($t - int($t)) * 1000, $$, $seq++);
 
   make_path(dirname($filename));
 
-  open($raw, ">${filename}-raw.log"); 
+  $raw_name = "${filename}-raw.log";
+  $san_name = "${filename}-san.log";
+
+  open($raw, ">$raw_name");
   $raw->autoflush();
 
-  open($san, ">${filename}-san.log"); 
+  open($san, ">$san_name");
   $san->autoflush();
 }
 
@@ -96,13 +119,16 @@ sub write_log($) {
   $raw->print($l) if defined $raw;
 
   # Sanitize
-  $l =~ s! ( 
+  $l =~ s! (
         \a                           # Bell
         | \x1b \x5B .*? [\x40-\x7E]  # CSI
         | \x1b \x5D .*? \x07         # Set terminal title
-        | \x1b [\x40-\x5A\x5C\x5F]   # 2 byte sequence 
+        | \x1b [\x40-\x5A\x5C\x5F]   # 2 byte sequence
         )
         !!gx;
+  # Also clean up CL/LFs.
+  $l =~ s! \x0d+\x0a !\x0a!gx;       # Remove end-of-line CRs.
+  $l =~ s! \x0d !\x0a!gx; # Replace orphan CRs with LFs.
   $san->print($l) if defined $san;
 }
 
@@ -110,8 +136,8 @@ open_log();
 
 while (defined(my $l = <>)) {
   # Command line and output marker.
-  $l =~ s! \x1b\[0m\x1b\[3m\x1b\[0m !\nCOMMAND:\n!xg; 
-  $l =~ s! \x1b\[0m\x1b\[4m\x1b\[0m !\nOUTPUT:!xg; 
+  $l =~ s! \x1b\[0m\x1b\[3m\x1b\[0m !\nCOMMAND:\n!xg;
+  $l =~ s! \x1b\[0m\x1b\[4m\x1b\[0m !\nOUTPUT:!xg;
 
   if ($l =~ m! ^ (.*?)  \x1b\[0m\x1b\[1m\x1b\[0m (.*) !x) {
     # separator
@@ -129,12 +155,16 @@ while (defined(my $l = <>)) {
 
     write_log($pre);
     write_log("[retracted]\n");
-    
+
     close_log();
-  
+
   } else {
     write_log($l);
   }
 }
+close_log()
 EOF
 ) )
+
+echo "$name done." 1>&2
+
