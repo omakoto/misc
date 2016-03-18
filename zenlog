@@ -3,6 +3,7 @@
 set -e
 
 # TOOD: Rewrite all in perl.
+# TODO: Add completion helper and find from recent logs.
 
 # Usage:
 #
@@ -76,9 +77,9 @@ sub open_log() {
   close_log();
  
   my $t = time;
-  my $filename = sprintf("%s/%s.\%03d-%s-%d",
+  my $filename = sprintf('%s/%s.\%03d-%s-%d',
       $LOG_DIR,
-      strftime("%Y-%m-%d/%H:%M:%S", localtime($t)),
+      strftime('%Y-%m-%d/%H:%M:%S', localtime($t)),
       ($t - int($t)) * 1000, $$, $seq++);
 
   make_path(dirname($filename));
@@ -130,8 +131,7 @@ while (defined(my $l = <>)) {
     write_log("[retracted]\n");
     
     close_log();
-    continue;
-
+  
   } else {
     write_log($l);
   }
