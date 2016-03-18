@@ -2,6 +2,8 @@
 
 set -e
 
+# TOOD: Rewrite all in perl.
+
 # Usage:
 #
 # . <(zenlog -s) 
@@ -23,15 +25,15 @@ done
 shift $(($OPTIND - 1))
 
 if (( $shell_helper )) ; then
-  echo '
+  cat <<'EOF'
 # Show it in the prompt.  It must be placed at the beginning of a 
 # line.
 zenlog_prompt_marker() {
-  echo -e "\e[0m\e[1m\e[0m"
+  echo -e '\e[0m\e[1m\e[0m'
 }
 
 _zenlog_iyayo() {
-  echo -en "\\e[0m\\e[2m\\e[0m"
+  echo -en '\e[0m\e[2m\e[0m'
   "${@}"
   return 1
 }
@@ -42,56 +44,97 @@ alias 184=_zenlog_iyayo
 zenlog_echo_command() {
   echo -e "\e[0m\e[3m\e[0m${*}\e[0m\e[4m\e[0m"
 }
-'
+EOF
   exit 0
 fi
 
-script >(perl -we '   
+
+export log_dir
+
+script -f >(perl -we '
+#line 54
 use strict;
 use English;
 use Time::HiRes qw(time);
 use POSIX qw(strftime);
-use Getopt::Std qw(getopts);
 use File::Path qw(make_path);
+use File::Basename;
 
-my $LOG_DIR = $ARGV[0];
+my $LOG_DIR = $ENV{log_dir};
 
-my $out;
+my ($raw, $san);
 
+sub close_log() {
+  $raw->close() if defined $raw;
+  $san->close() if defined $san;
+  undef $raw;
+  undef $san;
+}
+
+my $seq = 0;
 sub open_log() {
-  $out->close() if defined $out;
+  close_log();
  
   my $t = time;
-  my $dir = sprintf("%s/%s", $LOG_DIR,
-      strftime("%Y-%m-%d", localtime($t)));
-  my $file = sprintf("%s.\%04d-$$.log",
-      strftime("%H:%M:%S", localtime($t)),
-      ($t-int($t))*10000, $$);
-  make_path($dir);
-  open($out, ">$dir/$file"); 
-  $out->autoflush();
-  print "Logging to $dir/$file...\n";
+  my $filename = sprintf("%s/%s.\%03d-%s-%d",
+      $LOG_DIR,
+      strftime("%Y-%m-%d/%H:%M:%S", localtime($t)),
+      ($t - int($t)) * 1000, $$, $seq++);
+
+  make_path(dirname($filename));
+
+  open($raw, ">${filename}-raw.log"); 
+  $raw->autoflush();
+
+  open($san, ">${filename}-san.log"); 
+  $san->autoflush();
+}
+
+sub write_log($) {
+  my ($l) = @_;
+  $raw->print($l) if defined $raw;
+
+  # Sanitize
+  $l =~ s! ( 
+        \a                           # Bell
+        | \x1b \x5B .*? [\x40-\x7E]  # CSI
+        | \x1b \x5D .*? \x07         # Set terminal title
+        | \x1b [\x40-\x5A\x5C\x5F]   # 2 byte sequence 
+        )
+        !!gx;
+  $san->print($l) if defined $san;
 }
 
 open_log();
-while (defined(my $l = <STDIN>)) {
+
+while (defined(my $l = <>)) {
   # Command line and output marker.
   $l =~ s! \x1b\[0m\x1b\[3m\x1b\[0m !\nCOMMAND:\n!xg; 
   $l =~ s! \x1b\[0m\x1b\[4m\x1b\[0m !\nOUTPUT:!xg; 
 
-  if ($l =~ m!^ \x1b\[0m\x1b\[1m\x1b\[0m !x) {
+  if ($l =~ m! ^ (.*?)  \x1b\[0m\x1b\[1m\x1b\[0m (.*) !x) {
     # separator
+
+    my ($pre, $post) = ($1, $2);
+    write_log($pre);
+
     open_log();
-  
-  } elsif ($l =~ m!^ \x1b\[0m\x1b\[2m\x1b\[0m !x) {
+
+    write_log($post);
+
+  } elsif ($l =~ m!^ (.*?) \x1b\[0m\x1b\[2m\x1b\[0m !x) {
     # 184 marker
-    $out->print("[retracted]\n");
-    $out->close();
-    undef $out;
+    my ($pre) = ($1);
+
+    write_log($pre);
+    write_log("[retracted]\n");
+    
+    close_log();
+    continue;
+
+  } else {
+    write_log($l);
   }
-
-  $out->print($l) if defined $out;
-  print $l;
 }
-' -- "$log_dir")
-
+'
+)
