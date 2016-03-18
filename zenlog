@@ -2,27 +2,45 @@
 
 set -e
 
+usage() {
+  cat <<'EOF'
+
+Zenlog
+
+  Start a new shell where all input/output from each command will be saved
+  in a separate file.
+
+Usage:
+  zenlog [-d LOG_DIR] [-b]
+    Start a new shell.  Options are:
+       -d Specify log directory.
+       -b Enable buffered output.
+
+  . <(zenlog -s)
+     Install the helper functions on a bash-like shell.
+     Commands are:
+      - zenlog_prompt_marker
+          Print the command separator marker. Include it in the prompt.
+          Example:
+            PS1="$(zenlog_prompt_marker) > "
+
+      - 184 COMMAND [args...]
+          Run the passed command without logging the output.
+          Example:
+            184 adb logcat
+
+      - in_zenlog
+          Return success if alreay in zenlog.
+          Example:
+            in_zenlog && ceho "[zenlog]"
+
+EOF
+  exit 1
+}
+
 # TOOD: Rewrite all in perl.
 # TODO: Add completion helper and find from recent logs.
-
-#
-# zenlog:
-#
-# Using script, log the entire console input/output into a separate
-# file for each command.
-#
-# Usage:
-#
-# zenlog [-d LOG_DIR] [-b]
-#    Start a new shell, logging all the command output in a separate
-#    file.
-#
-#    -b:  enable buffering.
-#
-# . <(zenlog -s)
-#    Source the support commands.
-#
-# Sample logs are under zenlog-sample-log/.
+# TODO: Figure out a way to open the previous output in editor.
 
 name=$(basename "$0")
 
@@ -30,14 +48,14 @@ shell_helper=0
 log_dir=${ZENLOG_DIR:-${TMP:-/tmp}/zenlog/}
 buffering=0
 
-while getopts "sd:b" opt; do
+while getopts "sd:bh" opt; do
   case "$opt" in
     s) shell_helper=1 ;;
     d) log_dir="$OPTARG" ;;
 
     # enable buffering
     b) buffering=1 ;;
-    *) exit 1
+    *) usage;
   esac
 done
 shift $(($OPTIND - 1))
@@ -73,7 +91,7 @@ fi
 
 # Start
 
-if [[ -n "$ZENLOG_TTY" ]] ; then
+if [[ "$ZENLOG_TTY" == $(tty) ]] ; then
   echo "$name: Error: already in zenlog." 1>&2
   exit 1
 fi
@@ -185,4 +203,3 @@ EOF
 ) )
 
 echo "$name done." 1>&2
-
