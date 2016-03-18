@@ -1,11 +1,13 @@
 #!/usr/bin/perl -w
 # -*- perl-mode -*-
 
+# Not done.  Almost working, but even after script finishes, the reader doesn't finish.
+
 # TODO: Add completion helper and find from recent logs.
 
 use strict;
 use Getopt::Std;
-use POSIX qw( dup2 strftime );
+use POSIX qw( strftime );
 use Time::HiRes qw(time);
 use File::Path qw(make_path);
 use File::Basename;
@@ -20,7 +22,7 @@ $ENV{IN_ZENLOG} = 1;
 
 my %opts = ();
 
-getopts('snd:', \%opts);
+getopts('sd:b', \%opts);
 
 # Show shell helper functions.
 # Usage: . <(zenlog -s)
@@ -55,29 +57,28 @@ EOF
     exit 0;
 }
 
-my $buffering = !$opts{n};
+my $buffering = $opts{b};
 my $log_dir = ($opts{d} or $ENV{ZENLOG_DIR} or "/tmp/zenlog");
 
 # Start.
 
-pipe READ, WRITE;
+my ($read_fd, $write_fd) = POSIX::pipe();
 
-dup2(fileno(WRITE), 70);  # not sure why I need it...
-
-if (!fork()) {
+my $cpid = fork();
+if (!$cpid) {
     # child, writer.
-    close READ;
+    POSIX::close $read_fd;
 
     my $opts = "-q";
     $opts .= "f" unless $buffering;
 
-    system("script", $opts, "/dev/fd/70");
-    POSIX::close 70;
-    close WRITE;
+    system("script", $opts, "/dev/fd/$write_fd");
+    POSIX::close $write_fd;
+    print "$0: done.\n";
     exit 0;
 }
-POSIX::close 70;
-close WRITE;
+POSIX::close $write_fd;
+open(my $read, "<&=", $read_fd) or die;
 
 print "$0: Logging to $log_dir ...\n";
 
@@ -138,7 +139,7 @@ sub write_log($) {
 
 open_log();
 
-while (defined(my $l = <READ>)) {
+while (defined(my $l = <$read>)) {
   # Command line and output marker.
   $l =~ s! \x1b\[0m\x1b\[3m\x1b\[0m !\nCOMMAND:\n!xg;
   $l =~ s! \x1b\[0m\x1b\[4m\x1b\[0m !\nOUTPUT:!xg;
@@ -168,5 +169,6 @@ while (defined(my $l = <READ>)) {
 }
 close_log();
 
-wait();
+waitpid($cpid, 0);
+#print "$0: child done.\n";
 exit 0;
