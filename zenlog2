@@ -1,52 +1,32 @@
-#!/bin/bash
+#!/usr/bin/perl -w
+# -*- perl-mode -*-
 
-set -e
-
-# TOOD: Rewrite all in perl.
 # TODO: Add completion helper and find from recent logs.
-# TODO: Fix in_zenlog -- it won't be true if a new terminal is opened
-#   as a child process.  Need to get the name of tty created by script
-#   -- how?
 
-#
-# zenlog:
-#
-# Using script, log the entire console input/output into a separate
-# file for each command.
-#
-# Usage:
-#
-# zenlog [-d LOG_DIR] [-b]
-#    Start a new shell, logging all the command output in a separate
-#    file.
-#
-#    -b:  enable buffering.
-#
-# . <(zenlog -s)
-#    Source the support commands.
-#
-# Sample logs are under zenlog-sample-log/.
+use strict;
+use Getopt::Std;
+use POSIX qw( dup2 strftime );
+use Time::HiRes qw(time);
+use File::Path qw(make_path);
+use File::Basename;
 
-name=$(basename "$0")
+# See if already in zenlog.
+# TODO: Fix this logic; it won't be true if a new terminal is opened as a
+#   child process.  Need to get the name of tty created by script.  But how?
 
-shell_helper=0
-log_dir=${ZENLOG_DIR:-${TMP:-/tmp}/zenlog/}
-buffering=0
+$ENV{IN_ZENLOG} and die("$0: Already in zenlog.\n");
 
-while getopts "sd:b" opt; do
-  case "$opt" in
-    s) shell_helper=1 ;;
-    d) log_dir="$OPTARG" ;;
+$ENV{IN_ZENLOG} = 1;
 
-    # enable buffering
-    b) buffering=1 ;;
-    *) exit 1
-  esac
-done
-shift $(($OPTIND - 1))
+my %opts = ();
 
-if (( $shell_helper )) ; then
-  cat <<'EOF'
+getopts('snd:', \%opts);
+
+# Show shell helper functions.
+# Usage: . <(zenlog -s)
+if ($opts{s}) {
+    print <<'EOF';
+
 # Show it in the prompt.  zenlog uses it to split log files.
 zenlog_prompt_marker() {
   echo -e '\e[0m\e[1m\e[0m'
@@ -70,35 +50,38 @@ zenlog_echo_command() {
 in_zenlog() {
   (( $IN_ZENLOG ))
 }
+
 EOF
-  exit 0
-fi
+    exit 0;
+}
 
-# Start
+my $buffering = !$opts{n};
+my $log_dir = ($opts{d} or $ENV{ZENLOG_DIR} or "/tmp/zenlog");
 
-if (( $IN_ZENLOG )) ; then
-  echo "$name: Error: already in zenlog." 1>&2
-  exit 1
-fi
+# Start.
 
-export IN_ZENLOG=1
-export log_dir
-export buffering
+pipe READ, WRITE;
 
-echo "$name: Logging to $log_dir ..."
+dup2(fileno(WRITE), 70);  # not sure why I need it...
 
-(( $buffering )) || nobuf_opt=-f
+if (!fork()) {
+    # child, writer.
+    close READ;
 
-script -q $nobuf_opt >(perl -w <(cat <<'EOF'
-#line 75
-use strict;
-use Time::HiRes qw(time);
-use POSIX qw(strftime);
-use File::Path qw(make_path);
-use File::Basename;
+    my $opts = "-q";
+    $opts .= "f" unless $buffering;
 
-my $log_dir = $ENV{log_dir};
-my $buffering = $ENV{buffering};
+    system("script", $opts, "/dev/fd/70");
+    POSIX::close 70;
+    close WRITE;
+    exit 0;
+}
+POSIX::close 70;
+close WRITE;
+
+print "$0: Logging to $log_dir ...\n";
+
+# Prepare log files.
 
 my ($raw, $san, $raw_name, $san_name);
 
@@ -151,9 +134,11 @@ sub write_log($) {
   $san->print($l) if defined $san;
 }
 
+# Main loop.
+
 open_log();
 
-while (defined(my $l = <>)) {
+while (defined(my $l = <READ>)) {
   # Command line and output marker.
   $l =~ s! \x1b\[0m\x1b\[3m\x1b\[0m !\nCOMMAND:\n!xg;
   $l =~ s! \x1b\[0m\x1b\[4m\x1b\[0m !\nOUTPUT:!xg;
@@ -181,9 +166,7 @@ while (defined(my $l = <>)) {
     write_log($l);
   }
 }
-close_log()
-EOF
-) )
+close_log();
 
-echo "$name done." 1>&2
-
+wait();
+exit 0;
