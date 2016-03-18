@@ -54,14 +54,13 @@ use POSIX qw(strftime);
 use Getopt::Std qw(getopts);
 use File::Path qw(make_path);
 
-my %OPTS = ();
-getopts("d:", \%OPTS);
-my $LOG_DIR = $OPTS{d};
+my $LOG_DIR = $ARGV[0];
 
 my $out;
 
 sub open_log() {
   $out->close() if defined $out;
+ 
   my $t = time;
   my $dir = sprintf("%s/%s", $LOG_DIR,
       strftime("%Y-%m-%d", localtime($t)));
@@ -71,19 +70,20 @@ sub open_log() {
   make_path($dir);
   open($out, ">$dir/$file"); 
   $out->autoflush();
+  print "Logging to $dir/$file...\n";
 }
 
 open_log();
-while (defined(my $l = <>)) {
+while (defined(my $l = <STDIN>)) {
   # Command line and output marker.
   $l =~ s! \x1b\[0m\x1b\[3m\x1b\[0m !\nCOMMAND:\n!xg; 
   $l =~ s! \x1b\[0m\x1b\[4m\x1b\[0m !\nOUTPUT:!xg; 
 
-  if ($l =~ m!^ \x1b\[0m\x1b\[1m\x1b\[0m!x) {
+  if ($l =~ m!^ \x1b\[0m\x1b\[1m\x1b\[0m !x) {
     # separator
     open_log();
   
-  } elsif ($l =~ m!^ \x1b\[0m\x1b\[2m\x1b\[0m!x) {
+  } elsif ($l =~ m!^ \x1b\[0m\x1b\[2m\x1b\[0m !x) {
     # 184 marker
     $out->print("[retracted]\n");
     $out->close();
@@ -91,7 +91,7 @@ while (defined(my $l = <>)) {
   }
 
   $out->print($l) if defined $out;
+  print $l;
 }
-
-' -- -d "$log_dir")
+' -- "$log_dir")
 
