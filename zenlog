@@ -127,26 +127,26 @@ _zenlog_fail_if_not_in_zenlog() {
   return 0
 }
 
-_zenlog_cut_log() {
-  if [[ "$1" == "-r" ]] ; then
-    awk '{print $1}'
-  else
-    awk '{print $2}'
-  fi
-}
-
 zenlog_history() {
   _zenlog_fail_if_not_in_zenlog || return 1
-  _zenlog_cut_log "${@}" < "$ZENLOG_HISTORY"
+  {
+    if [[ "$1" == "-r" ]] ; then
+      sed -e 's/-san\.log$/-raw.log/'
+    else
+      cat
+    fi
+  } < "$ZENLOG_HISTORY"
 }
 
 zenlog_last_log() {
   _zenlog_fail_if_not_in_zenlog || return 1
-  zenlog_history "${@}" | tail -2 | head -1
+
+  zenlog_history "${@}" | sed -e 'x;$!d'
 }
 
 zenlog_open_last_log() {
   _zenlog_fail_if_not_in_zenlog || return 1
+
   local file=$(zenlog_last_log "${@}")
   if [[ -n "$file" ]] ; then
     echo "zenlog: Opening $file ..."
@@ -154,11 +154,13 @@ zenlog_open_last_log() {
   fi
 }
 
-zenlog_all_logs() {
+# Show the log files from the same session
+zenlog_all_session_logs() {
   _zenlog_fail_if_not_in_zenlog || return 1
-  find "$ZENLOG_CUR_DIR" -type f \
+  
+  find "$ZENLOG_CUR_LOG_DIR" -type f \
       -name "*-${ZENLOG_PID}-*-???.log" |
-      sort -r | sed -e '/-0-raw.log$/q'
+      sort -r | sed -e '/-0-raw\.log$/q'
 }
 
 EOF
@@ -178,9 +180,9 @@ trap 'rm -f "$ZENLOG_HISTORY"' EXIT
 export ZENLOG_HISTSIZE
 
 export ZENLOG_PID=$$
-export ZENLOG_CUR_DIR=$log_dir
+export ZENLOG_CUR_LOG_DIR=$log_dir
 
-echo "$name: Logging to $ZENLOG_CUR_DIR ..."
+echo "$name: Logging to $ZENLOG_CUR_LOG_DIR ..."
 
 # TODO: the -c part doesn't work on all shells.
 script -qf \
@@ -194,7 +196,7 @@ use File::Path qw(make_path);
 use File::Basename;
 
 my $zenlog_pid = $ENV{ZENLOG_PID};
-my $log_dir = $ENV{ZENLOG_CUR_DIR};
+my $log_dir = $ENV{ZENLOG_CUR_LOG_DIR};
 my $history_file = $ENV{ZENLOG_HISTORY};
 my $history_size = $ENV{ZENLOG_HISTSIZE};
 
@@ -230,7 +232,7 @@ sub open_log() {
   $raw->autoflush();
   $san->autoflush();
 
-  push @history, "$raw_name\t$san_name";
+  push @history, $san_name;
   if (@history > $history_size) {
     @history = @history[-$history_size .. -1];
   }
