@@ -68,11 +68,6 @@ while getopts "sd:hp:y" opt; do
 done
 shift $(($OPTIND - 1))
 
-# (( $purge_das + 0 )) || {
-#   echo "$name: Error: invalid number '$purge_days'." 1>&2
-#   exit 1
-# }
-
 if (( $purge_days >= 0 )) ; then  
   if ! (( $purge_yes )) ; then
     echo -n "$name: Purging logs older than $purge_days days? (y/N) "
