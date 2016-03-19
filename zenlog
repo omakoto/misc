@@ -11,10 +11,9 @@ Zenlog
   in a separate file.
 
 Usage:
-  zenlog [-d LOG_DIR] [-b]
+  zenlog [-d LOG_DIR]
     Start a new shell.  Options are:
        -d Specify log directory.
-       -b Enable buffered output.
 
   . <(zenlog -s)
      Install the helper functions on a bash-like shell.
@@ -34,27 +33,31 @@ Usage:
           Example:
             in_zenlog && ceho "[zenlog]"
 
+      - zenlog_last_log [-r]
+          Print the last sanitiezd log filename.
+          -r will print the raw log filename.
+
+       - zenlog_open_last_log [-r]
+          Open the last logfile with $ZENLOG_VIEWER or $EDITOR.
+          -r will open the raw log file.
 EOF
   exit 1
 }
 
 # TOOD: Rewrite all in perl.
 # TODO: Add completion helper and find from recent logs.
-# TODO: Figure out a way to open the previous output in editor.
 
 name=$(basename "$0")
 
-shell_helper=0
-log_dir=${ZENLOG_DIR:-${TMP:-/tmp}/zenlog/}
-buffering=0
+temp=${TEMP:-${TMP:-/tmp}}
+log_dir=${ZENLOG_DIR:-${temp}/zenlog}
 
-while getopts "sd:bh" opt; do
+shell_helper=0
+
+while getopts "sd:h" opt; do
   case "$opt" in
     s) shell_helper=1 ;;
     d) log_dir="$OPTARG" ;;
-
-    # enable buffering
-    b) buffering=1 ;;
     *) usage;
   esac
 done
@@ -85,6 +88,32 @@ zenlog_echo_command() {
 in_zenlog() {
   [[ "$ZENLOG_TTY" == $(tty) ]]
 }
+
+_zenlog_log() {
+  in_zenlog || {
+    echo "zenlog: Error: not in zenlog." 1>&2
+    return 1
+  }
+  cat "$zenlog_stat"
+}
+
+zenlog_last_log() {
+  _zenlog_log | {
+    if [[ "$1" == "-r" ]] ; then
+      awk '{print $3}'
+    else
+      awk '{print $4}'
+    fi
+  }
+}
+
+zenlog_open_last_log() {
+  local file=$(zenlog_last_log "${@}")
+  if [[ -n "$file" ]] ; then
+    ${ZENLOG_VIEWER:-$EDITOR} "$file"
+  fi
+}
+
 EOF
   exit 0
 fi
@@ -97,17 +126,17 @@ if [[ "$ZENLOG_TTY" == $(tty) ]] ; then
 fi
 
 export log_dir
-export buffering
+
+export zenlog_stat=${temp}/zenlog-stat-$$.txt
+trap 'rm -f "$zenlog_stat"' EXIT
 
 echo "$name: Logging to $log_dir ..."
 
-(( $buffering )) || nobuf_opt=-f
-
-# TODO export... may not work on all shell.
-script -q $nobuf_opt \
+# TODO: the -c part doesn't work on all shells.
+script -qf \
     -c 'export ZENLOG_TTY=$(tty); $SHELL -l' \
     >(perl -w <(cat <<'EOF'
-#line 91
+#line 124
 use strict;
 use Time::HiRes qw(time);
 use POSIX qw(strftime);
@@ -115,9 +144,12 @@ use File::Path qw(make_path);
 use File::Basename;
 
 my $log_dir = $ENV{log_dir};
-my $buffering = $ENV{buffering};
+my $stat_file = $ENV{zenlog_stat};
 
-my ($raw, $san, $raw_name, $san_name);
+my ($raw, $san, $raw_name, $san_name, $last_raw_name, $last_san_name);
+
+$raw_name = "";
+$san_name = "";
 
 sub close_log() {
   $raw->close() if defined $raw;
@@ -137,6 +169,9 @@ sub open_log() {
       ($t - int($t)) * 1000, $$, $seq++);
 
   make_path(dirname($filename));
+ 
+  $last_raw_name = $raw_name;
+  $last_san_name = $san_name;
 
   $raw_name = "${filename}-raw.log";
   $san_name = "${filename}-san.log";
@@ -144,10 +179,12 @@ sub open_log() {
   open($raw, ">$raw_name");
   open($san, ">$san_name");
 
-  if (!$buffering) {
-    $raw->autoflush();
-    $san->autoflush();
-  }
+  $raw->autoflush();
+  $san->autoflush();
+
+  open(my $stat, ">$stat_file"); 
+  print $stat "$raw_name $san_name $last_raw_name $last_san_name";
+  close($stat);
 }
 
 sub write_log($) {
