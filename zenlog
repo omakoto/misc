@@ -38,7 +38,7 @@ Usage:
           Print the last sanitized log filename.
           -r will print the raw log filename.
 
-       - zenlog_open_last_log [-r]
+      - zenlog_open_last_log [-r]
           Open the last log file with $ZENLOG_VIEWER or $PAGER.
           -r will open the raw log file.
 EOF
