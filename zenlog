@@ -142,7 +142,7 @@ zenlog_history() {
   local nth="$1"
 
   {
-    if [[ "$1" == "-r" ]] ; then
+    if (( $raw )) ; then
       sed -e 's/-san\.log$/-raw.log/'
     else
       cat
