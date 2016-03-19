@@ -11,10 +11,11 @@ Zenlog
   in a separate file.
 
 Usage:
-  zenlog [-d LOG_DIR] [-p DAYS]
-    Start a new shell.  Options are:
-       -d Specify log directory.
-       -p Purge logs older than N days and exit.
+  zenlog [-d LOG_DIR]
+    Start a new shell.
+ 
+  zenlog -p DAYS
+    Purge logs older than N days and exit.
 
   . <(zenlog -s)
      Install the helper functions on a bash-like shell.
@@ -36,11 +37,18 @@ Usage:
 
       - zenlog_last_log [-r]
           Print the last sanitized log filename.
-          -r will print the raw log filename.
+          -r will print the raw log filename instead.
 
       - zenlog_open_last_log [-r]
-          Open the last log file with $ZENLOG_VIEWER or $PAGER.
-          -r will open the raw log file.
+          Open the last sanitized log with $ZENLOG_VIEWER or $PAGER.
+          -r will open the raw log file instead.
+
+      - zenlog_history [-r]
+          Show the last N sanitized log filenames.
+          -r will show the raw log filenames instead.
+          
+          $ZENLOG_HISTSIZE is used as the history size. (default=20)
+
 EOF
   exit 1
 }
@@ -69,13 +77,19 @@ done
 shift $(($OPTIND - 1))
 
 if (( $purge_days >= 0 )) ; then  
+  targets=$( find "$log_dir" -type d -ctime +$(( $purge_days - 1 )) | sed -e '1d' )
+  if [[ -z "$targets" ]] ; then
+    echo "$name: No old log files found." 1>&2
+    exit 0
+  fi
   if ! (( $purge_yes )) ; then
-    echo -n "$name: Purging logs older than $purge_days days? (y/N) "
+    echo "$name: Purging the following logs older than $purge_days days?"
+    echo "$targets"
+    echo -n "(y/N) "
     read res
     [[ "$res" == "y" ]] || [[ "$res" == "Y" ]] || exit 1 
   fi
-  find "$log_dir" -type d -ctime +$(( $purge_days - 1 )) -print0 |
-      xargs -0 rm -fr
+  rm -fr $targets
   exit 0
 fi
 
@@ -105,30 +119,46 @@ in_zenlog() {
   [[ "$ZENLOG_TTY" == $(tty) ]]
 }
 
-_zenlog_stat() {
-  in_zenlog || {
+_zenlog_fail_if_not_in_zenlog() {
+  if ! in_zenlog ; then
     echo "zenlog: Error: not in zenlog." 1>&2
     return 1
-  }
-  cat "$zenlog_stat"
+  fi
+  return 0
+}
+
+_zenlog_cut_log() {
+  if [[ "$1" == "-r" ]] ; then
+    awk '{print $1}'
+  else
+    awk '{print $2}'
+  fi
+}
+
+zenlog_history() {
+  _zenlog_fail_if_not_in_zenlog || return 1
+  _zenlog_cut_log "${@}" < "$ZENLOG_HISTORY"
 }
 
 zenlog_last_log() {
-  _zenlog_stat | {
-    if [[ "$1" == "-r" ]] ; then
-      awk '{print $3}'
-    else
-      awk '{print $4}'
-    fi
-  }
+  _zenlog_fail_if_not_in_zenlog || return 1
+  zenlog_history "${@}" | tail -2 | head -1
 }
 
 zenlog_open_last_log() {
+  _zenlog_fail_if_not_in_zenlog || return 1
   local file=$(zenlog_last_log "${@}")
   if [[ -n "$file" ]] ; then
     echo "zenlog: Opening $file ..."
     ${ZENLOG_VIEWER:-$PAGER} "$file"
   fi
+}
+
+zenlog_all_logs() {
+  _zenlog_fail_if_not_in_zenlog || return 1
+  find "$ZENLOG_CUR_DIR" -type f \
+      -name "*-${ZENLOG_PID}-*-???.log" |
+      sort -r | sed -e '/-0-raw.log$/q'
 }
 
 EOF
@@ -142,30 +172,35 @@ if [[ "$ZENLOG_TTY" == $(tty) ]] ; then
   exit 1
 fi
 
-export log_dir
-export zenlog_stat=${temp}/zenlog-stat-$$.txt
-trap 'rm -f "$zenlog_stat"' EXIT
+export ZENLOG_HISTORY=${temp}/zenlog-history-$$.txt
+trap 'rm -f "$ZENLOG_HISTORY"' EXIT
+: ${ZENLOG_HISTSIZE:=20}
+export ZENLOG_HISTSIZE
 
-echo "$name: Logging to $log_dir ..."
+export ZENLOG_PID=$$
+export ZENLOG_CUR_DIR=$log_dir
+
+echo "$name: Logging to $ZENLOG_CUR_DIR ..."
 
 # TODO: the -c part doesn't work on all shells.
 script -qf \
     -c 'export ZENLOG_TTY=$(tty); $SHELL -l' \
     >(perl -w <(cat <<'EOF'
-#line 124
+#line 159
 use strict;
 use Time::HiRes qw(time);
 use POSIX qw(strftime);
 use File::Path qw(make_path);
 use File::Basename;
 
-my $log_dir = $ENV{log_dir};
-my $stat_file = $ENV{zenlog_stat};
+my $zenlog_pid = $ENV{ZENLOG_PID};
+my $log_dir = $ENV{ZENLOG_CUR_DIR};
+my $history_file = $ENV{ZENLOG_HISTORY};
+my $history_size = $ENV{ZENLOG_HISTSIZE};
 
-my ($raw, $san, $raw_name, $san_name, $last_raw_name, $last_san_name);
+my ($raw, $san, $raw_name, $san_name);
 
-$raw_name = "";
-$san_name = "";
+my @history = ();
 
 sub close_log() {
   $raw->close() if defined $raw;
@@ -182,13 +217,10 @@ sub open_log() {
   my $filename = sprintf('%s/%s.%03d-%s-%d',
       $log_dir,
       strftime('%Y-%m-%d/%H:%M:%S', localtime($t)),
-      ($t - int($t)) * 1000, $$, $seq++);
+      ($t - int($t)) * 1000, $zenlog_pid, $seq++);
 
   make_path(dirname($filename));
  
-  $last_raw_name = $raw_name;
-  $last_san_name = $san_name;
-
   $raw_name = "${filename}-raw.log";
   $san_name = "${filename}-san.log";
 
@@ -198,9 +230,16 @@ sub open_log() {
   $raw->autoflush();
   $san->autoflush();
 
-  open(my $stat, ">$stat_file"); 
-  print $stat "$raw_name $san_name $last_raw_name $last_san_name";
-  close($stat);
+  push @history, "$raw_name\t$san_name";
+  if (@history > $history_size) {
+    @history = @history[-$history_size .. -1];
+  }
+
+  open(my $hf, ">$history_file");
+  for my $h (@history) {
+    print $hf ($h, "\n");
+  } 
+  close($hf);
 }
 
 sub write_log($) {
