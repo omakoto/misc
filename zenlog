@@ -129,19 +129,35 @@ _zenlog_fail_if_not_in_zenlog() {
 
 zenlog_history() {
   _zenlog_fail_if_not_in_zenlog || return 1
+
+  local raw=0
+  local OPTIND
+  while getopts "r" opt; do
+    case "$opt" in
+      r) raw=1 ;;
+    esac
+  done
+  shift $(($OPTIND - 1))
+
+  local nth="$1"
+
   {
     if [[ "$1" == "-r" ]] ; then
       sed -e 's/-san\.log$/-raw.log/'
     else
       cat
     fi
-  } < "$ZENLOG_HISTORY"
+  } < "$ZENLOG_HISTORY" | {
+    if [[ -n "$nth" ]] ; then
+      tail -n $(( $nth + 1 )) | head -1
+    else
+      cat
+    fi
+  }
 }
 
 zenlog_last_log() {
-  _zenlog_fail_if_not_in_zenlog || return 1
-
-  zenlog_history "${@}" | sed -e 'x;$!d'
+  zenlog_history "${@}" 1
 }
 
 zenlog_open_last_log() {
