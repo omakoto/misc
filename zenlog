@@ -204,8 +204,10 @@ sub open_log() {
 }
 
 sub write_log($) {
+  return unless defined $raw;
+
   my ($l) = @_;
-  $raw->print($l) if defined $raw;
+  $raw->print($l);
 
   # Sanitize
   $l =~ s! (
