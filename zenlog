@@ -297,7 +297,9 @@ while (defined(my $l = <>)) {
 
     write_log($post);
 
-  } elsif ($l =~ m!^ (.*?) \x1b\[0m\x1b\[2m\x1b\[0m !x) {
+    next;
+  }
+  if ($l =~ m!^ (.*?) \x1b\[0m\x1b\[2m\x1b\[0m !x) {
     # 184 marker
     my ($pre) = ($1);
 
@@ -306,9 +308,15 @@ while (defined(my $l = <>)) {
 
     close_log();
 
-  } else {
-    write_log($l);
+    next;
+  } 
+  # Hack -- if a line contains 3 consecutive bells,
+  # show the current filename. 
+  if ($l =~ /\a\a\a/) {
+    print("\r\n", $raw_name, "\r\n");
   }
+
+  write_log($l);
 }
 close_log()
 EOF
