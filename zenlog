@@ -125,7 +125,7 @@ zenlog_last_log() {
 zenlog_open_last_log() {
   local file=$(zenlog_last_log "${@}")
   if [[ -n "$file" ]] ; then
-    echo "zenlog: Opening $file"
+    echo "zenlog: Opening $file ..."
     ${ZENLOG_VIEWER:-$EDITOR} "$file"
   fi
 }
