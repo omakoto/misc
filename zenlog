@@ -14,7 +14,7 @@ Usage:
   zenlog [-d LOG_DIR] [-p DAYS]
     Start a new shell.  Options are:
        -d Specify log directory.
-       -p Purge logs older than N days.
+       -p Purge logs older than N days and exit.
 
   . <(zenlog -s)
      Install the helper functions on a bash-like shell.
@@ -27,7 +27,7 @@ Usage:
       - 184 COMMAND [args...]
           Run the passed command without logging the output.
           Example:
-            184 adb logcat
+            184 emacs
 
       - in_zenlog
           Return success if alreay in zenlog.
