@@ -71,12 +71,12 @@ zenlog_prompt_marker() {
 }
 
 # execute command without logging output.
-zenlog_iyayo() {
+zenlog_nolog() {
   echo -en '\e[0m\e[2m\e[0m'
   "${@}"
   return 1
 }
-alias 184=zenlog_iyayo
+alias 184=zenlog_nolog
 
 # Use it to echo back the entire command in pre-exec hook.
 # (Optional)
