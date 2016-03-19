@@ -11,9 +11,10 @@ Zenlog
   in a separate file.
 
 Usage:
-  zenlog [-d LOG_DIR]
+  zenlog [-d LOG_DIR] [-p DAYS]
     Start a new shell.  Options are:
        -d Specify log directory.
+       -p Purge logs older than N days.
 
   . <(zenlog -s)
      Install the helper functions on a bash-like shell.
@@ -53,15 +54,34 @@ temp=${TEMP:-${TMP:-/tmp}}
 log_dir=${ZENLOG_DIR:-${temp}/zenlog}
 
 shell_helper=0
+purge_days=-1
+purge_yes=0
 
-while getopts "sd:h" opt; do
+while getopts "sd:hp:y" opt; do
   case "$opt" in
     s) shell_helper=1 ;;
     d) log_dir="$OPTARG" ;;
+    p) purge_days="$OPTARG";;
+    y) purge_yes=1 ;;
     *) usage;
   esac
 done
 shift $(($OPTIND - 1))
+
+# (( $purge_das + 0 )) || {
+#   echo "$name: Error: invalid number '$purge_days'." 1>&2
+#   exit 1
+# }
+
+if (( $purge_days >= 0 )) ; then  
+  if ! (( $purge_yes )) ; then
+    echo -n "$name: Purging logs older than $purge_days days? (y/N) "
+    read res
+    [[ "$res" == "y" ]] || [[ "$res" == "Y" ]] || exit 1 
+  fi
+  find "$log_dir" -type d -ctime +$(( $purge_days - 1 )) -print0 | xargs -0 rm -fr
+  exit 0
+fi
 
 if (( $shell_helper )) ; then
   cat <<'EOF'
