@@ -177,6 +177,10 @@ zenlog_all_session_logs() {
       sort -r | sed -e '/-0-raw\.log$/q'
 }
 
+zenlog_show_running_commands() {
+  cat "$ZENLOG_TEMP_DIR"/zenlog-*-stat.txt
+}
+
 EOF
   exit 0
 fi
@@ -188,12 +192,14 @@ if [[ "$ZENLOG_TTY" == $(tty) ]] ; then
   exit 1
 fi
 
-export ZENLOG_HISTORY=${temp}/zenlog-history-$$.txt
-trap 'rm -f "$ZENLOG_HISTORY"' EXIT
+export ZENLOG_TEMP_DIR="${temp}"
+export ZENLOG_PID=$$
+export ZENLOG_HISTORY="$ZENLOG_TEMP_DIR"/zenlog-$ZENLOG_PID-history.txt
+export ZENLOG_STAT="$ZENLOG_TEMP_DIR"/zenlog-$ZENLOG_PID-stat.txt
+trap 'rm -f "$ZENLOG_TEMP_DIR"/zenlog-$ZENLOG_PID-*.txt' EXIT
 : ${ZENLOG_HISTSIZE:=20}
 export ZENLOG_HISTSIZE
 
-export ZENLOG_PID=$$
 export ZENLOG_CUR_LOG_DIR=$log_dir
 
 echo "$name: Logging to $ZENLOG_CUR_LOG_DIR ..."
@@ -213,6 +219,7 @@ my $zenlog_pid = $ENV{ZENLOG_PID};
 my $log_dir = $ENV{ZENLOG_CUR_LOG_DIR};
 my $history_file = $ENV{ZENLOG_HISTORY};
 my $history_size = $ENV{ZENLOG_HISTSIZE};
+my $stat_file = $ENV{ZENLOG_STAT};
 
 my ($raw, $san, $raw_name, $san_name);
 
@@ -278,6 +285,13 @@ sub write_log($) {
   $san->print($l) if defined $san;
 }
 
+sub write_stat($) {
+  my ($command) = @_;
+  open(my $s, ">$stat_file");
+  print $s ($zenlog_pid, "\t", ($command =~ tr!\t! !r), "\n");
+  close($s);
+}
+
 open_log();
 
 while (defined(my $line = <>)) {
@@ -286,6 +300,7 @@ while (defined(my $line = <>)) {
     my $command = $1;
     write_log($line);
     write_log("COMMAND: $command\n");
+    write_stat($command);
     next;
   }
 
