@@ -282,12 +282,12 @@ sub write_log($) {
 
 open_log();
 
-while (defined(my $l = <>)) {
+while (defined(my $line = <>)) {
   # Command line and output marker.
-  $l =~ s! \x1b\[0m\x1b\[3m\x1b\[0m !\nCOMMAND:\n!xg;
-  $l =~ s! \x1b\[0m\x1b\[4m\x1b\[0m !\nOUTPUT:!xg;
+  $line =~ s! \x1b\[0m\x1b\[3m\x1b\[0m !\nCOMMAND:\n!xg;
+  $line =~ s! \x1b\[0m\x1b\[4m\x1b\[0m !\nOUTPUT:!xg;
 
-  if ($l =~ m! ^ (.*?)  \x1b\[0m\x1b\[1m\x1b\[0m (.*) !x) {
+  if ($line =~ m! ^ (.*?)  \x1b\[0m\x1b\[1m\x1b\[0m (.*) !x) {
     # separator
 
     my ($pre, $post) = ($1, $2);
@@ -299,7 +299,7 @@ while (defined(my $l = <>)) {
 
     next;
   }
-  if ($l =~ m!^ (.*?) \x1b\[0m\x1b\[2m\x1b\[0m !x) {
+  if ($line =~ m!^ (.*?) \x1b\[0m\x1b\[2m\x1b\[0m !x) {
     # 184 marker
     my ($pre) = ($1);
 
@@ -312,11 +312,11 @@ while (defined(my $l = <>)) {
   } 
   # Hack -- if a line contains 3 consecutive bells,
   # show the current filename. 
-  if ($l =~ /\a\a\a/) {
+  if ($line =~ /\a\a\a/) {
     print("\r\n", $raw_name, "\r\n");
   }
 
-  write_log($l);
+  write_log($line);
 }
 close_log()
 EOF
