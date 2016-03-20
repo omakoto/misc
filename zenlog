@@ -77,19 +77,16 @@ done
 shift $(($OPTIND - 1))
 
 if (( $purge_days >= 0 )) ; then  
-  targets=$( find "$log_dir" -type d -ctime +$(( $purge_days - 1 )) | sed -e '1d' )
-  if [[ -z "$targets" ]] ; then
-    echo "$name: No old log files found." 1>&2
-    exit 0
-  fi
   if ! (( $purge_yes )) ; then
-    echo "$name: Purging the following logs older than $purge_days days?"
-    echo "$targets"
-    echo -n "(y/N) "
+    echo -n "$name: Purging logs older than $purge_days days? (y/N) "
     read res
     [[ "$res" == "y" ]] || [[ "$res" == "Y" ]] || exit 1 
   fi
-  rm -fr $targets
+  # First, remove old log files.
+  find "$log_dir" -type f -ctime +$(( $purge_days - 1 )) \
+      -name '*.log' | xargs rm -f
+  # Then, remove all directories.
+  rmdir "$log_dir"/* 2>/dev/null
   exit 0
 fi
 
