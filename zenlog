@@ -49,6 +49,19 @@ Usage:
           
           $ZENLOG_HISTSIZE is used as the history size. (default=20)
 
+      - zenlog_echo_command COMMAND [opts...]
+          If you use this to echo back the command line that's being
+          executed, zenlog will recognize the current command and can
+          perform auto-184.
+
+  Environmental variables:
+    ZENLOG_DIR
+          Specify log file directory.
+
+    ZENLOG_ALWAYS_184
+          Specify executable names that shouldn't be logged.
+          Example: export ZENLOG_ALWAYS_184="vi emacs man"
+
 EOF
   exit 1
 }
@@ -204,6 +217,8 @@ trap 'rm -f "$ZENLOG_TEMP_DIR"/zenlog-$ZENLOG_PID-*.txt' EXIT
 : ${ZENLOG_HISTSIZE:=20}
 export ZENLOG_HISTSIZE
 
+export ZENLOG_ALWAYS_184
+
 export ZENLOG_CUR_LOG_DIR=$log_dir
 
 echo "$name: Logging to $ZENLOG_CUR_LOG_DIR ..."
@@ -212,7 +227,7 @@ echo "$name: Logging to $ZENLOG_CUR_LOG_DIR ..."
 script -qf \
     -c 'export ZENLOG_TTY=$(tty); $SHELL -l' \
     >(perl -w <(cat <<'EOF'
-#line 159
+#line 218
 use strict;
 use Time::HiRes qw(time);
 use POSIX qw(strftime);
@@ -224,6 +239,8 @@ my $log_dir = $ENV{ZENLOG_CUR_LOG_DIR};
 my $history_file = $ENV{ZENLOG_HISTORY};
 my $history_size = $ENV{ZENLOG_HISTSIZE};
 my $stat_file = $ENV{ZENLOG_STAT};
+
+my %always_iyayo = map {$_ => 1} split(/\s+/, $ENV{ZENLOG_ALWAYS_184});
 
 my ($raw, $san, $raw_name, $san_name);
 
@@ -296,6 +313,11 @@ sub write_stat($) {
   close($s);
 }
 
+sub stop_log() {
+  write_log("[retracted]\n");
+  close_log();
+}
+
 open_log();
 
 while (defined(my $line = <>)) {
@@ -305,6 +327,13 @@ while (defined(my $line = <>)) {
     write_log($line);
     write_log("COMMAND: $command\n");
     write_stat($command);
+
+    my $exe = (split(/\s+/, $command, 2))[0];
+
+    if (exists($always_iyayo{$exe})) {
+      stop_log();
+    }
+
     next;
   }
 
@@ -326,9 +355,7 @@ while (defined(my $line = <>)) {
     my ($pre) = ($1);
 
     write_log($pre);
-    write_log("[retracted]\n");
-
-    close_log();
+    stop_log();
 
     next;
   } 
