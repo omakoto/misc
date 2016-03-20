@@ -108,8 +108,9 @@ alias 184=zenlog_nolog
 # Use it to echo back the entire command in pre-exec hook.
 # (Optional)
 zenlog_echo_command() {
-  echo -en "\e[0m\e[3m\e[0m${*}\e[0m\e[4m\e[0m"
-  echo -e "\x1b[0m"
+  # Use $(echo) to force remove newlines.
+  echo -en "\e[0m\e[3m\e[0m$(echo ${*})\e[0m\e[4m\e[0m"
+  echo -e "\e[0m"
 }
 
 in_zenlog() {
@@ -266,9 +267,9 @@ sub write_log($) {
   # Sanitize
   $l =~ s! (
         \a                           # Bell
-        | \x1b \x5B .*? [\x40-\x7E]  # CSI
-        | \x1b \x5D .*? \x07         # Set terminal title
-        | \x1b [\x40-\x5A\x5C\x5F]   # 2 byte sequence
+        | \e \x5B .*? [\x40-\x7E]  # CSI
+        | \e \x5D .*? \x07         # Set terminal title
+        | \e [\x40-\x5A\x5C\x5F]   # 2 byte sequence
         )
         !!gx;
   # Also clean up CL/LFs.
@@ -281,10 +282,14 @@ open_log();
 
 while (defined(my $line = <>)) {
   # Command line and output marker.
-  $line =~ s! \x1b\[0m\x1b\[3m\x1b\[0m !\nCOMMAND:\n!xg;
-  $line =~ s! \x1b\[0m\x1b\[4m\x1b\[0m !\nOUTPUT:!xg;
+  if ($line =~ m! \e\[0m\e\[3m\e\[0m (.*?) \e\[0m\e\[4m\e\[0m !x) {
+    my $command = $1;
+    write_log($line);
+    write_log("COMMAND: $command\n");
+    next;
+  }
 
-  if ($line =~ m! ^ (.*?)  \x1b\[0m\x1b\[1m\x1b\[0m (.*) !x) {
+  if ($line =~ m! ^ (.*?)  \e\[0m\e\[1m\e\[0m (.*) !x) {
     # separator
 
     my ($pre, $post) = ($1, $2);
@@ -296,7 +301,7 @@ while (defined(my $line = <>)) {
 
     next;
   }
-  if ($line =~ m!^ (.*?) \x1b\[0m\x1b\[2m\x1b\[0m !x) {
+  if ($line =~ m!^ (.*?) \e\[0m\e\[2m\e\[0m !x) {
     # 184 marker
     my ($pre) = ($1);
 
@@ -309,7 +314,7 @@ while (defined(my $line = <>)) {
   } 
   # Hack -- if a line contains 3 consecutive bells,
   # show the current filename. 
-  if ($line =~ /\a\a\a/) {
+  if ($line =~ /\a\a\a\a/) {
     print("\r\n", $raw_name, "\r\n");
     
     # TODO: Maybe add another command that directly opens
