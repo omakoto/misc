@@ -182,6 +182,7 @@ zenlog_all_session_logs() {
 
 zenlog_show_running_commands() {
   cat "$ZENLOG_TEMP_DIR"/zenlog-*-stat.txt
+  # TODO Don't show from dead PIDs.
 }
 
 EOF
@@ -314,6 +315,7 @@ while (defined(my $line = <>)) {
     write_log($pre);
 
     open_log();
+    write_stat("");
 
     write_log($post);
 
