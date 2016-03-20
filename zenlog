@@ -51,8 +51,9 @@ Usage:
 
       - zenlog_echo_command COMMAND [opts...]
           If you use this to echo back the command line that's being
-          executed, zenlog will recognize the current command and can
-          perform auto-184.
+          executed in the pre-exec hook, zenlog will recognize the
+          current command and can perform auto-184.
+          See also ZENLOG_ALWAYS_184.
 
   Environmental variables:
     ZENLOG_DIR
