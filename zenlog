@@ -168,12 +168,15 @@ zenlog_open_last_log() {
   fi
 }
 
-# Show the log files from the same session
+# Show the log files from the specified session (default: current
+# session).
 zenlog_all_session_logs() {
   _zenlog_fail_if_not_in_zenlog || return 1
   
+  local pid=${1:-$ZENLOG_PID}
+
   find "$ZENLOG_CUR_LOG_DIR" -type f \
-      -name "*-${ZENLOG_PID}-*-???.log" |
+      -name "*-$pid-*-???.log" |
       sort -r | sed -e '/-0-raw\.log$/q'
 }
 
