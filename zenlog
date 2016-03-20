@@ -218,6 +218,7 @@ trap 'rm -f "$ZENLOG_TEMP_DIR"/zenlog-$ZENLOG_PID-*.txt' EXIT
 : ${ZENLOG_HISTSIZE:=20}
 export ZENLOG_HISTSIZE
 
+: ${ZENLOG_ALWAYS_184:=}
 export ZENLOG_ALWAYS_184
 
 export ZENLOG_CUR_LOG_DIR=$log_dir
@@ -228,7 +229,7 @@ echo "$name: Logging to $ZENLOG_CUR_LOG_DIR ..."
 script -qf \
     -c 'export ZENLOG_TTY=$(tty); $SHELL -l' \
     >(perl -w <(cat <<'EOF'
-#line 218
+#line 232
 use strict;
 use Time::HiRes qw(time);
 use POSIX qw(strftime);
