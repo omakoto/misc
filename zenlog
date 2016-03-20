@@ -85,8 +85,8 @@ if (( $purge_days >= 0 )) ; then
   # First, remove old log files.
   find "$log_dir" -type f -ctime +$(( $purge_days - 1 )) \
       -name '*.log' | xargs rm -f
-  # Then, remove all directories.
-  rmdir "$log_dir"/* 2>/dev/null
+  # Then, remove all empty directories.
+  rmdir "$log_dir"/* 2>/dev/null || true
   exit 0
 fi
 
@@ -311,6 +311,9 @@ while (defined(my $line = <>)) {
   # show the current filename. 
   if ($line =~ /\a\a\a/) {
     print("\r\n", $raw_name, "\r\n");
+    
+    # TODO: Maybe add another command that directly opens
+    # the log with an external command.
   }
 
   write_log($line);
