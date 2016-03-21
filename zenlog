@@ -149,15 +149,23 @@ zenlog_history() {
   _zenlog_fail_if_not_in_zenlog || return 1
 
   local raw=0
+  local pid=$ZENLOG_PID
+  local nth=""
+
   local OPTIND
-  while getopts "r" opt; do
+  local OPTARG
+  while getopts "rp:n:" opt; do
     case "$opt" in
       r) raw=1 ;;
+      p) pid=$OPTARG ;;
+      n) nth=$OPTARG ;;
     esac
   done
   shift $(($OPTIND - 1))
 
-  local nth="$1"
+  # A bit cheating, since different zenlog may be using a different
+  # temp dir...
+  local hist="$ZENLOG_TEMP_DIR"/zenlog-${pid}-history.txt
 
   {
     if (( $raw )) ; then
@@ -165,7 +173,7 @@ zenlog_history() {
     else
       cat
     fi
-  } < "$ZENLOG_HISTORY" | {
+  } < "$hist" | {
     if [[ -n "$nth" ]] ; then
       tail -n $(( $nth + 1 )) | head -1
     else
@@ -175,17 +183,34 @@ zenlog_history() {
 }
 
 zenlog_last_log() {
-  zenlog_history "${@}" 1
+  # Provide the default "n" at the beginning, so it can be overridden.
+  zenlog_history -n 1 "${@}"
+}
+
+zenlog_open_viewer() {
+  local file="$1"
+  if [[ -n "$file" ]] ; then
+    echo "zenlog: Opening $file ..."
+    ${ZENLOG_VIEWER:-$PAGER} "$file"
+  fi
 }
 
 zenlog_open_last_log() {
   _zenlog_fail_if_not_in_zenlog || return 1
 
-  local file=$(zenlog_last_log "${@}")
-  if [[ -n "$file" ]] ; then
-    echo "zenlog: Opening $file ..."
-    ${ZENLOG_VIEWER:-$PAGER} "$file"
-  fi
+  zenlog_open_viewer "$(zenlog_last_log "${@}")"
+}
+
+# Useful: when used with -p PID.
+zenlog_current_log() {
+  zenlog_history -n 0 "${@}"
+}
+
+# Useful: when used with -p PID.
+zenlog_open_current_log() {
+  _zenlog_fail_if_not_in_zenlog || return 1
+
+  zenlog_open_viewer "$(zenlog_current_log "${@}")"
 }
 
 # Show the log files from the specified session (default: current
