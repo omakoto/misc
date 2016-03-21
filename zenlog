@@ -73,6 +73,10 @@ EOF
 
 name=$(basename "$0")
 
+if [[ -f "$HOME/.zenlogrc" ]] ; then
+  . "$HOME/.zenlogrc"
+fi
+
 temp=${TEMP:-${TMP:-/tmp}}
 log_dir=${ZENLOG_DIR:-${temp}/zenlog}
 
@@ -242,7 +246,7 @@ my $log_dir = $ENV{ZENLOG_CUR_LOG_DIR};
 my $history_file = $ENV{ZENLOG_HISTORY};
 my $history_size = $ENV{ZENLOG_HISTSIZE};
 my $stat_file = $ENV{ZENLOG_STAT};
-
+my $bg_viwer = $ENV{ZENLOG_BG_VIEWER};
 my %always_iyayo = map {$_ => 1} split(/\s+/, $ENV{ZENLOG_ALWAYS_184});
 
 my ($raw, $san, $raw_name, $san_name);
@@ -362,13 +366,15 @@ while (defined(my $line = <>)) {
 
     next;
   } 
-  # Hack -- if a line contains 3 consecutive bells,
+  # Hack -- if a line contains 3 consecutive ^Os,
   # show the current filename. 
-  if ($line =~ /\a\a\a\a/) {
+  if ($line =~ m! \x0f\x0f\x0f !x) {
     print("\r\n", $raw_name, "\r\n");
-    
-    # TODO: Maybe add another command that directly opens
-    # the log with an external command.
+  }
+  # Hack -- if a line contains 3 consecutive ^Ns,
+  # open the current log with $ZENLOG_BG_VIEWER.
+  if ($line =~ m! \x0e\x0e\x0e !x) {
+    system("$bg_viwer $raw_name");
   }
 
   write_log($line);
