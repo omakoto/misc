@@ -336,6 +336,9 @@ sub write_log($) {
   # Also clean up CL/LFs.
   $l =~ s! \s* \x0d* \x0a !\x0a!gx;       # Remove end-of-line CRs.
   $l =~ s! \s* \x0d !\x0a!gx;             # Replace orphan CRs with LFs.
+
+  # Also replace ^H's.
+  $l =~ s! \x08 !^H!gx;
   $san->print($l) if defined $san;
 }
 
