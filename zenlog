@@ -239,6 +239,10 @@ zenlog_show_running_commands() {
   # TODO Don't show from dead PIDs.
 }
 
+zenlog_du() {
+  du "${ZENLOG_CUR_LOG_DIR:-$ZENLOG_DIR}" "$@"
+}
+
 EOF
   exit 0
 fi
