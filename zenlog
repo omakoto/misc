@@ -218,7 +218,16 @@ zenlog_open_current_log() {
 zenlog_all_session_logs() {
   _zenlog_fail_if_not_in_zenlog || return 1
 
-  local pid=${1:-$ZENLOG_PID}
+  local pid=$ZENLOG_PID
+
+  local OPTIND
+  local OPTARG
+  while getopts "p:" opt; do
+    case "$opt" in
+      p) pid=$OPTARG ;;
+    esac
+  done
+  shift $(($OPTIND - 1))
 
   find "$ZENLOG_CUR_LOG_DIR" -type f \
       -name "*-$pid-*-???.log" |
