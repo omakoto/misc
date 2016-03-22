@@ -114,12 +114,12 @@ if (( $shell_helper )) ; then
   cat <<'EOF'
 # Show it in the prompt.  zenlog uses it to split log files.
 zenlog_prompt_marker() {
-  echo -e '\e[0m\e[1m\e[0m'
+  echo -e '\e[0m\e[1m\e[00000m'
 }
 
 # execute command without logging output.
 zenlog_nolog() {
-  echo -en '\e[0m\e[2m\e[0m'
+  echo -en '\e[0m\e[2m\e[00000m'
   "${@}"
   return 1
 }
@@ -129,7 +129,7 @@ alias 184=zenlog_nolog
 # (Optional)
 zenlog_echo_command() {
   # Use $(echo) to force remove newlines.
-  echo -en "\e[0m\e[3m\e[0m$(echo ${*})\e[0m\e[4m\e[0m"
+  echo -en "\e[0m\e[3m\e[00000m$(echo ${*})\e[0m\e[4m\e[00000m"
   echo -e "\e[0m"
 }
 
@@ -367,7 +367,7 @@ open_log();
 
 while (defined(my $line = <>)) {
   # Command line and output marker.
-  if ($line =~ m! \e\[0m\e\[3m\e\[0m (.*?) \e\[0m\e\[4m\e\[0m !x) {
+  if ($line =~ m! \e\[0m\e\[3m\e\[00000m (.*?) \e\[0m\e\[4m\e\[00000m !x) {
     my $command = $1;
     write_log($line);
     write_log("COMMAND: $command\n");
@@ -382,7 +382,7 @@ while (defined(my $line = <>)) {
     next;
   }
 
-  if ($line =~ m! ^ (.*?)  \e\[0m\e\[1m\e\[0m (.*) !x) {
+  if ($line =~ m! ^ (.*?)  \e\[0m\e\[1m\e\[00000m (.*) !x) {
     # separator
 
     my ($pre, $post) = ($1, $2);
@@ -395,7 +395,7 @@ while (defined(my $line = <>)) {
 
     next;
   }
-  if ($line =~ m!^ (.*?) \e\[0m\e\[2m\e\[0m !x) {
+  if ($line =~ m!^ (.*?) \e\[0m\e\[2m\e\[00000m !x) {
     # 184 marker
     my ($pre) = ($1);
 
@@ -403,16 +403,6 @@ while (defined(my $line = <>)) {
     stop_log();
 
     next;
-  }
-  # Hack -- if a line contains 3 consecutive ^Os,
-  # show the current filename.
-  if ($line =~ m! \x0f\x0f\x0f !x) {
-    print("\r\n", $raw_name, "\r\n");
-  }
-  # Hack -- if a line contains 3 consecutive ^Ns,
-  # open the current log with $ZENLOG_BG_VIEWER.
-  if ($line =~ m! \x0e\x0e\x0e !x) {
-    system("$bg_viwer $raw_name");
   }
 
   write_log($line);
