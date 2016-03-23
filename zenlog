@@ -121,9 +121,15 @@ zenlog_prompt_marker() {
 zenlog_nolog() {
   echo -en '\e[0m\e[2m\e[00000m'
   "${@}"
-  return 1
 }
+
 alias 184=zenlog_nolog
+
+# Use it to avoid ZENLOG_ALWAYS_184.
+zenlog_no_auto_184() {
+  "${@}"
+}
+alias 186=zenlog_no_auto_184
 
 # Use it to echo back the entire command in pre-exec hook.
 # (Optional)
