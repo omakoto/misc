@@ -134,8 +134,7 @@ alias 186=zenlog_no_auto_184
 # Use it to echo back the entire command in pre-exec hook.
 # (Optional)
 zenlog_echo_command() {
-  # Use $(echo) to force remove newlines.
-  echo -en "\e[0m\e[3m\e[00000m$(echo "${*}")\e[0m\e[4m\e[00000m"
+  echo -en "\e[0m\e[3m\e[00000m$(tr '\r\n' '  ' <<< "${*}")\e[0m\e[4m\e[00000m"
   echo -e "\e[0m"
 }
 
