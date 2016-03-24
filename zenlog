@@ -35,17 +35,27 @@ Usage:
           Example:
             in_zenlog && echo "in zenlog"
 
-      - zenlog_last_log [-r]
+      - zenlog_last_log [-r] [-n N] [-p ZENLOG_PID]
           Print the last sanitized log filename.
           -r will print the raw log filename instead.
+          -n to specify which previous log to show -- default is 1 to show the
+             last log.  0 is current, 2 is the second last.
+          -p to show other zenlog's log file instead.
 
-      - zenlog_open_last_log [-r]
+      - zenlog_open_last_log [-r] [-n N] [-p ZENLOG_PID]
           Open the last sanitized log with $ZENLOG_VIEWER or $PAGER.
-          -r will open the raw log file instead.
+          -r, -n, -p have the same meaning as zenlog_last_log.
 
-      - zenlog_history [-r]
+      - zenlog_cat_last_log [-r] [-n N] [-p ZENLOG_PID]
+          Cat the last sanitized log.
+          -r, -n, -p have the same meaning as zenlog_last_log.
+
+      - zenlog_history [-r] [-n N] [-p ZENLOG_PID]
           Show the last N sanitized log filenames.
           -r will show the raw log filenames instead.
+          -r, -n, -p have the same meaning as zenlog_last_log
+            except when -n is omitted it'll show all the log files in the
+            history.
 
           $ZENLOG_HISTSIZE is used as the history size. (default=20)
 
@@ -54,6 +64,11 @@ Usage:
           executed in the pre-exec hook, zenlog will recognize the
           current command and perform auto-184.
           See also ZENLOG_ALWAYS_184.
+
+      - zenlog_du
+          Execute du on the log directory.
+          Example:
+            zenlog_du -h
 
   Environmental variables:
     ZENLOG_DIR
@@ -208,6 +223,12 @@ zenlog_open_last_log() {
   _zenlog_fail_if_not_in_zenlog || return 1
 
   zenlog_open_viewer "$(zenlog_last_log "${@}")"
+}
+
+zenlog_cat_last_log() {
+  _zenlog_fail_if_not_in_zenlog || return 1
+
+  cat "$(zenlog_last_log "${@}")"
 }
 
 # Useful: when used with -p PID.
