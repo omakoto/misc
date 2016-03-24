@@ -1,0 +1,8 @@
+#!/usr/bin/perl
+
+while (<>) {
+    m! \e\[ (?: [0-9\;]* )m !sx && exit 0;
+    m! \e\] [^\a]*? \a !sx && exit 0;
+    exit 1 if $. >= 1000;
+}
+exit 1
