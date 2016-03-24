@@ -117,6 +117,10 @@ zenlog_prompt_marker() {
   echo -e '\e[0m\e[1m\e[00000m'
 }
 
+zenlog_remove_marker() {
+  echo -e '\e[0m\e[5m\e[00000m'
+}
+
 # execute command without logging output.
 zenlog_nolog() {
   echo -en '\e[0m\e[2m\e[00000m'
