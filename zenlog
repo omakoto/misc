@@ -99,13 +99,15 @@ log_dir=${ZENLOG_DIR:-${temp}/zenlog}
 shell_helper=0
 purge_days=-1
 purge_yes=0
+ZENLOG_START_COMMAND="$SHELL -l"
 
-while getopts "sd:hp:y" opt; do
+while getopts "sd:hp:yc:" opt; do
   case "$opt" in
     s) shell_helper=1 ;;
     d) log_dir="$OPTARG" ;;
-    p) purge_days="$OPTARG";;
+    p) purge_days="$OPTARG" ;;
     y) purge_yes=1 ;;
+    c) ZENLOG_START_COMMAND="$OPTARG" ;;
     *) usage;
   esac
 done
@@ -299,9 +301,11 @@ export ZENLOG_CUR_LOG_DIR=$log_dir
 
 echo "$name: Logging to $ZENLOG_CUR_LOG_DIR ..."
 
+export ZENLOG_START_COMMAND
+
 # TODO: the -c part doesn't work on all shells.
 script -qf \
-    -c 'export ZENLOG_TTY=$(tty); $SHELL -l' \
+    -c 'export ZENLOG_TTY=$(tty); $ZENLOG_START_COMMAND' \
     >(perl -w <(cat <<'EOF'
 #line 232
 use strict;
