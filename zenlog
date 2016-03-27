@@ -175,23 +175,46 @@ zenlog_history() {
   local pid=$ZENLOG_PID
   local type="san"
   local nth=""
+  local show_command=0
+  local command_filter=""
 
   local OPTIND
   local OPTARG
-  while getopts "rp:n:" opt; do
+  while getopts "rp:n:cf:" opt; do
     case "$opt" in
       r) type=raw ;;
-      p) pid=$OPTARG ;;
-      n) nth=$OPTARG ;;
+      p) pid="$OPTARG" ;;
+      n) nth="$OPTARG" ;;
+      c) show_command=1 ;;
+      f) command_filter=$(sed -e 's!  *!.*!g' <<<"$OPTARG") ;;
     esac
   done
   shift $(($OPTIND - 1))
+
+  local self=0
+  (( "$pid" == $ZENLOG_PID )) && self=1
 
   # sort -r | sed is needed to ignore previous sessions with the same
   # pid
   find "$ZENLOG_CUR_LOG_DIR" -type f \
       -name "*-$pid-*-$type.log" |
       sort -r | sed -e '/-0-...\.log$/q'| sort | {
+    while read file ; do
+      command=$( sed -ne '/^COMMAND: /{
+        s/^COMMAND: //p
+        q
+      }
+      ' "$file")
+      if [[ -z "$command_filter" ]] ||
+          grep -q -- "$command_filter" <<<"$command" ; then
+        if (( $show_command )) ; then
+          echo "$file $command"
+        else
+          echo "$file"
+        fi
+      fi
+    done
+  } | {
     if [[ -n "$nth" ]] ; then
       tail -n $(( $nth + 1 )) | head -1
     else
@@ -244,19 +267,6 @@ zenlog_show_running_commands() {
 
 zenlog_du() {
   du "${ZENLOG_CUR_LOG_DIR:-$ZENLOG_DIR}" "$@"
-}
-
-zenlog_command_history() {
-  zenlog_history | {
-    while read file ; do
-      echo -ne "$file\t"
-      sed -ne '/^COMMAND: /{
-        s/^COMMAND: //p
-        q
-      }
-      ' "$file"
-    done
-  }
 }
 
 EOF
