@@ -57,8 +57,6 @@ Usage:
             except when -n is omitted it'll show all the log files in the
             history.
 
-          $ZENLOG_HISTSIZE is used as the history size. (default=20)
-
       - zenlog_echo_command COMMAND [opts...]
           If you use this to echo back the command line that's being
           executed in the pre-exec hook, zenlog will recognize the
@@ -174,32 +172,26 @@ _zenlog_fail_if_not_in_zenlog() {
 zenlog_history() {
   _zenlog_fail_if_not_in_zenlog || return 1
 
-  local raw=0
   local pid=$ZENLOG_PID
+  local type="san"
   local nth=""
 
   local OPTIND
   local OPTARG
   while getopts "rp:n:" opt; do
     case "$opt" in
-      r) raw=1 ;;
+      r) type=raw ;;
       p) pid=$OPTARG ;;
       n) nth=$OPTARG ;;
     esac
   done
   shift $(($OPTIND - 1))
 
-  # A bit cheating, since different zenlog may be using a different
-  # temp dir...
-  local hist="$ZENLOG_TEMP_DIR"/zenlog-${pid}-history.txt
-
-  {
-    if (( $raw )) ; then
-      sed -e 's/-san\.log$/-raw.log/'
-    else
-      cat
-    fi
-  } < "$hist" | {
+  # sort -r | sed is needed to ignore previous sessions with the same
+  # pid
+  find "$ZENLOG_CUR_LOG_DIR" -type f \
+      -name "*-$pid-*-$type.log" |
+      sort -r | sed -e '/-0-...\.log$/q'| sort | {
     if [[ -n "$nth" ]] ; then
       tail -n $(( $nth + 1 )) | head -1
     else
@@ -245,27 +237,6 @@ zenlog_open_current_log() {
   zenlog_open_viewer "$(zenlog_current_log "${@}")"
 }
 
-# Show the log files from the specified session (default: current
-# session).
-zenlog_all_session_logs() {
-  _zenlog_fail_if_not_in_zenlog || return 1
-
-  local pid=$ZENLOG_PID
-
-  local OPTIND
-  local OPTARG
-  while getopts "p:" opt; do
-    case "$opt" in
-      p) pid=$OPTARG ;;
-    esac
-  done
-  shift $(($OPTIND - 1))
-
-  find "$ZENLOG_CUR_LOG_DIR" -type f \
-      -name "*-$pid-*-???.log" |
-      sort -r | sed -e '/-0-raw\.log$/q'
-}
-
 zenlog_show_running_commands() {
   cat "$ZENLOG_TEMP_DIR"/zenlog-*-stat.txt
   # TODO Don't show from dead PIDs.
@@ -273,6 +244,19 @@ zenlog_show_running_commands() {
 
 zenlog_du() {
   du "${ZENLOG_CUR_LOG_DIR:-$ZENLOG_DIR}" "$@"
+}
+
+zenlog_command_history() {
+  zenlog_history | {
+    while read file ; do
+      echo -ne "$file\t"
+      sed -ne '/^COMMAND: /{
+        s/^COMMAND: //p
+        q
+      }
+      ' "$file"
+    done
+  }
 }
 
 EOF
@@ -288,11 +272,8 @@ fi
 
 export ZENLOG_TEMP_DIR="${temp}"
 export ZENLOG_PID=$$
-export ZENLOG_HISTORY="$ZENLOG_TEMP_DIR"/zenlog-$ZENLOG_PID-history.txt
 export ZENLOG_STAT="$ZENLOG_TEMP_DIR"/zenlog-$ZENLOG_PID-stat.txt
 trap 'rm -f "$ZENLOG_TEMP_DIR"/zenlog-$ZENLOG_PID-*.txt' EXIT
-: ${ZENLOG_HISTSIZE:=20}
-export ZENLOG_HISTSIZE
 
 : ${ZENLOG_ALWAYS_184:=}
 export ZENLOG_ALWAYS_184
@@ -316,15 +297,11 @@ use File::Basename;
 
 my $zenlog_pid = $ENV{ZENLOG_PID};
 my $log_dir = $ENV{ZENLOG_CUR_LOG_DIR};
-my $history_file = $ENV{ZENLOG_HISTORY};
-my $history_size = $ENV{ZENLOG_HISTSIZE};
 my $stat_file = $ENV{ZENLOG_STAT};
 my $bg_viwer = $ENV{ZENLOG_BG_VIEWER};
 my %always_iyayo = map {$_ => 1} split(/\s+/, $ENV{ZENLOG_ALWAYS_184});
 
 my ($raw, $san, $raw_name, $san_name);
-
-my @history = ();
 
 sub close_log() {
   $raw->close() if defined $raw;
@@ -353,17 +330,6 @@ sub open_log() {
 
   $raw->autoflush();
   $san->autoflush();
-
-  push @history, $san_name;
-  if (@history > $history_size) {
-    @history = @history[-$history_size .. -1];
-  }
-
-  open(my $hf, ">$history_file");
-  for my $h (@history) {
-    print $hf ($h, "\n");
-  }
-  close($hf);
 }
 
 sub write_log($) {
