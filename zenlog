@@ -128,12 +128,14 @@ fi
 if (( $shell_helper )) ; then
   cat <<'EOF'
 # Show it in the prompt.  zenlog uses it to split log files.
+_zenlog_prompt_marker=$(echo -e '\e[0m\e[1m\e[00000m')
 zenlog_prompt_marker() {
-  echo -e '\e[0m\e[1m\e[00000m'
+  echo $_zenlog_prompt_marker
 }
 
+_zenlog_remove_marker=$(echo -e '\e[0m\e[5m\e[00000m')
 zenlog_remove_marker() {
-  echo -e '\e[0m\e[5m\e[00000m'
+  echo $_zenlog_remove_marker
 }
 
 # execute command without logging output.
@@ -246,6 +248,12 @@ zenlog_cat_last_log() {
   _zenlog_fail_if_not_in_zenlog || return 1
 
   cat "$(zenlog_last_log "${@}")"
+}
+
+zenlog_cat_last_log_content() {
+  _zenlog_fail_if_not_in_zenlog || return 1
+
+  sed -e "1,/^COMMAND:/d" -e "/^\x1b\[0m\x1b\[5m\x1b\[00000m/d" -- "$(zenlog_last_log "${@}" -r)"
 }
 
 # Useful: when used with -p PID.
