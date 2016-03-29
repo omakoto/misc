@@ -50,12 +50,15 @@ Usage:
           Cat the last sanitized log.
           -r, -n, -p have the same meaning as zenlog_last_log.
 
-      - zenlog_history [-r] [-n N] [-p ZENLOG_PID]
+      - zenlog_history [-r] [-n N] [-p ZENLOG_PID] [-a]
           Show the last N sanitized log filenames.
           -r will show the raw log filenames instead.
           -r, -n, -p have the same meaning as zenlog_last_log
             except when -n is omitted it'll show all the log files in the
             history.
+          -a will use find to show all actual log files.
+
+          $ZENLOG_HISTSIZE is used as the history size. (default=20)
 
       - zenlog_echo_command COMMAND [opts...]
           If you use this to echo back the command line that's being
@@ -176,19 +179,22 @@ zenlog_history() {
 
   local pid=$ZENLOG_PID
   local type="san"
+  local raw=0
   local nth=""
   local show_command=0
   local command_filter=""
+  local all=0
 
   local OPTIND
   local OPTARG
-  while getopts "rp:n:cf:" opt; do
+  while getopts "rp:n:cf:a" opt; do
     case "$opt" in
-      r) type=raw ;;
+      r) type=raw; raw=1 ;;
       p) pid="$OPTARG" ;;
       n) nth="$OPTARG" ;;
       c) show_command=1 ;;
       f) command_filter=$(sed -e 's!  *!.*!g' <<<"$OPTARG") ;;
+      a) all=1 ;;
     esac
   done
   shift $(($OPTIND - 1))
@@ -196,11 +202,23 @@ zenlog_history() {
   local self=0
   (( "$pid" == $ZENLOG_PID )) && self=1
 
-  # sort -r | sed is needed to ignore previous sessions with the same
-  # pid
-  find "$ZENLOG_CUR_LOG_DIR" -type f \
-      -name "*-$pid-*-$type.log" |
-      sort -r | sed -e '/-0-...\.log$/q'| sort | {
+  local hist="$ZENLOG_TEMP_DIR"/zenlog-${pid}-history.txt
+
+  {
+    if (( $all )) ; then
+      # sort -r | sed is needed to ignore previous sessions
+      # with the same pid.
+      find "$ZENLOG_CUR_LOG_DIR" -type f \
+          -name "*-$pid-*-$type.log" |
+          sort -r | sed -e '/-0-...\.log$/q'| sort
+    else
+      if (( $raw )) ; then
+        sed -e 's/-san\.log$/-raw.log/' "$hist"
+      else
+        cat "$hist"
+      fi
+    fi
+  } | {
     while read file ; do
       command=$( sed -ne '/^COMMAND: /{
         s/^COMMAND: //p
@@ -290,8 +308,11 @@ fi
 
 export ZENLOG_TEMP_DIR="${temp}"
 export ZENLOG_PID=$$
+export ZENLOG_HISTORY="$ZENLOG_TEMP_DIR"/zenlog-$ZENLOG_PID-history.txt
 export ZENLOG_STAT="$ZENLOG_TEMP_DIR"/zenlog-$ZENLOG_PID-stat.txt
 trap 'rm -f "$ZENLOG_TEMP_DIR"/zenlog-$ZENLOG_PID-*.txt' EXIT
+: ${ZENLOG_HISTSIZE:=20}
+export ZENLOG_HISTSIZE
 
 : ${ZENLOG_ALWAYS_184:=}
 export ZENLOG_ALWAYS_184
@@ -315,11 +336,15 @@ use File::Basename;
 
 my $zenlog_pid = $ENV{ZENLOG_PID};
 my $log_dir = $ENV{ZENLOG_CUR_LOG_DIR};
+my $history_file = $ENV{ZENLOG_HISTORY};
+my $history_size = $ENV{ZENLOG_HISTSIZE};
 my $stat_file = $ENV{ZENLOG_STAT};
 my $bg_viwer = $ENV{ZENLOG_BG_VIEWER};
 my %always_iyayo = map {$_ => 1} split(/\s+/, $ENV{ZENLOG_ALWAYS_184});
 
 my ($raw, $san, $raw_name, $san_name);
+
+my @history = ();
 
 sub close_log() {
   $raw->close() if defined $raw;
@@ -337,6 +362,7 @@ sub open_log() {
       $log_dir,
       strftime('%Y-%m-%d/%H:%M:%S', localtime($t)),
       ($t - int($t)) * 1000, $zenlog_pid, $seq++);
+  $filename =~ s!/+!/!g;
 
   make_path(dirname($filename));
 
@@ -348,6 +374,17 @@ sub open_log() {
 
   $raw->autoflush();
   $san->autoflush();
+
+  push @history, $san_name;
+  if (@history > $history_size) {
+    @history = @history[-$history_size .. -1];
+  }
+
+  open(my $hf, ">$history_file");
+  for my $h (@history) {
+    print $hf ($h, "\n");
+  }
+  close($hf);
 }
 
 sub write_log($) {
