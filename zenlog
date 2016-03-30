@@ -200,7 +200,7 @@ zenlog_history() {
   shift $(($OPTIND - 1))
 
   local self=0
-  (( "$pid" == $ZENLOG_PID )) && self=1
+  (( $pid == $ZENLOG_PID )) && self=1
 
   local hist="$ZENLOG_TEMP_DIR"/zenlog-${pid}-history.txt
 
