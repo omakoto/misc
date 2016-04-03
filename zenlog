@@ -184,10 +184,11 @@ zenlog_history() {
   local show_command=0
   local command_filter=""
   local all=0
+  local really_all=0
 
   local OPTIND
   local OPTARG
-  while getopts "rp:n:cf:a" opt; do
+  while getopts "rp:n:cf:aA" opt; do
     case "$opt" in
       r) type=raw; raw=1 ;;
       p) pid="$OPTARG" ;;
@@ -195,6 +196,7 @@ zenlog_history() {
       c) show_command=1 ;;
       f) command_filter=$(sed -e 's!  *!.*!g' <<<"$OPTARG") ;;
       a) all=1 ;;
+      A) really_all=1 ;;
     esac
   done
   shift $(($OPTIND - 1))
@@ -211,6 +213,9 @@ zenlog_history() {
       find "$ZENLOG_CUR_LOG_DIR" -type f \
           -name "*-$pid-*-$type.log" |
           sort -r | sed -e '/-0-...\.log$/q'| sort
+    elif (( $really_all )) ; then
+      find "$ZENLOG_CUR_LOG_DIR" -type f \
+          -name "*-$type.log" | sort
     else
       if (( $raw )) ; then
         sed -e 's/-san\.log$/-raw.log/' "$hist"
