@@ -233,7 +233,9 @@ zenlog_history() {
       if [[ -z "$command_filter" ]] ||
           grep -q -- "$command_filter" <<<"$command" ; then
         if (( $show_command )) ; then
-          echo "$file $command"
+          echo -n "$file"
+          echo -en "\t"
+          echo "$command"
         else
           echo "$file"
         fi
