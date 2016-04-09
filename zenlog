@@ -204,8 +204,12 @@ zenlog_history() {
   local self=0
   (( $pid == $ZENLOG_PID )) && self=1
 
-  local hist="$ZENLOG_TEMP_DIR"/zenlog-${pid}-history.txt
-
+  local hist
+  if (( $nth == 0 )) ; then
+    hist="$ZENLOG_TEMP_DIR"/zenlog-${pid}-current.txt
+  else
+    hist="$ZENLOG_TEMP_DIR"/zenlog-${pid}-history.txt
+  fi
   {
     if (( $all )) ; then
       # sort -r | sed is needed to ignore previous sessions
@@ -316,6 +320,7 @@ fi
 export ZENLOG_TEMP_DIR="${temp}"
 export ZENLOG_PID=$$
 export ZENLOG_HISTORY="$ZENLOG_TEMP_DIR"/zenlog-$ZENLOG_PID-history.txt
+export ZENLOG_CURRENT="$ZENLOG_TEMP_DIR"/zenlog-$ZENLOG_PID-current.txt
 export ZENLOG_STAT="$ZENLOG_TEMP_DIR"/zenlog-$ZENLOG_PID-stat.txt
 trap 'rm -f "$ZENLOG_TEMP_DIR"/zenlog-$ZENLOG_PID-*.txt' EXIT
 : ${ZENLOG_HISTSIZE:=20}
@@ -345,6 +350,7 @@ my $zenlog_pid = $ENV{ZENLOG_PID};
 my $log_dir = $ENV{ZENLOG_CUR_LOG_DIR};
 my $history_file = $ENV{ZENLOG_HISTORY};
 my $history_size = $ENV{ZENLOG_HISTSIZE};
+my $current_file = $ENV{ZENLOG_CURRENT};
 my $stat_file = $ENV{ZENLOG_STAT};
 my $bg_viwer = $ENV{ZENLOG_BG_VIEWER};
 my %always_iyayo = map {$_ => 1} split(/\s+/, $ENV{ZENLOG_ALWAYS_184});
@@ -387,11 +393,18 @@ sub open_log() {
     @history = @history[-$history_size .. -1];
   }
 
-  open(my $hf, ">$history_file");
-  for my $h (@history) {
-    print $hf ($h, "\n");
+  {
+    open(my $hf, ">$current_file");
+    print $hf ($san_name, "\n");
+    close($hf);
   }
-  close($hf);
+  {
+    open(my $hf, ">$history_file");
+    for my $h (@history) {
+      print $hf ($h, "\n");
+    }
+    close($hf);
+  }
 }
 
 sub write_log($) {
