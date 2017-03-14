@@ -1,0 +1,25 @@
+#!/usr/bin/perl -w
+
+use strict;
+require(($0 =~ s!/[^/]+$!!r) . "/isfile.pl"); #!
+
+$ENV{FILE_RE_CHARS} = "A-Za-z0-9\-\,\.\/\%\_\+\@\~\$\{\}" unless $ENV{FILE_RE_CHARS};
+
+$| = 1;
+
+while (defined(my $l = <>)) {
+  chomp $l;
+  if (-f $l or -d $l) {
+    print $l, "\n";
+    next
+  }
+  while ($l =~ m! (( [$ENV{FILE_RE_CHARS}]+ ) (?: \:\d+ (?: \:\d+ )? )? ) !gox) {
+    print STDERR "$1 : $2\n";
+    my $file = $2;
+    my $file_with_line = $1;
+    next if $file =~ m!^( \. | \/+ )$!x;
+    if (isfile($file)) {
+      print $file_with_line, "\n";
+    }
+  }
+}

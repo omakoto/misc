@@ -1,0 +1,58 @@
+#!/usr/bin/perl -w
+
+# Convert filenames in input to fullpath
+
+use strict;
+use Cwd;
+
+$| = 1;
+
+require(($0 =~ s!/[^/]+$!!r) . "/isfile.pl"); #!
+
+$ENV{FILE_RE_CHARS} = "A-Za-z0-9\-\,\.\/\%\_\+\@\~\$\{\}" unless $ENV{FILE_RE_CHARS};
+
+outer:
+while (1) {
+  # Prefer PWD to getcwd because it doesn't have resolve symlinks resolved.
+  our $cwd = $ENV{PWD} or getcwd;
+  $cwd =~ m!/$! or $cwd .= "/"; # Make sure it ends with /.
+  print "CWD=$cwd\n";
+
+  sub fullpathify {
+    my ($file) = @_;
+    if (substr($file, 0, 1) eq "/") {
+      # absolute path
+      return $file;
+    }
+    if (isfile($file)) {
+      my $ret = "$cwd$file";
+      $ret =~ s!/\./!/!g;
+      return $ret;
+    }
+    # not a filename
+    return $file;
+  }
+
+  while (defined(my $l = <>)) {
+    chomp $l;
+
+    if ($l =~ m!Entering directory [`\']([^']+?)'!) {
+      print "$l\n";
+      my $dir = $1;
+      if ($dir ne "." and -d $dir) {
+        chdir $dir;
+        if ($dir =~ m!^/!) {
+            $ENV{PWD} = $dir;
+          } else {
+            $ENV{PWD} .= "/$dir";
+          }
+      }
+      next outer;
+    }
+
+    # FILE_RE_CHARS=A-Za-z0-9\-\,\.\/\%\_\+\@\~\$\{\}
+    $l =~ s{([$ENV{FILE_RE_CHARS}]+)}{fullpathify $1}goe;
+    print $l, "\n";
+  }
+  last outer;
+}
