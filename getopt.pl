@@ -6,53 +6,6 @@ use strict;
 use Getopt::Long qw(:config gnu_compat bundling require_order);
 use Data::Dumper;
 
-
-# Helper functions.
-
-## Prepare the in-func function.
-
-print <<'EOF';
-# Succeeds if called by a function.
-_go_infunc() {
-  caller 1 >/dev/null 2>&1
-}
-
-# Get the command name, used for usage and completion.
-_go_command=""
-if _go_infunc ; then
-  _go_command="$FUNCNAME"
-else
-  _go_command="${0##*\/}"
-fi
-
-EOF
-
-sub print_exit($) {
-  my ($rc) = @_;
-  print <<EOF
-if _go_infunc ; then
-  return $rc
-else
-  exit $rc
-fi
-EOF
-}
-
-sub shell_quote(@) {
-  my $ret = "'";
-  $ret .= $_[0] =~ s!'!'\\''!gr; #!
-  $ret .= "'";
-  return $ret;
-}
-
-# It's like die(), except it's meant be used in eval'ed bash script.
-sub meta_die($) {
-  my ($msg) = @_;
-  chomp $msg;
-  print "echo ", shell_quote($msg), " 1>&2\n";
-  print_exit 1;
-}
-
 # Start.
 
 sub usage() {
@@ -109,6 +62,50 @@ shift;
 if (!$option_spec) {
   print STDERR "$0: Missing option spec.\n";
   usage;
+}
+
+# Helper functions.
+
+print <<'EOF';
+# Succeeds if called by a function.
+_go_infunc() {
+  caller 1 >/dev/null 2>&1
+}
+
+# Get the command name, used for usage and completion.
+_go_command=""
+if _go_infunc ; then
+  _go_command="$FUNCNAME"
+else
+  _go_command="${0##*\/}"
+fi
+
+EOF
+
+sub print_exit($) {
+  my ($rc) = @_;
+  print <<EOF
+if _go_infunc ; then
+  return $rc
+else
+  exit $rc
+fi
+EOF
+}
+
+sub shell_quote(@) {
+  my $ret = "'";
+  $ret .= $_[0] =~ s!'!'\\''!gr; #!
+  $ret .= "'";
+  return $ret;
+}
+
+# It's like die(), except it's meant be used in eval'ed bash script.
+sub meta_die($) {
+  my ($msg) = @_;
+  chomp $msg;
+  print "echo ", shell_quote($msg), " 1>&2\n";
+  print_exit 1;
 }
 
 # Parse the option spec.
