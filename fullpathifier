@@ -15,27 +15,31 @@ $| = 1;
 
 $ENV{FILE_RE_CHARS} = "A-Za-z0-9\-\,\.\/\%\_\+\@\~\$\{\}" unless $ENV{FILE_RE_CHARS};
 
+my $cwd;
+
+sub fullpathify {
+  my ($file) = @_;
+  if (substr($file, 0, 1) eq "/") {
+    # absolute path
+    return $file;
+  }
+  if (isfile($file)) {
+    my $ret = "$cwd$file";
+    $ret =~ s!/\./!/!g;
+    return $ret;
+  }
+  # not a filename
+  return $file;
+}
+
 outer:
 while (1) {
   # Prefer PWD to getcwd because it doesn't have resolve symlinks resolved.
-  our $cwd = $ENV{PWD} or getcwd;
+  $cwd = $ENV{PWD} or getcwd;
   $cwd =~ m!/$! or $cwd .= "/"; # Make sure it ends with /.
   print "CWD=$cwd\n";
 
-  sub fullpathify {
-    my ($file) = @_;
-    if (substr($file, 0, 1) eq "/") {
-      # absolute path
-      return $file;
-    }
-    if (isfile($file)) {
-      my $ret = "$cwd$file";
-      $ret =~ s!/\./!/!g;
-      return $ret;
-    }
-    # not a filename
-    return $file;
-  }
+  clear_file_cache;
 
   while (defined(my $l = <>)) {
     chomp $l;

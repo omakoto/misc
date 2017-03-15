@@ -12,4 +12,8 @@ sub isfile($) {
   return $cache{$file};
 }
 
+sub clear_file_cache() {
+  %cache = ();
+}
+
 1;

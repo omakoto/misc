@@ -55,7 +55,7 @@ assert_out() {
     succeed
   else
     {
-      echo "- Test '$exp' failed at:"
+      echo "- Diff test failed at:"
       caller | sed -e 's/^/    /'
       echo "diff was:"
       echo "$out"
