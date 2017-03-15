@@ -1,0 +1,3 @@
+# #!/bin/bash
+
+exec zenlog-last-n-contents -n 1 -c

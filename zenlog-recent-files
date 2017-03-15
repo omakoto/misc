@@ -18,14 +18,15 @@ t   TEXT_ONLY=1  # Show text files only.
 
 export TEXT_ONLY
 export SCRIPT_DIR="${0%/*}"
+echo $SCRIPT_DIR
 
 # Use zenlog-contents instead of cat to exclude prompts
 zenlog-last-n-contents -R -n $num  | perl -w  <(cat <<'EOF'
-#line 22
+#line 25
 
 BEGIN {
   # Load modules from the script directory.
-  push @INC, $0 =~ s!/[^/]+$!!r; #!
+  push @INC, $ENV{SCRIPT_DIR};
 }
 
 use strict;
