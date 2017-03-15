@@ -2,10 +2,11 @@
 
 . testutil.bash
 
-# assert '(( 0 == 1 ))'
+flag1=0
+eval "$(getopt.pl -xu usage '
+a   flag1=1 # comment
+' "$@")"
 
-assert_out 'echo ok' <<EOF
-oks
-EOF
+assert '(( $flag1 == 0 ))'
+assert '(( $# == 0 ))'
 
-assert '(( 0 == 0 ))'
