@@ -1,0 +1,165 @@
+#!/bin/bash
+
+# Multi opener.
+
+set -e
+
+. mutil.sh
+
+temp=${PIPE_TEMP:-/tmp}
+
+function usage() {
+  cat <<EOF
+
+  1: Multi purpose file opener
+
+  Usage: 1 [options] FILES...
+
+EOF
+}
+
+opts=""
+bg=1
+pipe=0
+force_editor=0
+pretty=0
+use_vim=0
+copy=0
+
+eval "$(getopt.pl -u usage '
+  w|wait           bg=0            # Wait until the editor returns.
+  n|background     bg=1            # Don'\''t wait until the editor returns (default).
+  e|force-editor   force_editor=1  # Disable smart file handling and force editor.
+  p|pretty         pretty=1        # Pretty-print for XML/Json.
+  d|no-pretty      pretty=0        # No pretty-print.
+  c|copy           copy=1          # Open copy instead.
+' "$@")"
+
+args=( "$@" )
+
+if (( $# == 0 )) ; then
+  if [[ ! -t 0 ]] ; then
+    pipe=1
+  fi
+fi
+
+if (( $pipe != 0 )) ; then
+  log=$temp/pipe-$(date8)-$$.log
+  cat > $log
+
+  byellow -n "Logged to: "
+  bcyan "$log"
+
+  args+=($log)
+fi
+
+files=()
+
+for n in "${args[@]}" ; do
+  f=""
+  if (( $force_editor )) || [[ -d "$n" ]] ; then
+    f="$n"
+  else
+    case "${n##*/}" in
+      *bugreport*.zip|*bugreport*.txt|*.br)
+        f="$(bugreport-extract -b "$n")"
+        use_vim=1
+        ;;
+      *.zip)
+        f=$temp/${n##*/}-$$-list.txt
+        ee -2 zcat "$n" > "$f"
+        ;;
+      *.tar|*.tar.gz|*.tgz|*.tar.bz2|*.tar.xz)
+        f=$temp/${n##*/}-$$-list.txt
+        ee -2 tar tvf "$n" > "$f"
+        ;;
+      *.deb)
+        f=$temp/${n##*/}-$$-list.txt
+        ee -2 dpkg -c "$n" > "$f"
+        ;;
+      *.gif|*.png|*.webp|*.jpeg|*.jpg|*.mp4)
+        chrome "$n"
+        continue
+        ;;
+      *.json)
+        if (( $pretty )) ; then
+          f=$temp/${n##*/}-$$-pretty.json
+          jsonpretty < "$n" > "$f"
+          chmod -w "$f"
+        else
+          f="$n"
+        fi
+        ;;
+      *.xml)
+        if (( $pretty )) ; then
+          f=$temp/${n##*/}-$$-pretty.xml
+          xml-pretty < "$n" > "$f"
+          chmod -w "$f"
+        else
+          f="$n"
+        fi
+        ;;
+      *)
+        if [[ -d "$n" ]] || ! isbin "$n"  ; then
+          if [[ -f "$n" ]] && ! isbin "$n" && has-ansi "$n" ; then
+            chrome "$n"
+            continue
+          fi
+          f="$n"
+        else
+          f=$temp/${n##*/}-$$-hexdump.txt
+          ee -2 hd "$n" > "$f"
+        fi
+        ;;
+    esac
+  fi
+  files+=("$f")
+done
+
+command=""
+if [[ -n "$DISPLAY" ]] ; then
+  if (( $use_vim )) ; then
+    command=gvim
+    opts=""
+    bg=0
+  else
+    command=$(firstbin \
+        /opt/sublime_text/sublime_text \
+        /usr/local/makoto/sublime_text_3/sublime_text \
+        /usr/local/sublime/sublime_text
+        )
+    if ! (( $bg )) ; then
+      opts="$opts -n -w"
+    fi
+  fi
+fi
+if [[ -z "$command" ]] ; then
+  command=vi
+  opts=""
+  bg=0
+fi
+
+if (( $# == 0 )) ; then
+  if [[ -t 0 ]] ; then
+    files+=("~/work.txt")
+  fi
+fi
+
+if (( $copy )) ; then
+  copy_temp=$(tempfile -p 1catfile)
+  cat "${files[@]}" > "$copy_temp"
+  files=("$copy_temp")
+fi
+
+
+run() {
+  if (( $bg )); then
+    ( "${@}" &)
+  else
+    "${@}"
+  fi
+}
+
+if (( ${#files[@]} > 0 )) ; then
+  run ee $command $opts "${files[@]}"
+fi

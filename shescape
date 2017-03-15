@@ -1,0 +1,19 @@
+#!/usr/bin/perl -w
+
+use strict;
+
+my $sep = "";
+for my $arg ( @ARGV ) {
+    print $sep;
+    if ( $arg =~ /[^a-zA-Z0-9\-\.\_\/]/ ) {
+        print "'" . ($arg =~ s/'/'\\''/gr) . "'"; #/
+    } else {
+        print $arg;
+    }
+    $sep = " ";
+}
+
+# If executed as "shescapen", then print newline.
+if ($0 !~ /n$/) {
+    print "\n";
+}

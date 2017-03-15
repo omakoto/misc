@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Open a script with 1, without specifying the full path.
+
+. mutil.sh
+
+f="$(which "$1")"
+if ! [[ -f "$f" ]] ; then
+  echo "$0: '$1' not found." 1>&2
+  exit 1
+fi
+
+t="$(file -L "$f")"
+if ! grep -qPi '(ascii|text)' <<<"$t" ;then
+  echo "$0: $f is not a text file.  It's: $t" 1>&2
+  exit 1
+fi
+
+ee 1 "$f"

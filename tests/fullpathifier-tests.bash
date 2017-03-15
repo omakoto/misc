@@ -36,4 +36,3 @@ CWD=[root]/tests/
 IsFile.pm IsFile.pl
 [root]/tests/fullpathifier-tests.bash
 EOF
-
