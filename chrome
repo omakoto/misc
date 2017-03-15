@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# Smart "open with chrome".
+
+set -e
+
+. mutil.sh
+
+app=0
+profdir=""
+while getopts "ap:" opt; do
+  case "$opt" in
+    p)
+      profdir=$OPTARG
+      if ! grep -q '^/' <<<"$profdir" ; then
+        profdir=$HOME/.chrome-profiles/$OPTARG
+      fi
+      ;;
+    a) app=1 ;;
+  esac
+done
+shift $(($OPTIND - 1))
+
+# Parse the argument.
+
+url="$1"
+
+# If there's no argument, and STDIN is not terminal,
+# read from stdin.
+if [[ -z "$url" ]] && ! [[ -t 0 ]] ; then
+  url=$( tempfile )
+  cat > "$url"
+fi
+
+if [[ -f "$url" ]] && ! isbin "$url" && has-ansi "$url" ; then
+  url2=$( tempfile )
+  a2h -s 8pt < "$url" > "$url2"
+  url="$url2"
+fi
+
+# build the parameters.
+
+params=""
+
+if [[ -n "$profdir" ]]; then
+  params="$params --user-data-dir=$profdir"
+  echo "profile=$profdir"
+  if ! [[ -d "$profdir/" ]] ; then
+    mkdir -p "$profdir"
+  fi
+fi
+
+if (( $app )) ; then
+  params="$params --app=$url"
+else
+  params="$params $url"
+fi
+
+( google-chrome $params &) >/dev/null 2>&1
