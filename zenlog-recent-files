@@ -23,8 +23,13 @@ export SCRIPT_DIR="${0%/*}"
 zenlog-last-n-contents -R -n $num  | perl -w  <(cat <<'EOF'
 #line 22
 
+BEGIN {
+  # Load modules from the script directory.
+  push @INC, $0 =~ s!/[^/]+$!!r; #!
+}
+
 use strict;
-require "$ENV{SCRIPT_DIR}/isfile.pl";
+use IsFile;
 
 $| = 1;
 

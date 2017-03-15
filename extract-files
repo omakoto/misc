@@ -1,7 +1,12 @@
 #!/usr/bin/perl -w
 
+BEGIN {
+  # Load modules from the script directory.
+  push @INC, $0 =~ s!/[^/]+$!!r; #!
+}
+
 use strict;
-require(($0 =~ s!/[^/]+$!!r) . "/isfile.pl"); #!
+use IsFile;
 
 $ENV{FILE_RE_CHARS} = "A-Za-z0-9\-\,\.\/\%\_\+\@\~\$\{\}" unless $ENV{FILE_RE_CHARS};
 

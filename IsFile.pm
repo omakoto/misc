@@ -1,6 +1,9 @@
+# Provide isfile($) function, which tells if a given file exists,
+# with a cache.
+
 my %cache = ();
 
-sub isfile {
+sub isfile($) {
   my ($file) = @_;
 
   if (!exists($cache{$file})) {
