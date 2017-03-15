@@ -1,0 +1,13 @@
+"\e[3~": delete-char
+"\e[2~": quoted-insert
+
+set bell-style none
+set colored-stats on
+set completion-ignore-case on
+set completion-map-case on
+#set completion-prefix-display-length 2
+set mark-symlinked-directories on
+set input-meta on
+set output-meta on
+set show-all-if-ambiguous on
+set completion-query-items 300

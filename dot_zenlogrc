@@ -1,0 +1,15 @@
+if [[ -d /zenlog ]] ; then
+  export ZENLOG_DIR=/zenlog
+elif [[ -d /usr/local/google/omakoto/disk5 ]] ; then
+  export ZENLOG_DIR=/usr/local/google/omakoto/disk5/zenlog
+elif [[ -d ~/zenlog ]] ; then
+  export ZENLOG_DIR=~/zenlog
+fi
+
+if [[ -x ~/cbin/bin-linux64/bash ]] ; then
+  SHELL=~/cbin/bin-linux64/bash
+fi
+
+export ZENLOG_COMMAND_PREFIX='(builtin|time|ee|eet|wb|Test\:|Running\:?|forever|FI|sudo)'
+export ZENLOG_ALWAYS_184="(1|cd|vi|vim|man|nano|pico|less|watch|emacs|mhist|root|ssh|ssh-ce|ssh-com|zenlog.*|htop|nload)"
+export PATH="$PATH:~/cbin"

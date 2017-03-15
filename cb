@@ -1,0 +1,52 @@
+#!/bin/bash
+
+set -e
+
+. mutil.sh
+
+which xclip >&/dev/null || {
+  echo "$0: Error: xclip not found." 1>&2
+  exit 1
+}
+
+function usage() {
+  cat <<EOF
+
+  $0: Copy or paste
+
+  Usage: $0 [flags]
+EOF
+}
+
+quiet=0
+copy=0
+no_cutlf=0
+target_opt=""
+
+eval "$(getoptions -u usage -x '
+  i copy=1      #Copy STDIN.  Default behavior if STDIN is not terminal
+  q quiet=1     #Quiet
+  n no_cutlf=1  #Don'\''t drop the new line even if the input is a single line
+  t target_opt="-t %"      #Specify TARGET, such as TEXT, UTF8_STRING, or text/html
+' "$@")"
+
+
+if (( $copy )) || [[ ! -t 0 ]] ; then
+  f=/tmp/cb-$$.dat
+  {
+    if (( $no_cutlf )) ; then
+      cat
+    else
+      perl -pe 'chomp if eof and $. == 1'
+    fi
+  } >$f
+  (
+    (
+      cat "$f" | xclip -silent -i -selection clipboard $target_opt
+      rm "$f"
+    ) &
+  ) <&- 1>&- 2>&-
+  (( $quiet )) || echo "[Copied to clipboard]" 1>&2
+  exit 0
+fi
+xclip -o -selection clipboard $target_opt
