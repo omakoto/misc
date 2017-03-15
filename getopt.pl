@@ -292,7 +292,7 @@ for (my $i = 0; $i < @spec; $i++) {
   print $command, "\n";
 }
 
-print "eval set --";
+print "set --";
 for my $arg (@ARGV) {
   print " ";
   print shell_quote($arg);

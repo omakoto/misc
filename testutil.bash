@@ -1,5 +1,5 @@
 
-set -e
+set +e # Don't use set -e, which may mask real bugs in tests.
 
 declare -i _num_successes=0
 declare -i _num_failures=0
@@ -31,10 +31,8 @@ fail() {
 assert() {
   local exp="$*"
 
-  set +e
   eval "$exp"
   local rc=$?
-  set -e
   if (( $rc == 0 )) ; then
     succeed
     return 0
@@ -48,14 +46,11 @@ assert() {
 }
 
 assert_out() {
-  local cmd="$1"
-  set +e
   out=$(wdiff -n \
       -w $'\033[30;41m' -x $'\033[0m' \
       -y $'\033[30;42m' -z $'\033[0m' \
-      <(eval '$cmd' || true) <(cat))
+      <("$@") <(cat))
   local rc=$?
-  set -e
   if (( $rc == 0 )) ; then
     succeed
   else
