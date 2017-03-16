@@ -1,0 +1,93 @@
+#!/bin/bash
+
+set -e
+
+. mutil.sh
+
+usage() {
+    cat <<EOF
+
+  $(basename "$0"): Multi-line ripgrep wrapper
+
+  Usage:
+    $(basename "$0") [RG OPTIONS] DIR PATTERN1 [PATTERN2 ...]
+
+EOF
+}
+
+ARGS=$(getopt -o "LA:B:sC:cFim:NpSat:T:uw/" -n "rg-multi" -- "$@")
+(( $? )) && exit $?
+
+eval set -- "$ARGS"
+
+rg_opts=()
+while true;
+do
+  case "${1:1}" in
+    L|s|c|F|i|N|p|S|a|u|w)
+      rg_opts+=("$1")
+      shift
+      ;;
+    A|B|C|m|t|T)
+      rg_opts+=("$1")
+      rg_opts+=("$2")
+      shift 2
+      ;;
+    -)
+      shift
+      break
+      ;;
+  esac
+done
+
+# First, print the marker so that rgm-self-excluder.pl can
+# exclude rgm output logs.
+echo "rgm: start" 1>&2
+
+echo "rg options: ${rg_opts[@]:-none}" 1>&2
+
+dir="$1"
+
+if [[ ! -d "$dir" ]] ; then
+    usage
+    exit 1
+fi
+
+shift
+
+# Build the final pattern.
+final_pattern='('"$(tr ' ' '|' <<<"$@")"')'
+
+# Temp file to store file names.
+files_file=/tmp/rg-multi-$$.txt
+trap 'rm -f ${files_file}*' EXIT
+echo "$dir" > $files_file
+
+# Search for each query.
+first=1
+for query in "$@" ; do
+  echo "Searching for \"$query\"..." 1>&2
+
+  files=$(cat $files_file)
+
+  # "rg -C n --files-with-matches" will unnecessarily shows
+  # separators "--" between filenames, so use grep to remove them.
+  grep -v '^--$' $files_file |
+      xargs rg ${rg_opts[@]} --files-with-matches -e "$query" >${files_file}.new 2>/dev/null
+  if (( $first )) ; then
+    first=0
+    # Hack -- don't search zenlog log files for "rgm".
+    rgm-self-excluder.pl ${files_file}.new > ${files_file}
+  else
+    mv ${files_file}.new ${files_file}
+  fi
+  found=$(wc -l $files_file | sed -e 's/ .*//')
+  echo "Found $found file(s)." 1>&2
+  if (( $found == 0 )) ; then
+    exit 1
+  fi
+done
+
+# Then, for the found set, search for OR'ed all the patterns.
+grep -v '^--$' $files_file |
+   xargs rg ${rg_opts[@]} -e "$final_pattern"

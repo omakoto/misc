@@ -1,0 +1,49 @@
+#!/usr/bin/perl -w
+
+# Convert filenames in input to fullpath, replacing with environmental
+# variables too.
+
+use strict;
+use Data::Dumper;
+
+my @envs = ();
+
+for my $k (keys %ENV) {
+  next if $k =~ /^(PWD|OLDPWD)$/x;
+  my $v = $ENV{$k};
+  if ($v =~ m!^/! and -d $v) {
+    push @envs, [$k, $v, qr/^\Q$v/];
+  }
+}
+
+sub adjuster {
+  my ($k) = @_;
+  return "zzzzzz$k" if $k =~ /^(IDEA_JDK)$/x; # prioritize JAVA_HOME over IDEA_JDK
+  return $k;
+}
+
+@envs = sort {
+    length($b->[1]) <=> length($a->[1])
+    or
+    adjuster($a->[0]) cmp adjuster($b->[0]);
+    } @envs;
+
+# print Dumper(@envs);
+
+sub envify {
+  my ($file) = @_;
+  if ($file =~ m!^/!) {
+    for my $e (@envs) {
+      if ($file =~ s/$e->[2]/\$\{$e->[0]\}/) {
+        return $file;
+      }
+    }
+  }
+  return $file;
+}
+
+while (defined(my $l = <>)) {
+  chomp $l;
+  $l =~ s!([$ENV{FILE_RE_CHARS}]+)! envify($1) !goe;
+  print $l, "\n";
+}

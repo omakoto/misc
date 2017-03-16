@@ -1,0 +1,46 @@
+#!/bin/bash
+
+set -e
+
+. mutil.sh
+
+# Show only if stdin is terminal, or -f is given.
+
+force=0
+level="normal"
+error=0
+color=36
+
+while getopts "fc" opt; do
+  case "$opt" in
+    c)
+      level="critical"
+      error=1
+      color=31
+      ;;
+    f)
+      force=1
+      ;;
+  esac
+done
+shift $(($OPTIND - 1))
+
+message="$*"
+{
+  echo
+  iscon && echo -ne "\x1b[1;${color}m"
+  echo "    *** $message ***"
+  iscon && echo -ne "\x1b[0m"
+  echo
+} 1>&2
+
+if [[ -t 0 ]] || (( "$force" )) ; then
+  if isx ; then
+    if (( $error )) ; then
+      zenity --error --text "$message" 2>/dev/null &
+    else
+      zenity --info --text "$message" 2>/dev/null &
+    fi
+  fi
+fi
+exit 0
