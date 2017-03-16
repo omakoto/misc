@@ -3,9 +3,6 @@
 set -e
 . <(zenlog -s)
 
-: ${FILE_RE_CHARS:=A-Za-z0-9\-\,\.\/\%\_\+\@\~\$\{\}}
-export FILE_RE_CHARS
-
 zenlog_fail_if_not_in_zenlog || exit 1
 
 num=10
@@ -18,18 +15,15 @@ t   TEXT_ONLY=1  # Show text files only.
 
 export TEXT_ONLY
 export SCRIPT_DIR="${0%/*}"
-echo $SCRIPT_DIR
 
 # Use zenlog-contents instead of cat to exclude prompts
 zenlog-last-n-contents -R -n $num  | perl -w  <(cat <<'EOF'
-#line 25
+#line 23
 
-BEGIN {
-  # Load modules from the script directory.
-  push @INC, $ENV{SCRIPT_DIR};
-}
+BEGIN { push @INC, $ENV{SCRIPT_DIR}; } #!
 
 use strict;
+use MCommon;
 use IsFile;
 
 $| = 1;

@@ -32,6 +32,9 @@ eval "$(getoptions -u usage -x '
 
 
 if (( $copy )) || [[ ! -t 0 ]] ; then
+  # Copy from stdin.
+  # First, read all the content and write to a temp file, so that
+  # "cb | FILTER | cb" would work.
   f=/tmp/cb-$$.dat
   {
     if (( $no_cutlf )) ; then
@@ -45,7 +48,7 @@ if (( $copy )) || [[ ! -t 0 ]] ; then
       cat "$f" | xclip -silent -i -selection clipboard $target_opt
       rm "$f"
     ) &
-  ) <&- 1>&- 2>&-
+  ) # <&- 1>&- 2>&- # what's this???
   (( $quiet )) || echo "[Copied to clipboard]" 1>&2
   exit 0
 fi

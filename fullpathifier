@@ -2,18 +2,14 @@
 
 # Convert filenames in input to fullpath
 
-BEGIN {
-  # Load modules from the script directory.
-  push @INC, $0 =~ s!/[^/]+$!!r; #!
-}
+BEGIN { push @INC, $0 =~ s!/[^/]+$!!r; } #!
 
 use strict;
 use Cwd;
+use MCommon;
 use IsFile;
 
 $| = 1;
-
-$ENV{FILE_RE_CHARS} = "A-Za-z0-9\-\,\.\/\%\_\+\@\~\$\{\}" unless $ENV{FILE_RE_CHARS};
 
 my $cwd;
 

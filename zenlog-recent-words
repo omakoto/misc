@@ -5,8 +5,14 @@ set -e
 
 zenlog_fail_if_not_in_zenlog || exit 1
 
+export SCRIPT_DIR="${0%/*}"
+
 zenlog-last-n-contents -R -n 10  | perl -w  <(cat <<'EOF'
-#line 11
+#line 12
+
+BEGIN { push @INC, $ENV{SCRIPT_DIR}; } #!
+use MCommon;
+
 my $MIN_TOKEN_LEN = 6;
 
 my $last = "";
