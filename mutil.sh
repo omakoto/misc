@@ -188,20 +188,36 @@ echo-and-exec() {
   local notify_opts=""
   local with_time=0
   local marker="Running"
+  local pwd=0
+  local tty=0
   eval "$(getopt.pl -d 'Echo and execute' '
       2 to=2         # Show message on stderr instead of stdout.
+      tty tty=1      # Show message directly to TTY instead of stdout.
       f notify=1     # Notify when command fails.
       s notify=0     # Don'\''t notify (default).
       d dry=1        # Dry run.
       v notify=1 ; notify_opts="-v" # Verbose: Notify the result.
       t with_time=1; # Display timestamp too.
       m: marker=%    # Set marker.
+      pwd pwd=1      # Show current directory too.
       ' "$@")"
 
   if (( $DRYRUN )) || (( $DRY )) ; then
     dry=1
   fi
+  if (( $tty )); then
+    # Open the tty and assign FD 3.
+    to=3
+    exec 3>/dev/tty
+  fi
   {
+    if (( $pwd )) ; then
+      byellow -nc
+      echo -n "CWD: "
+      bcyan -nc
+      pwd | sed -e 's!\n$!!'
+      nocolor -n ""
+    fi
     byellow -nc
     (( $dry )) && echo -n "(DRY) "
     if (( $with_time )) ; then
@@ -229,6 +245,12 @@ ee() {
 
 eet() {
   echo-and-exec -t "${@}"
+}
+
+# Variation; used to intercept a command execution and show
+# what command is being executed where.
+function showcommand() {
+  ee --tty --pwd "$@"
 }
 
 wb() {
@@ -479,4 +501,5 @@ if interactive && isbash ; then
   complete -F _command forever
   complete -F _command 1script
   complete -F _command FI
+  complete -F _command showcommand
 fi
