@@ -3,9 +3,8 @@
 # Convert filenames in input to fullpath, replacing with environmental
 # variables too.
 
-BEGIN { push @INC, $0 =~ s!/[^/]+$!!r; } #!
-
 use strict;
+use lib ($0 =~ s!/[^/]+$!!r); #!
 use Getopt::Long qw(:config gnu_compat bundling require_order);
 use Data::Dumper;
 use MCommon;

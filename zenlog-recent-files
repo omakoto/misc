@@ -20,9 +20,8 @@ export SCRIPT_DIR="${0%/*}"
 zenlog-last-n-contents -R -n $num  | perl -w  <(cat <<'EOF'
 #line 23
 
-BEGIN { push @INC, $ENV{SCRIPT_DIR}; } #!
-
 use strict;
+use lib $ENV{SCRIPT_DIR}; #!
 use MCommon;
 use IsFile;
 

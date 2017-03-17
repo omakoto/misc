@@ -2,9 +2,8 @@
 
 # Convert filenames in input to fullpath
 
-BEGIN { push @INC, $0 =~ s!/[^/]+$!!r; } #!
-
 use strict;
+use lib ($0 =~ s!/[^/]+$!!r); #!
 use Cwd;
 use MCommon;
 use IsFile;
