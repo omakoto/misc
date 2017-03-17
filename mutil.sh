@@ -10,8 +10,8 @@ if [[ "$-" == *i* ]] ; then
 fi
 
 . <( ~/cbin/zenlog -s )
-. colors.bash
-. getopts.bash # Legacy one
+. ~/cbin/misc/colors.bash
+. ~/cbin/getopts.bash # Legacy one
 
 interactive() {
   (( $_interactive ))
