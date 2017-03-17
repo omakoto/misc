@@ -3,9 +3,25 @@
 # Convert filenames in input to fullpath, replacing with environmental
 # variables too.
 
+BEGIN { push @INC, $0 =~ s!/[^/]+$!!r; } #!
+
 use strict;
+use Getopt::Long qw(:config gnu_compat bundling require_order);
 use Data::Dumper;
 use MCommon;
+
+# When invoked with "-c", process the content of the clipboard
+# and put it back to the clipboard.
+
+my $process_clipboard = 0;
+GetOptions(
+  "c|process-clipboard" => \$process_clipboard,
+  ) or exit 1;
+
+if ($process_clipboard) {
+  system "cb | $0 | cb";
+  exit 0;
+}
 
 my @envs = ();
 

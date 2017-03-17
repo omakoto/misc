@@ -190,6 +190,7 @@ echo-and-exec() {
   local marker="Running"
   local pwd=0
   local tty=0
+  local quiet=0
   eval "$(getopt.pl -d 'Echo and execute' '
       2 to=2         # Show message on stderr instead of stdout.
       tty tty=1      # Show message directly to TTY instead of stdout.
@@ -200,6 +201,7 @@ echo-and-exec() {
       t with_time=1; # Display timestamp too.
       m: marker=%    # Set marker.
       pwd pwd=1      # Show current directory too.
+      q quiet=1      # Don'\''t echo back command line.
       ' "$@")"
 
   if (( $DRYRUN )) || (( $DRY )) ; then
@@ -210,25 +212,27 @@ echo-and-exec() {
     to=3
     exec 3>/dev/tty
   fi
-  {
-    if (( $pwd )) ; then
+  if (( !$quiet )) ; then
+    {
+      if (( $pwd )) ; then
+        byellow -nc
+        echo -n "CWD: "
+        bcyan -nc
+        pwd | sed -e 's!\n$!!'
+        nocolor -n ""
+      fi
       byellow -nc
-      echo -n "CWD: "
+      (( $dry )) && echo -n "(DRY) "
+      if (( $with_time )) ; then
+        echo -n "${marker} $(date8): "
+      else
+        echo -n "${marker}: "
+      fi
       bcyan -nc
-      pwd | sed -e 's!\n$!!'
-      nocolor -n ""
-    fi
-    byellow -nc
-    (( $dry )) && echo -n "(DRY) "
-    if (( $with_time )) ; then
-      echo -n "${marker} $(date8): "
-    else
-      echo -n "${marker}: "
-    fi
-    bcyan -nc
-    shescapen "$@"
-    nocolor ""
-  } 1>&$to
+      shescapen "$@"
+      nocolor ""
+    } 1>&$to
+  fi
   if (( $dry )) ; then
     return 0
   fi
@@ -484,25 +488,3 @@ function insert_bash_command_line() {
   READLINE_LINE="${READLINE_LINE:0:$READLINE_POINT}${line}${READLINE_LINE:$READLINE_POINT}"
   READLINE_POINT=$(( $READLINE_POINT + ${#line} ))
 }
-
-if interactive && isbash ; then
-  complete -F _command log
-  complete -F _command logt
-  complete -F _command timestamp
-  complete -F _command echo-and-exec
-  complete -F _command ee
-  complete -F _command eet
-  complete -F _command Test:
-  complete -F _command Running:
-  complete -F _command wb
-  complete -F _command android-wait-for-boot-complete
-  complete -F _command nox
-  complete -F _command nf
-  complete -F _command wat
-  complete -F _command retry-until-sucess
-  complete -F _command retry-until-failure
-  complete -F _command forever
-  complete -F _command 1script
-  complete -F _command FI
-  complete -F _command showcommand
-fi

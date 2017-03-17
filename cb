@@ -5,31 +5,46 @@ set -e
 . mutil.sh
 
 which xclip >&/dev/null || {
-  echo "$0: Error: xclip not found." 1>&2
+  echo "$0: Error: the xclip command not found." 1>&2
   exit 1
 }
 
 function usage() {
   cat <<EOF
 
-  $0: Copy or paste
+  $0: Copy or paste to/from the clipboard.
 
-  Usage: $0 [flags]
+  Usage: $0 [flags] [command]
+
+    If [command] is specified, excute the command with connecting
+    stdin/stdout to the clipboard.
+
 EOF
 }
 
 quiet=0
 copy=0
 no_cutlf=0
+dump=0
 target_opt=""
+flags=""
 
-eval "$(getoptions -u usage -x '
-  i copy=1      #Copy STDIN.  Default behavior if STDIN is not terminal
-  q quiet=1     #Quiet
-  n no_cutlf=1  #Don'\''t drop the new line even if the input is a single line
-  t target_opt="-t %"      #Specify TARGET, such as TEXT, UTF8_STRING, or text/html
+eval "$(getopt.pl -u usage '
+  i copy=1                      # Copy from STDIN.  Default behavior if STDIN is not terminal
+  q quiet=1; flags="$flags -q"  # Quiet
+  n no_cutlf=1                  # Don'\''t drop the new line even if the input is a single line
+  d dump=1; flags="$flags -d"   # Dump copied content to STDOUT.
+  t target_opt="-t %"           # Specify TARGET, such as TEXT, UTF8_STRING, or text/html
 ' "$@")"
 
+if (( $# > 0 )) ; then
+  eeopts=""
+  if (( $quiet )) ; then
+    eeopts=-q
+  fi
+  $0 $flags | ee -2 $eeopts "$@" | $0 $flags
+  exit ${PIPESTATUS[1]}
+fi
 
 if (( $copy )) || [[ ! -t 0 ]] ; then
   # Copy from stdin.
@@ -43,6 +58,9 @@ if (( $copy )) || [[ ! -t 0 ]] ; then
       perl -pe 'chomp if eof and $. == 1'
     fi
   } >$f
+  if (( $dump )) ; then
+    cat $f
+  fi
   (
     (
       cat "$f" | xclip -silent -i -selection clipboard $target_opt
