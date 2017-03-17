@@ -187,7 +187,7 @@ actual() {
   local x
   eval "$(getopt.pl '
   i=i x=%
-  ' -i x)" 2>&1
+  ' -i x)"
 }
 
 assert_out actual <<'EOF'
