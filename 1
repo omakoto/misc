@@ -99,6 +99,10 @@ for n in "${args[@]}" ; do
           f="$n"
         fi
         ;;
+      *.db)
+        sqliteman "$n" &
+        continue
+        ;;
       *)
         if [[ -d "$n" ]] || ! isbin "$n"  ; then
           if [[ -f "$n" ]] && ! isbin "$n" && has-ansi "$n" ; then
