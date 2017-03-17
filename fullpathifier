@@ -3,7 +3,8 @@
 # Convert filenames in input to fullpath
 
 use strict;
-use lib ($0 =~ s!/[^/]+$!!r); #!
+use FindBin;
+use lib "$FindBin::Bin";
 use Cwd;
 use MCommon;
 use IsFile;
