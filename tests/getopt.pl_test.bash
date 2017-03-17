@@ -180,3 +180,26 @@ _actual_complete() {
 
 complete -o filenames -o bashdefault -F _actual_complete actual
 EOF
+
+#-----------------------------------
+# hmm, can't intercept the error message...
+actual() {
+  local x
+  eval "$(getopt.pl '
+  i=i x=%
+  ' -i x)" 2>&1
+}
+
+assert_out actual <<'EOF'
+
+  actual:
+
+  Usage:
+    -i=i
+
+    -h --help
+                Show this help.
+    --bash-completion
+                Print bash completion script.
+
+EOF

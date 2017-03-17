@@ -315,9 +315,12 @@ forever() {
   local stop_on_failure=$(( ${opts[f]} + 0 ))
   local stop_on_success=$(( ${opts[s]} + 0 ))
 
+  local interval=1
+
   eval "$(getopt.pl '
   f|stop-on-failure stop_on_failure=1 # Stop when the command fails.
   s|stop-on-success stop_on_success=1 # Stop when the command succeeds.
+  i|interval=i      interval=%        # Interval between execution, in seconds.
   ' "$@")"
 
   i=1
@@ -347,7 +350,7 @@ forever() {
       return 0
     fi
     i=$(( i + 1 ))
-    sleep 1
+    sleep $interval
   done
 }
 
