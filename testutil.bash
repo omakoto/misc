@@ -1,6 +1,8 @@
 
 set +e # Don't use set -e, which may mask real bugs in tests.
 
+. mutil.sh
+
 declare -i _num_successes=0
 declare -i _num_failures=0
 declare -i _need_newline_before_failure=0
@@ -23,6 +25,16 @@ fail() {
   if (( $_need_newline_before_failure )) ; then
     echo
   fi
+  {
+    bred -- "- $* at:"
+    local frame=0
+    {
+      while caller $frame; do
+        ((frame++));
+      done
+    } | sed -e 's/^/  /'
+    echo
+  } 1>&2
   _num_failures=$(( $_num_failures + 1 ))
   _need_newline_before_failure=0
 }
@@ -37,30 +49,25 @@ assert() {
     succeed
     return 0
   fi
-  fail
-  {
-    echo "- Test '$exp' failed at:"
-    caller | sed -e 's/^/    /'
-  } 1>&2
+  fail "Test '$exp' failed"
   return 0
 }
 
 assert_out() {
-  out=$(wdiff -n \
-      -w $'\033[30;41m' -x $'\033[0m' \
-      -y $'\033[30;42m' -z $'\033[0m' \
-      <("$@") <(cat))
+  local wdiff_opts=""
+  if iscon 2 ; then
+    wdiff_opts='-w '$'\033[30;41m'' -x '$'\033[0m'' -y '$'\033[30;42m'' -z '$'\033[0m'
+  fi
+  out=$(wdiff -n $wdiff_opts <("$@") <(cat))
   local rc=$?
   if (( $rc == 0 )) ; then
     succeed
   else
+    fail "Diff test failed"
     {
-      echo "- Diff test failed at:"
-      caller | sed -e 's/^/    /'
-      echo "diff was:"
+      byellow "Diff was:"
       echo "$out"
     } 1>&2
-    fail
   fi
 }
 

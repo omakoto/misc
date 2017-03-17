@@ -39,7 +39,7 @@ dief() {
 }
 
 iscon() {
-  if [[ -t 1 ]] || (( $FORCE_CON )); then
+  if [[ -t ${1:-1} ]] || (( $FORCE_CON )); then
     return 0
   fi
   return 1
