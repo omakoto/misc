@@ -13,11 +13,11 @@ sub usage() {
 
   $0: getopts.bash helper
 
-    -d --description       : specify short command description.
-    -u --usage FUNC        : specify usage command name.
-    -F --allow-files       : build command completion that allows files.
-    -N --no-allow-files    : build command completion that doesn't allows files.
-    -f -i --in-fun         : assume caller is a function.
+    -d --description       : Specify short command description.
+    -u --usage FUNC        : Specify usage command name.
+    -F --allow-files       : Build command completion that allows files.
+    -N --no-allow-files    : Build command completion that doesn't allows files.
+    -f -i --in-func        : Assume caller is a function.
 
 EOF
   exit 1
