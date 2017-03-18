@@ -178,39 +178,42 @@ my $parse_success = GetOptions(%parser_spec);
 print STDERR Dumper(\@set_flags) if $debug;
 
 # Show help, if "-h" is given or failed to parse the arguments.
-if (!$parse_success or $set_flags[$HELP_OPTION_INDEX]) {
-  if (!$usage_command) {
-    print "echo\n";
-    print "echo \"  \$_go_command: \"";
-    print " ", shell_quote($command_desc), "\n";
-    print "echo\n";
-    print "echo '  Usage:'\n";
-  } else {
-    print $usage_command, "\n";
-  }
+print "function getopt_usage() {\n";
+if (!$usage_command) {
+  print "echo\n";
+  print "echo \"  \$_go_command: \"";
+  print " ", shell_quote($command_desc), "\n";
+  print "echo\n";
+  print "echo '  Usage:'\n";
+} else {
+  print $usage_command, "\n";
+}
 
-  for my $spec (@spec) {
-    print "echo '    '";
+for my $spec (@spec) {
+  print "echo '    '";
 
-    $spec->{flag} =~ m!^ ([^=]+) (?:(\=.*))? !x;
-    my ($flags, $arg) = ($1, $2);
-    my $sep = "";
-    for my $f (split(m{\|}, $flags)) {
-      print $sep;
-      $sep = " ";
-      if (length($f) == 1) {
-        print "-", $f;
-      } else {
-        print "--", $f;
-      }
+  $spec->{flag} =~ m!^ ([^=]+) (?:(\=.*))? !x;
+  my ($flags, $arg) = ($1, $2);
+  my $sep = "";
+  for my $f (split(m{\|}, $flags)) {
+    print $sep;
+    $sep = " ";
+    if (length($f) == 1) {
+      print "-", $f;
+    } else {
+      print "--", $f;
     }
-    print $arg if defined $arg;
-    print "\n";
-    print "echo -e '\\t\\t'";
-    print shell_quote($spec->{help});
-    print "\n";
   }
+  print $arg if defined $arg;
+  print "\n";
+  print "echo -e '\\t\\t'";
+  print shell_quote($spec->{help});
+  print "\n";
+}
+print "}\n";
 
+if (!$parse_success or $set_flags[$HELP_OPTION_INDEX]) {
+  print "getopt_usage\n";
   print_exit 1;
   exit 0;
 }

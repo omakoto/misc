@@ -488,3 +488,31 @@ function insert_bash_command_line() {
   READLINE_LINE="${READLINE_LINE:0:$READLINE_POINT}${line}${READLINE_LINE:$READLINE_POINT}"
   READLINE_POINT=$(( $READLINE_POINT + ${#line} ))
 }
+
+function ll() {
+  ls -l "$@"
+}
+
+function la() {
+  ls -la "$@"
+}
+
+function ls() {
+  command ls -F --color=auto "$@"
+}
+
+
+function less() {
+  unset LESS
+#      --quit-if-one-screen \
+#      --no-init \
+# -S to disable line-wrapping
+  command less \
+      --ignore-case \
+      --line-numbers \
+      "$@"
+}
+
+function qgit() {
+  qgit >/dev/null 2>&1 &
+}
