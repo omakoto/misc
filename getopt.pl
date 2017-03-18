@@ -224,10 +224,7 @@ if ($set_flags[$BASH_COMPLETION_OPTION_INDEX]) {
   for my $spec (@spec) {
     $spec->{flag} =~ m!^([^=]+)(?:\=(.*))?!;
     my ($flags, $arg) = ($1, $2);
-    my $sep = "";
     for my $f (split(/\|/, $flags)) {
-      print $sep;
-      $sep = " ";
       if (length($f) == 1) {
         push @all_flags, "-$f";
       } else {
@@ -235,53 +232,12 @@ if ($set_flags[$BASH_COMPLETION_OPTION_INDEX]) {
       }
     }
   }
+  my $allow_files_flag = $complete_allow_files ? "-F" : "";
+  my $flags_flag = join(" ", @all_flags);
 
-  my $script = <<'EOF_OUTER';
-
-sed -e "s/{{.Command}}/$_go_command/g" <<'EOF'
-# Bash autocomplete script for the {{.Command}} command.
-# Source it with the following command:
-# . <({{.Command}} -bash-completion)
-_{{.Command}}_complete() {
-  local cur="${COMP_WORDS[COMP_CWORD]}"
-
-  COMPREPLY=()
-
-  local flags="{{.Flags}}"
-
-  local cand=""
-  case "$cur" in
-    "")
-      # Uncomment it to make empty completion show help.
-      # {{.Command}} -h >/dev/tty
-      # return 0
-      ;;
-    -*)
-      cand="$flags"
-      ;;
-  esac
-  if [ "x$cand" = "x" ] ; then
-    if (( {{.AllowFiles}} )) ; then
-      COMPREPLY=(
-          $(compgen -f -- ${cur})
-          )
-    else
-      COMPREPLY=(
-          $(compgen -W "$flags" -- ${cur})
-          )
-    fi
-  else
-    COMPREPLY=($(compgen -W "$cand" -- ${cur}))
-  fi
-}
-
-complete -o filenames -o bashdefault -F _{{.Command}}_complete {{.Command}}
+  print <<EOF;
+bashcomp -c "\$_go_command" -f "$flags_flag" $allow_files_flag
 EOF
-EOF_OUTER
-  $script =~ s!{{.AllowFiles}}!$complete_allow_files!g;
-  $script =~ s!{{.Flags}}! join(" ", @all_flags) !ge;
-
-  print $script;
   print_exit 0;
   exit 0;
 }

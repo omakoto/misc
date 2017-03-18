@@ -10,8 +10,8 @@ flags=""
 
 eval "$(getopt.pl '
 F|allow-files+  allow_files=1 # Allow files in arguments.
-c|command:      command=%     # Specify command name.
-f|flags:        flags=%       # All flags separated by a space.
+c|command:      command=%     # Specify command name. e.g. "echo"
+f|flags:        flags=%       # All flags separated by a space. e.g. "--long -s"
 ' "$@")"
 
 if [[ -z "$command" ]] ;then
@@ -24,7 +24,6 @@ if [[ -z "$flags" ]] ;then
   getopt_usage
   exit 1
 fi
-
 
 sed \
     -e "s/{{.Command}}/$command/g" \
