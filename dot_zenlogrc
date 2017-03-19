@@ -7,7 +7,7 @@ elif [[ -d ~/zenlog ]] ; then
 fi
 
 if [[ -x ~/cbin/bin-linux64/bash ]] ; then
-  SHELL=~/cbin/bin-linux64/bash
+  SHELL=~/cbin/bin-linux64/lbash
 fi
 
 export ZENLOG_COMMAND_PREFIX='(builtin|time|ee|eet|wb|Test\:|Running\:?|forever|FI|sudo)'
