@@ -516,3 +516,7 @@ function less() {
 function qgit() {
   qgit >/dev/null 2>&1 &
 }
+
+function install-bashcomp() {
+  . <("$1" --bash-completion)
+}

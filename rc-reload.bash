@@ -8,7 +8,7 @@ _use_signal_to_reload=0
 reload_rc() {
   source ~/.bashrc
   touch "$_reloaded_time"
-  byellow "Reloaded .bashrc."
+  bgreen "Reloaded .bashrc."
 }
 
 # Call it in PROMPT_COMMAND
@@ -28,7 +28,7 @@ rc() {
                 continue
             fi
             (test -t < /proc/$pid/fd/1 >&/dev/null) &&
-                bgreen "Detected .bashrc update, press enter to reload." >/proc/$pid/fd/1
+                byellow "Detected .bashrc update, press enter to reload." >/proc/$pid/fd/1
         done
     else
         pkill --full -quit lbash
