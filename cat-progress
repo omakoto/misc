@@ -4,7 +4,7 @@
 
 use strict;
 
-my $BUF_SIZE = 16 * 1024;
+my $BUF_SIZE = 1 * 1024 * 1024;
 
 my $size = 0;
 my $buf = "";
