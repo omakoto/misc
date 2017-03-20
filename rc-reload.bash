@@ -36,3 +36,5 @@ rc() {
 }
 
 (( $_use_signal_to_reload )) && trap reload_rc QUIT
+
+touch $_reloaded_time
