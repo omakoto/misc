@@ -1,0 +1,20 @@
+#!/usr/bin/perl -w
+
+# Copy STDIN to STDOUT, while showing the number of bytes transfered on STDERR.
+
+use strict;
+
+my $BUF_SIZE = 16 * 1024;
+
+my $size = 0;
+my $buf = "";
+my $rlen = 0;
+
+while (($rlen = read(STDIN, $buf, $BUF_SIZE)) > 0) {
+  print STDOUT $buf;
+
+  $size += $rlen;
+  printf STDERR ("\r%d", $size);
+}
+
+print STDERR "\n";
