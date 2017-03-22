@@ -1,8 +1,0 @@
-#!/bin/bash
-
-set -e
-. <(zenlog -s)
-
-zenlog_fail_if_not_in_zenlog || exit 1
-
-zenlog-last-n-contents -R -n 10  | $0.pl | global-unique | fzf +s -m | tr '\n' ' '

@@ -23,7 +23,7 @@ rc() {
         # Non-signal version.
         touch "$_reload_needed"
         reload_rc
-        for pid in $(pgrep --full lbash) ; do
+        for pid in $(pgrep '^lbash$') ; do
             if [[ $pid == $$ ]] ; then
                 continue
             fi
@@ -31,7 +31,7 @@ rc() {
                 byellow "Detected .bashrc update, press enter to reload." >/proc/$pid/fd/1
         done
     else
-        pkill --full -quit lbash
+        pkill -quit '^lbash$'
     fi
 }
 

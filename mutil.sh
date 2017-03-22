@@ -402,7 +402,6 @@ find-root-dir() {
 }
 
 function fzf() {
-  zenlog_pause
   local rc
   # hmm.. ugly.
   if command fzf "$@"; then
@@ -410,7 +409,6 @@ function fzf() {
   else
     rc=$?
   fi
-  zenlog_resume
   return $?
 }
 

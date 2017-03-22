@@ -1,7 +1,0 @@
-#!/bin/bash
-
-set -e
-
-for n in "${@}" ; do
-  sed -e '1d' "$n"
-done
