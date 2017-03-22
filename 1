@@ -52,6 +52,7 @@ if (( $pipe != 0 )) ; then
     log="$temp/pipe-$(date8)-$$.log"
     rm -f $log
   fi
+  echo "Reading from stdin..." 1>&2
   cat >> $log
 
   byellow -n "Logged to: "
