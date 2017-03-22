@@ -46,16 +46,16 @@ fi
 if (( $pipe != 0 )) ; then
   # this still doesn't work, because if STDIN is a pipe,
   # in-zenlog fails because 'tty' doesn't work.
-  log=$(zenlog logger-pipe || true)
-  echo "zenlog log=$log"
-  if [[ "$log" == "/dev/null" ]] ; then
-    log=$temp/pipe-$(date8)-$$.log
+  if zenlog in-zenlog ; then
+    log="$(zenlog history -n 0)"
+  else
+    log="$temp/pipe-$(date8)-$$.log"
+    rm -f $log
   fi
+  cat >> $log
 
   byellow -n "Logged to: "
   bcyan "$log"
-
-  cat > $log
 
   args+=($log)
 fi
