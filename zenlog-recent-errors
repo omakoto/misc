@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -e
+. <(zenlog -s)
+
+zenlog_fail_if_not_in_zenlog || exit 1
+
+zenlog-last-n-contents -n 10 | perl -w  <(cat <<'EOF'
+#line 11
+
+while (defined(my $l = <>)) {
+  chomp $l;
+  if ($l =~ /\berror\b/i) {
+    print $l, "\n";
+  }
+}
+
+EOF
+) | uniq | fzf +s -m --ansi | extract-files | tr '\n' ' '

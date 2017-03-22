@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -e
+. <(zenlog -s)
+
+zenlog_fail_if_not_in_zenlog || exit 1
+
+zenlog-last-n-contents -n 10  | perl -w  <(cat <<'EOF'
+#line 10
+
+while (<>) {
+  chomp;
+  if (/^ (?:[0-9\.\s]+\s+)? (?:Running|Test) (?:\s[0-9\-]+)? \:\s*(.*)/x) {
+    print "$1\n";
+  }
+}
+
+EOF
+) | global-unique | fzf +s -m | tr '\n' ' '

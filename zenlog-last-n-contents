@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# Copy the output of the last 10 commands to the clipboard.
+
+set -e
+
+. <(zenlog -s)
+
+num_commands=10
+copy=0
+raw=""
+open=0
+single=0
+reverse=cat
+no_command=0
+
+eval "$(getopt.pl -Nd 'Cat last N command output' "
+n: num_commands=%     # Specify number of commands.
+c copy=1              # Copy to clipboard.
+r raw=-r              # Copy raw text.
+o open=1              # Open with 1.
+s single=1            # Only show a single command log.
+R reverse=tac         # Reverse order (newer fast).
+t no_command=1        # Content only (no command line).
+" "$@")"
+
+if (( $num_commands == 1 )) ; then
+  single=1
+fi
+
+files=$(zenlog_history $raw | tail -$num_commands | $reverse | {
+  if (( $single )) ; then
+    head -1
+  else
+    cat
+  fi
+}
+)
+if (( $no_command )) ; then
+  tmpfile=/tmp/$(date8)-$$-zenlog-contents.txt
+  for n in $files ; do
+    sed -e '1d' "$n"
+  done > $tmpfile
+  files=$tmpfile
+fi
+
+if (( $open )) ; then
+  if (( $single )) ; then
+    echo "[Opening command log]" 1>&2
+    1 $files >& /dev/null
+  else
+    echo "[Opening last $num_commands command log]" 1>&2
+    cat $files | 1 >& /dev/null
+  fi
+  exit 0
+fi
+
+if (( $copy )) ; then
+  cat $files | cb -q
+  if (( $single )) ; then
+    echo "[Copied command log to clipboard]" 1>&2
+  else
+    echo "[Copied last $num_commands command log to clipboard]" 1>&2
+  fi
+  exit $?
+fi
+
+cat $files
