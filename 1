@@ -44,11 +44,18 @@ if (( $# == 0 )) ; then
 fi
 
 if (( $pipe != 0 )) ; then
-  log=$temp/pipe-$(date8)-$$.log
-  cat > $log
+  # this still doesn't work, because if STDIN is a pipe,
+  # in-zenlog fails because 'tty' doesn't work.
+  log=$(zenlog logger-pipe || true)
+  echo "zenlog log=$log"
+  if [[ "$log" == "/dev/null" ]] ; then
+    log=$temp/pipe-$(date8)-$$.log
+  fi
 
   byellow -n "Logged to: "
   bcyan "$log"
+
+  cat > $log
 
   args+=($log)
 fi
