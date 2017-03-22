@@ -367,7 +367,7 @@ retry-until-failure() {
 }
 
 function zenlog-nolog-out() {
-  echo "$(zenlog_outer_tty 2>/dev/null || tty)"
+  echo "$(zenlog outer-tty 2>/dev/null || tty)"
 }
 
 title() {
