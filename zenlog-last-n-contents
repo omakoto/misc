@@ -50,7 +50,7 @@ if (( $open )) ; then
     1 $files >& /dev/null
   else
     echo "[Opening last $num_commands command log]" 1>&2
-    cat $files | 1 >& /dev/null
+    cat $files | 1 -z >& /dev/null
   fi
   exit 0
 fi

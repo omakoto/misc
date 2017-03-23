@@ -25,6 +25,7 @@ force_editor=0
 pretty=0
 use_vim=0
 copy=0
+no_zenlog=0
 
 eval "$(getopt.pl -u usage '
   w|wait           bg=0            # Wait until the editor returns.
@@ -33,6 +34,7 @@ eval "$(getopt.pl -u usage '
   p|pretty         pretty=1        # Pretty-print for XML/Json.
   d|no-pretty      pretty=0        # No pretty-print.
   c|copy           copy=1          # Open copy instead.
+  z|no-zenlog      no_zenlog=1     # Don'\''t use zenlog logfile to catch stdin input.
 ' "$@")"
 
 args=( "$@" )
@@ -44,7 +46,7 @@ if (( $# == 0 )) ; then
 fi
 
 if (( $pipe != 0 )) ; then
-  if zenlog in-zenlog ; then
+  if zenlog in-zenlog && (( ! $no_zenlog )) ; then
     byellow "Writing to current zenlog file..." | zenlog write-to-outer
     cat > "$(zenlog logger-pipe)"
     log=$(zenlog history -n 0)
