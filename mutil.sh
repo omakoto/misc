@@ -371,7 +371,7 @@ function zenlog-nolog-out() {
 }
 
 title() {
-  echo -ne "\033]0;${*}\007" > $(zenlog-nolog-out)
+  echo -ne "\033]0;${*}\007" | zenlog write-to-outer
 }
 
 bash-enable-debug() {
