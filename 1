@@ -132,7 +132,7 @@ if [[ -n "$DISPLAY" ]] ; then
   if (( $use_vim )) ; then
     command=gvim
     opts=""
-    bg=0
+    bg=1
   else
     command=$(firstbin \
         /opt/sublime_text/sublime_text \
@@ -173,5 +173,5 @@ run() {
 
 fixcon
 if (( ${#files[@]} > 0 )) ; then
-  run ee $command $opts "${files[@]}" | zenlog write-to-outer
+  run ee $command $opts "${files[@]}" #| zenlog write-to-outer
 fi
