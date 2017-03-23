@@ -171,6 +171,7 @@ run() {
   fi
 }
 
+fixcon
 if (( ${#files[@]} > 0 )) ; then
-  run ee $command $opts "${files[@]}"
+  run ee $command $opts "${files[@]}" | zenlog write-to-outer
 fi
