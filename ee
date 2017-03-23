@@ -2,4 +2,4 @@
 
 . mutil.sh
 
-echo-and-exec "$@"
+ee "$@" </dev/null
