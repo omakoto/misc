@@ -475,18 +475,6 @@ function FI() {
   FORCE_INSTALL=1 "$@"
 }
 
-# Use with "bind -x", like:
-# bind -x '"\e1": "insert_bash_command_line zenlog-last-n-contents -n 1 -o"'
-# (This opens the last zenlog with the '1' command.)
-function insert_bash_command_line() {
-  local line="$($*)"
-
-  # Add a space at the end unless there's one already.
-  line="$(sed -e 's!  *$! !' <<< "$line")"
-  READLINE_LINE="${READLINE_LINE:0:$READLINE_POINT}${line}${READLINE_LINE:$READLINE_POINT}"
-  READLINE_POINT=$(( $READLINE_POINT + ${#line} ))
-}
-
 function ll() {
   ls -l "$@"
 }

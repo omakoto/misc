@@ -28,7 +28,7 @@ if (( $num_commands == 1 )) ; then
   single=1
 fi
 
-files=$(zenlog_history $raw | tail -$num_commands | $reverse | {
+files=$(zenlog history $raw | tail -$num_commands | $reverse | {
   if (( $single )) ; then
     head -1
   else
@@ -36,6 +36,27 @@ files=$(zenlog_history $raw | tail -$num_commands | $reverse | {
   fi
 }
 )
+
+# Basically cat, but makes sure the last line of each file
+# ends with LF.
+cat_lf() {
+  perl -we '
+#line 43
+use strict;
+for my $f (@ARGV) {
+  my $last;
+  open my $in, "<", $f or die "Cannot open $f: $!\n";
+  while (defined(my $line = <$in>)) {
+    print $line;
+    $last = $line;
+  }
+  print "\n" unless $last =~ /\n$/;
+  close $in;
+}
+
+' "${@}"
+}
+
 if (( $no_command )) ; then
   tmpfile=/tmp/$(date8)-$$-zenlog-contents.txt
   for n in $files ; do
@@ -50,13 +71,13 @@ if (( $open )) ; then
     1 $files >& /dev/null
   else
     echo "[Opening last $num_commands command log]" 1>&2
-    cat $files | 1 -z >& /dev/null
+    cat_lf $files | 1 -z >& /dev/null
   fi
   exit 0
 fi
 
 if (( $copy )) ; then
-  cat $files | cb -q
+  cat_lf $files | cb -q
   if (( $single )) ; then
     echo "[Copied command log to clipboard]" 1>&2
   else
@@ -65,4 +86,4 @@ if (( $copy )) ; then
   exit $?
 fi
 
-cat $files
+cat_lf $files
