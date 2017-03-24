@@ -15,11 +15,11 @@ _do_color() {
       n) nl_opt="-n" ;;
       f) force=1 ;;
       c) continuation=1 ;;
-      b) attributes="${attributes}1;" ;;
-      i) attributes="${attributes}3;" ;;
-      u) attributes="${attributes}4;" ;;
-      k) attributes="${attributes}5;" ;;
-      x) attributes="${attributes}9;" ;;
+      b) attributes="${attributes}1;" ;; # bold
+      i) attributes="${attributes}3;" ;; # italic
+      u) attributes="${attributes}4;" ;; # underline
+      k) attributes="${attributes}5;" ;; # blink - slow
+      x) attributes="${attributes}9;" ;; # crossed-out
       G) prefix="4" ;;
       h)
         echo "Options: -n [no newline] -f [force color] -c [don't reset color] -G [bg]  -b [bold/intense] -i [italic] -k [blink] -u [underline]" 1>&2
