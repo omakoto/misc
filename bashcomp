@@ -25,6 +25,9 @@ if [[ -z "$flags" ]] ;then
   exit 1
 fi
 
+# Remove completion related flags.
+flags=$(perl -pe 's!(^|\s)--?bash-?comp(letion)?($|\s)! !g' <<<"$flags");
+
 sed \
     -e "s/{{.Command}}/$command/g" \
     -e "s/{{.AllowFiles}}/$allow_files/g" \
