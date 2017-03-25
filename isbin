@@ -1,0 +1,3 @@
+#!/usr/bin/perl
+
+exit (-B $ARGV[0] ? 0 : 1)
