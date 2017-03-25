@@ -506,3 +506,10 @@ function qgit() {
 function install-bashcomp() {
   . <("$1" --bash-completion)
 }
+
+function .e() {
+  local f="$1"
+  if [[ -f "$f" ]] ; then
+    . "$f"
+  fi
+}

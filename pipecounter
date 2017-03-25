@@ -4,17 +4,24 @@
 
 use strict;
 
-my $BUF_SIZE = 1 * 1024 * 1024;
+my $buf_size = 64;
 
 my $size = 0;
 my $buf = "";
 my $rlen = 0;
 
-while (($rlen = read(STDIN, $buf, $BUF_SIZE)) > 0) {
+while (($rlen = read(STDIN, $buf, $buf_size)) > 0) {
   print STDOUT $buf;
 
   $size += $rlen;
   printf STDERR ("\r%d", $size);
+
+  for my $s (1024*1024, 256*1024, 16*1024, 1024) {
+    if ($size >= $s) {
+      $buf_size = $s;
+      last;
+    }
+  }
 }
 
 print STDERR "\n";
