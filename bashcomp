@@ -25,6 +25,9 @@ if [[ -z "$flags" ]] ;then
   exit 1
 fi
 
+# Rest of the arguments are also flags.
+flags="$flags $*"
+
 # Remove completion related flags.
 flags=$(perl -pe 's!(^|\s)--?bash-?comp(letion)?($|\s)! !g' <<<"$flags");
 
