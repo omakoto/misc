@@ -15,9 +15,9 @@ use File::Copy;
 use File::Path ();
 use Getopt::Long;
 
-my($error, $verbose) = (0, 0);
+my($error, $verbose) = (0, 1);
 
-if (! GetOptions("verbose|v" => \$verbose)) {
+if (! GetOptions("verbose|v?" => \$verbose)) {
   die "Usage: $0 [--verbose] [directory|file|-]\n";
 }
 
@@ -43,7 +43,13 @@ for my $item(@ARGV) {
       }
     }
     closedir $dh or die "Cant close dirhandle $item: $!\n";
+    next;
   }
+  if(-e $item) {
+    push @files, $item;
+    next;
+  }
+  die "Invalid item: '$item'\n";
 }
 
 @sorted = (sort(@directories), sort(@files));
