@@ -6,7 +6,8 @@ trap 'rm -f "$_reloaded_time"' EXIT
 _use_signal_to_reload=0
 
 reload_rc() {
-  source ~/.bashrc
+  bgreen "Reloading .bashrc..."
+  time source ~/.bashrc
   touch "$_reloaded_time"
   bgreen "Reloaded .bashrc."
 }
