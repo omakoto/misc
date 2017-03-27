@@ -68,10 +68,10 @@ fi
 if (( $open )) ; then
   if (( $single )) ; then
     echo "[Opening command log]" 1>&2
-    1 $files >& /dev/null
+    1 -e $files >& /dev/null
   else
     echo "[Opening last $num_commands command log]" 1>&2
-    cat_lf $files | 1 -z >& /dev/null
+    cat_lf $files | 1 -e >& /dev/null
   fi
   exit 0
 fi
