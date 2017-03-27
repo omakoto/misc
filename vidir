@@ -15,10 +15,20 @@ use File::Copy;
 use File::Path ();
 use Getopt::Long;
 
-my($error, $verbose) = (0, 1);
+my($error, $verbose, $help) = (0, 1, 0);
 
-if (! GetOptions("verbose|v?" => \$verbose)) {
-  die "Usage: $0 [--verbose] [directory|file|-]\n";
+my $expression = "";
+
+if (! GetOptions("verbose|v?" => \$verbose,
+      "e|expression=s" => \$expression,
+      "h|help" => \$help) or $help) {
+  die "Usage: $0 [-e EXP] [directory|file|-]\n";
+}
+
+sub copyp($$) {
+  my ($from, $to) = @_;
+
+  return system("/bin/cp", "-n", "--preserve=mode,links", "-P", $from, $to) == 0;
 }
 
 my(@files, @directories, @sorted);
@@ -54,7 +64,6 @@ for my $item(@ARGV) {
 
 @sorted = (sort(@directories), sort(@files));
 
-
 if (grep(/[[:cntrl:]]/, @sorted)) {
   die "$0: control characters in filenames are not supported\n";
 }
@@ -67,7 +76,16 @@ my %done;
 my $c=0;
 foreach (@sorted) {
   $item{++$c}=$_;
-  print OUT sprintf("%5d %s\n", $c, $_);
+  my $was = $_;
+  if ($expression) {
+    eval $expression;
+    if ($was ne $_) {
+      print OUT "##    $was ->\n";
+    }
+  }
+  print OUT sprintf("%5d %s", $c, $_);
+  print OUT ("\t## -> ", readlink $_) if -l $_;
+  print OUT "\n";
 }
 @sorted=();
 close OUT || die "$0: cannot write ".$tmp->filename.": $!\n";
@@ -87,6 +105,24 @@ elsif(exists($ENV{VISUAL})) {
   @editor = split(' ', $ENV{VISUAL});
 }
 
+sub readall($) {
+  my ($file) = @_;
+  open(F, $file) or die("Error: $!\n");
+  my $data;
+  read(F, $data, -s $file );
+  close F;
+  return $data;
+}
+
+sub confirm($) {
+  my ($msg) = @_;
+  print $msg, "[y/N] ";
+  my $answer = <STDIN>;
+  return ($answer =~ /^y/);
+}
+
+my $pre = readall($tmp->filename);
+
 if( (exists($ENV{VIDIR_EDITOR_ARGS})) && ($ENV{VIDIR_EDITOR_ARGS} ne '') ) {
   system(@editor, $ENV{VIDIR_EDITOR_ARGS}, $tmp);
 }
@@ -94,9 +130,21 @@ else {
   system(@editor,  $tmp);
 }
 
+my $now = readall($tmp->filename);
+
+if ($pre eq $now) {
+  print STDERR "File unchanged.\n";
+  if ($expression) {
+    exit 1 unless confirm "Proceed? ";
+  } else {
+    exit 1;
+  }
+}
+
 open (IN, $tmp->filename) || die "$0: cannot read ".$tmp->filename.": $!\n";
 while (<IN>) {
   chomp;
+  s/\s*\#\#.*$//;
   if(/^\s*(\d+) {0,1}(.*)/) {
     my $num=int($1);
     my $name=$2;
@@ -138,7 +186,7 @@ while (<IN>) {
       }
 
       File::Path::make_path(dirname($name));
-      my $result=$iscopy ? copy($src, $name) : move($src, $name);
+      my $result=$iscopy ? copyp($src, $name) : move($src, $name);
       if (! $result) {
         print STDERR "$0: failed to ".($iscopy ? "copy" : "rename")." $src to $name: $!\n";
         $error=1;
@@ -178,6 +226,7 @@ sub rm {
 }
 
 foreach my $item (reverse sort values %item) {
+  next unless confirm "Remove $item? ";
   if (! rm($item)) {
     print STDERR "$0: failed to remove $item: $!\n";
     $error=1;
@@ -197,7 +246,7 @@ vidir - edit directory
 
 =head1 SYNOPSIS
 
-B<vidir> [--verbose] [directory|file|-] ...
+B<vidir> [--verbose] [-e EXPRESSION] [directory|file|-] ...
 
 =head1 DESCRIPTION
 
