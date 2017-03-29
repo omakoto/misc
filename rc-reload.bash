@@ -34,6 +34,7 @@ rc() {
     else
         pkill -quit '^lbash$'
     fi
+    return 0
 }
 
 (( $_use_signal_to_reload )) && trap reload_rc QUIT
