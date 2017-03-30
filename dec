@@ -5,7 +5,12 @@ set -e
 . mutil.sh
 
 for n in "$@" ; do
+    if [[ "$n" != *.gpg ]]; then
+      echo "Invalid file extension: $n" 1>&2
+      exit 1
+    fi
     d=${n%.gpg}
     echo "$n -> $d"
     gpg --cipher-algo aes256 -d "$n" > "$d"
+    rm -f "$n"
 done
