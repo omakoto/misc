@@ -4,7 +4,7 @@ use strict;
 
 sub escape($) {
   my ($arg) = @_;
-  if ( $arg =~ /[^a-zA-Z0-9\-\.\_\/]/ ) {
+  if ( $arg =~ /[^a-zA-Z0-9\-\.\_\/\:\+]/ ) {
       return("'" . ($arg =~ s/'/'\\''/gr) . "'"); #/
   } else {
       return($arg);
