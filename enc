@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -e
+
+. mutil.sh
+
+for n in "$@" ; do
+    echo "$n"
+    gpg --cipher-algo aes256 -c "$n"
+    rm "$n"
+done

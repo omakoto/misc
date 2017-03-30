@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -e
+
+. mutil.sh
+
+for n in "$@" ; do
+    d=${n%.gpg}
+    echo "$n -> $d"
+    gpg --cipher-algo aes256 -d "$n" > "$d"
+done
