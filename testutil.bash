@@ -71,4 +71,7 @@ assert_out() {
   fi
 }
 
-trap _at_exit EXIT
+#trap _at_exit EXIT
+function done_testing() {
+  _at_exit
+}

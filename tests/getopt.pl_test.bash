@@ -144,13 +144,13 @@ actual() {
 assert_out actual <<'EOF'
 # Bash autocomplete script for the actual command.
 # Source it with the following command:
-# . <(actual -bash-completion)
+# . <(actual --bash-completion)
 _actual_complete() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
 
   COMPREPLY=()
 
-  local flags="-a -b --long -c --long2 -d -h --help --bash-completion"
+  local flags="-a -b --long -c --long2 -d -h --help "
 
   local cand=""
   case "$cur" in
@@ -203,3 +203,5 @@ assert_out actual <<'EOF'
                 Print bash completion script.
 
 EOF
+
+done_testing
