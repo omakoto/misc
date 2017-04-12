@@ -343,7 +343,7 @@ forever() {
     ee -s "$@"
     rc=$?
     {
-      byellow "[exited with $rc]" 1>&2
+      byellow "[exited with $rc at attempt #$i]" 1>&2
     } 1>&2
     if (( $stop_on_success )) && (( $rc == 0 )) ; then
       notify "Successfully finished:" "${@}"
