@@ -29,7 +29,7 @@ if ! interactive && (( $# == 1 )) ; then
 fi
 
 die() {
-  echo "$0: $*" 1>&2
+  echo "${0##*/}: $*" 1>&2
   exit 1
 }
 
