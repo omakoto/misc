@@ -6,12 +6,18 @@ set -e
 
 . mutil.sh
 
-url=$(perl -ne '/Run hook/ and next; m!((https?|file)\:\S+)! and print "$1\n" and exit 0' $(zenlog_last_log "$@"))
+for n in 1 2 3 4 5; do
+  log=$(zenlog history -n $n)
+  if ! [[ -f $log ]] ; then
+    exit 1
+  fi
 
-if [[ -z "$url" ]] ; then
-  echo "$0: URL not found in the previous command output" 1>&2
-  exit 1
-fi
+  url=$(perl -ne '/Run hook/ and next; m!((https?|file)\:\S+)! and print "$1\n" and exit 0' "$log")
 
-echo "Opening $url ..." 1>&2
-ee ${BROWSER:-google-chrome} "$url"
+  if [[ -n "$url" ]] ; then
+    echo "Opening $url ..." 1>&2
+    ee ${BROWSER:-google-chrome} "$url"
+    exit 0
+  fi
+done
+exit 1
