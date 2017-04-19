@@ -92,6 +92,10 @@ for n in "${args[@]}" ; do
         chrome "$n"
         continue
         ;;
+      *.pdf)
+        chrome "$n"
+        continue
+        ;;
       *.json)
         if (( $pretty )) ; then
           f=$temp/${n##*/}-$$-pretty.json
