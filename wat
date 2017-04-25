@@ -17,7 +17,7 @@ eval "$(getopt.pl '
 ' "$@")"
 
 
-cmd="watch -n $interval bash -c '$*'"
+cmd="watch -n $interval bash -c $(shescape "$@")"
 
 title="${title:-$cmd}"
 
