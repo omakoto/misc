@@ -70,6 +70,15 @@ if (( $no_command )) ; then
   files=$tmpfile
 fi
 
+if (( $copy )) ; then
+  cat_lf $files | cb -q
+  if (( $single )) ; then
+    echo "[Copied command log to clipboard]" 1>&2
+  else
+    echo "[Copied last $num_commands command log to clipboard]" 1>&2
+  fi
+fi
+
 if (( $open )) ; then
   if (( $single )) ; then
     echo "[Opening command log]" 1>&2
@@ -79,16 +88,6 @@ if (( $open )) ; then
     cat_lf $files | $viewer >& /dev/null
   fi
   exit 0
-fi
-
-if (( $copy )) ; then
-  cat_lf $files | cb -q
-  if (( $single )) ; then
-    echo "[Copied command log to clipboard]" 1>&2
-  else
-    echo "[Copied last $num_commands command log to clipboard]" 1>&2
-  fi
-  exit $?
 fi
 
 cat_lf $files
