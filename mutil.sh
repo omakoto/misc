@@ -513,3 +513,12 @@ function .e() {
     . "$f"
   fi
 }
+
+function md() {
+  local dir="$1"
+  if [[ "$dir" == "" ]] ; then
+    dir=/tmp/work-$(date8)
+  fi
+
+  mkdir -p "$dir" && cd "$dir"
+}
