@@ -522,3 +522,7 @@ function md() {
 
   mkdir -p "$dir" && cd "$dir"
 }
+
+function wd() {
+  md "$@"
+}
