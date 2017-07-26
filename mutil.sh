@@ -269,7 +269,7 @@ wb() {
       notify -c "!!! Detected reboot loop !!!"
       return 1
     fi
-    sleep 3
+    sleep 0.5
   done
 
   echo "Booted."
