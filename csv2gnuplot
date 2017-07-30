@@ -170,11 +170,13 @@ sub prepare_to_read_from_stdin {
   my $tfd = fileno($th);
   remove_cloexec($th);
 
+  print "# Copying stdin to $temp_name (/dev/fd/$tfd)\n" if $DEBUG;
+
   # Copy the header and the first line to the temp file.
   # Without the first data line, gnuplot won't start.
   defined(my $head = <>) or die "$0: Cannot read header: stdin is empty.\n";
   print $th $head;
-  print "# Header= $head\n" if $DEBUG;
+  print "# Header: $head" if $DEBUG;
 
   defined(my $line = <>) or die "$0: Cannot read first line: EOF\n";
   print $th $line;
