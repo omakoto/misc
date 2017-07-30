@@ -54,8 +54,8 @@ set terminal wxt persist noraise enhanced linewidth $LINE_WIDTH size $WIDTH,$HEI
 
 set datafile separator "$SEPARATOR"
 
-set yrange [ $Y_MIN : $Y_MAX]
-set xrange [ $X_MIN : $X_MAX]
+set yrange [ $Y_MIN : $Y_MAX ]
+set xrange [ $X_MIN : $X_MAX ]
 
 EOF
 
@@ -148,7 +148,7 @@ sub do_file {
   # Seek back to the start.
   seek $scripth, 0, 0 or die "$0: Seek failed: $!\n";
 
-  if ($DEBUG) {
+  if ($DEBUG or $SHOW_ONLY) {
     while (<$scripth>) {
       print;
     }
