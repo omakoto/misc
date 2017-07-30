@@ -1,0 +1,135 @@
+#!/usr/bin/perl -w
+
+use strict;
+use FindBin; use lib "$FindBin::Bin";
+use File::Temp qw/ tempfile tempdir /;
+use Getopt;
+
+my $DEBUG = 0;
+
+my @ARG_COLUMNS = ();
+my $REREAD = 0;
+my $REREAD_INTERVAL = 1;
+my $SEPARATOR = ",";
+my $Y_MIN = "*";
+my $Y_MAX = "*";
+my $LINE_WIDTH = 3;
+my $HELP = 0;
+my $BASH_COMPLETION = 0;
+
+getopt(
+    {nofiles => 0, description => "Generate a gnuput script for a CVS file."},
+    ["c|columns=s", \@ARG_COLUMNS, "Select sepcified fields.  e.g. -c 2,5-6,9-"],
+    ["s|separator=s", \$SEPARATOR, "Specifiy field separator.  e.g. -s ,"],
+    ["r|reread", \$REREAD, "Reread data file repeatedly."],
+    ["i|reread-interval=i", \$REREAD_INTERVAL, "Reread data file repeatedly. e.g. -r -i 5"],
+    ["y-min=i", \$Y_MIN, "Specify Y range min."],
+    ["y-max=i", \$Y_MAX, "Specify Y range max."],
+    ["line-width=i", \$LINE_WIDTH, "Specify line width in pixels."],
+    ["v|verbose", \$DEBUG, "Enable verbose output."],
+    );
+
+# Config
+my @GNUPLOT = qw(gnuplot -parsist);
+
+my $TEMPLATE = <<EOF;
+set terminal wxt persist noraise enhanced linewidth $LINE_WIDTH
+set datafile separator "$SEPARATOR"
+set yrange [ $Y_MIN : $Y_MAX]
+EOF
+
+# Helpers.
+
+sub min($$) {
+  return $_[0] <= $_[1] ? $_[0] : $_[1];
+}
+
+sub build_columns {
+  my ($num_columns, @arg_columns) = @_;
+  my @ret = ();
+
+  if (@arg_columns == 0) {
+    print "## All columns: 1..$num_columns\n" if $DEBUG;
+    push(@ret, 0 .. ($num_columns - 1));
+  } else {
+    for my $arg (@arg_columns) {
+      for my $token (split /\s*\,\s*/, $arg) {
+        print "## Token: $token\n" if $DEBUG;
+        my ($single, $start, $end) = ();
+
+        if ($token =~ /^ (?: (\d+) | (\d+)? \- (\d+)? ) $/x) {
+          ($single, $start, $end) = ($1, $2, $3);
+        }
+        if (defined $single && ($single >= 1)) {
+          push @ret, min($single, $num_columns) - 1;
+          next;
+        }
+        if (defined $start or defined $end) {
+          $start //= 1;
+          $start = min($start, $num_columns);
+
+          $end //= $num_columns;
+          $end = min($end, $num_columns);
+          print "### $start - $end\n" if $DEBUG;
+          if ($start <= $end) {
+            push @ret, ($start - 1) .. ($end - 1);
+            next;
+          }
+        }
+        die "$0: Invalid columns specified: '$token'\n";
+      }
+    }
+  }
+  return @ret;
+}
+
+# Start
+sub do_file {
+  my ($file, $in) = @_;
+
+  # Parse the header and build the column selection.
+  defined(my $head = <>) or die "$0: '$file' empty file.\n";
+  $head =~ s!^\s+!!;
+  $head =~ s!\s+$!!;
+
+  my @column_names = split(/\s*\Q$SEPARATOR\E\s*/o, $head);
+  print "# Columns: ", join(",", @column_names), "\n" if $DEBUG;
+
+  my @columns = build_columns(scalar(@column_names), @ARG_COLUMNS);
+  print "# Selection: ", join(",", @columns), "\n" if $DEBUG;
+
+  # Generate the script.
+
+  my ($scripth, $script_name) = tempfile();
+  print "# Script: $script_name\n" if $DEBUG;
+  print $scripth $TEMPLATE; # TODO Escape it.
+  print $scripth "plot \\\n";
+  for my $column (@columns) {
+    printf $scripth ("    '%s' using %d with lines title \"%s\",\\\n",
+        $file, $column + 1, $column_names[$column]);
+  }
+  printf $scripth "\n";
+  if ($REREAD) {
+    printf $scripth "pause $REREAD_INTERVAL\nreread\n";
+  }
+  close $scripth;
+
+  exec (@GNUPLOT, $script_name);
+}
+
+sub main {
+  my @FILES = @_;
+
+  for my $file (@FILES) {
+    # Open the file.
+    print "# Opening $file\n" if $DEBUG;
+    open(my $in, "<", $file) or die "$0: Cannot open '$file': $!\n";
+
+    # Make sure it's seekable.  Otherwise gnuplot won't work.
+    seek($in, 0, 0) or die "$0: File '$file' is not seekable; $!\n";
+
+    do_file $file, $in;
+  }
+}
+
+main @ARGV;
