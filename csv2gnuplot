@@ -118,7 +118,7 @@ sub do_file {
   my ($file, $in) = @_;
 
   # Parse the header and build the column selection.
-  defined(my $head = <>) or die "$0: '$file' empty file.\n";
+  defined(my $head = <$in>) or die "$0: Cannot read header from '$file': file empty\n";
   $head =~ s!^\s+!!;
   $head =~ s!\s+$!!;
 
@@ -132,7 +132,6 @@ sub do_file {
   my $x_spec = $X_COLUMN >= 0 ? "$X_COLUMN:" : "";
 
   my ($scripth, $script_name) = tempfile(UNLINK => 1);
-  unlink $script_name;
 
   print "# Script: $script_name\n" if $DEBUG;
   print $scripth $TEMPLATE; # TODO Escape it.
@@ -149,6 +148,13 @@ sub do_file {
   # Seek back to the start.
   seek $scripth, 0, 0 or die "$0: Seek failed: $!\n";
 
+  if ($DEBUG) {
+    while (<$scripth>) {
+      print;
+    }
+    seek $scripth, 0, 0 or die "$0: Seek failed: $!\n";
+  }
+
   if (!$SHOW_ONLY) {
     # Remove close-on-exec and remove the file, and pass the FD instead.
     remove_cloexec $scripth;
@@ -156,15 +162,45 @@ sub do_file {
 
     # exec qw(ls -l /dev/fd/);
     exec (@GNUPLOT, "/dev/fd/$script_fd");
-  } else {
-    while (<$scripth>) {
-      print;
-    }
   }
+}
+
+sub prepare_to_read_from_stdin {
+  my ($th, $temp_name) = tempfile(UNLINK => 1);
+  my $tfd = fileno($th);
+  remove_cloexec($th);
+
+  # Copy the header and the first line to the temp file.
+  # Without the first data line, gnuplot won't start.
+  defined(my $head = <>) or die "$0: Cannot read header: stdin is empty.\n";
+  print $th $head;
+  print "# Header= $head\n" if $DEBUG;
+
+  defined(my $line = <>) or die "$0: Cannot read first line: EOF\n";
+  print $th $line;
+
+  flush $th;
+
+  # Let a child copy the rest.
+  my $cid = fork();
+  if ($cid == 0) {
+    # Child
+    while (<>) {
+      print $th $_;
+      flush $th;
+    }
+    exit 0;
+  }
+  # close STDIN;
+  return ("/dev/fd/$tfd");
 }
 
 sub main {
   my @FILES = @_;
+
+  if (@FILES == 0) {
+    @FILES = prepare_to_read_from_stdin();
+  }
 
   for my $file (@FILES) {
     # Open the file.
