@@ -13,9 +13,14 @@ my $REREAD_INTERVAL = 1;
 my $SEPARATOR = ",";
 my $Y_MIN = "*";
 my $Y_MAX = "*";
+my $X_MIN = "*";
+my $X_MAX = "*";
 my $LINE_WIDTH = 3;
 my $HELP = 0;
 my $BASH_COMPLETION = 0;
+my $WIDTH = 1200;
+my $HEIGHT = 800;
+my $FONT="Noto Sans,20";
 
 getopt(
     {nofiles => 0, description => "Generate a gnuput script for a CVS file."},
@@ -25,17 +30,27 @@ getopt(
     ["i|reread-interval=i", \$REREAD_INTERVAL, "Reread data file repeatedly. e.g. -r -i 5"],
     ["y-min=i", \$Y_MIN, "Specify Y range min."],
     ["y-max=i", \$Y_MAX, "Specify Y range max."],
+    ["x-min=i", \$X_MIN, "Specify X range min."],
+    ["x-max=i", \$X_MAX, "Specify X range max."],
+    ["width=i", \$WIDTH, "Specify window width."],
+    ["height=i", \$HEIGHT, "Specify window height."],
+    ["font=s", \$FONT, "Specify font in 'name(,size)' format."],
     ["line-width=i", \$LINE_WIDTH, "Specify line width in pixels."],
     ["v|verbose", \$DEBUG, "Enable verbose output."],
     );
 
 # Config
-my @GNUPLOT = qw(gnuplot -parsist);
+my @GNUPLOT = qw(gnuplot );
 
-my $TEMPLATE = <<EOF;
-set terminal wxt persist noraise enhanced linewidth $LINE_WIDTH
+
+my $TEMPLATE = <<EOF; # TODO Escape...
+set terminal wxt persist noraise enhanced linewidth $LINE_WIDTH size $WIDTH,$HEIGHT font "$FONT"
+
 set datafile separator "$SEPARATOR"
+
 set yrange [ $Y_MIN : $Y_MAX]
+set xrange [ $X_MIN : $X_MAX]
+
 EOF
 
 # Helpers.
@@ -61,10 +76,12 @@ sub build_columns {
           ($single, $start, $end) = ($1, $2, $3);
         }
         if (defined $single && ($single >= 1)) {
+          # -c N
           push @ret, min($single, $num_columns) - 1;
           next;
         }
         if (defined $start or defined $end) {
+          # -c M-N
           $start //= 1;
           $start = min($start, $num_columns);
 
