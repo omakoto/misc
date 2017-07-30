@@ -27,7 +27,7 @@ my $SHOW_ONLY = 0;
 my $GRID = 1;
 
 getopt(
-    {nofiles => 0, description => "Generate a gnuput script for a CVS file."},
+    {nofiles => 0, description => "Generate a gnuput script from CVS file or STDIN."},
     ["c|columns=s", \@ARG_COLUMNS, "Select sepcified fields.  e.g. -c 2,5-6,9-"],
     ["s|separator=s", \$SEPARATOR, "Specifiy field separator.  e.g. -s ,"],
     ["r|reread", \$REREAD, "Reread data file repeatedly."],
