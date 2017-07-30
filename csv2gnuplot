@@ -11,6 +11,7 @@ my @ARG_COLUMNS = ();
 my $REREAD = 0;
 my $REREAD_INTERVAL = 1;
 my $SEPARATOR = ",";
+my $X_COLUMN = -1;
 my $Y_MIN = "*";
 my $Y_MAX = "*";
 my $X_MIN = "*";
@@ -21,6 +22,7 @@ my $BASH_COMPLETION = 0;
 my $WIDTH = 1200;
 my $HEIGHT = 800;
 my $FONT="Noto Sans,20";
+my $SHOW_ONLY = 0;
 
 getopt(
     {nofiles => 0, description => "Generate a gnuput script for a CVS file."},
@@ -28,6 +30,7 @@ getopt(
     ["s|separator=s", \$SEPARATOR, "Specifiy field separator.  e.g. -s ,"],
     ["r|reread", \$REREAD, "Reread data file repeatedly."],
     ["i|reread-interval=i", \$REREAD_INTERVAL, "Reread data file repeatedly. e.g. -r -i 5"],
+    ["with-x-column=i", \$X_COLUMN, "Specify X column."],
     ["y-min=i", \$Y_MIN, "Specify Y range min."],
     ["y-max=i", \$Y_MAX, "Specify Y range max."],
     ["x-min=i", \$X_MIN, "Specify X range min."],
@@ -36,6 +39,7 @@ getopt(
     ["height=i", \$HEIGHT, "Specify window height."],
     ["font=s", \$FONT, "Specify font in 'name(,size)' format."],
     ["line-width=i", \$LINE_WIDTH, "Specify line width in pixels."],
+    ["p|print-script", \$SHOW_ONLY, "Only print generated script; don't run."],
     ["v|verbose", \$DEBUG, "Enable verbose output."],
     );
 
@@ -116,22 +120,28 @@ sub do_file {
   print "# Selection: ", join(",", @columns), "\n" if $DEBUG;
 
   # Generate the script.
+  my $x_spec = $X_COLUMN >= 0 ? "$X_COLUMN:" : "";
 
   my ($scripth, $script_name) = tempfile();
   print "# Script: $script_name\n" if $DEBUG;
   print $scripth $TEMPLATE; # TODO Escape it.
   print $scripth "plot \\\n";
   for my $column (@columns) {
-    printf $scripth ("    '%s' using %d with lines title \"%s\",\\\n",
-        $file, $column + 1, $column_names[$column]);
+    printf $scripth ("    '%s' using %s%d with lines title \"%s\",\\\n",
+        $file, $x_spec, $column + 1, $column_names[$column]);
   }
   printf $scripth "\n";
   if ($REREAD) {
     printf $scripth "pause $REREAD_INTERVAL\nreread\n";
   }
-  close $scripth;
-
-  exec (@GNUPLOT, $script_name);
+  if (!$SHOW_ONLY) {
+    exec (@GNUPLOT, $script_name);
+  } else {
+    seek $scripth, 0, 0 or die "$0: Seek failed: $!\n";
+    while (<$scripth>) {
+      print;
+    }
+  }
 }
 
 sub main {
