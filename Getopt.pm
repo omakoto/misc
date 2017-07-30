@@ -51,8 +51,9 @@ sub getopt {
     print "  Usage: $command [options]",
         ($take_files ? " FILES..." : ""), "\n\n";
     for my $spec (@spec) {
+      my $allow_no = $spec->[0] =~ m/\!$/;
       print "    ";
-      $spec->[0] =~ m!^ ([^=]+) (?:(\=.*))? !x;
+      $spec->[0] =~ m!^ ([^\=\!\+\:]+) (.*) !x;
       my ($flags, $arg) = ($1, $2);
       my $sep = "";
       for my $f (split(m{\|}, $flags)) {
@@ -64,7 +65,7 @@ sub getopt {
           print "--", $f;
         }
       }
-      print $arg if defined $arg;
+      print $arg;
       print "\n\t\t";
       print $spec->[2], "\n";
     }
@@ -87,7 +88,8 @@ sub getopt {
     exit 0;
   }
   if ($show_bash_completion) {
-    my @flags = map {split /\|/, $_->[0]} @spec;
+    # TODO If a flag ends with "!", add "--no-"
+    my @flags = map {s!([\=\!\+\:].*)!!r} map {split /\|/, $_->[0]} @spec;
     system("bashcomp", "--command", ($0 =~ s!^.*/!!r), #!
         ($take_files ? ("--allow-files") : ()),
         "--flags", join(" ",
