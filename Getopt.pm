@@ -21,10 +21,11 @@ sub getopt {
 
   my $take_files = !($opts->{nofiles} // 0);
   my $description = $opts->{description} // "";
+  my $usage = $opts->{usage};
 
   # Make sure there's no unknown options.
   {
-    for my $k (qw(nofiles description)) {
+    for my $k (qw(nofiles description usage)) {
       delete $opts->{$k};
     }
     if (%$opts) {
@@ -44,12 +45,17 @@ sub getopt {
     $arg =~ s!^-bash-completion$!--bash-completion!;
   }
 
-  my $usage = sub {
+  my $show_usage = sub {
     my $command = $0 =~ s!^.*/!!r; #!
+    print "\n";
 
-    print "\n  $command: $description\n\n";
-    print "  Usage: $command [options]",
-        ($take_files ? " FILES..." : ""), "\n\n";
+    if ($usage) {
+      &$usage;
+    } else {
+      print "  $command: $description\n\n";
+      print "  Usage: $command [options]",
+          ($take_files ? " FILES..." : ""), "\n\n";
+    }
     for my $spec (@spec) {
       my $allow_no = $spec->[0] =~ m/\!$/;
       print "    ";
@@ -80,11 +86,11 @@ sub getopt {
   print STDERR Dumper(\%parser_spec) if DEBUG;
 
   if (!GetOptions(%parser_spec)) {
-    $usage->();
+    &$show_usage;
     exit 1;
   }
   if ($help) {
-    $usage->();
+    &$show_usage;
     exit 0;
   }
   if ($show_bash_completion) {
