@@ -1,6 +1,8 @@
 #!/usr/bin/perl -w
 
 # Copy STDIN to STDOUT, while showing the number of bytes transfered on STDERR.
+#
+# see also: man cpipe
 
 use strict;
 
