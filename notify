@@ -7,40 +7,29 @@ set -e
 # Show only if stdin is terminal, or -f is given.
 
 force=0
-level="normal"
-error=0
-color=36
+mode=--info
+color=bcyan
+print_to_term=1
 
-while getopts "fc" opt; do
-  case "$opt" in
-    c)
-      level="critical"
-      error=1
-      color=31
-      ;;
-    f)
-      force=1
-      ;;
-  esac
-done
-shift $(($OPTIND - 1))
+
+eval "$(getopt.pl -Nxd 'Show a dialog box' '
+e|error|c|critical  mode=--error; color=bred  # Show as error.
+f|force             force=1                   # Show dialog even if stdin is not terminal.
+s|no-terminal       print_to_term=0           # Do not show the message on terminal.
+' "$@")"
 
 message="$*"
-{
-  echo
-  iscon && echo -ne "\x1b[1;${color}m"
-  echo "    *** $message ***"
-  iscon && echo -ne "\x1b[0m"
-  echo
-} 1>&2
+if (( $print_to_term )); then
+  {
+    echo
+    $color "    *** $message ***"
+    echo
+  } 1>&2
+fi
 
 if [[ -t 0 ]] || (( "$force" )) ; then
   if isx ; then
-    if (( $error )) ; then
-      zenity --error --text "$message" 2>/dev/null &
-    else
-      zenity --info --text "$message" 2>/dev/null &
-    fi
+    zenity $mode --text "$message" 2>/dev/null &
   fi
 fi
 exit 0

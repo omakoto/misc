@@ -186,7 +186,7 @@ echo-and-exec() {
   local notify=0
   local dry=0
   local notify_opts=""
-  local with_time=0
+  local with_time=1
   local marker="Running"
   local pwd=0
   local tty=0
@@ -199,6 +199,7 @@ echo-and-exec() {
       d dry=1        # Dry run.
       v notify=1 ; notify_opts="-v" # Verbose: Notify the result.
       t with_time=1; # Display timestamp too.
+      n with_time=0; # Don'\''t display timestamp.
       m: marker=%    # Set marker.
       pwd pwd=1      # Show current directory too.
       q quiet=1      # Don'\''t echo back command line.
@@ -224,7 +225,7 @@ echo-and-exec() {
       byellow -nc
       (( $dry )) && echo -n "(DRY) "
       if (( $with_time )) ; then
-        echo -n "${marker} $(date8): "
+        echo -n "${marker} [$(date8)]: "
       else
         echo -n "${marker}: "
       fi
