@@ -70,6 +70,8 @@ if (( $no_command )) ; then
   files=$tmpfile
 fi
 
+did_something=0
+
 if (( $copy )) ; then
   cat_lf $files | cb -q
   if (( $single )) ; then
@@ -77,7 +79,7 @@ if (( $copy )) ; then
   else
     echo "[Copied last $num_commands command log to clipboard]" 1>&2
   fi
-  exit 0
+  did_something=1
 fi
 
 if (( $open )) ; then
@@ -88,6 +90,10 @@ if (( $open )) ; then
     echo "[Opening last $num_commands command log]" 1>&2
     cat_lf $files | $viewer >& /dev/null
   fi
+  did_something=1
+fi
+
+if (( $did_something )) ; then
   exit 0
 fi
 
