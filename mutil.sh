@@ -267,7 +267,7 @@ wb() {
     echo -n "."
     if adb logcat -b main -d -s 'Zygote:E' | grep -q 'Exit zygote' ; then
       echo ""
-      notify -c "!!! Detected reboot loop !!!"
+      notify -f "!!! Detected reboot loop !!!"
       return 1
     fi
     sleep 0.5
