@@ -1,8 +1,8 @@
 use strict;
 use Getopt::Long qw(:config gnu_compat bundling require_order);
-use Data::Dumper;
+# use Data::Dumper;
 
-use constant DEBUG => 0;
+# use constant DEBUG => 0;
 
 our $COMMAND_DESCRIPTION = "";
 
@@ -16,8 +16,8 @@ sub getopt {
     $opts = $spec[0];
     shift @spec;
   }
-  print STDERR Dumper($opts) if DEBUG;
-  print STDERR Dumper(\@spec) if DEBUG;
+  # print STDERR Dumper($opts) if DEBUG;
+  # print STDERR Dumper(\@spec) if DEBUG;
 
   my $take_files = !($opts->{nofiles} // 0);
   my $description = $opts->{description} // "";
@@ -83,7 +83,7 @@ sub getopt {
     $parser_spec{$o->[0]} = $o->[1];
   }
 
-  print STDERR Dumper(\%parser_spec) if DEBUG;
+  # print STDERR Dumper(\%parser_spec) if DEBUG;
 
   if (!GetOptions(%parser_spec)) {
     &$show_usage;
