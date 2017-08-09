@@ -9,7 +9,7 @@ if [[ "$-" == *i* ]] ; then
   _interactive=1
 fi
 
-. <( ~/cbin/zenlog -s )
+#. <( ~/cbin/zenlog -s )
 . ~/cbin/misc/colors.bash
 . ~/cbin/getopts.bash # Legacy one
 
