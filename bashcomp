@@ -1,41 +1,27 @@
-#!/bin/bash
+#!/usr/bin/perl -w
 
-set -e
+use strict;
+#use FindBin; use lib "$FindBin::Bin"; # Little slow.
+use lib ($0 =~ s!/[^/]+$!!r); #!
+use Getopt;
 
-. mutil.sh
+my $allow_files = 0;
+my $command;
+my $flags;
 
-allow_files=0
-command=""
-flags=""
+getopt(
+    {nofiles => 0, description => "Generate completion script for bash."},
+    ["F|allow-files", \$allow_files,  "Allow files in arguments."],
+    ["c|command=s", \$command,        "Specify command name. e.g. \"echo\""],
+    ["f|flags=s", \$flags,            "All flags separated by a space. e.g. \"--long -s\""],
+    );
 
-eval "$(getopt.pl '
-F|allow-files+  allow_files=1 # Allow files in arguments.
-c|command:      command=%     # Specify command name. e.g. "echo"
-f|flags:        flags=%       # All flags separated by a space. e.g. "--long -s"
-' "$@")"
+die "bashcomp: missing -c flag.\n" unless defined $command;
+die "bashcomp: missing -f flag.\n" unless defined $flags;
 
-if [[ -z "$command" ]] ;then
-  echo "$0: missing -c flag." 1>&2
-  getopt_usage
-  exit 1
-fi
-if [[ -z "$flags" ]] ;then
-  echo "$0: missing -f flag." 1>&2
-  getopt_usage
-  exit 1
-fi
+$flags =~ s!-?-bash-completion\b!!g;
 
-# Rest of the arguments are also flags.
-flags="$flags $*"
-
-# Remove completion related flags.
-flags=$(perl -pe 's!(^|\s)--?bash-?comp(letion)?($|\s)! !g' <<<"$flags");
-
-sed \
-    -e "s/{{.Command}}/$command/g" \
-    -e "s/{{.AllowFiles}}/$allow_files/g" \
-    -e "s/{{.Flags}}/$flags/g" \
-    <<'EOF'
+my $out = <<'EOF';
 # Bash autocomplete script for the {{.Command}} command.
 # Source it with the following command:
 # . <({{.Command}} --bash-completion)
@@ -74,3 +60,9 @@ _{{.Command}}_complete() {
 
 complete -o filenames -o bashdefault -F _{{.Command}}_complete {{.Command}}
 EOF
+
+$out =~ s!\{\{\.Command\}\}!$command!g;
+$out =~ s!\{\{\.AllowFiles\}\}!$allow_files!g;
+$out =~ s!\{\{\.Flags\}\}!$flags!g;
+
+print $out;
