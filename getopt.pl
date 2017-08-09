@@ -4,7 +4,7 @@
 
 use strict;
 use Getopt::Long qw(:config gnu_compat bundling require_order);
-use Data::Dumper;
+# use Data::Dumper;  # Little slow to load.
 
 # Start.
 
@@ -52,7 +52,7 @@ if ($debug) {
     in_func => $in_func,
     usage_command => $usage_command,
   );
-  print STDERR Dumper(\%opts) if $debug;
+  # print STDERR Dumper(\%opts) if $debug;
 }
 
 # See script '1' for example.
@@ -144,7 +144,7 @@ push @spec, {flag => "bash-completion", command => "",
     help => "Print bash completion script."};
 
 
-print STDERR Dumper(\@spec) if $debug;
+# print STDERR Dumper(\@spec) if $debug;
 
 # Parse the actual arguments.
 
@@ -169,13 +169,13 @@ for my $spec (@spec) {
   };
   $i++;
 }
-print STDERR Dumper(\%parser_spec) if $debug;
+# print STDERR Dumper(\%parser_spec) if $debug;
 
 print STDERR "Parsing [", join(" ", @ARGV), "] ...\n" if $debug;
 
 my $parse_success = GetOptions(%parser_spec);
 
-print STDERR Dumper(\@set_flags) if $debug;
+# print STDERR Dumper(\@set_flags) if $debug;
 
 # Show help, if "-h" is given or failed to parse the arguments.
 print "function getopt_usage() {\n";
