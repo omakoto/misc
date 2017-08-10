@@ -505,7 +505,17 @@ function qgit() {
 }
 
 function install-bashcomp() {
-  . <("$1" --bash-completion)
+  local c="$1"
+  local f="$(type -p "$c")"
+  if [[ -z "$f" ]] ; then
+    . <("$1" --bash-completion)
+  else
+    local fc="$f.bashcomp"
+    if [[ ! -f "$fc" || "$fc" -ot "$f" ]] ; then
+      "$1" --bash-completion > "$fc"
+    fi
+    . "$fc"
+  fi
 }
 
 function .e() {
