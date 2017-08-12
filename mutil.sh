@@ -39,15 +39,12 @@ dief() {
 }
 
 iscon() {
-  if [[ -t ${1:-1} ]] || (( $FORCE_CON )); then
-    return 0
-  fi
-  return 1
+  [[ -t ${1:-1} || $FORCE_CON = 1 ]]
 }
 
 fixcon() {
   local fd=${1:-1}
-  if [[ -t $fd || "$FORCE_CON" = 1 ]] ; then
+  if iscon $fd ; then
     export FORCE_CON=1
     export C${fd}=1
   else
@@ -89,16 +86,38 @@ haspath() {
   return 1
 }
 
+hasmanpath() {
+  case ":$MANPATH:" in
+  *:${1}:*) return 0;;
+  esac
+  return 1
+}
+
 addpath() {
-  if [[ -d "$1" ]] && ! haspath "$1" ; then
-    export PATH="$PATH:$1"
-  fi
+  local d
+  for d in "$@" ; do
+    if [[ -d "$d" ]] && ! haspath "$d" ; then
+      export PATH="$PATH:$d"
+    fi
+  done
 }
 
 prependpath() {
-  if [[ -d "$1" ]] && ! haspath "$1" ; then
-    export PATH="$1:$PATH"
-  fi
+  local d
+  for d in "$@" ; do
+    if [[ -d "$d" ]] && ! haspath "$d" ; then
+      export PATH="$d:$PATH"
+    fi
+  done
+}
+
+addmanpath() {
+  local d
+  for d in "$@" ; do
+    if [[ -d "$d" ]] && ! hasmanpath "$d" ; then
+      export MANPATH="$MANPATH:$d"
+    fi
+  done
 }
 
 con() {
