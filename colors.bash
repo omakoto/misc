@@ -32,7 +32,12 @@ _do_color() {
   done
   shift $(($OPTIND - 1))
 
+  local use_color=0
   if iscon || (( $force )) ; then
+    use_color=1
+  fi
+
+  if (( $use_color )) ; then
     if (( $color == -1 )) ; then
       echo -ne "\e[0m"
     else
@@ -41,15 +46,13 @@ _do_color() {
   fi
 
   if (( $# == 0 )) ; then
-    continuation=1 # implied
+    return 0 # no argument, just start a color and finish.
   else
     echo $nl_opt "$@"
   fi
 
-  if (( ! $continuation )) ; then
-    if iscon || (( $force )) ; then
-      echo -ne '\e[0m'
-    fi
+  if (( ! $continuation && $use_color )) ; then
+    echo -ne '\e[0m'
   fi
 }
 
