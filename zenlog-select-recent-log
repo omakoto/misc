@@ -2,5 +2,5 @@
 
 set -e
 
-zenlog history |fzf --tac --preview='cat {}' --preview-window=top
+zenlog history |fzf --tac --preview='cat {}'
 

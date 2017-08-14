@@ -11,6 +11,15 @@ sub escape($) {
   }
 }
 
+# If executed as "shescapes", escape input from stdin
+if ($0 =~ /s$/) {
+  while (<>) {
+    chomp;
+    print(escape($_), "\n");
+  }
+  exit 0
+}
+
 my $sep = "";
 for my $arg ( @ARGV ) {
     print $sep;

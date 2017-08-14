@@ -16,4 +16,6 @@ t   TEXT_ONLY=1  # Show text files only.
 export TEXT_ONLY
 
 # Use zenlog-contents instead of cat to exclude prompts
-zenlog-last-n-contents -R -n $num  | $0.pl | global-unique | fzf +s -m --ansi | tr '\n' ' '
+zenlog-last-n-contents -R -n $num  | $0.pl | global-unique | \
+    fzf +s -m --ansi '--preview=preview-file {}' | \
+    tr '\n' ' '
