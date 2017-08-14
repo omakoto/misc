@@ -1,3 +1,3 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 
 exit (-B $ARGV[0] ? 0 : 1)

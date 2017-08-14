@@ -6,6 +6,10 @@
 
 f="$(which "$1")"
 if ! [[ -f "$f" ]] ; then
+  if [[ -d "$1" ]] ; then
+    ee 1 "$f" # Open a directory instead.
+    exit 0
+  fi
   echo "$0: '$1' not found." 1>&2
   exit 1
 fi
