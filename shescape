@@ -11,21 +11,14 @@ sub escape($) {
   }
 }
 
-if (@ARGV == 0) {
-  while(<>) {
-    chomp;
-    print(escape($_), "\n");
-  }
-} else {
-  my $sep = "";
-  for my $arg ( @ARGV ) {
-      print $sep;
-      print escape($arg);
-      $sep = " ";
-  }
+my $sep = "";
+for my $arg ( @ARGV ) {
+    print $sep;
+    print escape($arg);
+    $sep = " ";
+}
 
-  # If executed as "shescapen", then don't print newline.
-  if ($0 !~ /n$/) {
-      print "\n";
-  }
+# If executed as "shescapen", then don't print newline.
+if ($0 !~ /n$/) {
+    print "\n";
 }
