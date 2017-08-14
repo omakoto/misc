@@ -26,9 +26,15 @@ pretty=0
 use_vim=0
 copy=0
 no_zenlog=0
+newdoc=0
+noargs=0
 
 if ! is-interactive ; then
   no_zenlog=1
+fi
+
+if (( $# == 0 )) ; then
+  noargs=1
 fi
 
 eval "$(getopt.pl -u usage '
@@ -38,13 +44,24 @@ eval "$(getopt.pl -u usage '
   p|pretty         pretty=1        # Pretty-print for XML/Json.
   d|no-pretty      pretty=0        # No pretty-print.
   c|copy           copy=1          # Open copy instead.
+  N|newdoc         newdoc=1        # Open new timestamped doc.
   z|no-zenlog      no_zenlog=1     # Don'\''t use zenlog logfile to catch stdin input.
 ' "$@")"
 
 args=( "$@" )
+files=()
 
-if (( $# == 0 )) ; then
-  if [[ ! -t 0 ]] ; then
+if (( $newdoc )) ; then
+  doc=$(datedir ~/cbin/docs)/doc-$(date8).txt
+  touch $doc
+  echo "$doc"
+  files+=("$doc")
+fi
+
+if (( $noargs )) ; then
+  if [[ -t 0 ]] ; then
+    files+=("~/work.txt")
+  else
     pipe=1
   fi
 fi
@@ -63,8 +80,6 @@ if (( $pipe != 0 )) ; then
 
   args+=($log)
 fi
-
-files=()
 
 for n in "${args[@]}" ; do
   f=""
@@ -156,12 +171,6 @@ if [[ -z "$command" ]] ; then
   command=vi
   opts=""
   bg=0
-fi
-
-if (( $# == 0 )) ; then
-  if [[ -t 0 ]] ; then
-    files+=("~/work.txt")
-  fi
 fi
 
 if (( $copy )) ; then
