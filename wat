@@ -19,7 +19,7 @@ eval "$(getopt.pl '
 
 cmd="watch -n $interval bash -c $(shescape "$@")"
 
-title="${title:-$cmd}"
+title="${title:-$@}"
 
 if isx ; then
   (gnome-terminal \
