@@ -206,6 +206,7 @@ echo-and-exec() {
   local dry=0
   local notify_opts=""
   local with_time=1
+  local raw_marker=""
   local marker="Running"
   local pwd=0
   local tty=0
@@ -220,6 +221,7 @@ echo-and-exec() {
       t with_time=1; # Display timestamp too.
       n with_time=0; # Don'\''t display timestamp.
       m: marker=%    # Set marker.
+      r: raw_marker=%    # Set raw-marker.
       pwd pwd=1      # Show current directory too.
       q quiet=1      # Don'\''t echo back command line.
       ' "$@")"
@@ -243,8 +245,10 @@ echo-and-exec() {
       fi
       byellow -nc
       (( $dry )) && echo -n "(DRY) "
-      if (( $with_time )) ; then
-        echo -n "${marker} [$(date8)]: "
+      if [[ -n "$raw_marker" ]] ; then
+        echo -n "${raw_marker}"
+      elif (( $with_time )) ; then
+        echo -n "${marker} [$(date +%Y/%m/%d-%H:%M:%S)]: "
       else
         echo -n "${marker}: "
       fi
