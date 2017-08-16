@@ -55,7 +55,7 @@ if (( $copy )) || [[ ! -t 0 ]] ; then
     if (( $no_cutlf )) ; then
       cat
     else
-      perl -pe 'chomp if eof and $. == 1'
+      trim-if-oneline
     fi
   } >$f
   if (( $dump )) ; then
