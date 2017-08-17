@@ -134,8 +134,8 @@ for n in "${args[@]}" ; do
         continue
         ;;
       *)
-        if [[ -d "$n" ]] || ! isbin "$n"  ; then
-          if [[ -f "$n" ]] && ! isbin "$n" && has-ansi "$n" ; then
+        if [[ -d "$n" ]] || istext "$n"  ; then
+          if [[ -f "$n" ]] && istext "$n" && has-ansi "$n" ; then
             chrome "$n"
             continue
           fi
