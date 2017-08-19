@@ -1,5 +1,6 @@
 use strict;
 use Getopt::Long qw(:config gnu_compat bundling require_order);
+use MCommon;
 # use Data::Dumper;
 
 # use constant DEBUG => 0;
@@ -24,14 +25,7 @@ sub getopt {
   my $usage = $opts->{usage};
 
   # Make sure there's no unknown options.
-  {
-    for my $k (qw(nofiles description usage)) {
-      delete $opts->{$k};
-    }
-    if (%$opts) {
-      die "Invalid option(s) in: " . Dumper($opts);
-    }
-  }
+  validate_keys(\%$opts, qw(nofiles description usage));
 
   push @spec, ["h|help",
       \$help,
