@@ -9,5 +9,4 @@ use ShellHelper;
 
 my $command = ShellHelper::parse( q(a b cdef#@ "aav'") );
 
-
 print($command->rebuild(), "\n");
