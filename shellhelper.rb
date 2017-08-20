@@ -14,6 +14,56 @@ def shescape(arg)
   end
 end
 
+def unshescape(arg)
+  if arg !~ /[\'\"\\]/
+    return arg
+  end
+
+  ret = ""
+  pos = 0
+  while pos < arg.length
+    ch = arg[pos]
+
+    case ch
+    when "'"
+      pos += 1
+      while pos < arg.length
+        ch = arg[pos]
+        pos += 1
+        if ch == "'"
+          break
+        end
+        ret += ch
+      end
+    when '"'
+      pos += 1
+      while pos < arg.length
+        ch = arg[pos]
+        pos += 1
+        if ch == '"'
+          break
+        elsif ch == '\\'
+          if pos < arg.length
+           ret += arg[pos]
+          end
+          pos += 1
+        end
+        ret += ch
+      end
+    when '\\'
+      pos += 1
+      if pos < arg.length
+        ret += arg[pos]
+      end
+    else
+      ret += ch
+      pos += 1
+    end
+  end
+
+  return ret
+end
+
 #-----------------------------------------------------------
 class CommandLine
   def initialize(command_line, pos = -1)
@@ -61,7 +111,7 @@ class CommandLine
     raw_tokens = @command_line.scan(
         %r{
           (?: \s+ | # Whitespace
-              ' [^']* '? | # Single quoted
+              \' [^']* \'? | # Single quoted
               \" (?: [^\"] | \\.) * \"? | # Double quoted
               (?: [^\'\"\s] | \\.) + | # Bare characters
           )

@@ -13,6 +13,15 @@ class TestShescape < Test::Unit::TestCase
   end
 end
 
+class TestUnshescape < Test::Unit::TestCase
+  def test_simple
+    assert_equal("", unshescape(""))
+    assert_equal("a", unshescape("a"))
+    assert_equal("a b c", unshescape("a b c"))
+    assert_equal("a b '' xx\" '", unshescape("a\ b\ \"''\" 'xx\"' \\'"))
+  end
+end
+
 class TestCommandLine < Test::Unit::TestCase
   def test_tokenize
     assert_equal([], CommandLine.new("").tokens)
