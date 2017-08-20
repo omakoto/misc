@@ -1,23 +1,39 @@
 require 'getoptlong'
 
-$DEBUG = true
-
 class OptionSpecError < StandardError
 end
 
 module GetoptInner
 
   def self.show_bashcomp(all_flags, take_files)
-    puts "BASHCOMP"
+    command = ["bashcomp"]
+    command.push "-F" if take_files
+    command.push "-c", $0.sub(/^.*\//, "")
+    command.push "-f", all_flags.join(" ")
+    exec *command
   end
 
-  def self.show_help(help_spec)
-    puts "HELP"
+  def self.show_help(help_spec, take_files, usage, usage_proc)
+    command = $0.sub(/^.*\//, "")
+    if usage_proc
+      usage_proc.call()
+    else
+      puts
+      puts "  #{command}: #{usage}"
+    end
+    puts
+    puts("  Usage: #{command} [options]" + if take_files then
+        " FILES..." else "" end)
+    puts
+    help_spec.each {|flags, type, desc|
+      puts "  " + flags.join(" ") + type
+      puts "\t" + desc
+    }
   end
 
 end # module
 
-def getopt(*in_spec, take_files: false, usage: nil)
+def getopt(*in_spec, take_files: false, usage: nil, usage_proc: nil)
   getopt_spec = []
   flag_to_proc = {}
   flag_getopt_type = {}
@@ -36,7 +52,7 @@ def getopt(*in_spec, take_files: false, usage: nil)
     in_flag_spec =~ /^( [a-z0-9\-\|]* ) ( .* )?/ix
     in_flags, in_type = $1, $2
 
-    puts "flag=#{in_flags} in_type=#{in_type}" if $DEBUG
+    # puts "flag=#{in_flags} in_type=#{in_type}" if $DEBUG
 
     in_type = "=s" if in_type == ":"
 
@@ -79,20 +95,20 @@ def getopt(*in_spec, take_files: false, usage: nil)
     help_spec.push([flag_list, in_type, in_desc])
     getopt_spec.push([flag_list, getopt_type].flatten)
   }
-  if $DEBUG
-    puts getopt_spec.inspect
-    puts help_spec.inspect
-  end
+  # if $DEBUG
+  #   puts getopt_spec.inspect
+  #   puts help_spec.inspect
+  # end
 
   # Parse the arguments.
   opts = GetoptLong.new(*getopt_spec)
 
-  if $DEBUG
-    puts opts.inspect
-  end
+  # if $DEBUG
+  #   puts opts.inspect
+  # end
 
   opts.each {|opt, arg|
-    puts "#{opt.inspect} = #{arg.inspect}"
+    # puts "#{opt.inspect} = #{arg.inspect}" if $DEBUG
     case flag_getopt_type[opt]
     when GetoptLong::NO_ARGUMENT
       flag_to_proc[opt].call
@@ -102,7 +118,7 @@ def getopt(*in_spec, take_files: false, usage: nil)
   }
 
   if help_detected
-    GetoptInner::show_help help_spec
+    GetoptInner::show_help help_spec, take_files, usage, usage_proc
     exit 0
   end
 
@@ -110,6 +126,4 @@ def getopt(*in_spec, take_files: false, usage: nil)
     GetoptInner::show_bashcomp all_flags, take_files
     exit 0
   end
-
-
 end

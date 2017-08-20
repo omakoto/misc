@@ -6,7 +6,7 @@ force = false
 title = ""
 
 def usage()
-  puts "Usage: $0 AAABBBCCC"
+  puts "Usage: #{$0} AAABBBCCC"
 end
 
 # getopt(
@@ -20,7 +20,8 @@ getopt(
   ["f|force", lambda { force = true }, "Force execute."],
   ["t|title=s", lambda { |x| title = x }, "Specify title."],
   take_files: true,
-  usage: lambda {usage}
+  usage: "Tester for getopt.rb"
+  # usage_proc: lambda {usage}
   );
 
 puts "force=#{force.inspect}"
