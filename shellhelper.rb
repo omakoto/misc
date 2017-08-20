@@ -86,5 +86,9 @@ end
 class TestCommandLine < Test::Unit::TestCase
   def test_simple
     assert_equal([], CommandLine.new("").tokens)
+    assert_equal(
+        [
+            [0, 3, 'abc', false],
+        ], CommandLine.new("abc").tokens)
   end
 end
