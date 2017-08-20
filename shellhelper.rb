@@ -55,17 +55,13 @@ class CommandLine
     return [@command_line.length, @command_line.length, ""]
   end
 
-  def set_token(position, replacement, set_partial = true)
-    target = get_token(position, set_partial)
+  def set_token(pos, replacement, set_partial = true)
+    target = get_token(pos, set_partial)
     new_command = command_line.dup
     new_command[target[0]...target[1]] = replacement
     new_pos = position
     if new_pos >= target[0]
-      if set_partial
-        new_pos += replacement.length - target[2].length
-      else
-        new_pos = target[0] + replacement.length
-      end
+      new_pos = target[0] + replacement.length
     end
     return CommandLine.new(new_command, new_pos)
   end
@@ -142,11 +138,15 @@ class TestCommandLine < Test::Unit::TestCase
   end
 
   def check_set_token(expected_str, expected_pos, source_str, source_pos, pos, replacement, partial)
-    n = CommandLine.new(source_str, source_pos).set_token(pos, replacement, partial))
-    assert_equal([expected_pos, expected_str], [n.position, n.command_lkine])
+    n = CommandLine.new(source_str, source_pos).set_token(pos, replacement, partial)
+    assert_equal([expected_pos, expected_str], [n.position, n.command_line])
   end
 
   def test_set_token
-    check_set_token("abc XXX YYYef", 7, "abc def", 6, "XXX YYY", 5, true)
+    check_set_token("abc XXX YYYef ghi", 1, "abc def ghi", 1, 5, "XXX YYY", true)
+    check_set_token("abc XXX YYY ghi", 1, "abc def ghi", 1, 5, "XXX YYY", false)
+
+    check_set_token("abc XXX YYYef ghi", 11, "abc def ghi", 8, 5, "XXX YYY", true)
+    check_set_token("abc XXX YYY ghi", 11, "abc def ghi", 8, 5, "XXX YYY", false)
   end
 end
