@@ -59,12 +59,15 @@ class CommandLine
     target = get_token(position, set_partial)
     new_command = command_line.dup
     new_command[target[0]...target[1]] = replacement
-    if set_partial
-      pos += replacement.length - target[2].length
-    else
-      pos = target[0] + replacement.length
+    new_pos = position
+    if new_pos >= target[0]
+      if set_partial
+        new_pos += replacement.length - target[2].length
+      else
+        new_pos = target[0] + replacement.length
+      end
     end
-    initialize new_command, pos
+    return CommandLine.new(new_command, new_pos)
   end
 
   private
@@ -136,5 +139,14 @@ class TestCommandLine < Test::Unit::TestCase
 
     assert_equal([7, 7, ""], CommandLine.new("abc def").get_token(8, true))
     assert_equal([7, 7, ""], CommandLine.new("abc def").get_token(8, false))
+  end
+
+  def check_set_token(expected_str, expected_pos, source_str, source_pos, pos, replacement, partial)
+    n = CommandLine.new(source_str, source_pos).set_token(pos, replacement, partial))
+    assert_equal([expected_pos, expected_str], [n.position, n.command_lkine])
+  end
+
+  def test_set_token
+    check_set_token("abc XXX YYYef", 7, "abc def", 6, "XXX YYY", 5, true)
   end
 end
