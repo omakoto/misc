@@ -33,12 +33,14 @@ module GetoptInner
 
 end # module
 
-def getopt(*in_spec, take_files: false, usage: nil, usage_proc: nil)
+def getopt(*in_spec, take_files: false, usage: nil, usage_proc: nil, exit_func: nil)
   getopt_spec = []
   flag_to_proc = {}
   flag_getopt_type = {}
   all_flags = []
   help_spec = []
+
+  exit_func = lambda { |code| exit code } unless exit_func
 
   help_detected = false
   bash_completion_detected = false
@@ -95,35 +97,37 @@ def getopt(*in_spec, take_files: false, usage: nil, usage_proc: nil)
     help_spec.push([flag_list, in_type, in_desc])
     getopt_spec.push([flag_list, getopt_type].flatten)
   }
-  # if $DEBUG
-  #   puts getopt_spec.inspect
-  #   puts help_spec.inspect
-  # end
 
   # Parse the arguments.
   opts = GetoptLong.new(*getopt_spec)
 
-  # if $DEBUG
-  #   puts opts.inspect
-  # end
-
-  opts.each {|opt, arg|
-    # puts "#{opt.inspect} = #{arg.inspect}" if $DEBUG
-    case flag_getopt_type[opt]
-    when GetoptLong::NO_ARGUMENT
-      flag_to_proc[opt].call
-    when GetoptLong::REQUIRED_ARGUMENT
-      flag_to_proc[opt].call(arg)
-    end
-  }
+  begin
+    opts.each {|opt, arg|
+      # puts "#{opt.inspect} = #{arg.inspect}" if $DEBUG
+      case flag_getopt_type[opt]
+      when GetoptLong::NO_ARGUMENT
+        flag_to_proc[opt].call
+      when GetoptLong::REQUIRED_ARGUMENT
+        flag_to_proc[opt].call(arg)
+      end
+    }
+  rescue GetoptLong::Error => e
+    exit_func.call 1
+    return false
+  end
 
   if help_detected
     GetoptInner::show_help help_spec, take_files, usage, usage_proc
-    exit 0
+    exit_func.call 0
+    return false
   end
 
   if bash_completion_detected
     GetoptInner::show_bashcomp all_flags, take_files
-    exit 0
+    exit_func.call 0
+    return false
   end
+  return true
 end
+
+# TODO Tests
