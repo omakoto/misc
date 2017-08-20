@@ -58,9 +58,13 @@ class CommandLine
   def set_token(position, replacement, set_partial = true)
     target = get_token(position, set_partial)
     new_command = command_line.dup
-    new_command[target[0]]
-
-
+    new_command[target[0]...target[1]] = replacement
+    if set_partial
+      pos += replacement.length - target[2].length
+    else
+      pos = target[0] + replacement.length
+    end
+    initialize new_command, pos
   end
 
   private
