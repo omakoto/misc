@@ -1,0 +1,15 @@
+#!/usr/bin/env ruby2.3
+
+require_relative "./shellhelper"
+
+command = ENV['READLINE_LINE']
+pos = ENV['READLINE_POINT'].to_i
+
+puts '--------'
+puts "READLINE_LINE : #{command}"
+puts "READLINE_POINT: #{pos} / #{command.length}"
+
+cmd = CommandLine.new(command, pos)
+
+puts "Token      : #{cmd.get_token(pos)}"
+puts "Token(full): #{cmd.get_token(pos, false)}"
