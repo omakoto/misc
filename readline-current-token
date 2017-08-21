@@ -4,10 +4,13 @@ require_relative "./getopt"
 require_relative "./shellhelper"
 
 partial_token = true
+expand_home = true
 
 getopt(
   ["f|full-token", lambda { partial_token = false },
       "Get full token instead of partial token."],
+  ["n|no-expand-home", lambda { expand_home = false },
+      "Don't expand ~."],
   usage: "Print out the current readline token."
   );
 
@@ -17,4 +20,10 @@ pos = ENV['READLINE_POINT'].to_i
 
 cmd = CommandLine.new(command, pos)
 
-puts unshescape(cmd.get_token(pos, partial_token)[2])
+replaced = cmd.get_token(pos, partial_token)[2]
+
+if expand_home
+  replaced.sub!(/^ \~ (?= $ | \/) /x, ENV['HOME'])
+end
+
+puts unshescape(replaced)

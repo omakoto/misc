@@ -49,4 +49,4 @@ args += " " if space
 cmd = cmd.set_token(pos, args, false)
 
 puts "READLINE_LINE=#{shescape cmd.command_line}"
-puts "READLINE_POS=#{cmd.position}"
+puts "READLINE_POINT=#{cmd.position}"

@@ -1,0 +1,14 @@
+#!/bin/bash
+
+token="$1"
+
+# Shows process names, package names and filenames (and etc) that starts with the token.
+
+{
+  adb shell "
+      ps -A -w -o NAME             | grep '^[a-zA-Z0-9]' ;
+      cmd package list packages    | sed -e 's/^package://' ;
+      ls -p -d '$token'*
+      "
+
+} | perl -ne "m!^\Q${token}\E !ox and print"
