@@ -16,3 +16,7 @@ puts "Token(full): #{cmd.get_token(pos, false)}"
 puts "Escaped"
 puts "Token      : #{unshescape(cmd.get_token(pos)[2])}"
 puts "Token(full): #{unshescape(cmd.get_token(pos, false)[2])}"
+
+puts "readline-current-token: #{ %x(readline-current-token -f) }"
+
+# system "readline-replace", "XXX"

@@ -20,17 +20,16 @@ module GetoptInner
     else
       puts
       puts "  #{command}: #{usage}"
+      puts
+      puts("  Usage: #{command} [options]" + if take_files then
+          " FILES..." else "" end)
     end
-    puts
-    puts("  Usage: #{command} [options]" + if take_files then
-        " FILES..." else "" end)
     puts
     help_spec.each {|flags, type, desc|
       puts "  " + flags.join(" ") + type
       puts "\t" + desc
     }
   end
-
 end # module
 
 def getopt(*in_spec, take_files: false, usage: nil, usage_proc: nil, exit_func: nil)

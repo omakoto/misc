@@ -6,6 +6,8 @@ class InvalidCommandLineError < StandardError
 end
 
 #-----------------------------------------------------------
+# Shell-escape a single token.
+#-----------------------------------------------------------
 def shescape(arg)
   if arg =~ /[^a-zA-Z0-9\-\.\_\/\:\+\@]/
       return "'" + arg.gsub(/'/, "'\\\\''") + "'"
@@ -14,6 +16,9 @@ def shescape(arg)
   end
 end
 
+#-----------------------------------------------------------
+# Shell-unescape a single token.
+#-----------------------------------------------------------
 def unshescape(arg)
   if arg !~ /[\'\"\\]/
     return arg
@@ -67,8 +72,14 @@ end
 #-----------------------------------------------------------
 class CommandLine
   def initialize(command_line, pos = -1)
+    # Full command line as a single string.
     @command_line = command_line
+
+    # Cursor position, which will be moved by set_token().
     @position = if pos >= 0 then pos else command_line.length end
+
+    # Tokens, including whitespaces, as original strings.
+    # (non-unescaped)
     @tokens = nil # [] of [STRING (token or spaces)]
     tokenize
   end

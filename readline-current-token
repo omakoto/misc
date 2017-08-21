@@ -1,0 +1,20 @@
+#!/usr/bin/env ruby2.3
+
+require_relative "./getopt"
+require_relative "./shellhelper"
+
+partial_token = true
+
+getopt(
+  ["f|full-token", lambda { partial_token = false },
+      "Get full token instead of partial token."],
+  usage: "Print out the current readline token."
+  );
+
+
+command = ENV['READLINE_LINE']
+pos = ENV['READLINE_POINT'].to_i
+
+cmd = CommandLine.new(command, pos)
+
+puts unshescape(cmd.get_token(pos, partial_token)[2])

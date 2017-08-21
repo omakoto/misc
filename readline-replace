@@ -1,0 +1,52 @@
+#!/usr/bin/env ruby2.3
+
+require_relative "./getopt"
+require_relative "./shellhelper"
+
+if ARGV.length == 0
+  exit 0
+end
+
+def usage_proc
+  print <<EOF
+
+  readline_replace:
+    Used with "bind -x" to help replace the currnt command
+    line token with arguments.
+
+  example:
+    function foo() {
+      eval "$(readline-replace $(fzf ...))"
+    }
+
+    bind -x '"\C-x": "foo -i"'
+EOF
+end
+
+space = false
+escape = false
+
+getopt(
+    ["s|space", lambda { space = true },
+        "Add extra space after replacement."],
+    ["e|escape", lambda { escape = true },
+        "Escape replacement."],
+    usage_proc: lambda {usage_proc}
+    );
+
+
+command = ENV['READLINE_LINE']
+pos = ENV['READLINE_POINT'].to_i
+
+cmd = CommandLine.new(command, pos)
+
+args = ARGV.map{|x|
+  if escape then shescape x else x end
+}.join " "
+
+args += " " if space
+
+cmd = cmd.set_token(pos, args, false)
+
+puts "READLINE_LINE=#{shescape cmd.command_line}"
+puts "READLINE_POS=#{cmd.position}"
