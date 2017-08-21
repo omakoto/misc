@@ -4,11 +4,18 @@ token="$1"
 
 # Shows process names, package names and filenames (and etc) that starts with the token.
 
+echo "Token='$token'" 1>/tmp/abc
+
 {
   adb shell "
-      ps -A -w -o NAME             | grep '^[a-zA-Z0-9]' ;
+      ps -A -w -o NAME             | sed -ne '1d; /^[a-zA-Z0-9]/p' ;
       cmd package list packages    | sed -e 's/^package://' ;
-      ls -p -d '$token'*
+      ls -pd1 '${token:-/}'*
       "
-
-} | perl -ne "m!^\Q${token}\E !ox and print"
+} | {
+  if [[ -z "$token" ]] ; then
+    cat
+  else
+    perl -ne "m!^\Q${token}\E!o and print"
+  fi
+}

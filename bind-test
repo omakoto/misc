@@ -6,6 +6,7 @@ command = ENV['READLINE_LINE']
 pos = ENV['READLINE_POINT'].to_i
 
 puts '--------'
+
 puts "READLINE_LINE : #{command}"
 puts "READLINE_POINT: #{pos} / #{command.length}"
 
@@ -17,5 +18,7 @@ puts "Escaped token      : #{unshescape(cmd.get_token(pos)[2])}"
 puts "Escaped token(full): #{unshescape(cmd.get_token(pos, false)[2])}"
 
 puts "readline-current-token: #{ %x(readline-current-token -f) }"
+
+puts '--------'
 
 # system "readline-replace", "XXX"

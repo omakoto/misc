@@ -93,10 +93,14 @@ class CommandLine
       len = t.length
       if position <= (start + len)
         # found
-        if get_partial
-          return [start, position, t[0, position - start]]
+        if t =~ /^\s/
+          return [position, position, ""]
         else
-          return [start, start + len, t]
+          if get_partial
+            return [start, position, t[0, position - start]]
+          else
+            return [start, start + len, t]
+          end
         end
       end
       start += len
