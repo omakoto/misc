@@ -1,0 +1,21 @@
+# WIP NOT COMPLETE YET
+
+# #!/bin/bash
+
+# set -e
+
+# . mutil.sh
+
+# adb=0
+
+# eval "$(getopt.pl -Nx '
+# a|adb adb=1 # Complete with android device files.
+# ' "$@")"
+
+# token="$(readline-current-token -f)"
+
+# echo "$token" 1>&2
+
+# completed=$(fzf-to-args)
+
+

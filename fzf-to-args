@@ -1,0 +1,5 @@
+#!/bin/bash
+
+set -e
+
+fzf "$@" | shescapes | perl -pe 'print " " if $. > 1; chomp'
