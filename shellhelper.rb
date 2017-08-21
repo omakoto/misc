@@ -19,8 +19,8 @@ end
 #-----------------------------------------------------------
 # Shell-unescape a single token.
 #-----------------------------------------------------------
-def unshescape(arg)
-  if arg !~ /[\'\"\\]/
+def unshescape(arg, expand_home: true)
+  if arg !~ / [ \' \" \\ ] /x
     return arg
   end
 
