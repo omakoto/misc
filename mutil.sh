@@ -466,7 +466,7 @@ adb() {
   ~/cbin/adb "$@"
 }
 
-function rb {
+function rust_backtrace {
   RUST_BACKTRACE=1 "$@"
 }
 
