@@ -104,10 +104,13 @@ addpath() {
 
 prependpath() {
   local d
-  for d in "$@" ; do
-    if [[ -d "$d" ]] && ! haspath "$d" ; then
-      export PATH="$d:$PATH"
-    fi
+  local idx
+  for (( idx = $# ; idx >= 1 ; idx-- )) ; do
+      d="${!idx}"
+      echo "$d" > /dev/tty
+      if [[ -d "$d" ]] && ! haspath "$d" ; then
+        export PATH="$d:$PATH"
+      fi
   done
 }
 
