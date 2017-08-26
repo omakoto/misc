@@ -33,9 +33,9 @@ if ! is-interactive ; then
   no_zenlog=1
 fi
 
-if (( $# == 0 )) ; then
-  noargs=1
-fi
+# if (( $# == 0 )) ; then
+#   noargs=1
+# fi
 
 eval "$(getopt.pl -u usage '
   w|wait           bg=0            # Wait until the editor returns.
@@ -46,6 +46,7 @@ eval "$(getopt.pl -u usage '
   c|copy           copy=1          # Open copy instead.
   N|newdoc         newdoc=1        # Open new timestamped doc.
   z|no-zenlog      no_zenlog=1     # Don'\''t use zenlog logfile to catch stdin input.
+  pipe|stdin       pipe=1          # Read from stdin.
 ' "$@")"
 
 args=( "$@" )
@@ -58,7 +59,7 @@ if (( $newdoc )) ; then
   files+=($doc_dir "$doc")
 fi
 
-if (( $noargs )) ; then
+if (( ${#args} == 0 )) ; then
   if [[ -t 0 ]] ; then
     files+=("~/work.txt")
   else

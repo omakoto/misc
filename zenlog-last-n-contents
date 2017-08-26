@@ -13,7 +13,7 @@ open=0
 single=0
 reverse=cat
 no_command=0
-viewer="1 -e"
+viewer="1 -e -z"
 
 eval "$(getopt.pl -Nd 'Cat last N command output' "
 n: num_commands=%     # Specify number of commands.
