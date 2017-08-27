@@ -59,7 +59,7 @@ if (( $newdoc )) ; then
   files+=($doc_dir "$doc")
 fi
 
-if (( ${#args} == 0 )) ; then
+if (( ${#args} == 0 && ${#files} == 0 )) ; then
   if [[ -t 0 ]] ; then
     files+=("~/work.txt")
   else
