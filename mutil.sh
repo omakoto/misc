@@ -428,16 +428,16 @@ find-root-dir() {
   return 1
 }
 
-function fzf() {
-  local rc
-  # hmm.. ugly.
-  if command fzf "$@"; then
-    rc=0
-  else
-    rc=$?
-  fi
-  return $?
-}
+# function fzf() {
+#   local rc
+#   # hmm.. ugly.
+#   if command fzf "$@"; then
+#     rc=0
+#   else
+#     rc=$?
+#   fi
+#   return $?
+# }
 
 function generate-core() {
   # to generate core
