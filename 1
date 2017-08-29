@@ -28,6 +28,7 @@ copy=0
 no_zenlog=0
 newdoc=0
 noargs=0
+mkpath=0
 
 if ! is-interactive ; then
   no_zenlog=1
@@ -47,6 +48,7 @@ eval "$(getopt.pl -u usage '
   N|newdoc         newdoc=1        # Open new timestamped doc.
   z|no-zenlog      no_zenlog=1     # Don'\''t use zenlog logfile to catch stdin input.
   pipe|stdin       pipe=1          # Read from stdin.
+  makepath       mkpath=1        # Make the directory.
 ' "$@")"
 
 args=( "$@" )
@@ -193,5 +195,13 @@ run() {
 
 fixcon
 if (( ${#files[@]} > 0 )) ; then
+  if (( $mkpath )) ; then
+    for n in "${files[@]}"; do
+      dir="$(dirname "$n")"
+      if [[ ! -d "$dir" ]] ; then
+        ee mkdir -p "$dir"
+      fi
+    done
+  fi
   run ee $command $opts "${files[@]}" #| zenlog write-to-outer
 fi

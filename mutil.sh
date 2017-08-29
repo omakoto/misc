@@ -293,7 +293,7 @@ wb() {
     if adb logcat -b main -d -s 'Zygote:E' | grep -q 'Exit zygote' ; then
       echo ""
       notify -f "!!! Detected reboot loop !!!"
-      logcat -d | grep -A 10 -P '(FATAL EXCEPTION IN SYSTEM PROCESS)'
+      logcat -d | android-grep-restart
       return 1
     fi
     sleep 0.5
