@@ -18,11 +18,14 @@ completed=$(
       bash-fzf-complete-current-token-android-helper "${token}"
 
       # Android modules
-      android-module-list -q "${token}"
+      android-module-list -q
 
       # Local files
       command ls -p -d "${token}"* 2>/dev/null
-    } 2>/dev/null |
+
+      # Filenames in recent logs
+      zenlog-recent-files -d
+    } 2>/dev/null | prefix "${token}" |
     fzf-to-args -m --preview='preview-file {}'
     )
 

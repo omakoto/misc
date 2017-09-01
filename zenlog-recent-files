@@ -7,14 +7,22 @@ zenlog_fail_if_not_in_zenlog || exit 1
 
 num=10
 TEXT_ONLY=0
+dump_only=0
 
 eval "$(getopt.pl -d 'Show filename-like strings from recent zenlog logs.' '
 n:  num=%        # Use recent NUM log files. (N <= 10).
 t   TEXT_ONLY=1  # Show text files only.
+d   dump_only=1  # Print filenames only.
 ' "$@")"
 
 export TEXT_ONLY
 
 # Use zenlog-contents instead of cat to exclude prompts
-zenlog-last-n-contents -R -n $num  | $0.pl | global-unique | \
-    fzf-to-args +s -m --ansi '--preview=preview-file {}'
+zenlog-last-n-contents -R -n $num  | $0.pl | \
+  {
+    if (( $dump_only )) ; then
+      cat
+    else
+      fzf-to-args +s -m --ansi '--preview=preview-file {}'
+    fi
+  }

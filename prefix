@@ -1,0 +1,8 @@
+#!/usr/bin/perl -w
+
+$prefix = shift;
+die "Usage: $0 PREFIX" unless defined $prefix;
+
+while (<>) {
+    print if /^\Q$prefix\E/oi;
+}
