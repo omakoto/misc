@@ -14,11 +14,14 @@ token="$(readline-current-token -f)"
 
 completed=$(
     {
-      if (( $adb )) ; then
-        bash-fzf-complete-current-token-android-helper "${token}"
-      else
-        command ls -p -d "${token}"* 2>/dev/null
-      fi
+      # Android device files
+      bash-fzf-complete-current-token-android-helper "${token}"
+
+      # Android modules
+      android-module-list -q "${token}"
+
+      # Local files
+      command ls -p -d "${token}"* 2>/dev/null
     } 2>/dev/null |
     fzf-to-args -m --preview='preview-file {}'
     )
