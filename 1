@@ -58,7 +58,7 @@ if (( $newdoc )) ; then
   doc_dir=~/cbin/docs
   doc=$(datedir $doc_dir)/doc-$(date8).txt
   echo "$doc"
-  files+=($doc_dir "$doc")
+  files+=(~/cbin/cbin.sublime-project "$doc")
 fi
 
 if (( ${#args} == 0 && ${#files} == 0 )) ; then
