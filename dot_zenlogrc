@@ -6,7 +6,7 @@ elif [[ -d ~/zenlog ]] ; then
   export ZENLOG_DIR=~/zenlog
 fi
 
-if [[ -x ~/cbin/bin-linux64/bash ]] ; then
+if [[ -x ~/cbin/bin-linux64/lbash ]] ; then
   SHELL=~/cbin/bin-linux64/lbash
 fi
 
