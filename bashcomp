@@ -45,10 +45,12 @@ _{{.Command}}_complete() {
   esac
   if [ "x$cand" = "x" ] ; then
     if (( {{.AllowFiles}} )) ; then
+      # This command takes filenames.
       COMPREPLY=(
           $(compgen -f -- ${cur})
           )
     else
+      # This command doesn't take filenames.
       COMPREPLY=(
           $(compgen -W "$flags" -- ${cur})
           )
