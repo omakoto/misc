@@ -107,7 +107,7 @@ for n in "${args[@]}" ; do
         f=$temp/${n##*/}-$$-list.txt
         ee -2 dpkg -c "$n" > "$f"
         ;;
-      *.gif|*.png|*.webp|*.jpeg|*.jpg|*.mp4)
+      *.gif|*.png|*.webp|*.jpeg|*.jpg|*.mp4|*.pdf)
         chrome "$n"
         continue
         ;;

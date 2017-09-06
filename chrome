@@ -32,10 +32,17 @@ if [[ -z "$url" ]] && ! [[ -t 0 ]] ; then
   cat > "$url"
 fi
 
-if [[ -f "$url" ]] && ! isbin "$url" && has-ansi "$url" ; then
-  url2=$( tempfile )
-  a2h -s 8pt < "$url" > "$url2"
-  url="$url2"
+if [[ -f "$url" ]]; then
+  case "$url" in
+  *.gif|*.png|*.webp|*.jpeg|*.jpg|*.mp4|*.pdf) ;;
+  *)
+    if ! isbin "$url" && has-ansi "$url" ; then
+      url2=$( tempfile )
+      a2h -s 8pt < "$url" > "$url2"
+      url="$url2"
+    fi
+    ;;
+  esac
 fi
 
 # build the parameters.
