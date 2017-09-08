@@ -537,7 +537,7 @@ function install-bashcomp() {
       . <("$c" --bash-completion)
     else
       local fc="$f.bashcomp"
-      if [[ ! -f "$fc" || "$fc" -ot "$f" ]] ; then
+      if [[ ! -s "$fc" || "$fc" -ot "$f" ]] ; then
         "$f" --bash-completion > "$fc"
       fi
       . "$fc"
