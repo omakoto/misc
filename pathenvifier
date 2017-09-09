@@ -26,7 +26,7 @@ if ($process_clipboard) {
 my @envs = ();
 
 for my $k (keys %ENV) {
-  next if $k =~ /^(PWD|OLDPWD)$/x;
+  next if $k =~ /^(PWD|OLDPWD|READLINE_LINE)$/x;
   my $v = $ENV{$k};
   if ($v =~ m!^/! and -d $v) {
     push @envs, [$k, $v, qr/^\Q$v/];
