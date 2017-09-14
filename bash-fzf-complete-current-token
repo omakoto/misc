@@ -26,7 +26,7 @@ completed=$(
       # Filenames in recent logs
       zenlog-recent-files -d
     } 2>/dev/null | prefix "${token}" |
-    fzf-to-args -m --preview='preview-file {}'
+    fzf-to-args -q "$token" -m --preview='preview-file {}'
     )
 
 if [[ -n "$completed" ]] ; then
