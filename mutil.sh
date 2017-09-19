@@ -559,6 +559,11 @@ function md() {
   fi
 
   mkdir -p "$dir" && cd "$dir"
+
+  echo "$dir"
+  if ! [[ -t 1 ]] ; then # If it was eaten, then print on stderr.
+    echo "$dir" 1>&2
+  fi
 }
 
 function wd() {
