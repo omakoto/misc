@@ -18,7 +18,10 @@ class TestUnshescape < Test::Unit::TestCase
     assert_equal("", unshescape(""))
     assert_equal("a", unshescape("a"))
     assert_equal("a b c", unshescape("a b c"))
-    assert_equal("a b '' xx\" '", unshescape("a\ b\ \"''\" 'xx\"' \\'"))
+    assert_equal("a ", unshescape(%q(\a\ )))
+    assert_equal(%q(a b  '' xx\" '), unshescape(%q(a\ b\  "''" 'xx\"' \')))
+
+    assert_equal(%q(a b b), unshescape(%q(a\ \b \b)))
   end
 end
 
@@ -43,8 +46,8 @@ class TestCommandLine < Test::Unit::TestCase
     assert_equal([4, 7, "def"], CommandLine.new("abc def").get_token(7, true))
     assert_equal([4, 7, "def"], CommandLine.new("abc def").get_token(7, false))
 
-    assert_equal([3, 4, " "], CommandLine.new("abc def").get_token(4, true))
-    assert_equal([3, 4, " "], CommandLine.new("abc def").get_token(4, false))
+    assert_equal([4, 4, ""], CommandLine.new("abc def").get_token(4, true))
+    assert_equal([4, 4, ""], CommandLine.new("abc def").get_token(4, false))
 
     assert_equal([7, 7, ""], CommandLine.new("abc def").get_token(8, true))
     assert_equal([7, 7, ""], CommandLine.new("abc def").get_token(8, false))

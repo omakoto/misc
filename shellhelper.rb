@@ -59,6 +59,7 @@ def unshescape(arg, expand_home: true)
       pos += 1
       if pos < arg.length
         ret += arg[pos]
+        pos += 1
       end
     else
       ret += ch
