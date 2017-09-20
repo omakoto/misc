@@ -103,9 +103,10 @@ $cc = nil; # CompletionContext
 def do_install(command, script_file)
   script = script_file.read
 
-  debug "Installing completion for '#{command}'"
+  func = "_#{command}_completion".gsub(/[^a-z0-9_]/i, "-")
 
-  func = "_#{command}_completion".gsub!(/[^a-z0-9_]/i, "-")
+  debug "Installing completion for '#{command}', function='#{func}'"
+
   debug_flag = debug ? "-d" : ""
   puts <<~EOF
       function #{func} {
@@ -147,7 +148,7 @@ end
 # Main
 #-----------------------------------------------------------
 
-def main()
+def script_main()
   OptionParser.new do |opts|
     opts.banner = "Usage: "
 
@@ -181,10 +182,10 @@ def candidate(arg)
   end
 end
 
-def build()
+def main()
   candidate "aaa"
   candidate "bbb"
   candidate "ccc ddd eee"
 end
 
-main()
+script_main()
