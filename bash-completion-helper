@@ -2,22 +2,32 @@
 
 require 'optparse'
 
+$self_path = File.expand_path(__FILE__)
 $debug = false
 
-def debug(*msg)
-  $stderr.puts msg if $debug
+def debug(*msg, &b)
+  if $debug
+    $stderr.puts msg
+    b.call if b
+    return 1
+  else
+    return 0
+  end
 end
 
-$self_path = File.expand_path(__FILE__)
-
-def do_install(command)
+def do_install(command, script)
   debug "Installing completion for '#{command}'"
 
   func = "_#{command}_completion".gsub!(/-/, "-")
+  debug_flag = debug ? "-d" : ""
   puts <<~EOF
       function #{func} {
-        ruby "#{$self_path}" -c "$COMP_CWORD" "${COMP_WORDS[@]}"
-        COMPREPLY=('NOT-IMPLEMENTED')
+        IFS='
+'
+        COMPREPLY=( $(ruby "#{$self_path}" #{debug_flag} -c "$COMP_CWORD" "${COMP_WORDS[@]}" <<'SCRIPT_END'
+#{script}
+SCRIPT_END
+) )
       }
       complete -F #{func} #{command}
       EOF
@@ -27,12 +37,14 @@ def do_completion()
   word_index = ARGV.shift.to_i
   words = ARGV
 
-  open "/tmp/bc.txt", "w" do |o|
-    o.puts <<~EOF
-        Index: #{word_index}
-        Words: #{words.join ","}
-        Current: #{words[word_index]}
-        EOF
+  debug do
+    open "/tmp/bc.txt", "w" do |o|
+      o.puts <<~EOF
+          Index: #{word_index}
+          Words: #{words.join ","}
+          Current: #{words[word_index]}
+          EOF
+    end
   end
 end
 
@@ -41,7 +53,8 @@ def main()
     opts.banner = "Usage: "
 
     opts.on("-iCOMMAND", "Install completion for COMMAND") do |command|
-      do_install command
+      script = $stdin.read
+      do_install command, script
       exit 0
     end
 
