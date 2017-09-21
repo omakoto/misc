@@ -8,6 +8,16 @@ require 'optparse'
 
 $debug = ENV['BASHCOMP_DEBUG'] == "1"
 
+def debug(*msg, &b)
+  if $debug
+    $stderr.puts msg
+    b.call if b
+    return 1
+  else
+    return 0
+  end
+end
+
 #-----------------------------------------------------------
 # Completion context
 #-----------------------------------------------------------
@@ -111,27 +121,13 @@ def unshescape(arg, expand_home: true)
 end
 
 module BashComp
-  public
-  def self.debug(*msg, &b)
-    if $debug
-      $stderr.puts msg
-      b.call if b
-      return 1
-    else
-      return 0
-    end
-  end
-
   private
+
   def self.die(*msg)
     abort "#{__FILE__}: " + msg.join("")
   end
 
-  #-----------------------------------------------------------
   # Install completion
-  #-----------------------------------------------------------
-
-  private
   def self.do_install(command, script, ignore_case)
     func = "_#{command}_completion".gsub(/[^a-z0-9_]/i, "-")
 
@@ -152,10 +148,7 @@ module BashComp
         EOF
   end
 
-  #-----------------------------------------------------------
   # Perform completion
-  #-----------------------------------------------------------
-  private
   def self.do_completion(ignore_case, &b)
     word_index = ARGV.shift.to_i
     words = ARGV.map { |w| unshescape w }
@@ -175,10 +168,7 @@ module BashComp
     b.call($cc)
   end
 
-  #-----------------------------------------------------------
   # Main
-  #-----------------------------------------------------------
-  private
   def self.real_main(&b)
     ignore_case = false
 
