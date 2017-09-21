@@ -4,33 +4,12 @@ exec ruby -x "$0" -i -d cargo # for bash
 require_relative "bashcomp"
 
 BashComp.define { |cc|
-
-  def is_non_empty_dir(f)
-    begin
-      return File.directory?(f) && !Dir.empty?(f)
-    rescue
-      # Just ignore any errors.
-      return false
-    end
-  end
-
-  def file_completion(prefix)
-
-    candidate "-h"
-    candidate "-V"
-    candidate "--help"
-    candidate "--version"
-
-    dir = prefix.sub(%r([^\/]*$), "") # Remove the last path section.
-
-    %x(command ls -dp1 #{shescape(dir)}* 2>/dev/null).split(/\n/).each { | f |
-      f.chomp!
-
-      # Do not add a space if it's a directory that's not empty.
-      add_space = !is_non_empty_dir(f)
-      candidate f, add_space
-    }
-  end
+  flags %w(-h --help -V --version --list -v --verbose -vv -q --quiet --frozen --locked)
+  candidate "--other-flag"
+  candidate { %w(aaa bbb) }
+  # candidate "-V"
+  # candidate "--help"
+  # candidate "--version"
 
   file_completion cc.current
 }

@@ -47,8 +47,7 @@ def has_prefix(a, b)
   end
 end
 
-# Push a candidate.
-def candidate(arg, add_space = true)
+def candidate_single(arg, add_space: true)
   if has_prefix arg, $cc.current then
     arg.chomp!
     c = shescape(arg)
@@ -56,6 +55,22 @@ def candidate(arg, add_space = true)
       c += " "
     end
     puts c
+  end
+end
+
+# Push candidates.
+def candidate(*args, add_space: true, &b)
+  args.each {|arg|
+    if arg.instance_of? String
+      candidate_single arg, add_space: add_space
+    elsif arg.respond_to? :each
+      arg.each {|x| candidate_single x}
+    elsif arg.respond_to? :call
+      candidate arg.call(), add_space: add_space
+    end
+  }
+  if b
+    candidate(b.call(), add_space: add_space)
   end
 end
 
@@ -118,6 +133,27 @@ def unshescape(arg, expand_home: true)
   end
 
   return ret
+end
+
+def is_non_empty_dir(f)
+  begin
+    return File.directory?(f) && !Dir.empty?(f)
+  rescue
+    # Just ignore any errors.
+    return false
+  end
+end
+
+def file_completion(prefix)
+  dir = prefix.sub(%r([^\/]*$), "") # Remove the last path section.
+
+  %x(command ls -dp1 '#{shescape(dir)}'* 2>/dev/null).split(/\n/).each { |f|
+    candidate(f, add_space: !is_non_empty_dir(f))
+  }
+end
+
+def flags(*args)
+  args.each {|a| candidate a}
 end
 
 module BashComp
@@ -195,6 +231,7 @@ module BashComp
   end
 
   # The entry point called by the outer script.
+  public
   def self.define(&b)
     b or die "define_completion() requires a block."
     real_main &b
