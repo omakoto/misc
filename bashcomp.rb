@@ -21,15 +21,25 @@ end
 #-----------------------------------------------------------
 # Completion context
 #-----------------------------------------------------------
+STATE_START = "start"
+
 class CompletionContext
     def initialize(words, index, ignore_case)
-        @words = words
-        @index = index
-        @current = words[index]
-        @ignore_case = ignore_case
+      @state = STATE_START
+      @words = words
+      @cur_index = index
+      @cur_word = words[index]
+      @ignore_case = ignore_case
+      @index = 0
     end
 
-    attr_reader *%i(words index current ignore_case)
+    attr_reader *%i(state cur_index cur_word ignore_case i)
+
+    def word(i)
+      i += @cur_index
+      return nil if i < 0 || i >= @words.length
+      return word[i]
+    end
 end
 
 $cc = nil; # CompletionContext
@@ -72,6 +82,28 @@ def candidate(*args, add_space: true, &b)
   if b
     candidate(b.call(), add_space: add_space)
   end
+end
+
+alias flags candidate
+
+def file_completion(prefix)
+  dir = prefix.sub(%r([^\/]*$), "") # Remove the last path section.
+
+  %x(command ls -dp1 '#{shescape(dir)}'* 2>/dev/null).split(/\n/).each { |f|
+    candidate(f, add_space: !is_non_empty_dir(f))
+  }
+end
+
+def state(name, auto_transition: true, &b)
+end
+
+def option(name, next_candidate, optional: false)
+end
+
+def allow_files()
+end
+
+def to_state(state_name)
 end
 
 # Shell-escape a single token.
@@ -142,18 +174,6 @@ def is_non_empty_dir(f)
     # Just ignore any errors.
     return false
   end
-end
-
-def file_completion(prefix)
-  dir = prefix.sub(%r([^\/]*$), "") # Remove the last path section.
-
-  %x(command ls -dp1 '#{shescape(dir)}'* 2>/dev/null).split(/\n/).each { |f|
-    candidate(f, add_space: !is_non_empty_dir(f))
-  }
-end
-
-def flags(*args)
-  args.each {|a| candidate a}
 end
 
 module BashComp
