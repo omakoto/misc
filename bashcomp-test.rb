@@ -3,10 +3,31 @@ exec ruby -x "$0" -i -d cargo # for bash
 
 require_relative "bashcomp"
 
+def devices
+  return %w(bullhead angler marlin sailfish walleye taimen)
+end
+
+def flavors
+  return %w(userdebug eng)
+end
+
+def device_flavors
+  ret = []
+  devices.each {|d|
+    flavors.each {|f|
+      ret.push "#{d}-#{f}"
+    }
+  }
+  return ret
+end
+
+
 BashComp.define { |cc|
   flags %w(-h --help -V --version --list -v --verbose -vv -q --quiet --frozen --locked)
   candidate "--other-flag"
   candidate { %w(aaa bbb) }
+  # candidate devices
+  candidate device_flavors
   # candidate "-V"
   # candidate "--help"
   # candidate "--version"
