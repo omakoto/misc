@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'optparse'
+require 'stringio'
 
 #-----------------------------------------------------------
 # Global stuff.
@@ -137,6 +138,8 @@ def do_completion(script)
           Index: #{$cc.index}
           Words: #{$cc.words.map {|x| shescape x}.join ", "}
           Current: '#{shescape $cc.current}'
+          Script:
+          #{script}
           EOF
     end
   end
@@ -178,14 +181,9 @@ end
 
 def candidate(arg)
   if arg.start_with? $cc.current then
+    arg.chomp!
     puts shescape arg
   end
-end
-
-def main()
-  candidate "aaa"
-  candidate "bbb"
-  candidate "ccc ddd eee"
 end
 
 script_main()
