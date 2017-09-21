@@ -1,23 +1,32 @@
-# ruby script \
 . <(bashcomp.rb -d -i cargo <<'RUBY_END'
-#line 4
 
 # TODO How to define custom option?
 # TODO State management?
 
-
-
-def no_completion()
+def is_non_empty_dir(f)
+  begin
+    return File.directory?(f) && !Dir.empty?(f)
+  rescue
+    # Just ignore any errors.
+    return false
+  end
 end
 
 def file_completion(prefix)
 
-  candidate "aaa"
-  candidate "bbb"
-  candidate "ccc"
+  candidate "-h"
+  candidate "-V"
+  candidate "--help"
+  candidate "--version"
 
-  StringIO.new(%x(command ls -dp1 #{shescape(prefix)}* 2>/dev/null)).each_line { | line |
-    candidate line
+  dir = prefix.sub(%r([^\/]*$), "") # Remove the last path section.
+
+  StringIO.new(%x(command ls -dp1 #{shescape(dir)}* 2>/dev/null)).each_line { | f |
+    f.chomp!
+
+    # Do not add a space if it's a directory that's not empty.
+    add_space = !is_non_empty_dir(f)
+    candidate f, add_space
   }
 end
 
