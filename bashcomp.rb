@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'optparse'
+require 'pp'
 
 #-----------------------------------------------------------
 # Global stuff.
@@ -96,22 +97,36 @@ end
 #-----------------------------------------------------------
 # Completion context
 #-----------------------------------------------------------
-STATE_START = "start"
 
 class CompletionContext
   include Utilities
 
+  START = "start"
+  EMPTY = "end"
+
   def initialize(words, index, ignore_case)
-    @state = STATE_START
+    @state = START
     @words = words
     @cur_index = index
     @cur_word = @words[index]
     @cur_word = "" unless @cur_word;
     @ignore_case = ignore_case
     @index = 0
+
+    @states = {}
+
+    @prescan = true
+
+    # END state is an empty block.
+    add_state EMPTY do
+    end
   end
 
   attr_reader *%i(state cur_index cur_word ignore_case i)
+
+  def prescan?()
+    return @prescan
+  end
 
   def word(i)
     i += @cur_index
@@ -121,6 +136,10 @@ class CompletionContext
 
   def words()
     return @words
+  end
+
+  def add_state(name, &b)
+    @states[name] = b
   end
 
   # Same as a.start_with?(b), except it can do case-insensitive comparison.
@@ -133,7 +152,9 @@ class CompletionContext
   end
 
   def _candidate_single(arg, add_space: true)
+    return if prescan?
     return unless arg
+
     if has_prefix arg, cur_word then
       arg.chomp!
       c = shescape(arg)
@@ -162,7 +183,7 @@ class CompletionContext
 
   alias flags candidates
 
-  def file_completion()
+  def get_match_files()
     dir = cur_word.sub(%r([^\/]*$), "") # Remove the last path section.
 
     %x(command ls -dp1 '#{shescape(dir)}'* 2>/dev/null).split(/\n/).each { |f|
@@ -171,6 +192,11 @@ class CompletionContext
   end
 
   def state(name, auto_transition: true, &b)
+    if prescan?
+      add_state name, &b
+      self.instance_eval &b
+    else
+    end
   end
 
   def option(name, next_candidate, optional: false)
@@ -182,7 +208,13 @@ class CompletionContext
   def to_state(state_name)
   end
 
+  def run(&b)
+    # First, run the block in the pre-scan mode.
+    @prescan = true
+    self.instance_eval &b
 
+    debug { pp(self) }
+  end
 end
 
 #-----------------------------------------------------------
@@ -238,7 +270,7 @@ class BashComp
       end
     end
 
-    cc.instance_eval &b
+    cc.run &b
   end
 
   # Main

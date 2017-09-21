@@ -26,13 +26,13 @@ end
 # when finding the word in the right context.
 
 BashComp.define do
-  # Define it implicitly.
-  # "auto_transition: false" means "end" is just a state name, and
-  # won't automatically transition to this state when seeing the word
-  # "end".
-  state "end", auto_transition: false do
-    # No completion is available.
-  end
+  # # Define it implicitly.
+  # # "auto_transition: false" means "end" is just a state name, and
+  # # won't automatically transition to this state when seeing the word
+  # # "end".
+  # state "end", auto_transition: false do
+  #   # No completion is available.
+  # end
 
   # Root commands are implicitly applied to the "start" state.
 
@@ -62,7 +62,7 @@ BashComp.define do
   state "help" do
     # candidate %w(build check clean doc new init run test bench update search publish install)
 
-    to_sate "empty" if cc.word(-2) == "help"
+    to_sate EMPTY if word(-2) == "help"
 
     # TODO: Move to the "end" state.
   end
