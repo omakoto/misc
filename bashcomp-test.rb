@@ -1,4 +1,7 @@
-. <(bashcomp.rb -d -i cargo <<'RUBY_END'
+exec ruby -x "$0" -i -d cargo # for bash
+#!ruby
+
+require_relative "bashcomp"
 
 # TODO How to define custom option?
 # TODO State management?
@@ -30,7 +33,9 @@ def file_completion(prefix)
   }
 end
 
-file_completion $cc.current
+define_completion { |cc|
+  file_completion cc.current
+}
 
 # completion {
 #   # The initial
@@ -56,6 +61,3 @@ file_completion $cc.current
 #     files
 #   }
 # }
-
-RUBY_END
-)

@@ -7,7 +7,6 @@ require 'stringio'
 # Global stuff.
 #-----------------------------------------------------------
 
-$self_path = File.expand_path(__FILE__)
 $debug = ENV['BASHCOMP_DEBUG'] == "1"
 
 def debug(*msg, &b)
@@ -18,6 +17,10 @@ def debug(*msg, &b)
   else
     return 0
   end
+end
+
+def die(*msg)
+  abort "#{__FILE__}: " + msg.join("")
 end
 
 # Shell-escape a single token.
@@ -102,12 +105,12 @@ $cc = nil; # CompletionContext
 # Install completion
 #-----------------------------------------------------------
 
-def do_install(command, script_file, ignore_case)
-  script = script_file.read
-
+def do_install(command, script, ignore_case)
   func = "_#{command}_completion".gsub(/[^a-z0-9_]/i, "-")
 
   debug "Installing completion for '#{command}', function='#{func}'"
+
+  script_file = File.expand_path $0
 
   debug_flag = debug ? "-d" : ""
   ignore_case_flag = ignore_case ? "-i" : ""
@@ -115,11 +118,8 @@ def do_install(command, script_file, ignore_case)
   puts <<~EOF
       function #{func} {
         IFS='
-'
-        COMPREPLY=( $(ruby "#{$self_path}" #{debug_flag} #{ignore_case_flag} -c "$COMP_CWORD" "${COMP_WORDS[@]}" <<'SCRIPT_END'
-#{script}
-SCRIPT_END
-) )
+      '
+        COMPREPLY=( $(ruby -x "#{script_file}" #{debug_flag} #{ignore_case_flag} -c "$COMP_CWORD" "${COMP_WORDS[@]}") )
       }
       complete -o nospace -F #{func} #{command}
       EOF
@@ -129,7 +129,7 @@ end
 # Perform completion
 #-----------------------------------------------------------
 
-def do_completion(script, ignore_case)
+def do_completion(ignore_case, &b)
   word_index = ARGV.shift.to_i
   words = ARGV.map { |w| unshescape w }
   $cc = CompletionContext.new words, word_index, ignore_case
@@ -141,28 +141,26 @@ def do_completion(script, ignore_case)
           Index: #{$cc.index}
           Words: #{$cc.words.map {|x| shescape x}.join ", "}
           Current: '#{shescape $cc.current}'
-          Script:
-          #{script}
           EOF
     end
   end
 
-  eval script
+  b.call($cc)
 end
 
 #-----------------------------------------------------------
 # Main
 #-----------------------------------------------------------
 
-def script_main()
+def real_main(&b)
   ignore_case = false
-  OptionParser.new do |opts|
+
+  OptionParser.new { |opts|
     opts.banner = "Usage: [OPTIONS] command-name"
 
     opts.on("-c", "Perform completion (shouldn't be used directly)") do
-      script = $stdin.read
-      do_completion script, ignore_case
-      exit 0
+      do_completion ignore_case, &b
+      return
     end
 
     opts.on("-i", "Enable ignore-case completion") do
@@ -172,18 +170,18 @@ def script_main()
     opts.on("-d", "Enable debug mode") do
       $debug = true
     end
-  end.parse!
+  }.parse!
 
-  command_name = ARGV.shift or abort("#{$0}: Missing command name.")
+  command_name = ARGV.shift or die("Missing command name.")
 
-  do_install command_name, ARGF, ignore_case
-  exit 1
+  do_install command_name, $0, ignore_case
 end
 
 #-----------------------------------------------------------
 # Stuff used by scripts.
 #-----------------------------------------------------------
 
+# Same as a.start_with?(b), except it can do case-insensitive comparison.
 def has_prefix(a, b, ignore_case)
   if ignore_case
     return a.downcase.start_with? b.downcase
@@ -192,6 +190,7 @@ def has_prefix(a, b, ignore_case)
   end
 end
 
+# Push a candidate.
 def candidate(arg, add_space = true)
   if has_prefix arg, $cc.current, $cc.ignore_case then
     arg.chomp!
@@ -203,4 +202,8 @@ def candidate(arg, add_space = true)
   end
 end
 
-script_main()
+# The entry point called by the outer script.
+def define_completion(&b)
+  b or die "define_completion() requires a block."
+  real_main &b
+end
