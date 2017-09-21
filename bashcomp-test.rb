@@ -25,7 +25,7 @@ end
 # i.e. nested states should still be registered at the beginning but transition should only happen
 # when finding the word in the right context.
 
-BashComp.define do |cc|
+BashComp.define do
   # Define it implicitly.
   # "auto_transition: false" means "end" is just a state name, and
   # won't automatically transition to this state when seeing the word
@@ -38,8 +38,8 @@ BashComp.define do |cc|
 
   # "flags" is just an alias to "candidate".
   flags %w(-h --help -V --version --list -v --verbose -vv -q --quiet --frozen --locked)
-  candidate "--single-candidate"
-  candidate { %w(aaa bbb) }
+  candidates "--single-candidate"
+  candidates { %w(aaa bbb) }
   # candidate devices
 
   # option:

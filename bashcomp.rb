@@ -19,172 +19,189 @@ def debug(*msg, &b)
 end
 
 #-----------------------------------------------------------
+# Stuff used by scripts.
+#-----------------------------------------------------------
+module Utilities
+  # Shell-escape a single token.
+  def shescape(arg)
+    if arg =~ /[^a-zA-Z0-9\-\.\_\/\:\+\@]/
+        return "'" + arg.gsub(/'/, "'\\\\''") + "'"
+    else
+        return arg;
+    end
+  end
+
+  # Shell-unescape a single token.
+  def unshescape(arg, expand_home: true)
+    if arg !~ / [ \' \" \\ ] /x
+      return arg
+    end
+
+    ret = ""
+    pos = 0
+    while pos < arg.length
+      ch = arg[pos]
+
+      case ch
+      when "'"
+        pos += 1
+        while pos < arg.length
+          ch = arg[pos]
+          pos += 1
+          if ch == "'"
+            break
+          end
+          ret += ch
+        end
+      when '"'
+        pos += 1
+        while pos < arg.length
+          ch = arg[pos]
+          pos += 1
+          if ch == '"'
+            break
+          elsif ch == '\\'
+            if pos < arg.length
+             ret += arg[pos]
+            end
+            pos += 1
+          end
+          ret += ch
+        end
+      when '\\'
+        pos += 1
+        if pos < arg.length
+          ret += arg[pos]
+          pos += 1
+        end
+      else
+        ret += ch
+        pos += 1
+      end
+    end
+
+    return ret
+  end
+
+  def is_non_empty_dir(f)
+    begin
+      return File.directory?(f) && !Dir.empty?(f)
+    rescue
+      # Just ignore any errors.
+      return false
+    end
+  end
+end
+
+#-----------------------------------------------------------
 # Completion context
 #-----------------------------------------------------------
 STATE_START = "start"
 
 class CompletionContext
-    def initialize(words, index, ignore_case)
-      @state = STATE_START
-      @words = words
-      @cur_index = index
-      @cur_word = words[index]
-      @ignore_case = ignore_case
-      @index = 0
-    end
+  include Utilities
 
-    attr_reader *%i(state cur_index cur_word ignore_case i)
-
-    def word(i)
-      i += @cur_index
-      return nil if i < 0 || i >= @words.length
-      return word[i]
-    end
-end
-
-$cc = nil; # CompletionContext
-
-#-----------------------------------------------------------
-# Stuff used by scripts.
-#-----------------------------------------------------------
-
-# Same as a.start_with?(b), except it can do case-insensitive comparison.
-def has_prefix(a, b)
-  if $cc.ignore_case
-    return a.downcase.start_with? b.downcase
-  else
-    return a.start_with? b
-  end
-end
-
-def candidate_single(arg, add_space: true)
-  if has_prefix arg, $cc.current then
-    arg.chomp!
-    c = shescape(arg)
-    if add_space
-      c += " "
-    end
-    puts c
-  end
-end
-
-# Push candidates.
-def candidate(*args, add_space: true, &b)
-  args.each {|arg|
-    if arg.instance_of? String
-      candidate_single arg, add_space: add_space
-    elsif arg.respond_to? :each
-      arg.each {|x| candidate_single x}
-    elsif arg.respond_to? :call
-      candidate arg.call(), add_space: add_space
-    end
-  }
-  if b
-    candidate(b.call(), add_space: add_space)
-  end
-end
-
-alias flags candidate
-
-def file_completion(prefix)
-  dir = prefix.sub(%r([^\/]*$), "") # Remove the last path section.
-
-  %x(command ls -dp1 '#{shescape(dir)}'* 2>/dev/null).split(/\n/).each { |f|
-    candidate(f, add_space: !is_non_empty_dir(f))
-  }
-end
-
-def state(name, auto_transition: true, &b)
-end
-
-def option(name, next_candidate, optional: false)
-end
-
-def allow_files()
-end
-
-def to_state(state_name)
-end
-
-# Shell-escape a single token.
-def shescape(arg)
-  if arg =~ /[^a-zA-Z0-9\-\.\_\/\:\+\@]/
-      return "'" + arg.gsub(/'/, "'\\\\''") + "'"
-  else
-      return arg;
-  end
-end
-
-# Shell-unescape a single token.
-def unshescape(arg, expand_home: true)
-  if arg !~ / [ \' \" \\ ] /x
-    return arg
+  def initialize(words, index, ignore_case)
+    @state = STATE_START
+    @words = words
+    @cur_index = index
+    @cur_word = @words[index]
+    @cur_word = "" unless @cur_word;
+    @ignore_case = ignore_case
+    @index = 0
   end
 
-  ret = ""
-  pos = 0
-  while pos < arg.length
-    ch = arg[pos]
+  attr_reader *%i(state cur_index cur_word ignore_case i)
 
-    case ch
-    when "'"
-      pos += 1
-      while pos < arg.length
-        ch = arg[pos]
-        pos += 1
-        if ch == "'"
-          break
-        end
-        ret += ch
-      end
-    when '"'
-      pos += 1
-      while pos < arg.length
-        ch = arg[pos]
-        pos += 1
-        if ch == '"'
-          break
-        elsif ch == '\\'
-          if pos < arg.length
-           ret += arg[pos]
-          end
-          pos += 1
-        end
-        ret += ch
-      end
-    when '\\'
-      pos += 1
-      if pos < arg.length
-        ret += arg[pos]
-        pos += 1
-      end
+  def word(i)
+    i += @cur_index
+    return nil if i < 0 || i >= @words.length
+    return @words[i]
+  end
+
+  def words()
+    return @words
+  end
+
+  # Same as a.start_with?(b), except it can do case-insensitive comparison.
+  def has_prefix(a, b)
+    if ignore_case
+      return a.downcase.start_with? b.downcase
     else
-      ret += ch
-      pos += 1
+      return a.start_with? b
     end
   end
 
-  return ret
-end
-
-def is_non_empty_dir(f)
-  begin
-    return File.directory?(f) && !Dir.empty?(f)
-  rescue
-    # Just ignore any errors.
-    return false
+  def _candidate_single(arg, add_space: true)
+    return unless arg
+    if has_prefix arg, cur_word then
+      arg.chomp!
+      c = shescape(arg)
+      if add_space
+        c += " "
+      end
+      puts c
+    end
   end
+
+  # Push candidates.
+  def candidates(*args, add_space: true, &b)
+    args.each {|arg|
+      if arg.instance_of? String
+        _candidate_single arg, add_space: add_space
+      elsif arg.respond_to? :each
+        arg.each {|x| candidates x, add_space: add_space}
+      elsif arg.respond_to? :call
+        candidates arg.call(), add_space: add_space
+      end
+    }
+    if b
+      candidates(b.call(), add_space: add_space)
+    end
+  end
+
+  alias flags candidates
+
+  def file_completion()
+    dir = cur_word.sub(%r([^\/]*$), "") # Remove the last path section.
+
+    %x(command ls -dp1 '#{shescape(dir)}'* 2>/dev/null).split(/\n/).each { |f|
+      candidates(f, add_space: !is_non_empty_dir(f))
+    }
+  end
+
+  def state(name, auto_transition: true, &b)
+  end
+
+  def option(name, next_candidate, optional: false)
+  end
+
+  def allow_files()
+  end
+
+  def to_state(state_name)
+  end
+
+
 end
 
-module BashComp
+#-----------------------------------------------------------
+# Core class
+#-----------------------------------------------------------
+class BashComp
+  include Utilities
+
   private
 
-  def self.die(*msg)
+  def __initialize__
+  end
+
+  def die(*msg)
     abort "#{__FILE__}: " + msg.join("")
   end
 
   # Install completion
-  def self.do_install(command, script, ignore_case)
+  def do_install(command, script, ignore_case)
     func = "_#{command}_completion".gsub(/[^a-z0-9_]/i, "-")
 
     debug "Installing completion for '#{command}', function='#{func}'"
@@ -205,27 +222,28 @@ module BashComp
   end
 
   # Perform completion
-  def self.do_completion(ignore_case, &b)
+  def do_completion(ignore_case, &b)
     word_index = ARGV.shift.to_i
     words = ARGV.map { |w| unshescape w }
-    $cc = CompletionContext.new words, word_index, ignore_case
+    cc = CompletionContext.new words, word_index, ignore_case
 
     debug do
       open "/tmp/bashcomp-debug.txt", "w" do |o|
         o.puts <<~EOF
             OrigWords: #{ARGV.map {|x| shescape x}.join ", "}
-            Index: #{$cc.index}
-            Words: #{$cc.words.map {|x| shescape x}.join ", "}
-            Current: '#{shescape $cc.current}'
+            Words: #{cc.words.map {|x| shescape x}.join ", "}
+            Index: #{cc.cur_index}
+            Current: '#{shescape cc.cur_word}'
             EOF
       end
     end
 
-    b.call($cc)
+    cc.instance_eval &b
   end
 
   # Main
-  def self.real_main(&b)
+  public
+  def real_main(&b)
     ignore_case = false
 
     OptionParser.new { |opts|
@@ -254,6 +272,8 @@ module BashComp
   public
   def self.define(&b)
     b or die "define_completion() requires a block."
-    real_main &b
+
+    instance = BashComp.new()
+    instance.real_main &b
   end
 end
