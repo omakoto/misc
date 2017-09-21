@@ -3,37 +3,35 @@ exec ruby -x "$0" -i -d cargo # for bash
 
 require_relative "bashcomp"
 
-# TODO How to define custom option?
-# TODO State management?
+BashComp.define { |cc|
 
-def is_non_empty_dir(f)
-  begin
-    return File.directory?(f) && !Dir.empty?(f)
-  rescue
-    # Just ignore any errors.
-    return false
+  def is_non_empty_dir(f)
+    begin
+      return File.directory?(f) && !Dir.empty?(f)
+    rescue
+      # Just ignore any errors.
+      return false
+    end
   end
-end
 
-def file_completion(prefix)
+  def file_completion(prefix)
 
-  candidate "-h"
-  candidate "-V"
-  candidate "--help"
-  candidate "--version"
+    candidate "-h"
+    candidate "-V"
+    candidate "--help"
+    candidate "--version"
 
-  dir = prefix.sub(%r([^\/]*$), "") # Remove the last path section.
+    dir = prefix.sub(%r([^\/]*$), "") # Remove the last path section.
 
-  StringIO.new(%x(command ls -dp1 #{shescape(dir)}* 2>/dev/null)).each_line { | f |
-    f.chomp!
+    %x(command ls -dp1 #{shescape(dir)}* 2>/dev/null).split(/\n/).each { | f |
+      f.chomp!
 
-    # Do not add a space if it's a directory that's not empty.
-    add_space = !is_non_empty_dir(f)
-    candidate f, add_space
-  }
-end
+      # Do not add a space if it's a directory that's not empty.
+      add_space = !is_non_empty_dir(f)
+      candidate f, add_space
+    }
+  end
 
-define_completion { |cc|
   file_completion cc.current
 }
 
