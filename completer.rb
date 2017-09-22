@@ -11,9 +11,7 @@ $debug = ENV['BASHCOMP_DEBUG'] == "1"
 DEBUG_FILE = "/tmp/bashcomp-debug.txt"
 FileUtils.rm(DEBUG_FILE, force:true)
 
-#-----------------------------------------------------------
-# Stuff used by scripts.
-#-----------------------------------------------------------
+# Stuff used by the core as well as the engine.
 module Utilities
   # Shod debug output.
   def debug(*msg, &b)
@@ -92,67 +90,73 @@ module Utilities
 
     return ret
   end
-
-  def is_non_empty_dir(f)
-    begin
-      return File.directory?(f) && !Dir.empty?(f)
-    rescue
-      # Just ignore any errors.
-      return false
-    end
-  end
 end
-
-#-----------------------------------------------------------
-# Completion context
-#-----------------------------------------------------------
 
 START = "start"
 EMPTY = "end"
 
-class CompletionContext
+# This class is the DSL engine.
+class CompleterEngine
   include Utilities
 
   def initialize(words, index, ignore_case)
-    @state = START
+    # All words in the command line.
     @words = words
+    # Current word index at the cursor; 0-based.
     @cur_index = index
-    @ignore_case = ignore_case
-    @index = 0
 
+    # Whether do case-insensitive comparison or not;
+    # this comes from the -i option.
+    @ignore_case = ignore_case
+
+    # Current state.
+    @state = START
+
+    # All the defined states and their blocks.
     @states = {}
 
     # @pass
     # 0: Pre-scan; just collect all states.
     # 0 < @pass < cur_index: Scanning, don't generate candidates yet.
     # @pass == cur_index: Current word. Generate candidates.
-
     @pass = 0
 
+    # Current user-defined block to execute.
+    # Start with the block that's passed to Completer.define(),
+    # and changes when the current state changes.
     @current_block = nil;
 
+    # Candidate collected so far. All the candidates are written
+    # out at once at the end.
+    # Call clear_candidates() to clear it.
     @candidates = []
 
-    # END state is an empty block.
+    # EMPTY state is an empty block.
     add_state EMPTY do
     end
   end
 
-  attr_reader *%i(state cur_index ignore_case pass)
+  attr_reader *%i(state cur_index ignore_case pass words)
 
+  # Whether in the precan mode, i.e. pass == 0.
+  # During prescan, we execute all state blocks in order to collect
+  # all states.
   def prescan?()
     return @pass == 0
   end
 
+  # Whether we're at the current word, i.e. pass == cur_index.
   def current?()
     return @pass == @cur_index
   end
 
-  # Return the command name.
+  # Return the command name, such as "adb", "cargo" or "go".
   def command()
     return @words[0]
   end
 
+  # Return the word relative to current. word() returns the current
+  # word, and word(-1) returns the previous word.
   def word(i = 0)
     return nil if prescan?
     i += @pass
@@ -160,24 +164,19 @@ class CompletionContext
     return @words[i]
   end
 
-  def words()
-    return @words
-  end
-
-  def add_state(name, &b)
-    prescan? or die "add_state can be only called during prescan."
-    @states[name] = b
-  end
-
+  # Clear all the candidates that have been added so far.
   def clear_candidates()
     @candidates = []
   end
 
-  def move_to_next_word()
+  # Skip the rest of the code in the block and move to the
+  # next word.
+  def next_word()
     throw :BlockExecute
   end
 
-  # Same as a.start_with?(b), except it can do case-insensitive comparison.
+  # Same as a.start_with?(b), except it does case-insensitive
+  # comparison when needed.
   def has_prefix(a, b)
     if ignore_case
       return a.downcase.start_with? b.downcase
@@ -186,6 +185,7 @@ class CompletionContext
     end
   end
 
+  # Add a single candidate.
   def _candidate_single(arg, add_space: true)
     return unless current?
 
@@ -204,6 +204,7 @@ class CompletionContext
   end
 
   # Push candidates.
+  # "args" can be a string, an array of strings, or a proc.
   def candidates(*args, add_space: true, &b)
     return unless current?
 
@@ -221,57 +222,97 @@ class CompletionContext
     end
   end
 
+  # flags() is an alias to candidates().
   alias flags candidates
 
-  def get_match_files(prefix)
-    dir = prefix.sub(%r([^\/]*$), "") # Remove the last path section.
+  # Return true if a given path is a directory and not empty.
+  def is_non_empty_dir(f)
+    begin
+      return File.directory?(f) && !Dir.empty?(f)
+    rescue
+      # Just ignore any errors.
+      return false
+    end
+  end
 
-    %x(command ls -dp1 '#{shescape(dir)}'* 2>/dev/null).split(/\n/).each { |f|
+  # Add a new state.
+  def add_state(name, &b)
+    b or die "Must pass a block to add_state()."
+    return unless prescan?
+    @states[name] and die "State #{name} is already defined."
+
+    @states[name] = b
+  end
+
+  # Defines a new state, and also automatically move to the
+  # state when detecting a word in the command line that is
+  # the state name.
+  # Useful for handling subcommands, as well as "--".
+  def auto_state(state_name, &b)
+    if prescan?
+      add_state state_name, &b
+      self.instance_eval &b
+    elsif state_name == word
+      next_state state_name
+    end
+  end
+
+  # Define an option that takes an argument, which can be
+  # either optional or mandatory.
+  def option(flag, arg_candidates, arg_optional: false)
+    return unless current?
+
+    # If the previous word was the flag, then add the
+    # candidates for the argument.
+    if word(-1) == flag
+      if arg_optional
+        # If an argument is optional, then we just add
+        # the candidates for the argument, but we still
+        # collect all other possible candidates.
+        candidates arg_candidates
+      else
+        # If an argument is mandatory, we only add the
+        # candidates for the argument, so clear the collected
+        # candidates so far, and don't collect any other
+        # arguments (thus "next_word").
+        clear_candidates
+        candidates arg_candidates
+        next_word
+      end
+    end
+    candidates flag
+  end
+
+  # Accept files.
+  def take_files()
+    return unless current?
+
+    # Get the directory from the current word.
+    dir = word.sub(%r([^\/]*$), "")
+
+    %x(command ls -dp1 '#{shescape(dir)}'* 2>/dev/null)
+        .split(/\n/).each { |f|
       candidates(f, add_space: !is_non_empty_dir(f))
     }
   end
 
-  def state(state_name, auto_transition: true, &b)
-    if prescan?
-      add_state state_name, &b
-      self.instance_eval &b
-    elsif auto_transition and state_name == word
-      to_state state_name
-    end
-  end
-
-  def option(flag, next_candidates, optional: false)
-    return unless current?
-
-    if word(-1) == flag
-      clear_candidates unless optional
-      candidates next_candidates
-      move_to_next_word unless optional
-    end
-
-    candidates flag
-
-  end
-
-  def take_files()
-    return unless current?
-    get_match_files word
-  end
-
-  def to_state(state_name)
+  # Move to a state.
+  def next_state(state_name)
     if !prescan?
       b = @states[state_name]
       b or abort "state #{state_name} not found."
       @current_block = b
       debug "State -> #{state_name}"
-      move_to_next_word
+      next_word
     end
   end
 
+  # Entry point.
   def run(&b)
     @current_block = b
 
-    # First, run the block in the pre-scan mode.
+    # Start from pass-0 (prescan), look at each word at
+    # index 1, 2, ... until the current word.
     (0 .. @cur_index).each do |pass|
       @pass = pass
       debug "Pass -> #{@pass} \"#{word}\""
@@ -290,8 +331,10 @@ end
 #-----------------------------------------------------------
 # Core class
 #-----------------------------------------------------------
-class BashComp
+class Completer
   include Utilities
+
+  private
 
   def __initialize__
   end
@@ -321,7 +364,7 @@ class BashComp
   def do_completion(ignore_case, &b)
     word_index = ARGV.shift.to_i
     words = ARGV.map { |w| unshescape w }
-    cc = CompletionContext.new words, word_index, ignore_case
+    cc = CompleterEngine.new words, word_index, ignore_case
 
     debug <<~EOF
         OrigWords: #{ARGV.map {|x| shescape x}.join ", "}
@@ -334,6 +377,7 @@ class BashComp
   end
 
   # Main
+  public
   def real_main(&b)
     ignore_case = false
 
@@ -360,10 +404,10 @@ class BashComp
   end
 
   # The entry point called by the outer script.
+  public
   def self.define(&b)
-    b or die "define_completion() requires a block."
+    b or die "define() requires a block."
 
-    instance = BashComp.new()
-    instance.real_main &b
+    Completer.new.real_main &b
   end
 end
