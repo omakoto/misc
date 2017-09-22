@@ -51,12 +51,27 @@ $ echo ~\/
 other characters or "\/".
 
 
-echo ~ [TAB] -> Expand to all user directories. Don't have to support it.
+echo ~[TAB] -> Expand to all user directories. Don't have to support it.
 
-echo ~/ [TAB] -> Expand to home dir files.
+echo ~/[TAB] -> Expand to home dir files.
 
 ================================================================================
 
+Sample jobs output
+
+$ jobs # sample jobs output
+[1]   Running                 sleep 100000 &
+[2]-  Running                 sleep 100000 &
+[3]+  Running                 sleep 100000 &
+
+================================================================================
+$VARIABLE expansion
+
+ $ANDROID_[TAB] -> shows candidates
+
+ $HOME[TAB] -> $HOME [<-space inserted]
+
+ $HOME/[TAB] -> /home/omakoto/[CURSOR HERE] -- expands only if it's a directory
 
 =end
 
