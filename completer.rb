@@ -102,6 +102,10 @@ def unshescape(arg, expand_home: true)
   return ret
 end
 
+def expand_home(dir)
+  return dir.sub(/^~\//, "#{Dir.home}/")
+end
+
 # Same as c.start_with?(prefix), except it can do case-insensitive
 # comparison when needed.
 public
@@ -180,7 +184,7 @@ end
 # Read all lines from a file, if exists.
 def read_file_lines(file)
   begin
-    file.sub!(/^~\//, "#{Dir.home}/")
+    file = expand_home file
     return open(file, "r").read.split(/\n/);
   rescue
     # ignore errors
@@ -393,19 +397,40 @@ class CompleterEngine
   end
 
   # Accept files.
-  def matched_files()
+  def matched_files(wildcard: "*")
     return unless current?
 
     ret = []
 
+# TODO Wow, handling ~ is super tricky. Two issues.
+# - With the following code, dir for "~" will be empty.
+# - When adding ~/cbin as a candidate, it'll be escaped into '~/cbin'.
+#   We cannot escape ~, but if the following string has a special char,
+#   that needs to be escaped.
+
     # Get the directory from the word.
     dir = word.sub(%r([^\/]*$), "")
-    dir = "." if dir.length == 0
-    Pathname.new(dir).children.each do |f|
-      path = f.to_s
-      path += "/" if f.directory?
-      ret.push(cand(path, completed: !is_non_empty_dir(f)))
+    orig_dir = dir
+    debug "word=#{word}"
+    if dir != ""
+      dir = expand_home dir
+      return unless Dir.exists? dir
     end
+
+    # TODO Somehow base: doesn't work, so need to manually chdir.
+    od = Dir.pwd
+    Dir.chdir dir if dir != ""
+
+    debug "dir=#{dir}"
+
+    Dir.glob(wildcard).each do |f|
+      f = orig_dir + f
+      f += "/" if File.directory?(f)
+      debug f
+      ret.push(cand(f, completed: !is_non_empty_dir(f)))
+    end
+
+    Dir.chdir od
 
     return ret
   end
