@@ -16,12 +16,16 @@ FileUtils.rm($debug_file, force:true)
 =begin
 TODOs
 
+- Nested state should have a fully-qualified name too.
+
+- Propagate shell variables and jobs to completer somehow
+
+Feed "declare -p" to the command from the bash side.
+
 - Sort candidates?
 
 - match_files: "all_dirs". Even if a mask is set, still return all directories.
 - match_dirs: show directories only.
-
-- Propagate shell variables and jobs to completer somehow
 
 ================================================================================
 - Handling ~
@@ -253,10 +257,23 @@ def read_file_lines(file)
   end
 end
 
+# Class that eats information sent by bash via stdin.
+class BashContext
+  def self.SECTION_SEPARATOR()
+    return "\n-*-*-*-COMPLETER-*-*-*-\n"
+  end
+
+  def self.VARIABLE_MARKER()
+    return "VARIABLES:\n"
+  end
+
+end
+
 START = "start"
 
 # This class is the DSL engine.
 class CompleterEngine
+
   def initialize(orig_words, index, ignore_case)
     @orig_words = orig_words
 
@@ -326,6 +343,13 @@ class CompleterEngine
     return unless prescan?
 
     b.call()
+  end
+
+  # Move to the initial state.
+  def reset()
+    return if prescan?
+
+    next_state START
   end
 
   # Finish the completion. No further candidates will be provided
@@ -417,20 +441,36 @@ class CompleterEngine
     if prescan?
       add_state state_name, &b
       self.instance_eval &b
-    elsif state_name == word
-      next_state state_name
+    else
+      candidates state_name if current?
+      if state_name == word
+        next_state state_name
+      end
     end
   end
 
   # Move to a state.
-  def next_state(state_name)
-    if !prescan?
-      b = @states[state_name]
-      b or abort "state #{state_name} not found."
-      @current_block = b
-      debug "State -> #{state_name}"
-      next_word
+  # When on_word is provided, only move the state when detecting
+  # the word.
+  def next_state(state_name, on_word:nil)
+    return if prescan?
+
+    candidates on_word
+
+    if on_word and on_word != word
+      return
     end
+
+    b = @states[state_name]
+    b or abort "state #{state_name} not found."
+    @current_block = b
+    debug "State -> #{state_name}"
+    next_word
+  end
+
+  # Equivalent to next_state START
+  def reset_state(on_word:nil)
+    next_state START, on_word: on_word
   end
 
   # Define an option that takes an argument, which can be
@@ -464,6 +504,8 @@ class CompleterEngine
   def matched_files(wildcard = "*", all_dirs:true)
     return unless current?
 
+    debug "[matched_files] wildcard=#{wildcard} all_dirs=#{all_dirs}"
+
     # Remove the last path component.
     dir = word.sub(%r([^\/]*$), "")
 
@@ -488,6 +530,8 @@ class CompleterEngine
   # Entry point.
   def run(&b)
     @current_block = b
+
+    @states[START] = b
 
     # Start from pass-0 (prescan), look at each word at
     # index 1, 2, ... until the current word.
@@ -535,7 +579,12 @@ class Completer
         function #{func} {
           local IFS='
         '
-          COMPREPLY=( $(ruby -x "#{script_file}" #{debug_flag} #{ignore_case_flag} -c "$COMP_CWORD" "${COMP_WORDS[@]}") )
+          function __completer_env_passer {
+              echo -n "#{BashContext.SECTION_SEPARATOR}"
+              echo -n "#{BashContext.VARIABLE_MARKER}"
+              declare -p
+          }
+          COMPREPLY=( $(__completer_env_passer | ruby -x "#{script_file}" #{debug_flag} #{ignore_case_flag} -c "$COMP_CWORD" "${COMP_WORDS[@]}") )
         }
         EOF
 

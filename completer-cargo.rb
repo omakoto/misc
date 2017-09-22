@@ -36,6 +36,10 @@ ruby -x completer-cargo.rb -i -c 2 cargo -- "~/cbin" # -> expand to "../cbin/"
 
 ruby -x completer-cargo.rb -i -c 2 cargo -- "~/cbin/" # -> expand
 
+ruby -x completer-cargo.rb -i -c 3 cargo -- "$HOME/" --res
+
+ruby -x completer-cargo.rb -i -c 4 cargo -- "$HOME/" --reset
+
 =end
 
 require_relative "completer"
@@ -69,14 +73,16 @@ Completer.define do
 
   # "flags" is just an alias to "candidates".
   flags STANDARD_FLAGS
-  candidates "help"
-  candidates SUBCOMMANDS
+  # candidates "help"
+  # candidates SUBCOMMANDS
 
   # take_files
 
 # For testing -- cargo doesn't have it.
   # After "--", only files are allowed.
   auto_state "--" do
+    reset_state on_word: "--reset"
+
     candidates matched_files
   end
 
@@ -109,7 +115,8 @@ Completer.define do
   end
 
   auto_state "build" do
-    flags %w(-h --help --all --lib --bins --tests --benches --release --all-features --no-default-features -v --verbose -q --quiet --frozen --locked)
+    flags STANDARD_FLAGS
+    flags %w(--all --lib --bins --tests --benches --release --all-features --no-default-features)
 
     take_target
     take_colors
