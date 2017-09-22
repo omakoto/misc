@@ -21,6 +21,8 @@ TODOs
 - match_files: "all_dirs". Even if a mask is set, still return all directories.
 - match_dirs: show directories only.
 
+- Propagate shell variables and jobs to completer somehow
+
 ================================================================================
 - Handling ~
 
