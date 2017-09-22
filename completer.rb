@@ -2,22 +2,31 @@
 
 require 'optparse'
 require 'fileutils'
+require 'pathname'
 require 'pp'
 
 # Can also be enabled with -d.
-$debug = ENV['BASHCOMP_DEBUG'] == "1"
+$debug_file = ENV['COMPLETER_DEBUG']
+$debug = $debug_file ? true : false
 
 # Debug output goes to this file.
-DEBUG_FILE = "/tmp/bashcomp-debug.txt"
-FileUtils.rm(DEBUG_FILE, force:true)
+$debug_file ||= "/tmp/bashcomp-debug.txt"
+FileUtils.rm($debug_file, force:true)
 
 # Stuff used by the core as well as the engine.
 
 # Shod debug output.
+public
 def debug(*msg, &b)
   if $debug
-    open DEBUG_FILE, "a" do |o|
-      o.puts msg
+    # If stdout is TTY, assume the script is executed directly for
+    # testing, and write log to stderr.
+    if $stdout.tty?
+      $stderr.puts msg
+    else
+      open $debug_file, "a" do |o|
+        o.puts msg
+      end
     end
     b.call if b
     return 1
@@ -31,6 +40,7 @@ def die(*msg)
 end
 
 # Shell-escape a single token.
+public
 def shescape(arg)
   if arg =~ /[^a-zA-Z0-9\-\.\_\/\:\+\@]/
       return "'" + arg.gsub(/'/, "'\\\\''") + "'"
@@ -40,6 +50,7 @@ def shescape(arg)
 end
 
 # Shell-unescape a single token.
+public
 def unshescape(arg, expand_home: true)
   if arg !~ / [ \' \" \\ ] /x
     return arg
@@ -91,6 +102,71 @@ def unshescape(arg, expand_home: true)
   return ret
 end
 
+# Same as c.start_with?(prefix), except it can do case-insensitive
+# comparison when needed.
+public
+def has_prefix(c, prefix, ignore_case:)
+  if ignore_case
+    return c.downcase.start_with? prefix.downcase
+  else
+    return c.start_with? prefix
+  end
+end
+
+class Candidate
+  def initialize(value, completed: true, help: "")
+    value or die "Empty candidate detected."
+    @value = value.chomp
+    @completed = completed
+    @help = help
+  end
+
+  attr_reader *%i(value completed help)
+
+  # Return as a candidate string for bash.
+  # Note bash can't show a help string.
+  def to_bash_candidate()
+    ret = shescape(@value)
+    ret += " " if @completed
+    return ret
+  end
+
+  def start_with?(prefix, ignore_case:)
+    return Kernel.has_prefix(@value, prefix, ignore_case:ignore_case)
+  end
+
+  def as_candidate()
+    return self
+  end
+end
+
+# Grr, respond_to? doesn't support refinements...
+# module StringCandidate
+#   refine String do
+#     def as_candidate()
+#       return Candidate.new(self, completed:true, help:"")
+#     end
+#   end
+# end
+#
+# using StringCandidate
+
+def as_candidate(value)
+  if value.instance_of? Candidate
+    return value
+  elsif value.instance_of? String
+    return Candidate.new(value, completed:true, help:"")
+  else
+    return nil
+    # die "Can't treat '#{value.inspect} as a candidate."
+  end
+end
+
+
+# def c(value)
+#   return Candidate.new(value)
+# end
+
 # Return true if a given path is a directory and not empty.
 def is_non_empty_dir(f)
   begin
@@ -104,6 +180,7 @@ end
 # Read all lines from a file, if exists.
 def read_file_lines(file)
   begin
+    file.sub!(/^~\//, "#{Dir.home}/")
     return open(file, "r").read.split(/\n/);
   rescue
     # ignore errors
@@ -115,7 +192,6 @@ START = "start"
 
 # This class is the DSL engine.
 class CompleterEngine
-
   def initialize(words, index, ignore_case)
     # All words in the command line.
     @words = words
@@ -171,11 +247,25 @@ class CompleterEngine
     return @words[0]
   end
 
+  # Returns the current word in the command line.
+  def current_word()
+    return (@words[@cur_index] or "")
+  end
+
+  # Define a "begin" block, which will be executed only once
+  # during prescan.
+  def init(&b)
+    return unless prescan?
+
+    b.call()
+  end
+
+  # Finish the completion. No further candidates will be provided
+  # once it's called.
   def finish()
     return if prescan?
 
-    # No more code to run.
-    @current_block = lambda { }
+    throw :FinishCompletion
   end
 
   # Return the word relative to current. word() returns the current
@@ -195,54 +285,48 @@ class CompleterEngine
   # Skip the rest of the code in the block and move to the
   # next word.
   def next_word()
-    throw :BlockExecute
+    throw :NextWord
   end
 
-  # Same as a.start_with?(b), except it does case-insensitive
+  # Same as c.start_with?(prefix), except it does case-insensitive
   # comparison when needed.
-  def has_prefix(a, b)
-    if ignore_case
-      return a.downcase.start_with? b.downcase
-    else
-      return a.start_with? b
-    end
+  def start_with?(c, prefix)
+    Kernel.has_prefix(c, prefix, ignore_case: ignore_case)
   end
 
   # Add a single candidate.
-  def _candidate_single(arg, add_space: true)
+  def _candidate_single(arg)
     return unless current?
-
     return unless arg
+    die "#{arg.inspect} is not a Candidate" unless arg.instance_of? Candidate
+    return unless arg.value
+    return unless arg.start_with? current_word, ignore_case: ignore_case
 
-    if has_prefix arg, word then
-      arg.chomp!
-      # Note, because of the additional space, we shescape at this point,
-      # not when we print it.
-      c = shescape(arg)
-      if add_space
-        c += " "
-      end
-      @candidates.push c
-    end
+    @candidates.push(arg)
   end
 
   # Push candidates.
   # "args" can be a string, an array of strings, or a proc.
-  def candidates(*args, add_space: true, &b)
+  def candidates(*args, &b)
     return unless current?
 
     args.each {|arg|
-      if arg.instance_of? String
-        _candidate_single arg, add_space: add_space
+      c = as_candidate(arg)
+      if c
+        _candidate_single c
       elsif arg.respond_to? :each
-        arg.each {|x| candidates x, add_space: add_space}
+        arg.each {|x| candidates x}
       elsif arg.respond_to? :call
-        candidates arg.call(), add_space: add_space
+        candidates arg.call()
       end
     }
     if b
-      candidates(b.call(), add_space: add_space)
+      candidates(b.call())
     end
+  end
+
+  def cand(value, completed: true, help: "")
+    return Candidate.new(value, completed:completed, help:help);
   end
 
   # flags() is an alias of candidates().
@@ -308,19 +392,22 @@ class CompleterEngine
     candidates flag
   end
 
-# TODO If this returns an array, it'd be a lot cleaner.
-# But what to do with add_space:
   # Accept files.
-  def take_files()
+  def matched_files()
     return unless current?
+
+    ret = []
 
     # Get the directory from the word.
     dir = word.sub(%r([^\/]*$), "")
-
-    %x(command ls -dp1 '#{shescape(dir)}'* 2>/dev/null)
-        .split(/\n/).each do |f|
-      candidates(f, add_space: !is_non_empty_dir(f))
+    dir = "." if dir.length == 0
+    Pathname.new(dir).children.each do |f|
+      path = f.to_s
+      path += "/" if f.directory?
+      ret.push(cand(path, completed: !is_non_empty_dir(f)))
     end
+
+    return ret
   end
 
   # Entry point.
@@ -329,17 +416,19 @@ class CompleterEngine
 
     # Start from pass-0 (prescan), look at each word at
     # index 1, 2, ... until the current word.
-    (0 .. @cur_index).each do |pass|
-      @pass = pass
-      debug "Pass -> #{@pass} \"#{word}\""
-      catch :BlockExecute do
-        self.instance_eval &@current_block
+    catch :FinishCompletion do
+      (0 .. @cur_index).each do |pass|
+        @pass = pass
+        debug "Pass -> #{@pass} \"#{word}\""
+        catch :NextWord do
+          self.instance_eval &@current_block
+        end
       end
     end
 
     # Print the collected candidates.
-    @candidates.each do |v|
-      puts v
+    @candidates.each do |c|
+      puts c.to_bash_candidate
     end
   end
 end
@@ -369,7 +458,7 @@ class Completer
 
     puts <<~EOF
         function #{func} {
-          IFS='
+          local IFS='
         '
           COMPREPLY=( $(ruby -x "#{script_file}" #{debug_flag} #{ignore_case_flag} -c "$COMP_CWORD" "${COMP_WORDS[@]}") )
         }

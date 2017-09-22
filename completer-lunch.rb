@@ -7,7 +7,7 @@ require_relative "completer"
 
 def load_devices()
   devices = %w(generic full bullhead angler marlin sailfish walleye taimen)
-  devices.push(* read_file_lines("#{ENV['HOME']}/.android-devices"))
+  devices.push(* read_file_lines("~/.android-devices"))
   devices.uniq!
   return devices
 end

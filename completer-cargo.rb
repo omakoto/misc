@@ -7,25 +7,27 @@ SUBCOMMANDS = %w(build check clean doc new init run test bench update search pub
 
 STANDARD_FLAGS = %w(-h --help -V --version -v --verbose -vv -q --quiet --frozen --locked)
 
-TARGETS = read_file_lines("#{ENV['HOME']}/.cargo-targets").push(* %w(i686-unknown-linux-gnu))
+TARGETS = read_file_lines("~/.cargo-targets").push(* %w(i686-unknown-linux-gnu))
 
 Completer.define do
-  def take_colors()
-    option "--colors", %w(auto always never)
-  end
+  init do
+    def take_colors()
+      option "--colors", %w(auto always never)
+    end
 
-  def take_target()
-    option "--target", TARGETS
-  end
+    def take_target()
+      option "--target", TARGETS
+    end
 
-  def take_package()
-    # TODO Package name completion
-    option "-p", []
-    option "--package", []
-  end
+    def take_package()
+      # TODO Package name completion
+      option "-p", []
+      option "--package", []
+    end
 
-  def take_manifest_path()
-    option "--manifest_path", [] # TODO Filename completion
+    def take_manifest_path()
+      option "--manifest_path", [] # TODO Filename completion
+    end
   end
 
   # "flags" is just an alias to "candidates".
@@ -35,10 +37,10 @@ Completer.define do
 
   # take_files
 
-  # # After "--", only files are allowed.
-  # auto_state "--" do
-  #   take_files
-  # end
+  # After "--", only files are allowed.
+  auto_state "--" do
+    candidates matched_files
+  end
 
   auto_state "help" do
     finish if word(-2) == "help"
