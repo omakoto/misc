@@ -92,12 +92,44 @@ module Utilities
   end
 end
 
+module CompletionHelper
+  # Return true if a given path is a directory and not empty.
+  def is_non_empty_dir(f)
+    begin
+      return File.directory?(f) && !Dir.empty?(f)
+    rescue
+      # Just ignore any errors.
+      return false
+    end
+  end
+
+  # Generate file completion list for a word.
+  def file_list(word)
+
+    # Get the directory from the word.
+    dir = word.sub(%r([^\/]*$), "")
+
+    %x(command ls -dp1 '#{shescape(dir)}'* 2>/dev/null).split(/\n/)
+  end
+
+  # Read all lines from a file, if exists.
+  def read_file_lines(file)
+    begin
+      return open("#{ENV['HOME']}/.android-devices", "r").read.split(/\n/);
+    rescue
+      # ignore errors
+      return []
+    end
+  end
+end
+
+
 START = "start"
-EMPTY = "end"
 
 # This class is the DSL engine.
 class CompleterEngine
   include Utilities
+  include CompletionHelper
 
   def initialize(words, index, ignore_case)
     # All words in the command line.
@@ -130,13 +162,12 @@ class CompleterEngine
     # out at once at the end.
     # Call clear_candidates() to clear it.
     @candidates = []
-
-    # EMPTY state is an empty block.
-    add_state EMPTY do
-    end
   end
 
   attr_reader *%i(state cur_index ignore_case pass words)
+
+  # index is an alias of pass.
+  alias index pass
 
   # Whether in the precan mode, i.e. pass == 0.
   # During prescan, we execute all state blocks in order to collect
@@ -153,6 +184,13 @@ class CompleterEngine
   # Return the command name, such as "adb", "cargo" or "go".
   def command()
     return @words[0]
+  end
+
+  def finish()
+    return if prescan?
+
+    # No more code to run.
+    @current_block = lambda { }
   end
 
   # Return the word relative to current. word() returns the current
@@ -222,18 +260,8 @@ class CompleterEngine
     end
   end
 
-  # flags() is an alias to candidates().
+  # flags() is an alias of candidates().
   alias flags candidates
-
-  # Return true if a given path is a directory and not empty.
-  def is_non_empty_dir(f)
-    begin
-      return File.directory?(f) && !Dir.empty?(f)
-    rescue
-      # Just ignore any errors.
-      return false
-    end
-  end
 
   # Add a new state.
   def add_state(name, &b)
@@ -254,6 +282,17 @@ class CompleterEngine
       self.instance_eval &b
     elsif state_name == word
       next_state state_name
+    end
+  end
+
+  # Move to a state.
+  def next_state(state_name)
+    if !prescan?
+      b = @states[state_name]
+      b or abort "state #{state_name} not found."
+      @current_block = b
+      debug "State -> #{state_name}"
+      next_word
     end
   end
 
@@ -287,24 +326,7 @@ class CompleterEngine
   def take_files()
     return unless current?
 
-    # Get the directory from the current word.
-    dir = word.sub(%r([^\/]*$), "")
-
-    %x(command ls -dp1 '#{shescape(dir)}'* 2>/dev/null)
-        .split(/\n/).each { |f|
-      candidates(f, add_space: !is_non_empty_dir(f))
-    }
-  end
-
-  # Move to a state.
-  def next_state(state_name)
-    if !prescan?
-      b = @states[state_name]
-      b or abort "state #{state_name} not found."
-      @current_block = b
-      debug "State -> #{state_name}"
-      next_word
-    end
+    candidates(file_list(word), add_space: !is_non_empty_dir(f))
   end
 
   # Entry point.
@@ -340,8 +362,10 @@ class Completer
   end
 
   # Install completion
-  def do_install(command, script, ignore_case)
-    func = "_#{command}_completion".gsub(/[^a-z0-9_]/i, "-")
+  def do_install(commands, script, ignore_case)
+    commands or die "Missing commands."
+    command = commands[0]
+    func = "_#{command}_completion".gsub(/[^a-z0-9_]/i, "_")
 
     debug "Installing completion for '#{command}', function='#{func}'"
 
@@ -356,8 +380,11 @@ class Completer
         '
           COMPREPLY=( $(ruby -x "#{script_file}" #{debug_flag} #{ignore_case_flag} -c "$COMP_CWORD" "${COMP_WORDS[@]}") )
         }
-        complete -o nospace -F #{func} #{command}
         EOF
+
+    commands.each do |c|
+      puts "complete -o nospace -F #{func} #{c}"
+    end
   end
 
   # Perform completion
@@ -398,9 +425,9 @@ class Completer
       end
     }.parse!
 
-    command_name = ARGV.shift or die("Missing command name.")
+    ARGV or die("Missing command name(s).")
 
-    do_install command_name, $0, ignore_case
+    do_install ARGV, $0, ignore_case
   end
 
   # The entry point called by the outer script.
