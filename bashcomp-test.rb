@@ -43,12 +43,11 @@ BashComp.define do
   # #   optional:true means also all the other options are enabled.
   option "--flavor", flavors, optional:true
 
-  # Take files.
-  allow_files
+  take_files
 
   # After "--", only files are allowed.
   state "--" do
-    allow_files
+    take_files
   end
 
   state "help" do

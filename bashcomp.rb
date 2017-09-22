@@ -4,20 +4,18 @@ require 'optparse'
 require 'fileutils'
 require 'pp'
 
-#-----------------------------------------------------------
-# Global stuff.
-#-----------------------------------------------------------
-
+# Can also be enabled with -d.
 $debug = ENV['BASHCOMP_DEBUG'] == "1"
 
+# Debug output goes to this file.
 DEBUG_FILE = "/tmp/bashcomp-debug.txt"
-
 FileUtils.rm(DEBUG_FILE, force:true)
 
 #-----------------------------------------------------------
 # Stuff used by scripts.
 #-----------------------------------------------------------
 module Utilities
+  # Shod debug output.
   def debug(*msg, &b)
     if $debug
       open DEBUG_FILE, "a" do |o|
@@ -255,7 +253,7 @@ class CompletionContext
 
   end
 
-  def allow_files()
+  def take_files()
     return unless current?
     get_match_files word
   end
@@ -281,6 +279,8 @@ class CompletionContext
         self.instance_eval &@current_block
       end
     end
+
+    # Print the collected candidates.
     @candidates.each do |v|
       puts v
     end
@@ -292,8 +292,6 @@ end
 #-----------------------------------------------------------
 class BashComp
   include Utilities
-
-  private
 
   def __initialize__
   end
@@ -336,7 +334,6 @@ class BashComp
   end
 
   # Main
-  public
   def real_main(&b)
     ignore_case = false
 
@@ -363,7 +360,6 @@ class BashComp
   end
 
   # The entry point called by the outer script.
-  public
   def self.define(&b)
     b or die "define_completion() requires a block."
 
