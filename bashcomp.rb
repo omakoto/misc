@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'optparse'
+require 'fileutils'
 require 'pp'
 
 #-----------------------------------------------------------
@@ -9,20 +10,30 @@ require 'pp'
 
 $debug = ENV['BASHCOMP_DEBUG'] == "1"
 
-def debug(*msg, &b)
-  if $debug
-    $stderr.puts msg
-    b.call if b
-    return 1
-  else
-    return 0
-  end
-end
+DEBUG_FILE = "/tmp/bashcomp-debug.txt"
+
+FileUtils.rm(DEBUG_FILE, force:true)
 
 #-----------------------------------------------------------
 # Stuff used by scripts.
 #-----------------------------------------------------------
 module Utilities
+  def debug(*msg, &b)
+    if $debug
+      open DEBUG_FILE, "a" do |o|
+        o.puts msg
+      end
+      b.call if b
+      return 1
+    else
+      return 0
+    end
+  end
+
+  def die(*msg)
+    abort "#{__FILE__}: " + msg.join("")
+  end
+
   # Shell-escape a single token.
   def shescape(arg)
     if arg =~ /[^a-zA-Z0-9\-\.\_\/\:\+\@]/
@@ -98,39 +109,49 @@ end
 # Completion context
 #-----------------------------------------------------------
 
+START = "start"
+EMPTY = "end"
+
 class CompletionContext
   include Utilities
-
-  START = "start"
-  EMPTY = "end"
 
   def initialize(words, index, ignore_case)
     @state = START
     @words = words
     @cur_index = index
-    @cur_word = @words[index]
-    @cur_word = "" unless @cur_word;
     @ignore_case = ignore_case
     @index = 0
 
     @states = {}
 
-    @prescan = true
+    # @pass
+    # 0: Pre-scan; just collect all states.
+    # 0 < @pass < cur_index: Scanning, don't generate candidates yet.
+    # @pass == cur_index: Current word. Generate candidates.
+
+    @pass = 0
+
+    @current_block = nil;
 
     # END state is an empty block.
     add_state EMPTY do
     end
   end
 
-  attr_reader *%i(state cur_index cur_word ignore_case i)
+  attr_reader *%i(state cur_index ignore_case pass)
 
   def prescan?()
-    return @prescan
+    return @pass == 0
   end
 
-  def word(i)
-    i += @cur_index
-    return nil if i < 0 || i >= @words.length
+  def current?()
+    return @pass == @cur_index
+  end
+
+  def word(i = 0)
+    return nil if prescan?
+    i += @pass
+    return "" if i < 0 || i >= @words.length
     return @words[i]
   end
 
@@ -139,6 +160,7 @@ class CompletionContext
   end
 
   def add_state(name, &b)
+    prescan? or die "add_state can be only called during prescan."
     @states[name] = b
   end
 
@@ -152,10 +174,11 @@ class CompletionContext
   end
 
   def _candidate_single(arg, add_space: true)
-    return if prescan?
+    return unless current?
+
     return unless arg
 
-    if has_prefix arg, cur_word then
+    if has_prefix arg, word then
       arg.chomp!
       c = shescape(arg)
       if add_space
@@ -167,6 +190,8 @@ class CompletionContext
 
   # Push candidates.
   def candidates(*args, add_space: true, &b)
+    return unless current?
+
     args.each {|arg|
       if arg.instance_of? String
         _candidate_single arg, add_space: add_space
@@ -184,18 +209,19 @@ class CompletionContext
   alias flags candidates
 
   def get_match_files()
-    dir = cur_word.sub(%r([^\/]*$), "") # Remove the last path section.
+    dir = word.sub(%r([^\/]*$), "") # Remove the last path section.
 
     %x(command ls -dp1 '#{shescape(dir)}'* 2>/dev/null).split(/\n/).each { |f|
       candidates(f, add_space: !is_non_empty_dir(f))
     }
   end
 
-  def state(name, auto_transition: true, &b)
+  def state(state_name, auto_transition: true, &b)
     if prescan?
-      add_state name, &b
+      add_state state_name, &b
       self.instance_eval &b
     else
+      to_state state_name
     end
   end
 
@@ -206,14 +232,26 @@ class CompletionContext
   end
 
   def to_state(state_name)
+    if !prescan?
+      b = @states[state_name]
+      b or abort "state #{state_name} not found."
+      @current_block = b
+      debug "State -> #{state_name}"
+      throw :BlockExecute
+    end
   end
 
   def run(&b)
-    # First, run the block in the pre-scan mode.
-    @prescan = true
-    self.instance_eval &b
+    @current_block = b
 
-    debug { pp(self) }
+    # First, run the block in the pre-scan mode.
+    (0 .. @cur_index).each do |pass|
+      @pass = pass
+      debug "Pass -> #{@pass} \"#{word}\""
+      catch :BlockExecute do
+        self.instance_eval &@current_block
+      end
+    end
   end
 end
 
@@ -226,10 +264,6 @@ class BashComp
   private
 
   def __initialize__
-  end
-
-  def die(*msg)
-    abort "#{__FILE__}: " + msg.join("")
   end
 
   # Install completion
@@ -259,16 +293,12 @@ class BashComp
     words = ARGV.map { |w| unshescape w }
     cc = CompletionContext.new words, word_index, ignore_case
 
-    debug do
-      open "/tmp/bashcomp-debug.txt", "w" do |o|
-        o.puts <<~EOF
-            OrigWords: #{ARGV.map {|x| shescape x}.join ", "}
-            Words: #{cc.words.map {|x| shescape x}.join ", "}
-            Index: #{cc.cur_index}
-            Current: '#{shescape cc.cur_word}'
-            EOF
-      end
-    end
+    debug <<~EOF
+        OrigWords: #{ARGV.map {|x| shescape x}.join ", "}
+        Words: #{words.map {|x| shescape x}.join ", "}
+        Index: #{word_index}
+        Current: #{words[word_index]}
+        EOF
 
     cc.run &b
   end

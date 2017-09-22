@@ -25,6 +25,8 @@ end
 # i.e. nested states should still be registered at the beginning but transition should only happen
 # when finding the word in the right context.
 
+subcommands = %w(build check clean doc new init run test bench update search publish install)
+
 BashComp.define do
   # # Define it implicitly.
   # # "auto_transition: false" means "end" is just a state name, and
@@ -38,31 +40,33 @@ BashComp.define do
 
   # "flags" is just an alias to "candidate".
   flags %w(-h --help -V --version --list -v --verbose -vv -q --quiet --frozen --locked)
-  candidates "--single-candidate"
+  candidates "help"
+  candidates subcommands
   candidates { %w(aaa bbb) }
-  # candidate devices
+  # # candidate devices
 
-  # option:
-  # - Add the first arg to the flag set
-  # - If the previous word is the first arg, then use the second arg for the
-  #   completion of the current word.
-  #   optional:true means also all the other options are enabled.
-  option "--flavor", device_flavors, optional:false
+  # # option:
+  # # - Add the first arg to the flag set
+  # # - If the previous word is the first arg, then use the second arg for the
+  # #   completion of the current word.
+  # #   optional:true means also all the other options are enabled.
+  # option "--flavor", device_flavors, optional:false
 
-  # Take files.
-  allow_files
+  # # Take files.
+  # allow_files
 
-  # This is equivalent to:
-  # define state "state".
-  # to_state "--" if word[i] == "--"
-  state "--" do
-    allow_files
-  end
+  # # This is equivalent to:
+  # # define state "state".
+  # # to_state "--" if word[i] == "--"
+  # state "--" do
+  #   allow_files
+  # end
 
   state "help" do
-    # candidate %w(build check clean doc new init run test bench update search publish install)
+    to_state EMPTY if word(-2) == "help"
 
-    to_sate EMPTY if word(-2) == "help"
+    candidates subcommands
+
 
     # TODO: Move to the "end" state.
   end
