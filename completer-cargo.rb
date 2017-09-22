@@ -1,6 +1,43 @@
 exec ruby -x "$0" -i -d cargo # for bash
 #!ruby
 
+=begin
+
+# Install
+. <(~/cbin/misc/completer-cargo.rb)
+
+export COMPLETER_DEBUG=/tmp/completer-debug.txt
+unset COMPLETER_DEBUG
+
+ruby -x completer-cargo.rb -i -c 1 cargo
+
+ruby -x completer-cargo.rb -i -c 1 cargo --
+
+ruby -x completer-cargo.rb -i -c 1 cargo --v
+
+ruby -x completer-cargo.rb -i -c 1 cargo he
+
+ruby -x completer-cargo.rb -i -c 2 cargo help
+
+ruby -x completer-cargo.rb -i -c 2 cargo 'help'
+
+ruby -x completer-cargo.rb -i -c 3 cargo build --target
+
+ruby -x completer-cargo.rb -i -c 2 cargo -- /
+
+ruby -x completer-cargo.rb -i -c 2 cargo -- "$HOME/"
+
+ruby -x completer-cargo.rb -i -c 2 cargo -- "~" # ->  empty, since no files begins with ~.
+
+ruby -x completer-cargo.rb -i -c 2 cargo -- "~/" # -> expand
+
+ruby -x completer-cargo.rb -i -c 2 cargo -- "~/cb" # -> expand to "../cbin/"
+ruby -x completer-cargo.rb -i -c 2 cargo -- "~/cbin" # -> expand to "../cbin/"
+
+ruby -x completer-cargo.rb -i -c 2 cargo -- "~/cbin/" # -> expand
+
+=end
+
 require_relative "completer"
 
 SUBCOMMANDS = %w(build check clean doc new init run test bench update search publish install)
@@ -26,7 +63,7 @@ Completer.define do
     end
 
     def take_manifest_path()
-      option "--manifest_path", [] # TODO Filename completion
+      option "--manifest_path", matched_files # TODO Dirname completion
     end
   end
 
@@ -37,10 +74,15 @@ Completer.define do
 
   # take_files
 
+# For testing -- cargo doesn't have it.
   # After "--", only files are allowed.
   auto_state "--" do
     candidates matched_files
   end
+
+  option "--zip",  matched_files("*.zip")
+
+# End for testing
 
   auto_state "help" do
     finish if word(-2) == "help"

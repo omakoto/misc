@@ -13,10 +13,57 @@ $debug = $debug_file ? true : false
 $debug_file ||= "/tmp/bashcomp-debug.txt"
 FileUtils.rm($debug_file, force:true)
 
+=begin
+TODOs
+
+- Sort candidates?
+
+- match_files: "all_dirs". Even if a mask is set, still return all directories.
+- match_dirs: show directories only.
+
+================================================================================
+- Handling ~
+
+$ echo ~
+/usr/local/google/home/omakoto
+
+$ echo ~a
+~a
+
+$ echo ~root
+/root
+
+$ echo \~
+~
+
+$ echo a~
+a~
+
+$ echo ~/
+/usr/local/google/home/omakoto/
+
+$ echo ~\/
+~/
+
+# -> So, "~" should expand, and %r(^~/) should expand too, but not when ~ is followed by
+other characters or "\/".
+
+
+echo ~ [TAB] -> Expand to all user directories. Don't have to support it.
+
+echo ~/ [TAB] -> Expand to home dir files.
+
+================================================================================
+
+
+=end
+
+
 # Stuff used by the core as well as the engine.
 
-# Shod debug output.
 public
+
+# Shod debug output.
 def debug(*msg, &b)
   if $debug
     # If stdout is TTY, assume the script is executed directly for
@@ -40,7 +87,6 @@ def die(*msg)
 end
 
 # Shell-escape a single token.
-public
 def shescape(arg)
   if arg =~ /[^a-zA-Z0-9\-\.\_\/\:\+\@]/
       return "'" + arg.gsub(/'/, "'\\\\''") + "'"
@@ -50,8 +96,7 @@ def shescape(arg)
 end
 
 # Shell-unescape a single token.
-public
-def unshescape(arg, expand_home: true)
+def unshescape(arg)
   if arg !~ / [ \' \" \\ ] /x
     return arg
   end
@@ -102,13 +147,12 @@ def unshescape(arg, expand_home: true)
   return ret
 end
 
-def expand_home(dir)
-  return dir.sub(/^~\//, "#{Dir.home}/")
+def expand_home(word)
+  return word.sub(/^~\//, "#{Dir.home}/")
 end
 
 # Same as c.start_with?(prefix), except it can do case-insensitive
 # comparison when needed.
-public
 def has_prefix(c, prefix, ignore_case:)
   if ignore_case
     return c.downcase.start_with? prefix.downcase
@@ -196,9 +240,12 @@ START = "start"
 
 # This class is the DSL engine.
 class CompleterEngine
-  def initialize(words, index, ignore_case)
+  def initialize(orig_words, index, ignore_case)
+    @orig_words = orig_words
+
     # All words in the command line.
-    @words = words
+    @words = orig_words.map { |w| unshescape(expand_home(w)) }
+
     # Current word index at the cursor; 0-based.
     @cur_index = index
 
@@ -229,7 +276,7 @@ class CompleterEngine
     @candidates = []
   end
 
-  attr_reader *%i(state cur_index ignore_case pass words)
+  attr_reader *%i(state cur_index ignore_case pass orig_words words)
 
   # index is an alias of pass.
   alias index pass
@@ -397,40 +444,26 @@ class CompleterEngine
   end
 
   # Accept files.
-  def matched_files(wildcard: "*")
+  def matched_files(wildcard = "*", all_dirs:true)
     return unless current?
+
+    # Remove the last path component.
+    dir = word.sub(%r([^\/]*$), "")
+
+    if dir != "" and !Dir.exists? dir
+      return
+    end
+
+    pattern = (dir == "") ? wildcard : dir + wildcard
+
+    debug "dir=#{dir} pattern=#{pattern}"
 
     ret = []
 
-# TODO Wow, handling ~ is super tricky. Two issues.
-# - With the following code, dir for "~" will be empty.
-# - When adding ~/cbin as a candidate, it'll be escaped into '~/cbin'.
-#   We cannot escape ~, but if the following string has a special char,
-#   that needs to be escaped.
-
-    # Get the directory from the word.
-    dir = word.sub(%r([^\/]*$), "")
-    orig_dir = dir
-    debug "word=#{word}"
-    if dir != ""
-      dir = expand_home dir
-      return unless Dir.exists? dir
-    end
-
-    # TODO Somehow base: doesn't work, so need to manually chdir.
-    od = Dir.pwd
-    Dir.chdir dir if dir != ""
-
-    debug "dir=#{dir}"
-
-    Dir.glob(wildcard).each do |f|
-      f = orig_dir + f
+    Dir.glob(pattern).each do |f|
       f += "/" if File.directory?(f)
-      debug f
       ret.push(cand(f, completed: !is_non_empty_dir(f)))
     end
-
-    Dir.chdir od
 
     return ret
   end
@@ -497,14 +530,14 @@ class Completer
   # Perform completion
   def do_completion(ignore_case, &b)
     word_index = ARGV.shift.to_i
-    words = ARGV.map { |w| unshescape w }
+    words = ARGV
     cc = CompleterEngine.new words, word_index, ignore_case
 
     debug <<~EOF
-        OrigWords: #{ARGV.map {|x| shescape x}.join ", "}
-        Words: #{words.map {|x| shescape x}.join ", "}
-        Index: #{word_index}
-        Current: #{words[word_index]}
+        OrigWords: #{cc.orig_words.join ", "}
+        Words: #{cc.words.join ", "}
+        Index: #{cc.cur_index}
+        Current: #{cc.current_word}
         EOF
 
     cc.run &b
