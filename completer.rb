@@ -12,124 +12,109 @@ DEBUG_FILE = "/tmp/bashcomp-debug.txt"
 FileUtils.rm(DEBUG_FILE, force:true)
 
 # Stuff used by the core as well as the engine.
-module Utilities
-  # Shod debug output.
-  def debug(*msg, &b)
-    if $debug
-      open DEBUG_FILE, "a" do |o|
-        o.puts msg
-      end
-      b.call if b
-      return 1
-    else
-      return 0
+
+# Shod debug output.
+def debug(*msg, &b)
+  if $debug
+    open DEBUG_FILE, "a" do |o|
+      o.puts msg
     end
+    b.call if b
+    return 1
+  else
+    return 0
+  end
+end
+
+def die(*msg)
+  abort "#{__FILE__}: " + msg.join("")
+end
+
+# Shell-escape a single token.
+def shescape(arg)
+  if arg =~ /[^a-zA-Z0-9\-\.\_\/\:\+\@]/
+      return "'" + arg.gsub(/'/, "'\\\\''") + "'"
+  else
+      return arg;
+  end
+end
+
+# Shell-unescape a single token.
+def unshescape(arg, expand_home: true)
+  if arg !~ / [ \' \" \\ ] /x
+    return arg
   end
 
-  def die(*msg)
-    abort "#{__FILE__}: " + msg.join("")
-  end
+  ret = ""
+  pos = 0
+  while pos < arg.length
+    ch = arg[pos]
 
-  # Shell-escape a single token.
-  def shescape(arg)
-    if arg =~ /[^a-zA-Z0-9\-\.\_\/\:\+\@]/
-        return "'" + arg.gsub(/'/, "'\\\\''") + "'"
-    else
-        return arg;
-    end
-  end
-
-  # Shell-unescape a single token.
-  def unshescape(arg, expand_home: true)
-    if arg !~ / [ \' \" \\ ] /x
-      return arg
-    end
-
-    ret = ""
-    pos = 0
-    while pos < arg.length
-      ch = arg[pos]
-
-      case ch
-      when "'"
+    case ch
+    when "'"
+      pos += 1
+      while pos < arg.length
+        ch = arg[pos]
         pos += 1
-        while pos < arg.length
-          ch = arg[pos]
-          pos += 1
-          if ch == "'"
-            break
-          end
-          ret += ch
+        if ch == "'"
+          break
         end
-      when '"'
-        pos += 1
-        while pos < arg.length
-          ch = arg[pos]
-          pos += 1
-          if ch == '"'
-            break
-          elsif ch == '\\'
-            if pos < arg.length
-             ret += arg[pos]
-            end
-            pos += 1
-          end
-          ret += ch
-        end
-      when '\\'
-        pos += 1
-        if pos < arg.length
-          ret += arg[pos]
-          pos += 1
-        end
-      else
         ret += ch
+      end
+    when '"'
+      pos += 1
+      while pos < arg.length
+        ch = arg[pos]
+        pos += 1
+        if ch == '"'
+          break
+        elsif ch == '\\'
+          if pos < arg.length
+           ret += arg[pos]
+          end
+          pos += 1
+        end
+        ret += ch
+      end
+    when '\\'
+      pos += 1
+      if pos < arg.length
+        ret += arg[pos]
         pos += 1
       end
+    else
+      ret += ch
+      pos += 1
     end
+  end
 
-    return ret
+  return ret
+end
+
+# Return true if a given path is a directory and not empty.
+def is_non_empty_dir(f)
+  begin
+    return File.directory?(f) && !Dir.empty?(f)
+  rescue
+    # Just ignore any errors.
+    return false
   end
 end
 
-module CompletionHelper
-  # Return true if a given path is a directory and not empty.
-  def is_non_empty_dir(f)
-    begin
-      return File.directory?(f) && !Dir.empty?(f)
-    rescue
-      # Just ignore any errors.
-      return false
-    end
-  end
-
-  # Generate file completion list for a word.
-  def file_list(word)
-
-    # Get the directory from the word.
-    dir = word.sub(%r([^\/]*$), "")
-
-    %x(command ls -dp1 '#{shescape(dir)}'* 2>/dev/null).split(/\n/)
-  end
-
-  # Read all lines from a file, if exists.
-  def read_file_lines(file)
-    begin
-      return open("#{ENV['HOME']}/.android-devices", "r").read.split(/\n/);
-    rescue
-      # ignore errors
-      return []
-    end
+# Read all lines from a file, if exists.
+def read_file_lines(file)
+  begin
+    return open(file, "r").read.split(/\n/);
+  rescue
+    # ignore errors
+    return []
   end
 end
-
 
 START = "start"
 
 # This class is the DSL engine.
 class CompleterEngine
-  include Utilities
-  include CompletionHelper
 
   def initialize(words, index, ignore_case)
     # All words in the command line.
@@ -304,6 +289,7 @@ class CompleterEngine
     # If the previous word was the flag, then add the
     # candidates for the argument.
     if word(-1) == flag
+
       if arg_optional
         # If an argument is optional, then we just add
         # the candidates for the argument, but we still
@@ -322,11 +308,19 @@ class CompleterEngine
     candidates flag
   end
 
+# TODO If this returns an array, it'd be a lot cleaner.
+# But what to do with add_space:
   # Accept files.
   def take_files()
     return unless current?
 
-    candidates(file_list(word), add_space: !is_non_empty_dir(f))
+    # Get the directory from the word.
+    dir = word.sub(%r([^\/]*$), "")
+
+    %x(command ls -dp1 '#{shescape(dir)}'* 2>/dev/null)
+        .split(/\n/).each do |f|
+      candidates(f, add_space: !is_non_empty_dir(f))
+    end
   end
 
   # Entry point.
@@ -354,7 +348,6 @@ end
 # Core class
 #-----------------------------------------------------------
 class Completer
-  include Utilities
 
   private
 

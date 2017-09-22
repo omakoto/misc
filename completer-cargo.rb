@@ -3,52 +3,71 @@ exec ruby -x "$0" -i -d cargo # for bash
 
 require_relative "completer"
 
-# def devices
-#   return %w(bullhead angler marlin sailfish walleye taimen)
-# end
+SUBCOMMANDS = %w(build check clean doc new init run test bench update search publish install)
 
-# def flavors
-#   return %w(userdebug eng)
-# end
+STANDARD_FLAGS = %w(-h --help -V --version -v --verbose -vv -q --quiet --frozen --locked)
 
-# def device_flavors
-#   ret = []
-#   devices.each {|d|
-#     flavors.each {|f|
-#       ret.push "#{d}-#{f}"
-#     }
-#   }
-#   return ret
-# end
-
-subcommands = %w(build check clean doc new init run test bench update search publish install)
+TARGETS = read_file_lines("#{ENV['HOME']}/.cargo-targets").push(* %w(i686-unknown-linux-gnu))
 
 Completer.define do
   def take_colors()
     option "--colors", %w(auto always never)
   end
 
-  # "flags" is just an alias to "candidates".
-  flags %w(-h --help -V --version --list -v --verbose -vv -q --quiet --frozen --locked)
-  candidates "help"
-  candidates subcommands
-
-  take_files
-
-  # After "--", only files are allowed.
-  auto_state "--" do
-    take_files
+  def take_target()
+    option "--target", TARGETS
   end
 
-  auto_state "help" do
-    next_state EMPTY if word(-2) == "help"
+  def take_package()
+    # TODO Package name completion
+    option "-p", []
+    option "--package", []
+  end
 
-    candidates subcommands
+  def take_manifest_path()
+    option "--manifest_path", [] # TODO Filename completion
+  end
+
+  # "flags" is just an alias to "candidates".
+  flags STANDARD_FLAGS
+  candidates "help"
+  candidates SUBCOMMANDS
+
+  # take_files
+
+  # # After "--", only files are allowed.
+  # auto_state "--" do
+  #   take_files
+  # end
+
+  auto_state "help" do
+    finish if word(-2) == "help"
+
+    candidates SUBCOMMANDS
+  end
+
+  auto_state "new" do
+    flags STANDARD_FLAGS
+    take_colors
+
+    flags %w(--bin --lib)
+    option "--name", []
+  end
+
+  auto_state "clean" do
+    flags STANDARD_FLAGS
+    take_colors
+
+    take_package
+    take_manifest_path
+
+    flags %w(--release)
   end
 
   auto_state "build" do
     flags %w(-h --help --all --lib --bins --tests --benches --release --all-features --no-default-features -v --verbose -q --quiet --frozen --locked)
 
+    take_target
     take_colors
 
 # -p SPEC

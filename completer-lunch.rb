@@ -5,16 +5,16 @@ exec ruby -x "$0" -i -d lunch a-lunch # for bash
 
 require_relative "completer"
 
+def load_devices()
+  devices = %w(generic full bullhead angler marlin sailfish walleye taimen)
+  devices.push(* read_file_lines("#{ENV['HOME']}/.android-devices"))
+  devices.uniq!
+  return devices
+end
+
 Completer.define do
   # Only the first argument gets completion.
   finish if index > 2
-
-  def load_devices()
-    devices = %w(generic full bullhead angler marlin sailfish walleye taimen)
-    devices.push(* read_file_lines("#{ENV['HOME']}/.android-devices"))
-    devices.uniq!
-    return devices
-  end
 
   def device_flavors
     ret = []
