@@ -133,6 +133,8 @@ class CompletionContext
 
     @current_block = nil;
 
+    @candidates = []
+
     # END state is an empty block.
     add_state EMPTY do
     end
@@ -146,6 +148,11 @@ class CompletionContext
 
   def current?()
     return @pass == @cur_index
+  end
+
+  # Return the command name.
+  def command()
+    return @words[0]
   end
 
   def word(i = 0)
@@ -164,6 +171,14 @@ class CompletionContext
     @states[name] = b
   end
 
+  def clear_candidates()
+    @candidates = []
+  end
+
+  def move_to_next_word()
+    throw :BlockExecute
+  end
+
   # Same as a.start_with?(b), except it can do case-insensitive comparison.
   def has_prefix(a, b)
     if ignore_case
@@ -180,11 +195,13 @@ class CompletionContext
 
     if has_prefix arg, word then
       arg.chomp!
+      # Note, because of the additional space, we shescape at this point,
+      # not when we print it.
       c = shescape(arg)
       if add_space
         c += " "
       end
-      puts c
+      @candidates.push c
     end
   end
 
@@ -208,8 +225,8 @@ class CompletionContext
 
   alias flags candidates
 
-  def get_match_files()
-    dir = word.sub(%r([^\/]*$), "") # Remove the last path section.
+  def get_match_files(prefix)
+    dir = prefix.sub(%r([^\/]*$), "") # Remove the last path section.
 
     %x(command ls -dp1 '#{shescape(dir)}'* 2>/dev/null).split(/\n/).each { |f|
       candidates(f, add_space: !is_non_empty_dir(f))
@@ -220,15 +237,27 @@ class CompletionContext
     if prescan?
       add_state state_name, &b
       self.instance_eval &b
-    else
+    elsif auto_transition and state_name == word
       to_state state_name
     end
   end
 
-  def option(name, next_candidate, optional: false)
+  def option(flag, next_candidates, optional: false)
+    return unless current?
+
+    if word(-1) == flag
+      clear_candidates unless optional
+      candidates next_candidates
+      move_to_next_word unless optional
+    end
+
+    candidates flag
+
   end
 
   def allow_files()
+    return unless current?
+    get_match_files word
   end
 
   def to_state(state_name)
@@ -237,7 +266,7 @@ class CompletionContext
       b or abort "state #{state_name} not found."
       @current_block = b
       debug "State -> #{state_name}"
-      throw :BlockExecute
+      move_to_next_word
     end
   end
 
@@ -251,6 +280,9 @@ class CompletionContext
       catch :BlockExecute do
         self.instance_eval &@current_block
       end
+    end
+    @candidates.each do |v|
+      puts v
     end
   end
 end
