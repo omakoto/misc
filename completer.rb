@@ -9,7 +9,7 @@ require 'pp'
 $debug_file = ENV['COMPLETER_DEBUG']
 $debug = $debug_file ? true : false
 
-# Debug output goes to this file.
+# Debug output goes to this file, when stdout is not terinal.
 $debug_file ||= "/tmp/completer-debug.txt"
 FileUtils.rm($debug_file, force:true)
 
