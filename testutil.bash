@@ -89,5 +89,5 @@ assert_out() {
 
 #trap _at_exit EXIT
 function done_testing() {
-  _at_exit
+  _at_exit # Note this actually calls exit()
 }

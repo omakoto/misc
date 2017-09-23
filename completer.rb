@@ -254,10 +254,7 @@ def is_non_empty_dir(f, ignore_files: false)
     return false unless File.directory?(f)
 
     if ignore_files
-      f.children.each do |x|
-        return true if x.directory?
-      end
-      return false
+      return f.children.any? { |x| x.directory? }
     else
       return !Dir.empty?(f)
     end
