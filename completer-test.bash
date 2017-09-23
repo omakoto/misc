@@ -8,6 +8,12 @@ MOCK_HOME=/tmp/home
 cd "${0%/*}"
 medir="$(pwd)"
 
+verbose=0
+if [[ "$1" == "-v" ]] ; then
+  verbose=1
+  shift
+fi
+
 make_dir() {
   local mode=$1
   local name=$2
@@ -36,7 +42,7 @@ make_file 400 bb1
 make_dir  700 ddd1/aaaa
 make_dir  700 ddd1/aabb
 make_file 500 ddd1/bbbb/fff1.jpg
-make_file 500 ddd1/bbbb/fff2.jpg
+make_file 500 ddd1/bbbb/FFF2.jpg
 make_file 500 ddd1/bbbb/FFF3.png
 make_file 500 ddd1/bbbb/aaa.jpg
 make_dir  700 ddd2/aaa/bbb
@@ -58,6 +64,10 @@ EOF
 # Test for lunch.
 
 assert_comp() {
+  if (( $verbose )) ; then
+    echo -n "> "
+    shescape $@
+  fi
   sort | assert_out -d cat <("$@" | sort | sed -e 's/ $/^/')
 }
 
@@ -156,10 +166,13 @@ aaa/
 --reset^
 EOF
 
-# TODO Dot files are missing.
 assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx -- "~/" <<EOF
+/tmp/home/.android-devices^
+/tmp/home/.aa1^
 /tmp/home/aa1^
+/tmp/home/.aa2^
 /tmp/home/aa2^
+/tmp/home/.bb1^
 /tmp/home/bb1^
 /tmp/home/ddd1/
 /tmp/home/ddd2/
@@ -182,7 +195,24 @@ EOF
 assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx -- "~/zzz/" <<EOF
 EOF
 
-# TODO Test file mask
-# TODO File mask shouldn't exclude directories.
+assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx --image "~/ddd1/bbbb/" <<EOF
+/tmp/home/ddd1/bbbb/aaa.jpg^
+/tmp/home/ddd1/bbbb/fff1.jpg^
+/tmp/home/ddd1/bbbb/FFF2.jpg^
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx --image "~/ddd1/bbbb/f" <<EOF
+/tmp/home/ddd1/bbbb/fff1.jpg^
+/tmp/home/ddd1/bbbb/FFF2.jpg^
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --image "~/ddd1/bbbb/F" <<EOF
+/tmp/home/ddd1/bbbb/FFF2.jpg^
+EOF
+
+# Even with *.jpg mask, all directories should still show up.
+assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx --image "~/ddd1/b" <<EOF
+/tmp/home/ddd1/bbbb/
+EOF
 
 echo " Done."

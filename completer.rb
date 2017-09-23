@@ -168,6 +168,8 @@ def unshescape(arg)
   return ret
 end
 
+# When a string starts with "~/", then expand to the home directory.
+# Doesn't support ~USERNAME/.
 def expand_home(word)
   return word.sub(/^~\//, "#{Dir.home}/")
 end
@@ -182,24 +184,36 @@ def has_prefix(c, prefix, ignore_case:)
   end
 end
 
+# True if a list contains a value, or
 def contains(list_or_str, val)
   if list_or_str.instance_of? String
     return list_or_str == val
   else
-    return list_or_str.find_index val
+    return list_or_str.include?(val)
   end
 end
 
+# Represents a single candidate.
 class Candidate
   def initialize(value, completed: true, help: "")
     value or die "Empty candidate detected."
+
     @value = value.chomp
     @completed = completed
     @help = help
   end
 
-  attr_reader *%i(value completed help)
+  # The candidate text.
+  attr_reader :value
 
+  # When a candidate is "completed", it's not a prefix of another text.
+  # A completed candidate will be followed by a space when expanded.
+  attr_reader :completed
+
+  # Help text, bash can't show it, but maybe zsh can.
+  attr_reader :help
+
+  # Whether a candidate has a prefix or not.
   def start_with?(prefix, ignore_case:)
     return Kernel.has_prefix(@value, prefix, ignore_case:ignore_case)
   end
@@ -209,26 +223,26 @@ class Candidate
   end
 end
 
-# Grr, respond_to? doesn't support refinements...
-# module StringCandidate
-#   refine String do
-#     def as_candidate()
-#       return Candidate.new(self, completed:true, help:"")
-#     end
-#   end
-# end
-#
-# using StringCandidate
-
 # Takes a String or a Candidate and return as a Candidate.
 def as_candidate(value)
   if value.instance_of? Candidate
     return value
   elsif value.instance_of? String
-    return Candidate.new(value, completed:true, help:"")
+    # If a string contains a TAB, the following section is a
+    # help string.
+    (candidate, help) = value.split(/\t/, 2)
+
+    # If a candidate ends with an CR, it's not a completed
+    # candidate.
+    completed = true
+    if candidate =~ /\r$/
+      candidate.chomp("\r")
+      completed = false
+    end
+
+    return Candidate.new(candidate, completed:completed, help:help)
   else
     return nil
-    # die "Can't treat '#{value.inspect} as a candidate."
   end
 end
 
@@ -245,6 +259,43 @@ def is_non_empty_dir(f)
     # Just ignore any errors.
     return false
   end
+end
+
+# Find matching files for a given word.
+def get_matched_files(word, wildcard = "*", ignore_case: false)
+  # Remove the last path component.
+  dir = word.sub(%r([^\/]*$), "")
+
+  debug "word=#{word} dir=#{dir} wildcard=#{wildcard}"
+
+  if dir != "" and !Dir.exists? dir
+    return
+  end
+
+  ret = []
+
+  flag = File::FNM_DOTMATCH
+  if ignore_case
+    flag |= File::FNM_CASEFOLD
+  end
+
+  begin
+    Pathname.new(dir == "" ? "." : dir).children.each do |path|
+      if path.directory?
+        cand = path.to_s
+        cand += "/"
+        cand += "\r" if is_non_empty_dir(path)
+      else
+        # If it's a file, only add when the basename matches wildcard.
+        next unless File.fnmatch(wildcard, path.basename, flag)
+        cand = path.to_s
+      end
+      ret.push(cand)
+    end
+  rescue
+  end
+
+  return ret
 end
 
 # Read all lines from a file, if exists.
@@ -565,30 +616,10 @@ class CompleterEngine
   alias option options
 
   # Accept files.
-  def matched_files(wildcard = "*", all_dirs:true)
+  def matched_files(wildcard = "*")
     return unless current?
-
-    debug "[matched_files] wildcard=#{wildcard} all_dirs=#{all_dirs}"
-
-    # Remove the last path component.
-    dir = word.sub(%r([^\/]*$), "")
-
-    if dir != "" and !Dir.exists? dir
-      return
-    end
-
-    pattern = (dir == "") ? wildcard : dir + wildcard
-
-    debug "dir=#{dir} pattern=#{pattern}"
-
-    ret = []
-
-    Dir.glob(pattern).each do |f|
-      f += "/" if File.directory?(f)
-      ret.push(cand(f, completed: !is_non_empty_dir(f)))
-    end
-
-    return ret
+    debug "pass=#{pass} cur=#{cur_index}"
+    return get_matched_files(word, wildcard, ignore_case:ignore_case)
   end
 
   alias arg_file matched_files
@@ -678,6 +709,8 @@ class Completer
     OptionParser.new { |opts|
       opts.banner = "Usage: [OPTIONS] command-name"
 
+      # Note "-c" must be the last option; otherwise other flags such as
+      # "-i" "-d" will be ignored.
       opts.on("-c", "Perform completion (shouldn't be used directly)") do
         do_completion ignore_case, &b
         return
