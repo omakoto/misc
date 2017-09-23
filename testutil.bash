@@ -54,12 +54,28 @@ assert() {
 }
 
 assert_out() {
-  local wdiff_opts=""
-  if iscon 2 ; then
-    wdiff_opts='-w '$'\033[30;41m'' -x '$'\033[0m'' -y '$'\033[30;42m'' -z '$'\033[0m'
+  local use_wdiff=1
+  if [[ "$1" == "-d" ]] ; then
+    use_wdiff=0
+    shift
   fi
-  out=$(wdiff -n $wdiff_opts <("$@") <(cat))
-  local rc=$?
+
+  local rc
+  if (( $use_wdiff )) ; then
+    local wdiff_opts=""
+    if iscon 2 ; then
+      wdiff_opts='-w '$'\033[30;41m'' -x '$'\033[0m'' -y '$'\033[30;42m'' -z '$'\033[0m'
+    fi
+    out=$(wdiff -n $wdiff_opts <("$@") <(cat))
+    rc=$?
+  else
+    local diff_opts=""
+    if iscon 2 ; then
+      diff_opts='--color=always'
+    fi
+    out=$(diff -c $diff_opts <("$@") <(cat))
+    rc=$?
+  fi
   if (( $rc == 0 )) ; then
     succeed
   else

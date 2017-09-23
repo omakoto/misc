@@ -1,44 +1,44 @@
-exec ruby -x "$0" -i -d cargo
+exec ruby -x "$0" -i -d xxx
 #!ruby
 
 =begin
 
 # Install
-. <(~/cbin/misc/completer-cargo.rb)
+. <(~/cbin/misc/completer-test.rb)
 
 export COMPLETER_DEBUG=/tmp/completer-debug.txt
 unset COMPLETER_DEBUG
 
-ruby -x completer-cargo.rb -i -c 1 cargo
+ruby -x completer-test.rb -i -c 1 cargo
 
-ruby -x completer-cargo.rb -i -c 1 cargo --
+ruby -x completer-test.rb -i -c 1 cargo --
 
-ruby -x completer-cargo.rb -i -c 1 cargo --v
+ruby -x completer-test.rb -i -c 1 cargo --v
 
-ruby -x completer-cargo.rb -i -c 1 cargo he
+ruby -x completer-test.rb -i -c 1 cargo he
 
-ruby -x completer-cargo.rb -i -c 2 cargo help
+ruby -x completer-test.rb -i -c 2 cargo help
 
-ruby -x completer-cargo.rb -i -c 2 cargo 'help'
+ruby -x completer-test.rb -i -c 2 cargo 'help'
 
-ruby -x completer-cargo.rb -i -c 3 cargo build --target
+ruby -x completer-test.rb -i -c 3 cargo build --target
 
-ruby -x completer-cargo.rb -i -c 2 cargo -- /
+ruby -x completer-test.rb -i -c 2 cargo -- /
 
-ruby -x completer-cargo.rb -i -c 2 cargo -- "$HOME/"
+ruby -x completer-test.rb -i -c 2 cargo -- "$HOME/"
 
-ruby -x completer-cargo.rb -i -c 2 cargo -- "~" # ->  empty, since no files begins with ~.
+ruby -x completer-test.rb -i -c 2 cargo -- "~" # ->  empty, since no files begins with ~.
 
-ruby -x completer-cargo.rb -i -c 2 cargo -- "~/" # -> expand
+ruby -x completer-test.rb -i -c 2 cargo -- "~/" # -> expand
 
-ruby -x completer-cargo.rb -i -c 2 cargo -- "~/cb" # -> expand to "../cbin/"
-ruby -x completer-cargo.rb -i -c 2 cargo -- "~/cbin" # -> expand to "../cbin/"
+ruby -x completer-test.rb -i -c 2 cargo -- "~/cb" # -> expand to "../cbin/"
+ruby -x completer-test.rb -i -c 2 cargo -- "~/cbin" # -> expand to "../cbin/"
 
-ruby -x completer-cargo.rb -i -c 2 cargo -- "~/cbin/" # -> expand
+ruby -x completer-test.rb -i -c 2 cargo -- "~/cbin/" # -> expand
 
-ruby -x completer-cargo.rb -i -c 3 cargo -- "$HOME/" --res
+ruby -x completer-test.rb -i -c 3 cargo -- "$HOME/" --res
 
-ruby -x completer-cargo.rb -i -c 4 cargo -- "$HOME/" --reset
+ruby -x completer-test.rb -i -c 4 cargo -- "$HOME/" --reset
 
 =end
 

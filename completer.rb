@@ -192,14 +192,6 @@ class Candidate
 
   attr_reader *%i(value completed help)
 
-  # Return as a candidate string for bash.
-  # Note bash can't show a help string.
-  def to_bash_candidate()
-    ret = shescape(@value)
-    ret += " " if @completed
-    return ret
-  end
-
   def start_with?(prefix, ignore_case:)
     return Kernel.has_prefix(@value, prefix, ignore_case:ignore_case)
   end
@@ -220,6 +212,7 @@ end
 #
 # using StringCandidate
 
+# Takes a String or a Candidate and return as a Candidate.
 def as_candidate(value)
   if value.instance_of? Candidate
     return value
@@ -258,23 +251,70 @@ def read_file_lines(file)
 end
 
 # Class that eats information sent by bash via stdin.
-class BashContext
-  def self.SECTION_SEPARATOR()
-    return "\n-*-*-*-COMPLETER-*-*-*-\n"
+class BashProxy
+  SECTION_SEPARATOR = "\n-*-*-*-COMPLETER-*-*-*-\n"
+  VARIABLE_MARKER = "\nVARIABLES:\n"
+
+  def install(commands, script, ignore_case)
+    command = commands[0]
+    func = "_#{command.gsub(/[^a-z0-9]/i) {|c| "_" + c.ord.to_s(16)}}_completion"
+
+    debug "Installing completion for '#{command}', function='#{func}'"
+
+    script_file = File.expand_path $0
+
+    debug_flag = debug ? "-d" : ""
+    ignore_case_flag = ignore_case ? "-i" : ""
+
+    puts <<~EOF
+        function __completer_context_passer {
+            echo -n "#{VARIABLE_MARKER}"
+            declare -p
+            echo -n "#{SECTION_SEPARATOR}"
+            echo -n "#{VARIABLE_MARKER}"
+            jobs
+        }
+
+        function #{func} {
+          local IFS='
+        '
+          COMPREPLY=( $(__completer_context_passer |
+              ruby -x "#{script_file}" #{debug_flag} #{ignore_case_flag} -c "$COMP_CWORD" "${COMP_WORDS[@]}") )
+        }
+        EOF
+
+    commands.each do |c|
+      puts "complete -o nospace -F #{func} #{c}"
+    end
   end
 
-  def self.VARIABLE_MARKER()
-    return "VARIABLES:\n"
+  # Return as a candidate string for bash.
+  # Note bash can't show a help string.
+  def add_candidate(candidate)
+    s = shescape(candidate.value)
+    s += " " if candidate.completed
+    puts s
   end
-
 end
 
-START = "start"
+def get_proxy()
+  shell = Pathname.new(ENV["SHELL"]).basename.to_s
+  case shell
+  when "bash"
+    return BashProxy.new
+  else
+    die "Unsupported shell '#{shell}'"
+  end
+end
+
 
 # This class is the DSL engine.
 class CompleterEngine
+  START = "start"
 
-  def initialize(orig_words, index, ignore_case)
+  def initialize(proxy, orig_words, index, ignore_case)
+    @proxy = proxy
+
     @orig_words = orig_words
 
     # All words in the command line.
@@ -547,7 +587,7 @@ class CompleterEngine
 
     # Print the collected candidates.
     @candidates.each do |c|
-      puts c.to_bash_candidate
+      @proxy.add_candidate c
     end
   end
 end
@@ -565,39 +605,14 @@ class Completer
   # Install completion
   def do_install(commands, script, ignore_case)
     commands or die "Missing commands."
-    command = commands[0]
-    func = "_#{command}_completion".gsub(/[^a-z0-9_]/i, "_")
-
-    debug "Installing completion for '#{command}', function='#{func}'"
-
-    script_file = File.expand_path $0
-
-    debug_flag = debug ? "-d" : ""
-    ignore_case_flag = ignore_case ? "-i" : ""
-
-    puts <<~EOF
-        function #{func} {
-          local IFS='
-        '
-          function __completer_env_passer {
-              echo -n "#{BashContext.SECTION_SEPARATOR}"
-              echo -n "#{BashContext.VARIABLE_MARKER}"
-              declare -p
-          }
-          COMPREPLY=( $(__completer_env_passer | ruby -x "#{script_file}" #{debug_flag} #{ignore_case_flag} -c "$COMP_CWORD" "${COMP_WORDS[@]}") )
-        }
-        EOF
-
-    commands.each do |c|
-      puts "complete -o nospace -F #{func} #{c}"
-    end
+    get_proxy.install(commands, script, ignore_case)
   end
 
   # Perform completion
   def do_completion(ignore_case, &b)
     word_index = ARGV.shift.to_i
     words = ARGV
-    cc = CompleterEngine.new words, word_index, ignore_case
+    cc = CompleterEngine.new get_proxy, words, word_index, ignore_case
 
     debug <<~EOF
         OrigWords: #{cc.orig_words.join ", "}

@@ -1,7 +1,21 @@
-exec ruby -x "$0" -i -d lunch a-lunch # for bash
+exec ruby -x "$0" -i -d lunch a-lunch
 #!ruby
 
 # Completion for "lunch".
+
+=begin
+
+# Install
+. <(~/cbin/misc/completer-lunch.rb)
+
+export COMPLETER_DEBUG=/tmp/completer-debug.txt
+unset COMPLETER_DEBUG
+
+ruby -x completer-lunch.rb -i -c 1 lunch
+
+ruby -x completer-lunch.rb -i -c 1 lunch bullhe
+
+=end
 
 require_relative "completer"
 
