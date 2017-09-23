@@ -148,6 +148,7 @@ assert_comp ruby -x $medir/completer-test.rb -i -c 1 xxx <<EOF
 --max^
 --nice^
 --threads^
+--image^
 EOF
 
 assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx -- <<EOF
@@ -183,3 +184,5 @@ EOF
 
 # TODO Test file mask
 # TODO File mask shouldn't exclude directories.
+
+echo " Done."

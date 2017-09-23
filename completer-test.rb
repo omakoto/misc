@@ -16,6 +16,8 @@ Completer.define do
   option "--file", arg_file
   option %w(--ignore-file --exclude), arg_file
 
+  option "--image", arg_file("*.jpg")
+
   option "--threads", arg_number, arg_optional:true
 
   option "--max", arg_number
