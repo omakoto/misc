@@ -71,7 +71,7 @@ assert_comp() {
   fi
   # Note we can't use pipe, which would break test counting in testutil.bash
 
-  assert_out -d cat <("$@" | sort | sed -e 's/ $/^/') < <(sort)
+  assert_out -ds cat <("$@" | sed -e 's/ $/^/')
 }
 
 assert_comp ruby -x $medir/completer-lunch.rb -i -c 1 lunch <<EOF

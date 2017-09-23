@@ -53,12 +53,22 @@ assert() {
   return 0
 }
 
+# Execute "$@", and diff its output with stdin.
+# Options:
+#  -d  Use diff instead of wdiff.
+#  -s  Sort outputs before comparing.
 assert_out() {
   local use_wdiff=1
-  if [[ "$1" == "-d" ]] ; then
-    use_wdiff=0
-    shift
-  fi
+  local filter=cat
+  local OPTIND
+
+  while getopts "ds" opt; do
+    case "$opt" in
+      d) use_wdiff=0 ;;
+      s) filter=sort ;;
+    esac
+  done
+  shift $(($OPTIND - 1))
 
   local rc
   if (( $use_wdiff )) ; then
@@ -66,14 +76,14 @@ assert_out() {
     if iscon 2 ; then
       wdiff_opts='-w '$'\033[30;41m'' -x '$'\033[0m'' -y '$'\033[30;42m'' -z '$'\033[0m'
     fi
-    out=$(wdiff -n $wdiff_opts <("$@") <(cat))
+    out=$(wdiff -n $wdiff_opts <("$@" | $filter) <($filter))
     rc=$?
   else
     local diff_opts=""
     if iscon 2 ; then
       diff_opts='--color=always'
     fi
-    out=$(diff -c $diff_opts <("$@") <(cat))
+    out=$(diff -c $diff_opts <("$@" | $filter) <($filter))
     rc=$?
   fi
   if (( $rc == 0 )) ; then
