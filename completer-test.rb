@@ -14,7 +14,10 @@ require_relative "completer"
 
 Completer.define do
   option "--file", arg_file
+
   option %w(--ignore-file --exclude), arg_file
+
+  option %w(--directory), arg_dir
 
   option "--image", arg_file("*.jpg")
 

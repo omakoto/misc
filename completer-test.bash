@@ -40,6 +40,7 @@ make_file 400 aa1
 make_file 400 aa2
 make_file 400 bb1
 make_dir  700 ddd1/aaaa
+make_dir  700 ddd1/AAAA
 make_dir  700 ddd1/aabb
 make_file 500 ddd1/bbbb/fff1.jpg
 make_file 500 ddd1/bbbb/FFF2.jpg
@@ -130,8 +131,12 @@ auto^
 never^
 EOF
 
-#assert_comp ruby -x $medir/completer-rg.rb -i -c 2 rg --type  <<EOF
-#EOF
+# This could fail if rg supports a new filetype that stats with any of the following types.
+assert_comp bash -c "ruby -x $medir/completer-rg.rb -i -c 2 rg --type | grep '^\(cmake\|zsh\|taskpaper\)'" <<EOF
+cmake^
+zsh^
+taskpaper^
+EOF
 
 assert_comp ruby -x $medir/completer-rg.rb -i -c 2 rg --context  <<EOF
 0^
@@ -155,6 +160,7 @@ assert_comp ruby -x $medir/completer-test.rb -i -c 1 xxx <<EOF
 --exclude^
 --file^
 --ignore-file^
+--directory^
 --max^
 --nice^
 --threads^
@@ -214,5 +220,40 @@ EOF
 assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx --image "~/ddd1/b" <<EOF
 /tmp/home/ddd1/bbbb/
 EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx --directory "~/" <<EOF
+/tmp/home/ddd1/
+/tmp/home/ddd2/
+/tmp/home/zzz/^
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx --directory "~/d" <<EOF
+/tmp/home/ddd1/
+/tmp/home/ddd2/
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx --directory "~/ddd1" <<EOF
+/tmp/home/ddd1/
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx --directory "~/ddd1/" <<EOF
+/tmp/home/ddd1/aaaa/^
+/tmp/home/ddd1/AAAA/^
+/tmp/home/ddd1/aabb/^
+/tmp/home/ddd1/bbbb/^
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx --directory "~/ddd1/a" <<EOF
+/tmp/home/ddd1/aaaa/^
+/tmp/home/ddd1/AAAA/^
+/tmp/home/ddd1/aabb/^
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --directory "~/ddd1/a" <<EOF
+/tmp/home/ddd1/aaaa/^
+/tmp/home/ddd1/aabb/^
+EOF
+
+# Test for numbers
 
 echo " Done."

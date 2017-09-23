@@ -10,7 +10,7 @@ $debug_file = ENV['COMPLETER_DEBUG']
 $debug = $debug_file ? true : false
 
 # Debug output goes to this file.
-$debug_file ||= "/tmp/bashcomp-debug.txt"
+$debug_file ||= "/tmp/completer-debug.txt"
 FileUtils.rm($debug_file, force:true)
 
 =begin
@@ -23,9 +23,6 @@ TODOs
 Feed "declare -p" to the command from the bash side.
 
 - Sort candidates?
-
-- match_files: "all_dirs". Even if a mask is set, still return all directories.
-- match_dirs: show directories only.
 
 ================================================================================
 - Handling ~
@@ -252,10 +249,20 @@ end
 # end
 
 # Return true if a given path is a directory and not empty.
-def is_non_empty_dir(f)
+def is_non_empty_dir(f, ignore_files: false)
   begin
-    return File.directory?(f) && !Dir.empty?(f)
-  rescue
+    return false unless File.directory?(f)
+
+    if ignore_files
+      f.children.each do |x|
+        return true if x.directory?
+      end
+      return false
+    else
+      return !Dir.empty?(f)
+    end
+  rescue SystemCallError => e
+    debug e.inspect
     # Just ignore any errors.
     return false
   end
@@ -292,7 +299,34 @@ def get_matched_files(word, wildcard = "*", ignore_case: false)
       end
       ret.push(cand)
     end
-  rescue
+  rescue SystemCallError => e
+    debug e.inspect
+  end
+
+  return ret
+end
+
+# Find matching directories for a given word.
+def get_matched_dirs(word, ignore_case: false)
+  # Remove the last path component.
+  dir = word.sub(%r([^\/]*$), "")
+
+  if dir != "" and !Dir.exists? dir
+    return
+  end
+
+  ret = []
+
+  begin
+    Pathname.new(dir == "" ? "." : dir).children.each do |path|
+      next unless path.directory?
+      cand = path.to_s
+      cand += "/"
+      cand += "\r" if is_non_empty_dir(path, ignore_files:true)
+      ret.push(cand)
+    end
+  rescue SystemCallError => e
+    debug e.inspect
   end
 
   return ret
@@ -618,11 +652,18 @@ class CompleterEngine
   # Accept files.
   def matched_files(wildcard = "*")
     return unless current?
-    debug "pass=#{pass} cur=#{cur_index}"
     return get_matched_files(word, wildcard, ignore_case:ignore_case)
   end
 
   alias arg_file matched_files
+
+  # Accept directories.
+  def matched_dirs()
+    return unless current?
+    return get_matched_dirs(word, ignore_case:ignore_case)
+  end
+
+  alias arg_dir matched_dirs
 
   def arg_number(allow_negative:false)
     return unless current?
