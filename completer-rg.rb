@@ -3,8 +3,11 @@ exec ruby -x "$0" -i -d rg ~/cbin/rg-*
 
 =begin
 
-# Install
-. <(~/cbin/misc/completer-rg.rb)
+Completion script for ripgrep.
+
+. <(~/cbin/misc/completer-rg.rb) # Install
+
+# Some test command lines...
 
 export COMPLETER_DEBUG=/tmp/completer-debug.txt
 unset COMPLETER_DEBUG
@@ -33,6 +36,12 @@ Completer.define do
     %x(rg --type-list).split(/\n/).map {|x| x.sub(/\:.*/, "")}
   end
 
+  # Always allow filenames.
+  # Technically the first non-flag argument should be a pattern,
+  # but doesn't really matter much.
+  candidate arg_file
+
+  # Flags take no arguments.
   flags %w(
       -s  --case-sensitive
           --column
@@ -84,9 +93,9 @@ Completer.define do
          --path-separator
          --regexp
          --replace
-      )
+      ) # , []  (i.e. no candidates) is implied.
 
-  # Options that takes a number which is currently not completable.
+  # Options that takes a number.
   option %w(
       -A --after-context
       -B --before-context
@@ -97,14 +106,15 @@ Completer.define do
       -j --threads
       ), arg_number
 
-  # Options that takes a size which is currently not completable.
+  # Options that takes a size. Not supported yet; for now just take
+  # a number.
   option %w(
       --dfa-size-limit
       --max-filesize
       --regex-size-limit
       ), arg_number
 
-  # Options that takes a size which is currently not completable.
+  # TODO Add more encodings.
   option %w(--encoding), %w(utf-8)
 
   # Options that takes a type.
@@ -126,12 +136,11 @@ Completer.define do
     candidates matched_files
   end
 
-  # Type list is always the first, only option.
+  # --type-list is only allowed as the first option.
   candidate "--type-list" if cur_index == 1
+  # If --type-list is already in the command line, don't complete
+  # further.
   finish if word == "--type-list"
-
-  # Always allow filenames.
-  candidate arg_file
 end
 
 =begin
