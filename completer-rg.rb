@@ -11,6 +11,8 @@ unset COMPLETER_DEBUG
 
 ruby -x completer-rg.rb -i -c 1 rg
 
+ruby -x completer-rg.rb -i -c 2 rg --type-list
+
 ruby -x completer-rg.rb -i -c 2 rg --color
 
 ruby -x completer-rg.rb -i -c 2 rg --type
@@ -64,7 +66,6 @@ Completer.define do
       -S  --smart-case
           --sort-files
       -a  --text
-          --type-list
       -u  --unrestricted
       -V  --version
           --vimgrep
@@ -125,10 +126,12 @@ Completer.define do
     candidates matched_files
   end
 
-  # After "--type-list", no arguments are accepted.
-  auto_state "--type-list" do
-    finish
-  end
+  # Type list is always the first, only option.
+  candidate "--type-list" if cur_index == 1
+  finish if word == "--type-list"
+
+  # Always allow filenames.
+  candidate arg_file
 end
 
 =begin

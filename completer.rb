@@ -665,6 +665,7 @@ class CompleterEngine
 
   alias arg_dir matched_dirs
 
+  # Accept an integer.
   def arg_number(allow_negative:false)
     return unless current?
 
@@ -676,7 +677,7 @@ class CompleterEngine
 
     if word == ""
       if allow_negative
-        return ["-1".."-9", "1".."9"]
+        return ["-1".."-9", "0".."9"]
       else
         return ["0".."9"]
       end
