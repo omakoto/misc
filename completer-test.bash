@@ -35,10 +35,10 @@ make_file 400 aa2
 make_file 400 bb1
 make_dir  700 ddd1/aaaa
 make_dir  700 ddd1/aabb
-make_file 500 ddd1/bbbb/fff1
-make_file 500 ddd1/bbbb/fff2
-make_file 500 ddd1/bbbb/FFF3
-make_file 500 ddd1/bbbb/aaa
+make_file 500 ddd1/bbbb/fff1.jpg
+make_file 500 ddd1/bbbb/fff2.jpg
+make_file 500 ddd1/bbbb/FFF3.png
+make_file 500 ddd1/bbbb/aaa.jpg
 make_dir  700 ddd2/aaa/bbb
 make_file 700 ddd2/aaa/ccc/file1
 make_file 700 ddd2/aaa/ccc/File1
@@ -58,7 +58,7 @@ EOF
 # Test for lunch.
 
 assert_comp() {
-  sed -e 's/\^$/ /' | assert_out -d "$@"
+  sort | assert_out -d cat <("$@" | sort | sed -e 's/ $/^/')
 }
 
 assert_comp ruby -x $medir/completer-lunch.rb -i -c 1 lunch <<EOF
@@ -110,3 +110,76 @@ assert_comp ruby -x $medir/completer-lunch.rb -i -c 1 lunch marlin-e <<EOF
 marlin-eng^
 EOF
 
+#===========================================================
+# RG
+#===========================================================
+
+assert_comp ruby -x $medir/completer-rg.rb -i -c 2 rg --color  <<EOF
+always^
+auto^
+never^
+EOF
+
+#assert_comp ruby -x $medir/completer-rg.rb -i -c 2 rg --type  <<EOF
+#EOF
+
+assert_comp ruby -x $medir/completer-rg.rb -i -c 2 rg --context  <<EOF
+0^
+1^
+2^
+3^
+4^
+5^
+6^
+7^
+8^
+9^
+EOF
+
+#===========================================================
+# completer-test
+#===========================================================
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 1 xxx <<EOF
+--^
+--exclude^
+--file^
+--ignore-file^
+--max^
+--nice^
+--threads^
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx -- <<EOF
+aaa/
+--reset^
+EOF
+
+# TODO Dot files are missing.
+assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx -- "~/" <<EOF
+/tmp/home/aa1^
+/tmp/home/aa2^
+/tmp/home/bb1^
+/tmp/home/ddd1/
+/tmp/home/ddd2/
+/tmp/home/zzz/^
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx -- "~/d" <<EOF
+/tmp/home/ddd1/
+/tmp/home/ddd2/
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx -- "~/Z" <<EOF
+/tmp/home/zzz/^
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx -- "~/zzz" <<EOF
+/tmp/home/zzz/^
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx -- "~/zzz/" <<EOF
+EOF
+
+# TODO Test file mask
+# TODO File mask shouldn't exclude directories.

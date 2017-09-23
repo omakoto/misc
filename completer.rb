@@ -182,6 +182,14 @@ def has_prefix(c, prefix, ignore_case:)
   end
 end
 
+def contains(list_or_str, val)
+  if list_or_str.instance_of? String
+    return list_or_str == val
+  else
+    return list_or_str.find_index val
+  end
+end
+
 class Candidate
   def initialize(value, completed: true, help: "")
     value or die "Empty candidate detected."
@@ -457,12 +465,27 @@ class CompleterEngine
     end
   end
 
+  # flags() is an alias of candidates().
+  alias candidate candidates
+  alias flag candidates
+  alias flags candidates
+
+  # Define a candidate generator
+  def cand_gen(name_sym, &b)
+    b or die("Missing block.")
+    # Define a function, only during prescan.
+    return unless prescan?
+
+    self.class.send :define_method, name_sym do
+      # The method should-be no-op unless current.
+      b.call if current?
+    end
+  end
+
+  # Convert a string to a Candidate.
   def cand(value, completed: true, help: "")
     return Candidate.new(value, completed:completed, help:help);
   end
-
-  # flags() is an alias of candidates().
-  alias flags candidates
 
   # Add a new state.
   def add_state(name, &b)
@@ -515,13 +538,12 @@ class CompleterEngine
 
   # Define an option that takes an argument, which can be
   # either optional or mandatory.
-  def option(flag, arg_candidates, arg_optional: false)
+  def options(flags, arg_candidates = [], arg_optional: false)
     return unless current?
 
     # If the previous word was the flag, then add the
     # candidates for the argument.
-    if word(-1) == flag
-
+    if contains flags, word(-1)
       if arg_optional
         # If an argument is optional, then we just add
         # the candidates for the argument, but we still
@@ -537,8 +559,10 @@ class CompleterEngine
         next_word
       end
     end
-    candidates flag
+    candidates flags
   end
+
+  alias option options
 
   # Accept files.
   def matched_files(wildcard = "*", all_dirs:true)
@@ -565,6 +589,28 @@ class CompleterEngine
     end
 
     return ret
+  end
+
+  alias arg_file matched_files
+
+  def arg_number(allow_negative:false)
+    return unless current?
+
+    if allow_negative
+      return unless word =~ /^\-?\d*$/
+    else
+      return unless word =~ /^\d*$/
+    end
+
+    if word == ""
+      if allow_negative
+        return ["-1".."-9", "1".."9"]
+      else
+        return ["0".."9"]
+      end
+    else
+      return ("0".."9").map {|x| word + x }
+    end
   end
 
   # Entry point.
