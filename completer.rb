@@ -5,11 +5,16 @@ require 'fileutils'
 require 'pathname'
 require 'pp'
 
-# Can also be enabled with -d.
 $debug_file = ENV['COMPLETER_DEBUG']
 $debug = $debug_file ? true : false
 $debug_file ||= "/tmp/completer-debug.txt"
 $debug_out = nil
+
+=begin
+- To enable debug output,
+export COMPLETER_DEBUG=/tmp/completer-debug.txt
+- Can also be enabled with -d.
+=end
 
 # Whether completion is being performed in case-insensitive mode.
 # For simplicity, we just use a global var.
@@ -385,10 +390,12 @@ class BashProxy
         }
 
         function #{func} {
-          local IFS='
-        '
           . <( __completer_context_passer |
-              ruby -x "#{script_file}" #{debug_flag} #{ignore_case_flag} -c "$COMP_CWORD" "${COMP_WORDS[@]}")
+              ruby -x "#{script_file}" #{debug_flag} #{ignore_case_flag} \
+                  -p "$COMP_POINT" \
+                  -l "$COMP_LINE" \
+                  -c "$COMP_CWORD" "${COMP_WORDS[@]}" \
+                  )
         }
         EOF
 
@@ -402,7 +409,7 @@ class BashProxy
     vars and vars.split(/\n/).each do |line|
       if line =~ /^declare\s+(\S+)\s+([^=]+)\=(.*)$/ then
         flag, name, value = $1, $2, $3
-        # debug "#{flag}: #{name} = #{value}"
+        debug "#{flag}: #{name} = #{value}" if debug
         next if flag =~ /[aA]/ # Ignore arrays and hashes
         @env[name] = unshescape value
       end
@@ -412,7 +419,7 @@ class BashProxy
 
     # debug @env
     puts <<~EOF
-          COMPREPLY=(
+          IFS=$'\\n' COMPREPLY=(
         EOF
   end
 
@@ -449,7 +456,7 @@ class CompleterEngine
 
   START = "start"
 
-  def initialize(proxy, orig_words, index, ignore_case)
+  def initialize(proxy, orig_words, index, ignore_case, comp_line, comp_point)
     @proxy = proxy
 
     @orig_words = orig_words
@@ -463,6 +470,12 @@ class CompleterEngine
     # Whether do case-insensitive comparison or not;
     # this comes from the -i option.
     @ignore_case = ignore_case
+
+    # Whole command line
+    @comp_line = comp_line
+
+    # Cursor point
+    @comp_point = comp_point
 
     # Current state.
     @state = START
@@ -487,7 +500,7 @@ class CompleterEngine
     @candidates = []
   end
 
-  attr_reader *%i(state cursor_index ignore_case position orig_words words)
+  attr_reader *%i(state cursor_index ignore_case position orig_words words comp_line comp_point)
 
   # Whether in the precan mode, i.e. position == 0.
   # During prescan, we execute all state blocks in order to collect
@@ -841,18 +854,18 @@ class Completer
   end
 
   # Perform completion
-  def do_completion(ignore_case, &b)
+  def do_completion(cursor_pos, words, line:nil, point:nil, ignore_case:false, &b)
     b or die "do_completion() requires a block."
     $complete_ignore_case = ignore_case
-    word_index = ARGV.shift.to_i
-    words = ARGV
-    cc = CompleterEngine.new get_proxy, words, word_index, ignore_case
+    cc = CompleterEngine.new get_proxy, words, cursor_pos, ignore_case, line, point
 
     debug <<~EOF
         OrigWords: #{cc.orig_words.join ", "}
         Words: #{cc.words.join ", "}
         Index: #{cc.cursor_index}
         Current: #{cc.cursor_word}
+        Line: #{cc.comp_line}
+        Point: #{cc.comp_point}
         EOF
 
     cc.run_completion &b
@@ -862,6 +875,8 @@ class Completer
   public
   def real_main(&b)
     ignore_case = false
+    line = nil
+    point = nil
 
     OptionParser.new { |opts|
       opts.banner = "Usage: [OPTIONS] command-name"
@@ -869,8 +884,18 @@ class Completer
       # Note "-c" must be the last option; otherwise other flags such as
       # "-i" "-d" will be ignored.
       opts.on("-c", "Perform completion (shouldn't be used directly)") do
-        do_completion ignore_case, &b
+        cursor_pos = ARGV.shift.to_i
+        words = ARGV
+        do_completion cursor_pos, words, line:line, point:point, ignore_case: ignore_case, &b
         return
+      end
+
+      opts.on("-lLINE", "Pass whole command line") do |v|
+        line = v
+      end
+
+      opts.on("-pPOS", "Pass completion point") do |v|
+        point = v
       end
 
       opts.on("-i", "Enable ignore-case completion") do

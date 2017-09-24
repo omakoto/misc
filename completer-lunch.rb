@@ -11,9 +11,11 @@ exec ruby -x "$0" -i -d lunch a-lunch
 export COMPLETER_DEBUG=/tmp/completer-debug.txt
 unset COMPLETER_DEBUG
 
-ruby -x completer-lunch.rb -i -c 1 lunch
+ruby -x completer-lunch.rb -i -d lunch
 
-ruby -x completer-lunch.rb -i -c 1 lunch bullhe
+ruby -x completer-lunch.rb -i -p 1 -l "abcdef" -c 1 lunch </dev/null
+
+ruby -x completer-lunch.rb -i -c 1 lunch bullhe </dev/null
 
 =end
 
