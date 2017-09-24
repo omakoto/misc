@@ -33,4 +33,8 @@ Completer.define do
 
     candidates matched_files
   end
+
+  auto_state "--always-test" do
+    candidates %w[aaaa], always:true
+  end
 end

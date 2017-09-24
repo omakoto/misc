@@ -368,6 +368,7 @@ assert_comp ruby -x $medir/completer-test.rb -i -c 1 xxx <<EOF
 --nice^
 --threads^
 --image^
+--always-test^
 EOF
 
 assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx -- <<EOF
@@ -398,6 +399,7 @@ assert_comp ruby -x $medir/completer-test.rb -i -c 5 xxx -- /tmp/ ../ --reset <<
 --nice^
 --threads^
 --image^
+--always-test^
 EOF
 
 assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx -- "~/" <<EOF
@@ -504,6 +506,7 @@ assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --threads <<EOF
 --max^
 --nice^
 --threads^
+--always-test^
 EOF
 
 assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --threads 2 <<EOF
@@ -597,6 +600,14 @@ assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --nice -3 <<EOF
 EOF
 
 assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --nice -3x <<EOF
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --always-test <<EOF
+aaaa^
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --always-test xyz <<EOF
+aaaa^
 EOF
 
 done_testing

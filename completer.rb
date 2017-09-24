@@ -554,12 +554,14 @@ class CompleterEngine
   end
 
   # Add a single candidate.
-  def _candidate_single(arg, even_unmatched:false)
+  # If always is true, candidates will be always added, even
+  # if the candidate doesn't start with the cursor word.
+  def _candidate_single(arg, always:false)
     return unless at_cursor?
     return unless arg
     die "#{arg.inspect} is not a Candidate" unless arg.instance_of? Candidate
     return unless arg.value
-    if !even_unmatched
+    if !always
       return unless arg.has_prefix? cursor_word
     end
 
@@ -568,23 +570,23 @@ class CompleterEngine
 
   # Push candidates.
   # "args" can be a string, an array of strings, or a proc.
-  # If even_unmatched is true, candidates will be always added, even
+  # If always is true, candidates will be always added, even
   # if they don't start with the cursor word.
-  def candidates(*args, even_unmatched:false , &b)
+  def candidates(*args, always:false , &b)
     return unless at_cursor?
 
     args.each {|arg|
       c = as_candidate(arg)
       if c
-        _candidate_single c
+        _candidate_single c, always:always
       elsif arg.respond_to? :each
-        arg.each {|x| candidates x}
+        arg.each {|x| candidates x, always:always}
       elsif arg.respond_to? :call
-        candidates arg.call()
+        candidates(arg.call(), always:always)
       end
     }
     if b
-      candidates(b.call())
+      candidates(b.call(), always:always)
     end
   end
 
