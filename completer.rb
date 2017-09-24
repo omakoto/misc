@@ -24,8 +24,6 @@ TODOs
 
 Feed "declare -p" to the command from the bash side.
 
-- Sort candidates?
-
 ================================================================================
 - Handling ~
 
@@ -187,14 +185,11 @@ module CompleterRefinements
 
         # If a candidate ends with an CR, it's not a completed
         # candidate.
-        s_completed = true
-        if candidate =~ /\r$/
-          candidate.chomp("\r")
-          s_completed = false
-        end
+        s_completed = candidate.sub!(/\r$/, "") ? false : true
+
         # If one is provided as an argument, use it.
-        help = s_help if help == nil
         completed = s_completed if completed == nil
+        help = s_help if help == nil
 
         return Candidate.new(candidate, completed:completed, help:help)
       else
@@ -300,6 +295,7 @@ module CompleterRefinements
     # Same as self.start_with?(prefix), except it can do case-insensitive
     # comparison when needed.
     def has_prefix?(prefix)
+      return true unless prefix
       if $complete_ignore_case
         return self.downcase.start_with? prefix.downcase
       else
@@ -308,8 +304,8 @@ module CompleterRefinements
     end
 
     # Build a candidate from a String.
-    def to_candidate(completed: nil, help: nil)
-      return Kernel.as_candidate(value, completed, help)
+    def as_candidate(completed: nil, help: nil)
+      return Kernel.as_candidate(value, completed:completed, help:help)
     end
   end # refine String
 end
@@ -357,6 +353,8 @@ class BashProxy
     @env = {}
     @jobs = []
   end
+
+  attr_reader :env, :jobs
 
   def install(commands, script, ignore_case)
     command = commands[0]
@@ -503,13 +501,33 @@ class CompleterEngine
     return (@words[@cursor_index] or "")
   end
 
+  # Returns the current word in the command line.
+  def cursor_orig_word()
+    return (@orig_words[@cursor_index] or "")
+  end
+
+  def _relative_word(ar, i)
+    return nil if prescan?
+    i += @position
+    return "" if i < 0 || i >= ar.length
+    return ar[i]
+  end
+
   # Return the word relative to position. word() returns the current
   # word, and word(-1) returns the previous word.
   def word(i = 0)
-    return nil if prescan?
-    i += @position
-    return "" if i < 0 || i >= @words.length
-    return @words[i]
+    return _relative_word(@words, i)
+  end
+
+  # Return the original word relative to position. See word() for
+  # details.
+  def orig_word(i = 0)
+    return _relative_word(@orig_words, i)
+  end
+
+  # Returns the shell and environmental variables.
+  def env()
+    return @proxy.env
   end
 
   # Define a "begin" block, which will be executed only once
@@ -573,8 +591,14 @@ class CompleterEngine
     throw :NextWord
   end
 
+  # Whether any candidate(s) are already registered.
+  def has_candidates()
+    return @candidates.size > 0
+  end
+
   # Clear all the candidates that have been added so far.
   def clear_candidates()
+    debug "Candidate(s) removed."
     @candidates = []
   end
 
@@ -602,6 +626,7 @@ class CompleterEngine
 
     args.each {|arg|
       c = as_candidate(arg)
+      debug c.inspect
       if c
         _candidate_single c, always:always
       elsif arg.respond_to? :each
@@ -722,23 +747,55 @@ class CompleterEngine
     end
   end
 
+  # If the cursor word starts with "$", then see if it's expandable.
+  def maybe_handle_variable()
+    # Move to the cursor position so that candidates() will accept
+    # arguments.
+    @position = @cursor_index
+
+    cow = cursor_orig_word
+
+    return unless cow.start_with?("$")
+
+    if cow =~ /^\$([a-z0-9\_]*)(\/?)$/i
+      name, slash = $1, $2
+      if slash == "/"
+        value = env[name]
+        if File.directory?(value)
+          candidate value + "/", always:true
+        end
+      else
+        debug "Maybe variable: #{name}"
+        env.keys.each do |k|
+          if k.has_prefix?(name)
+            candidate("$" + k + "\r")
+          end
+        end
+      end
+    end
+  end
+
   # Entry point.
   def run_completion(&b)
     @proxy.start_completion
     begin
-      @current_block = b
-      @states[START] = b
+      maybe_handle_variable
 
-      # Start from position-0 (prescan), look at each word at
-      # index 1, 2, ... until the current word.
-      catch :FinishCompletion do
-        @position = 0
-        while @position <= @cursor_index do
-          debug "Pass -> #{@position} \"#{word}\""
-          catch :NextWord do
-            self.instance_eval &@current_block
+      if !has_candidates
+        @current_block = b
+        @states[START] = b
+
+        # Start from position-0 (prescan), look at each word at
+        # index 1, 2, ... until the current word.
+        catch :FinishCompletion do
+          @position = 0
+          while @position <= @cursor_index do
+            debug "Pass -> #{@position} \"#{word}\""
+            catch :NextWord do
+              self.instance_eval &@current_block
+            end
+            @position += 1
           end
-          @position += 1
         end
       end
 
