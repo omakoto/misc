@@ -29,6 +29,23 @@ TODOs
 
 Feed "declare -p" to the command from the bash side.
 
+  Variables: done, untested.
+  Jobs: not yet.
+
+- Handle COMP_WORDBREAKS. Consider the following cases.
+
+--context [TAB]
+--context=[TAB]
+--context 123 /e[TAB]
+--context=132 /e[TAB]
+
+[Maybe?]
+COMP_WORDBREAKS should only work when the original word can't be completed. Test case:
+touch aaa:bbb
+ll aaa:b[TAB] -> aaa:bbb
+ll aaa:/e[TAB] -> aaa:/etc/
+
+
 ================================================================================
 - Handling ~
 
