@@ -352,6 +352,12 @@ end
 class BashProxy
   SECTION_SEPARATOR = "\n-*-*-*-COMPLETER-*-*-*-\n"
 
+  def initialize()
+    # Shell and environmental variables.
+    @env = {}
+    @jobs = []
+  end
+
   def install(commands, script, ignore_case)
     command = commands[0]
     func = "_#{command.gsub(/[^a-z0-9]/i) {|c| "_" + c.ord.to_s(16)}}_completion"
@@ -363,6 +369,8 @@ class BashProxy
     debug_flag = debug ? "-d" : ""
     ignore_case_flag = ignore_case ? "-i" : ""
 
+    # Note, we generate "COMPREPLY=(" and ")" by code too, which will
+    # allow us to execute any code from the script if needed.
     puts <<~EOF
         function __completer_context_passer {
             declare -p
@@ -373,8 +381,8 @@ class BashProxy
         function #{func} {
           local IFS='
         '
-          COMPREPLY=( $(__completer_context_passer |
-              ruby -x "#{script_file}" #{debug_flag} #{ignore_case_flag} -c "$COMP_CWORD" "${COMP_WORDS[@]}") )
+          . <( __completer_context_passer |
+              ruby -x "#{script_file}" #{debug_flag} #{ignore_case_flag} -c "$COMP_CWORD" "${COMP_WORDS[@]}")
         }
         EOF
 
@@ -383,12 +391,29 @@ class BashProxy
     end
   end
 
-  def stert_completion()
-    (vars, jobs) = $stdin.read.split(SECTION_SEPARATOR)
-    vars.split /\n/ do |sec|
+  def start_completion()
+    vars, jobs = $stdin.read.split(SECTION_SEPARATOR)
+    vars and vars.split(/\n/).each do |line|
       if line =~ /^declare\s+(\S+)\s+([^=]+)\=(.*)$/ then
+        flag, name, value = $1, $2, $3
+        # debug "#{flag}: #{name} = #{value}"
+        next if flag =~ /[aA]/ # Ignore arrays and hashes
+        @env[name] = unshescape value
       end
     end
+
+    # TODO Parse jobs
+
+    # debug @env
+    puts <<~EOF
+          COMPREPLY=(
+        EOF
+  end
+
+  def end_completion()
+    puts <<~EOF
+          ) # END COMPREPLY
+        EOF
   end
 
   # Return as a candidate string for bash.
@@ -699,25 +724,30 @@ class CompleterEngine
 
   # Entry point.
   def run_completion(&b)
-    @current_block = b
-    @states[START] = b
+    @proxy.start_completion
+    begin
+      @current_block = b
+      @states[START] = b
 
-    # Start from position-0 (prescan), look at each word at
-    # index 1, 2, ... until the current word.
-    catch :FinishCompletion do
-      @position = 0
-      while @position <= @cursor_index do
-        debug "Pass -> #{@position} \"#{word}\""
-        catch :NextWord do
-          self.instance_eval &@current_block
+      # Start from position-0 (prescan), look at each word at
+      # index 1, 2, ... until the current word.
+      catch :FinishCompletion do
+        @position = 0
+        while @position <= @cursor_index do
+          debug "Pass -> #{@position} \"#{word}\""
+          catch :NextWord do
+            self.instance_eval &@current_block
+          end
+          @position += 1
         end
-        @position += 1
       end
-    end
 
-    # Print the collected candidates.
-    @candidates.each do |c|
-      @proxy.add_candidate c
+      # Print the collected candidates.
+      @candidates.each do |c|
+        @proxy.add_candidate c
+      end
+    ensure
+      @proxy.end_completion
     end
   end
 end

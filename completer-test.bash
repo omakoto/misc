@@ -71,7 +71,7 @@ assert_comp() {
   fi
   # Note we can't use pipe, which would break test counting in testutil.bash
 
-  assert_out -ds cat <("$@" | sed -e 's/ $/^/')
+  assert_out -ds cat <("$@" </dev/null | sed -e '1d; $d; s/ $/^/')
 }
 
 assert_comp ruby -x $medir/completer-lunch.rb -i -c 1 lunch <<EOF
@@ -134,10 +134,10 @@ never^
 EOF
 
 # This could fail if rg supports a new filetype that stats with any of the following types.
-assert_comp bash -c "ruby -x $medir/completer-rg.rb -i -c 2 rg --type | grep '^\(cmake\|zsh\|taskpaper\)'" <<EOF
-cmake^
-zsh^
-taskpaper^
+assert_comp bash -c "ruby -x $medir/completer-rg.rb -i -c 2 rg --type y" <<EOF
+yacc^
+yaml^
+yocto^
 EOF
 
 assert_comp ruby -x $medir/completer-rg.rb -i -c 2 rg --context  <<EOF
