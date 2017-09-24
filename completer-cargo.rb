@@ -51,7 +51,7 @@ STANDARD_FLAGS = %w(-h --help -V --version -v --verbose -vv -q --quiet --frozen 
 TARGETS = read_file_lines("~/.cargo-targets").push(* %w(i686-unknown-linux-gnu))
 
 Completer.define do
-  init do
+  init_block do
     def take_colors()
       option "--colors", %w(auto always never)
     end

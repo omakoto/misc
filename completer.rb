@@ -13,6 +13,8 @@ $debug = $debug_file ? true : false
 $debug_file ||= "/tmp/completer-debug.txt"
 FileUtils.rm($debug_file, force:true)
 
+$complete_ignore_case = false
+
 =begin
 TODOs
 
@@ -165,21 +167,32 @@ def unshescape(arg)
   return ret
 end
 
-# When a string starts with "~/", then expand to the home directory.
-# Doesn't support ~USERNAME/.
-def expand_home(word)
-  return word.sub(/^~\//, "#{Dir.home}/")
-end
+module CompleterRefinements
+  refine String do
+    # When a string starts with "~/", then expand to the home directory.
+    # Doesn't support ~USERNAME/.
+    def expand_home()
+      return self.sub(/^~\//, "#{Dir.home}/")
+    end
 
-# Same as c.start_with?(prefix), except it can do case-insensitive
-# comparison when needed.
-def has_prefix(c, prefix, ignore_case:)
-  if ignore_case
-    return c.downcase.start_with? prefix.downcase
-  else
-    return c.start_with? prefix
+    # Same as self.start_with?(prefix), except it can do case-insensitive
+    # comparison when needed.
+    def has_prefix?(prefix)
+      if $complete_ignore_case
+        return self.downcase.start_with? prefix.downcase
+      else
+        return self.start_with? prefix
+      end
+    end
+
+    # Build a candidate from a String.
+    def to_candidate(completed: nil, help: nil)
+      return Kernel.as_candidate(value, completed, help)
+    end
   end
 end
+
+using CompleterRefinements
 
 # True if a list contains a value, or
 def contains(list_or_str, val)
@@ -192,6 +205,8 @@ end
 
 # Represents a single candidate.
 class Candidate
+  using CompleterRefinements
+
   def initialize(value, completed: true, help: "")
     value or die "Empty candidate detected."
 
@@ -211,8 +226,8 @@ class Candidate
   attr_reader :help
 
   # Whether a candidate has a prefix or not.
-  def start_with?(prefix, ignore_case:)
-    return Kernel.has_prefix(@value, prefix, ignore_case:ignore_case)
+  def has_prefix?(prefix)
+    return @value.has_prefix?(prefix)
   end
 
   def as_candidate()
@@ -221,32 +236,30 @@ class Candidate
 end
 
 # Takes a String or a Candidate and return as a Candidate.
-def as_candidate(value)
+def as_candidate(value, completed: nil, help: nil)
   if value.instance_of? Candidate
     return value
   elsif value.instance_of? String
     # If a string contains a TAB, the following section is a
     # help string.
-    (candidate, help) = value.split(/\t/, 2)
+    (candidate, s_help) = value.split(/\t/, 2)
 
     # If a candidate ends with an CR, it's not a completed
     # candidate.
-    completed = true
+    s_completed = true
     if candidate =~ /\r$/
       candidate.chomp("\r")
-      completed = false
+      s_completed = false
     end
+    # If one is provided as an argument, use it.
+    help = s_help if help == nil
+    completed = s_completed if completed == nil
 
     return Candidate.new(candidate, completed:completed, help:help)
   else
     return nil
   end
 end
-
-
-# def c(value)
-#   return Candidate.new(value)
-# end
 
 # Return true if a given path is a directory and not empty.
 def is_non_empty_dir(f, ignore_files: false)
@@ -266,7 +279,7 @@ def is_non_empty_dir(f, ignore_files: false)
 end
 
 # Find matching files for a given word.
-def get_matched_files(word, wildcard = "*", ignore_case: false)
+def get_matched_files(word, wildcard = "*")
   # Remove the last path component.
   dir = word.sub(%r([^\/]*$), "")
 
@@ -279,7 +292,7 @@ def get_matched_files(word, wildcard = "*", ignore_case: false)
   ret = []
 
   flag = File::FNM_DOTMATCH
-  if ignore_case
+  if $complete_ignore_case
     flag |= File::FNM_CASEFOLD
   end
 
@@ -304,7 +317,7 @@ def get_matched_files(word, wildcard = "*", ignore_case: false)
 end
 
 # Find matching directories for a given word.
-def get_matched_dirs(word, ignore_case: false)
+def get_matched_dirs(word)
   # Remove the last path component.
   dir = word.sub(%r([^\/]*$), "")
 
@@ -402,9 +415,10 @@ def get_proxy()
   end
 end
 
-
 # This class is the DSL engine.
 class CompleterEngine
+  using CompleterRefinements
+
   START = "start"
 
   def initialize(proxy, orig_words, index, ignore_case)
@@ -413,10 +427,10 @@ class CompleterEngine
     @orig_words = orig_words
 
     # All words in the command line.
-    @words = orig_words.map { |w| unshescape(expand_home(w)) }
+    @words = orig_words.map { |w| unshescape(w.expand_home) }
 
-    # Current word index at the cursor; 0-based.
-    @cur_index = index
+    # Cursor word index; 0-based.
+    @cursor_index = index
 
     # Whether do case-insensitive comparison or not;
     # this comes from the -i option.
@@ -428,11 +442,11 @@ class CompleterEngine
     # All the defined states and their blocks.
     @states = {}
 
-    # @pass
+    # @position
     # 0: Pre-scan; just collect all states.
-    # 0 < @pass < cur_index: Scanning, don't generate candidates yet.
-    # @pass == cur_index: Current word. Generate candidates.
-    @pass = 0
+    # 0 < @position < cursor_index: Scanning, don't generate candidates yet.
+    # @position == cursor_index: Cursor word. Generate candidates.
+    @position = 0
 
     # Current user-defined block to execute.
     # Start with the block that's passed to Completer.define(),
@@ -445,21 +459,18 @@ class CompleterEngine
     @candidates = []
   end
 
-  attr_reader *%i(state cur_index ignore_case pass orig_words words)
+  attr_reader *%i(state cursor_index ignore_case position orig_words words)
 
-  # index is an alias of pass.
-  alias index pass
-
-  # Whether in the precan mode, i.e. pass == 0.
+  # Whether in the precan mode, i.e. position == 0.
   # During prescan, we execute all state blocks in order to collect
   # all states.
   def prescan?()
-    return @pass == 0
+    return @position == 0
   end
 
-  # Whether we're at the current word, i.e. pass == cur_index.
-  def current?()
-    return @pass == @cur_index
+  # Whether we're at the cursor word, i.e. position == cursor_index.
+  def at_cursor?()
+    return @position == @cursor_index
   end
 
   # Return the command name, such as "adb", "cargo" or "go".
@@ -468,40 +479,78 @@ class CompleterEngine
   end
 
   # Returns the current word in the command line.
-  def current_word()
-    return (@words[@cur_index] or "")
+  def cursor_word()
+    return (@words[@cursor_index] or "")
+  end
+
+  # Return the word relative to position. word() returns the current
+  # word, and word(-1) returns the previous word.
+  def word(i = 0)
+    return nil if prescan?
+    i += @position
+    return "" if i < 0 || i >= @words.length
+    return @words[i]
   end
 
   # Define a "begin" block, which will be executed only once
   # during prescan.
-  def init(&b)
+  def init_block(&b)
+    b or die "init() requires a block."
     return unless prescan?
 
     b.call()
   end
 
-  # Move to the initial state.
-  def reset()
+  # Move to a state.
+  # When on_word is provided, only move the state when detecting
+  # the word.
+  def next_state(state_name, on_word:nil)
     return if prescan?
 
-    next_state START
+    candidates on_word if on_word
+
+    if on_word and on_word != word
+      return
+    end
+
+    b = @states[state_name]
+    b or abort "state #{state_name} not found."
+    @current_block = b
+    debug "State -> #{state_name}"
+    next_word
+  end
+
+  # Equivalent to next_state START
+  def reset_state(on_word:nil)
+    return if prescan?
+
+    next_state START, on_word: on_word
   end
 
   # Finish the completion. No further candidates will be provided
   # once it's called.
-  def finish()
+  def finish(on_word:nil)
     return if prescan?
 
     throw :FinishCompletion
   end
 
-  # Return the word relative to current. word() returns the current
-  # word, and word(-1) returns the previous word.
-  def word(i = 0)
-    return nil if prescan?
-    i += @pass
-    return "" if i < 0 || i >= @words.length
-    return @words[i]
+  # Jump to the cursor word. When a completion doesn't involve
+  # any state transition and there's no state management,
+  # use this to jump to the cursor word.
+  def to_cursor()
+    return if prescan? or @position == @cursor_index
+
+    @position = @cursor_index - 1
+  end
+
+  # Skip the rest of the code in the block and move to the
+  # next word.
+  def next_word(to_position: nil)
+    # The main loop increments @position, so we need -1 here.
+    @position = to_position - 1 if to_position
+
+    throw :NextWord
   end
 
   # Clear all the candidates that have been added so far.
@@ -509,33 +558,25 @@ class CompleterEngine
     @candidates = []
   end
 
-  # Skip the rest of the code in the block and move to the
-  # next word.
-  def next_word()
-    throw :NextWord
-  end
-
-  # Same as c.start_with?(prefix), except it does case-insensitive
-  # comparison when needed.
-  def start_with?(c, prefix)
-    Kernel.has_prefix(c, prefix, ignore_case: ignore_case)
-  end
-
   # Add a single candidate.
-  def _candidate_single(arg)
-    return unless current?
+  def _candidate_single(arg, even_unmatched:false)
+    return unless at_cursor?
     return unless arg
     die "#{arg.inspect} is not a Candidate" unless arg.instance_of? Candidate
     return unless arg.value
-    return unless arg.start_with? current_word, ignore_case: ignore_case
+    if !even_unmatched
+      return unless arg.has_prefix? cursor_word
+    end
 
     @candidates.push(arg)
   end
 
   # Push candidates.
   # "args" can be a string, an array of strings, or a proc.
-  def candidates(*args, &b)
-    return unless current?
+  # If even_unmatched is true, candidates will be always added, even
+  # if they don't start with the cursor word.
+  def candidates(*args, even_unmatched:false , &b)
+    return unless at_cursor?
 
     args.each {|arg|
       c = as_candidate(arg)
@@ -557,26 +598,21 @@ class CompleterEngine
   alias flag candidates
   alias flags candidates
 
-  # Define a candidate generator
+  # Define a candidate generator function
   def cand_gen(name_sym, &b)
-    b or die("Missing block.")
+    b or die("cand_gen() requires a block.")
     # Define a function, only during prescan.
     return unless prescan?
 
     self.class.send :define_method, name_sym do
       # The method should-be no-op unless current.
-      b.call if current?
+      b.call if at_cursor?
     end
-  end
-
-  # Convert a string to a Candidate.
-  def cand(value, completed: true, help: "")
-    return Candidate.new(value, completed:completed, help:help);
   end
 
   # Add a new state.
   def add_state(name, &b)
-    b or die "Must pass a block to add_state()."
+    b or die "add_state() requires a block."
     return unless prescan?
     @states[name] and die "State #{name} is already defined."
 
@@ -592,41 +628,17 @@ class CompleterEngine
       add_state state_name, &b
       self.instance_eval &b
     else
-      candidates state_name if current?
+      candidates state_name if at_cursor?
       if state_name == word
         next_state state_name
       end
     end
   end
 
-  # Move to a state.
-  # When on_word is provided, only move the state when detecting
-  # the word.
-  def next_state(state_name, on_word:nil)
-    return if prescan?
-
-    candidates on_word
-
-    if on_word and on_word != word
-      return
-    end
-
-    b = @states[state_name]
-    b or abort "state #{state_name} not found."
-    @current_block = b
-    debug "State -> #{state_name}"
-    next_word
-  end
-
-  # Equivalent to next_state START
-  def reset_state(on_word:nil)
-    next_state START, on_word: on_word
-  end
-
   # Define an option that takes an argument, which can be
   # either optional or mandatory.
   def options(flags, arg_candidates = [], arg_optional: false)
-    return unless current?
+    return unless at_cursor?
 
     # If the previous word was the flag, then add the
     # candidates for the argument.
@@ -653,23 +665,23 @@ class CompleterEngine
 
   # Accept files.
   def matched_files(wildcard = "*")
-    return unless current?
-    return get_matched_files(word, wildcard, ignore_case:ignore_case)
+    return unless at_cursor?
+    return get_matched_files(word, wildcard)
   end
 
   alias arg_file matched_files
 
   # Accept directories.
   def matched_dirs()
-    return unless current?
-    return get_matched_dirs(word, ignore_case:ignore_case)
+    return unless at_cursor?
+    return get_matched_dirs(word)
   end
 
   alias arg_dir matched_dirs
 
   # Accept an integer.
   def arg_number(allow_negative:false)
-    return unless current?
+    return unless at_cursor?
 
     if allow_negative
       return unless word =~ /^\-?\d*$/
@@ -689,20 +701,20 @@ class CompleterEngine
   end
 
   # Entry point.
-  def run(&b)
+  def run_completion(&b)
     @current_block = b
-
     @states[START] = b
 
-    # Start from pass-0 (prescan), look at each word at
+    # Start from position-0 (prescan), look at each word at
     # index 1, 2, ... until the current word.
     catch :FinishCompletion do
-      (0 .. @cur_index).each do |pass|
-        @pass = pass
-        debug "Pass -> #{@pass} \"#{word}\""
+      @position = 0
+      while @position <= @cursor_index do
+        debug "Pass -> #{@position} \"#{word}\""
         catch :NextWord do
           self.instance_eval &@current_block
         end
+        @position += 1
       end
     end
 
@@ -731,6 +743,8 @@ class Completer
 
   # Perform completion
   def do_completion(ignore_case, &b)
+    b or die "do_completion() requires a block."
+    $complete_ignore_case = ignore_case
     word_index = ARGV.shift.to_i
     words = ARGV
     cc = CompleterEngine.new get_proxy, words, word_index, ignore_case
@@ -738,11 +752,11 @@ class Completer
     debug <<~EOF
         OrigWords: #{cc.orig_words.join ", "}
         Words: #{cc.words.join ", "}
-        Index: #{cc.cur_index}
-        Current: #{cc.current_word}
+        Index: #{cc.cursor_index}
+        Current: #{cc.cursor_word}
         EOF
 
-    cc.run &b
+    cc.run_completion &b
   end
 
   # Main

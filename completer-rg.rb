@@ -137,7 +137,7 @@ Completer.define do
   end
 
   # --type-list is only allowed as the first option.
-  candidate "--type-list" if cur_index == 1
+  candidate "--type-list" if cursor_index == 1
   # If --type-list is already in the command line, don't complete
   # further.
   finish if word == "--type-list"
