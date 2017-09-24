@@ -8,11 +8,11 @@ require 'pp'
 # Can also be enabled with -d.
 $debug_file = ENV['COMPLETER_DEBUG']
 $debug = $debug_file ? true : false
-
-# Debug output goes to this file, when stdout is not terinal.
 $debug_file ||= "/tmp/completer-debug.txt"
-FileUtils.rm($debug_file, force:true)
+$debug_out = nil
 
+# Whether completion is being performed in case-insensitive mode.
+# For simplicity, we just use a global var.
 $complete_ignore_case = false
 
 =begin
@@ -78,96 +78,218 @@ $VARIABLE expansion
 
 =end
 
-
 # Stuff used by the core as well as the engine.
 
-public
-
-# Shod debug output.
-def debug(*msg, &b)
-  if $debug
-    # If stdout is TTY, assume the script is executed directly for
-    # testing, and write log to stderr.
-    if $stdout.tty?
-      $stderr.puts msg
-    else
-      open $debug_file, "a" do |o|
-        o.puts msg
-      end
-    end
-    b.call if b
-    return 1
-  else
-    return 0
-  end
-end
-
-def die(*msg)
-  abort "#{__FILE__}: " + msg.join("")
-end
-
-# Shell-escape a single token.
-def shescape(arg)
-  if arg =~ /[^a-zA-Z0-9\-\.\_\/\:\+\@]/
-      return "'" + arg.gsub(/'/, "'\\\\''") + "'"
-  else
-      return arg;
-  end
-end
-
-# Shell-unescape a single token.
-def unshescape(arg)
-  if arg !~ / [ \' \" \\ ] /x
-    return arg
-  end
-
-  ret = ""
-  pos = 0
-  while pos < arg.length
-    ch = arg[pos]
-
-    case ch
-    when "'"
-      pos += 1
-      while pos < arg.length
-        ch = arg[pos]
-        pos += 1
-        if ch == "'"
-          break
-        end
-        ret += ch
-      end
-    when '"'
-      pos += 1
-      while pos < arg.length
-        ch = arg[pos]
-        pos += 1
-        if ch == '"'
-          break
-        elsif ch == '\\'
-          if pos < arg.length
-           ret += arg[pos]
-          end
-          pos += 1
-        end
-        ret += ch
-      end
-    when '\\'
-      pos += 1
-      if pos < arg.length
-        ret += arg[pos]
-        pos += 1
-      end
-    else
-      ret += ch
-      pos += 1
-    end
-  end
-
-  return ret
-end
 
 module CompleterRefinements
+  refine Kernel do
+    # Shod debug output.
+    def debug(*msg, &b)
+      if $debug
+        # If stdout is TTY, assume the script is executed directly for
+        # testing, and write log to stderr.
+        if $stdout.tty?
+          $stderr.puts msg
+        else
+          $debug_out = open $debug_file, "w" unless $debug_out
+          $debug_out.puts msg
+          $debug_out.flush
+        end
+        b.call if b
+        return 1
+      else
+        return 0
+      end
+    end
+
+    def die(*msg)
+      abort "#{__FILE__}: " + msg.join("")
+    end
+
+    # Shell-escape a single token.
+    def shescape(arg)
+      if arg =~ /[^a-zA-Z0-9\-\.\_\/\:\+\@]/
+          return "'" + arg.gsub(/'/, "'\\\\''") + "'"
+      else
+          return arg;
+      end
+    end
+
+    # Shell-unescape a single token.
+    def unshescape(arg)
+      if arg !~ / [ \' \" \\ ] /x
+        return arg
+      end
+
+      ret = ""
+      pos = 0
+      while pos < arg.length
+        ch = arg[pos]
+
+        case ch
+        when "'"
+          pos += 1
+          while pos < arg.length
+            ch = arg[pos]
+            pos += 1
+            if ch == "'"
+              break
+            end
+            ret += ch
+          end
+        when '"'
+          pos += 1
+          while pos < arg.length
+            ch = arg[pos]
+            pos += 1
+            if ch == '"'
+              break
+            elsif ch == '\\'
+              if pos < arg.length
+               ret += arg[pos]
+              end
+              pos += 1
+            end
+            ret += ch
+          end
+        when '\\'
+          pos += 1
+          if pos < arg.length
+            ret += arg[pos]
+            pos += 1
+          end
+        else
+          ret += ch
+          pos += 1
+        end
+      end
+
+      return ret
+    end
+
+    # True if a list contains a value, or
+    def contains(list_or_str, val)
+      if list_or_str.instance_of? String
+        return list_or_str == val
+      else
+        return list_or_str.include?(val)
+      end
+    end
+
+    # Takes a String or a Candidate and return as a Candidate.
+    def as_candidate(value, completed: nil, help: nil)
+      if value.instance_of? Candidate
+        return value
+      elsif value.instance_of? String
+        # If a string contains a TAB, the following section is a
+        # help string.
+        (candidate, s_help) = value.split(/\t/, 2)
+
+        # If a candidate ends with an CR, it's not a completed
+        # candidate.
+        s_completed = true
+        if candidate =~ /\r$/
+          candidate.chomp("\r")
+          s_completed = false
+        end
+        # If one is provided as an argument, use it.
+        help = s_help if help == nil
+        completed = s_completed if completed == nil
+
+        return Candidate.new(candidate, completed:completed, help:help)
+      else
+        return nil
+      end
+    end
+
+    # Return true if a given path is a directory and not empty.
+    def is_non_empty_dir(f, ignore_files: false)
+      begin
+        return false unless File.directory?(f)
+
+        if ignore_files
+          return f.children.any? { |x| x.directory? }
+        else
+          return !Dir.empty?(f)
+        end
+      rescue SystemCallError => e
+        debug e.inspect
+        # Just ignore any errors.
+        return false
+      end
+    end
+
+    # Find matching files for a given word.
+    def get_matched_files(word, wildcard = "*")
+      # Remove the last path component.
+      dir = word.sub(%r([^\/]*$), "")
+
+      debug "word=#{word} dir=#{dir} wildcard=#{wildcard}"
+
+      if dir != "" and !Dir.exists? dir
+        return
+      end
+
+      ret = []
+
+      flag = File::FNM_DOTMATCH
+      if $complete_ignore_case
+        flag |= File::FNM_CASEFOLD
+      end
+
+      begin
+        Pathname.new(dir == "" ? "." : dir).children.each do |path|
+          if path.directory?
+            cand = path.to_s
+            cand += "/"
+            cand += "\r" if is_non_empty_dir(path)
+          else
+            # If it's a file, only add when the basename matches wildcard.
+            next unless File.fnmatch(wildcard, path.basename, flag)
+            cand = path.to_s
+          end
+          ret.push(cand)
+        end
+      rescue SystemCallError => e
+        debug e.inspect
+      end
+
+      return ret
+    end
+
+    # Find matching directories for a given word.
+    def get_matched_dirs(word)
+      # Remove the last path component.
+      dir = word.sub(%r([^\/]*$), "")
+
+      if dir != "" and !Dir.exists? dir
+        return
+      end
+
+      ret = []
+
+      begin
+        Pathname.new(dir == "" ? "." : dir).children.each do |path|
+          next unless path.directory?
+          cand = path.to_s
+          cand += "/"
+          cand += "\r" if is_non_empty_dir(path, ignore_files:true)
+          ret.push(cand)
+        end
+      rescue SystemCallError => e
+        debug e.inspect
+      end
+
+      return ret
+    end
+
+    # Read all lines from a file, if exists.
+    def read_file_lines(file)
+      file = file.expand_home
+      return (File.exist? file) ? open(file, "r").read.split(/\n/) : []
+    end
+  end # refine Kernel
+
   refine String do
     # When a string starts with "~/", then expand to the home directory.
     # Doesn't support ~USERNAME/.
@@ -189,19 +311,10 @@ module CompleterRefinements
     def to_candidate(completed: nil, help: nil)
       return Kernel.as_candidate(value, completed, help)
     end
-  end
+  end # refine String
 end
 
 using CompleterRefinements
-
-# True if a list contains a value, or
-def contains(list_or_str, val)
-  if list_or_str.instance_of? String
-    return list_or_str == val
-  else
-    return list_or_str.include?(val)
-  end
-end
 
 # Represents a single candidate.
 class Candidate
@@ -233,119 +346,6 @@ class Candidate
   def as_candidate()
     return self
   end
-end
-
-# Takes a String or a Candidate and return as a Candidate.
-def as_candidate(value, completed: nil, help: nil)
-  if value.instance_of? Candidate
-    return value
-  elsif value.instance_of? String
-    # If a string contains a TAB, the following section is a
-    # help string.
-    (candidate, s_help) = value.split(/\t/, 2)
-
-    # If a candidate ends with an CR, it's not a completed
-    # candidate.
-    s_completed = true
-    if candidate =~ /\r$/
-      candidate.chomp("\r")
-      s_completed = false
-    end
-    # If one is provided as an argument, use it.
-    help = s_help if help == nil
-    completed = s_completed if completed == nil
-
-    return Candidate.new(candidate, completed:completed, help:help)
-  else
-    return nil
-  end
-end
-
-# Return true if a given path is a directory and not empty.
-def is_non_empty_dir(f, ignore_files: false)
-  begin
-    return false unless File.directory?(f)
-
-    if ignore_files
-      return f.children.any? { |x| x.directory? }
-    else
-      return !Dir.empty?(f)
-    end
-  rescue SystemCallError => e
-    debug e.inspect
-    # Just ignore any errors.
-    return false
-  end
-end
-
-# Find matching files for a given word.
-def get_matched_files(word, wildcard = "*")
-  # Remove the last path component.
-  dir = word.sub(%r([^\/]*$), "")
-
-  debug "word=#{word} dir=#{dir} wildcard=#{wildcard}"
-
-  if dir != "" and !Dir.exists? dir
-    return
-  end
-
-  ret = []
-
-  flag = File::FNM_DOTMATCH
-  if $complete_ignore_case
-    flag |= File::FNM_CASEFOLD
-  end
-
-  begin
-    Pathname.new(dir == "" ? "." : dir).children.each do |path|
-      if path.directory?
-        cand = path.to_s
-        cand += "/"
-        cand += "\r" if is_non_empty_dir(path)
-      else
-        # If it's a file, only add when the basename matches wildcard.
-        next unless File.fnmatch(wildcard, path.basename, flag)
-        cand = path.to_s
-      end
-      ret.push(cand)
-    end
-  rescue SystemCallError => e
-    debug e.inspect
-  end
-
-  return ret
-end
-
-# Find matching directories for a given word.
-def get_matched_dirs(word)
-  # Remove the last path component.
-  dir = word.sub(%r([^\/]*$), "")
-
-  if dir != "" and !Dir.exists? dir
-    return
-  end
-
-  ret = []
-
-  begin
-    Pathname.new(dir == "" ? "." : dir).children.each do |path|
-      next unless path.directory?
-      cand = path.to_s
-      cand += "/"
-      cand += "\r" if is_non_empty_dir(path, ignore_files:true)
-      ret.push(cand)
-    end
-  rescue SystemCallError => e
-    debug e.inspect
-  end
-
-  return ret
-end
-
-# Read all lines from a file, if exists.
-def read_file_lines(file)
-  file = file.expand_home
-  return (File.exist? file) ? open(file, "r").read.split(/\n/) : []
 end
 
 # Class that eats information sent by bash via stdin.
@@ -735,6 +735,9 @@ class Completer
   # Install completion
   def do_install(commands, script, ignore_case)
     commands or die "Missing commands."
+
+    # Remove directories from command names.
+    commands = commands.map {|p| p.sub(%r(^.*/), "")}
     get_proxy.install(commands, script, ignore_case)
   end
 
