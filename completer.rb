@@ -175,7 +175,7 @@ module CompleterRefinements
     end
 
     # Takes a String or a Candidate and return as a Candidate.
-    def as_candidate(value, completed: nil, help: nil)
+    def as_candidate(value, raw:nil, completed: nil, help: nil)
       if value.instance_of? Candidate
         return value
       elsif value.instance_of? String
@@ -183,15 +183,19 @@ module CompleterRefinements
         # help string.
         (candidate, s_help) = value.split(/\t/, 2)
 
+        # If a candidate starts with a linefeed, it's a raw candidate.
+        s_raw = candidate.sub!(/^\f/, "") ? true : false
+
         # If a candidate ends with an CR, it's not a completed
         # candidate.
         s_completed = candidate.sub!(/\r$/, "") ? false : true
 
         # If one is provided as an argument, use it.
+        raw = s_raw if raw == nil
         completed = s_completed if completed == nil
         help = s_help if help == nil
 
-        return Candidate.new(candidate, completed:completed, help:help)
+        return Candidate.new(candidate, raw:raw, completed:completed, help:help)
       else
         return nil
       end
@@ -304,8 +308,8 @@ module CompleterRefinements
     end
 
     # Build a candidate from a String.
-    def as_candidate(completed: nil, help: nil)
-      return Kernel.as_candidate(value, completed:completed, help:help)
+    def as_candidate(raw:nil, completed: nil, help: nil)
+      return Kernel.as_candidate(value, raw:raw, completed:completed, help:help)
     end
   end # refine String
 end
@@ -316,16 +320,20 @@ using CompleterRefinements
 class Candidate
   using CompleterRefinements
 
-  def initialize(value, completed: true, help: "")
+  def initialize(value, raw:false, completed: true, help: "")
     value or die "Empty candidate detected."
 
     @value = value.chomp
+    @raw= raw
     @completed = completed
     @help = help
   end
 
   # The candidate text.
   attr_reader :value
+
+  # Raw candidates will not be escaped.
+  attr_reader :raw
 
   # When a candidate is "completed", it's not a prefix of another text.
   # A completed candidate will be followed by a space when expanded.
@@ -419,7 +427,9 @@ class BashProxy
   def add_candidate(candidate)
     s = shescape(candidate.value)
     s += " " if candidate.completed
-    puts s
+
+    # Output will be eval'ed, so need double-escaping unless raw.
+    puts(candidate.raw ? s : shescape(s))
   end
 end
 
@@ -762,13 +772,15 @@ class CompleterEngine
       if slash == "/"
         value = env[name]
         if File.directory?(value)
-          candidate value + "/", always:true
+          value += "/"
+          value += "\r" if is_non_empty_dir(value)
+          candidate value, always:true
         end
       else
         debug "Maybe variable: #{name}"
         env.keys.each do |k|
           if k.has_prefix?(name)
-            candidate("$" + k + "\r")
+            candidate("\f$" + k + "\r") # Raw candidate
           end
         end
       end
