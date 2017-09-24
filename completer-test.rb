@@ -11,6 +11,7 @@ ruby -x completer-test.rb -i -c 2 xxx --max
 =end
 
 require_relative "completer"
+using CompleterRefinements
 
 Completer.define do
   option "--file", arg_file

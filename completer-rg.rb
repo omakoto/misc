@@ -14,6 +14,7 @@ unset COMPLETER_DEBUG
 
 ruby -x completer-rg.rb -i -c 1 rg
 
+ruby -x completer-rg.rb -i -c 1 rg --type-li
 ruby -x completer-rg.rb -i -c 2 rg --type-list
 
 ruby -x completer-rg.rb -i -c 2 rg --color
@@ -25,6 +26,7 @@ ruby -x completer-rg.rb -i -c 2 rg --context
 =end
 
 require_relative "completer"
+using CompleterRefinements
 
 Completer.define do
   # Because the block is executed for each command line word
@@ -138,6 +140,7 @@ Completer.define do
 
   # --type-list is only allowed as the first option.
   candidate "--type-list" if cursor_index == 1
+
   # If --type-list is already in the command line, don't complete
   # further.
   finish if word == "--type-list"

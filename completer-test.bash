@@ -153,10 +153,8 @@ assert_comp ruby -x $medir/completer-rg.rb -i -c 2 rg --context  <<EOF
 9^
 EOF
 
-# TODO Why doesn't --type-list show up?
-# TODO Where does -0 come from?
-
-assert_comp ruby -x $medir/completer-rg.rb -i -c 2 rg  <<EOF
+assert_comp ruby -x $medir/completer-rg.rb -i -c 1 rg  <<EOF
+-0^
 --^
 -a^
 -A^
@@ -253,6 +251,7 @@ EOF
 
 # --type-list shows up only at pos 1.
 assert_comp ruby -x $medir/completer-rg.rb -i -c 2 rg -i <<EOF
+-0^
 --^
 -a^
 -A^

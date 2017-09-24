@@ -18,6 +18,7 @@ ruby -x completer-lunch.rb -i -c 1 lunch bullhe
 =end
 
 require_relative "completer"
+using CompleterRefinements
 
 def load_devices()
   devices = %w(generic full bullhead angler marlin sailfish walleye taimen)

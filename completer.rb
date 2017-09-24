@@ -344,13 +344,8 @@ end
 
 # Read all lines from a file, if exists.
 def read_file_lines(file)
-  begin
-    file = expand_home file
-    return open(file, "r").read.split(/\n/);
-  rescue
-    # ignore errors
-    return []
-  end
+  file = file.expand_home
+  return (File.exist? file) ? open(file, "r").read.split(/\n/) : []
 end
 
 # Class that eats information sent by bash via stdin.
