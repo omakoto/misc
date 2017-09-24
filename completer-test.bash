@@ -3,7 +3,15 @@
 . testutil.bash
 
 # Init files -----------------------------------------------
-MOCK_HOME=/tmp/home
+export MOCK_HOME=/tmp/home
+export TAB="$(echo -e "\t")"
+
+unset PS0
+unset PS1
+unset PS2
+unset PS3
+unset PS4
+unset PROMPT_COMMAND
 
 cd "${0%/*}"
 medir="$(pwd)"
@@ -608,6 +616,35 @@ EOF
 
 assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --always-test xyz <<EOF
 aaaa^
+EOF
+
+#===========================================================
+# End-to-end test
+#===========================================================
+
+cat >$MOCK_HOME/.inputrc <<EOF
+set bell-style none
+EOF
+
+cat >$MOCK_HOME/.bashrc <<EOF
+alias lunch=echo
+PS1=">"
+. <($medir/completer-lunch.rb)
+stty -echo
+EOF
+
+function lunch_test_1() {
+  {
+    script -q -c "/bin/bash --noprofile" /dev/null <<EOF
+lunch a${TAB}u${TAB}
+exit
+EOF
+  } | tr -d '\r'
+}
+
+assert_comp lunch_test_1 <<EOF
+>angler-userdebug
+exit
 EOF
 
 done_testing
