@@ -343,7 +343,6 @@ end
 # Class that eats information sent by bash via stdin.
 class BashProxy
   SECTION_SEPARATOR = "\n-*-*-*-COMPLETER-*-*-*-\n"
-  VARIABLE_MARKER = "\nVARIABLES:\n"
 
   def install(commands, script, ignore_case)
     command = commands[0]
@@ -358,10 +357,8 @@ class BashProxy
 
     puts <<~EOF
         function __completer_context_passer {
-            echo -n "#{VARIABLE_MARKER}"
             declare -p
             echo -n "#{SECTION_SEPARATOR}"
-            echo -n "#{VARIABLE_MARKER}"
             jobs
         }
 
@@ -375,6 +372,14 @@ class BashProxy
 
     commands.each do |c|
       puts "complete -o nospace -F #{func} #{c}"
+    end
+  end
+
+  def stert_completion()
+    (vars, jobs) = $stdin.read.split(SECTION_SEPARATOR)
+    vars.split /\n/ do |sec|
+      if line =~ /^declare\s+(\S+)\s+([^=]+)\=(.*)$/ then
+      end
     end
   end
 
