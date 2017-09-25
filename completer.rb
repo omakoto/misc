@@ -23,41 +23,25 @@ $complete_ignore_case = false
 =begin
 TODOs
 
-- unshescape doens't support $'...' yet.
+- unshescape doens't support $'...' yet -> it's probably not important
+in completion usecases.
 
 - Nested state should have a fully-qualified name too.
 
-- Propagate shell variables and jobs to completer somehow
+- Handle jobs too.
 
-- Do a regular filecompletion after > and <. Somehow >&, <&, &<, &>
-are already handled by readline?
-
-Feed "declare -p" to the command from the bash side.
-
-  Variables: done, untested.
-  Jobs: not yet.
-
-- Handle COMP_WORDBREAKS. Consider the following cases.
+UNTODOs.
+- COMP_WORDBREAKS is already handled by readline.
+- The following case doesn't work, but '=' is normally optional, so
+  no strong reason to support it.
 
 --context [TAB]
 --context=[TAB]
 --context 123 /e[TAB]
 --context=132 /e[TAB]
 
-  - Turned out wordbreak is automatic.
-  - = is not part of default wordbreak.
-  - = is normally optional, so don't have to support it.
-
-
-[Maybe?]
-COMP_WORDBREAKS should only work when the original word can't be completed. Test case:
-touch aaa:bbb
-ll aaa:b[TAB] -> aaa:bbb
-ll aaa:/e[TAB] -> aaa:/etc/
-
-
 ================================================================================
-- Handling ~
+- Handling of "~"
 
 $ echo ~
 /usr/local/google/home/omakoto
@@ -392,9 +376,12 @@ class BashProxy
     # Shell and environmental variables.
     @env = {}
     @jobs = []
+    @engine = nil
   end
 
   attr_reader :env, :jobs
+
+  attr_accessor :engine
 
   def install(commands, script, ignore_case)
     command = commands[0]
@@ -431,6 +418,7 @@ class BashProxy
     end
   end
 
+  # Called when completion is about to start.
   def start_completion()
     vars, jobs = $stdin.read.split(SECTION_SEPARATOR)
     vars and vars.split(/\n/).each do |line|
@@ -454,6 +442,20 @@ class BashProxy
     puts <<~EOF
           ) # END COMPREPLY
         EOF
+  end
+
+  def maybe_override_candidates()
+    do_filename_completion = false
+    1.upto(engine.cursor_index - 1).each do |i|
+      # When there's an unquoted redirect marker, do a filename completion.
+      word = engine.orig_words[i]
+      if word =~ /^[\<\>]/
+        do_filename_completion = true
+      end
+    end
+    if do_filename_completion
+      engine.candidates engine.matched_files
+    end
   end
 
   # Return as a candidate string for bash.
@@ -486,7 +488,7 @@ def get_proxy()
 end
 
 # This class is the DSL engine.
-class CompleterEngine
+class CompletionEngine
   using CompleterRefinements
 
   START = "start"
@@ -808,13 +810,10 @@ class CompleterEngine
 
   # If the cursor word starts with "$", then see if it's expandable.
   def maybe_handle_variable()
-    # Move to the cursor position so that candidates() will accept
-    # arguments.
-    @position = @cursor_index
-
     cow = cursor_orig_word
 
-    if (name = proxy.variable_completable?(cow)) != nil
+    name = proxy.variable_completable?(cow)
+    if name
       debug "Maybe variable: #{name}"
       env.keys.each do |k|
         if k.has_prefix?(name)
@@ -824,7 +823,8 @@ class CompleterEngine
       return
     end
 
-    if (name = proxy.variable_expandable?(cow)) != nil
+    name = proxy.variable_expandable?(cow)
+    if name
       debug "Maybe variable: #{name}"
       value = env[name]
       if value and File.directory?(value)
@@ -837,10 +837,22 @@ class CompleterEngine
 
   # Entry point.
   def run_completion(&b)
-    @proxy.start_completion
+    proxy.start_completion
     begin
+    # Move to the cursor position so that candidates() will accept
+    # arguments.
+    @position = @cursor_index
+
+      # If the cursor word starts with a variable name, we want to
+      # complete or expand it.
       maybe_handle_variable
 
+      # Bash unfortunately calls a completion function even after < and >.
+      # Give the proxy a chance to detect it and do a filename completion.
+      proxy.maybe_override_candidates
+
+      # If no one generated candidates yet, let the user-defined code
+      # generates some.
       if !has_candidates
         @current_block = b
         @states[START] = b
@@ -861,10 +873,10 @@ class CompleterEngine
 
       # Print the collected candidates.
       @candidates.each do |c|
-        @proxy.add_candidate c
+        proxy.add_candidate c
       end
     ensure
-      @proxy.end_completion
+      proxy.end_completion
     end
   end
 end
@@ -892,18 +904,20 @@ class Completer
   def do_completion(cursor_pos, words, line:nil, point:nil, ignore_case:false, &b)
     b or die "do_completion() requires a block."
     $complete_ignore_case = ignore_case
-    cc = CompleterEngine.new get_proxy, words, cursor_pos, ignore_case, line, point
+    proxy = get_proxy
+    engine = CompletionEngine.new proxy, words, cursor_pos, ignore_case, line, point
+    proxy.engine = engine
 
     debug <<~EOF
-        OrigWords: #{cc.orig_words.join ", "}
-        Words: #{cc.words.join ", "}
-        Index: #{cc.cursor_index}
-        Current: #{cc.cursor_word}
-        Line: #{cc.comp_line}
-        Point: #{cc.comp_point}
+        OrigWords: #{engine.orig_words.join ", "}
+        Words: #{engine.words.join ", "}
+        Index: #{engine.cursor_index}
+        Current: #{engine.cursor_word}
+        Line: #{engine.comp_line}
+        Point: #{engine.comp_point}
         EOF
 
-    cc.run_completion &b
+    engine.run_completion &b
   end
 
   # Main

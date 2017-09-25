@@ -390,6 +390,7 @@ assert_comp ruby -x $medir/completer-test.rb -i -c 1 xxx <<EOF
 '--threads '
 '--image '
 '--always-test '
+'--end '
 EOF
 
 assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx -- <<EOF
@@ -421,6 +422,7 @@ assert_comp ruby -x $medir/completer-test.rb -i -c 5 xxx -- /tmp/ ../ --reset <<
 '--threads '
 '--image '
 '--always-test '
+'--end '
 EOF
 
 assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx -- "~/" <<EOF
@@ -528,6 +530,7 @@ assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --threads <<EOF
 '--nice '
 '--threads '
 '--always-test '
+'--end '
 EOF
 
 assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --threads 2 <<EOF
@@ -629,6 +632,32 @@ EOF
 
 assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --always-test xyz <<EOF
 'aaaa '
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --end <<EOF
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --end / <<EOF
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -c 3 xxx --end / <<EOF
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -c 3 xxx --end \< \~/ <<EOF
+'/tmp/home/.aa1 '
+'/tmp/home/aa1 '
+'/tmp/home/.aa2 '
+'/tmp/home/aa2 '
+'/tmp/home/.android-devices '
+'/tmp/home/.bb1 '
+'/tmp/home/bb1 '
+/tmp/home/ddd1/
+/tmp/home/ddd2/
+'/tmp/home/zzz/ '
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -c 3 xxx --end ">>" <<EOF
+aaa/
 EOF
 
 #===========================================================

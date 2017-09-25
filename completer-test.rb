@@ -12,6 +12,8 @@ __completer_context_passer | ruby -x completer-test.rb -i -c 1 xxx $ho
 
 __completer_context_passer | ruby -x completer-test.rb -i -c 1 xxx $HO
 
+__completer_context_passer | ruby -x completer-test.rb -i -c 3 xxx --end \<
+
 =end
 
 require_relative "completer"
@@ -36,6 +38,11 @@ Completer.define do
     reset_state on_word: "--reset"
 
     candidates matched_files
+  end
+
+  # After --end, no completion.
+  auto_state "--end" do
+    finish
   end
 
   auto_state "--always-test" do
