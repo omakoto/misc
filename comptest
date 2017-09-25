@@ -1,0 +1,43 @@
+# Source this file on bash.
+
+# Bash completion tester.
+
+set -e
+. mutil.sh
+
+# If the first argument is "--install", then print the install script.
+if [[ "$1" == "--install" ]] ; then
+  this="${BASH_SOURCE[0]}"
+  cat <<EOF
+function __comptest_completion() {
+  . <(sed -ne '/^#__COMPLETION_SCRIPT__/,\$p' '$this')
+}
+
+complete -F __comptest_completion comptest
+EOF
+  exit 0
+fi
+
+# Otherwise, just print all arguments.
+#shescape "$@"
+Arguments=("$@")
+declare -p Arguments | perl -pe 's/^.*?(?=Arguments)//'
+
+exit 0
+
+#__COMPLETION_SCRIPT__
+{
+  for n in \
+      COMP_CWORD \
+      COMP_KEY \
+      COMP_LINE \
+      COMP_POINT \
+      COMP_TYPE \
+      COMP_WORDBREAKS \
+      COMP_WORDS \
+      ; do
+    declare -p "$n"
+  done
+} >/tmp/compin.txt
+EE_QUIET=1 1 /tmp/compin.txt
+IFS=$'\n' COMPREPLY=($(cat /tmp/compreply.txt 2>/dev/null))

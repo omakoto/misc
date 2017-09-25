@@ -228,8 +228,11 @@ echo-and-exec() {
       q quiet=1      # Don'\''t echo back command line.
       ' "$@")"
 
-  if (( $DRYRUN )) || (( $DRY )) ; then
+  if (( $DRYRUN )) || (( $DRY )) || (( $EE_DRY )) ; then
     dry=1
+  fi
+  if (( $EE_QUIET )) ; then
+    quiet=1
   fi
   if (( $tty )); then
     # Open the tty and assign FD 3.
