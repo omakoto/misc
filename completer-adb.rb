@@ -23,6 +23,18 @@ def list_packages()
   return %x(adb shell pm list packages).split(/\n/).map {|x| x.sub(/^package\:/, "")}
 end
 
+def list_files(word)
+  return %x(adb shell ls -pd1 "'#{word}'* 2>/dev/null").split(/\n/).map{|x| x + "\r"}
+end
+
+def list_commands()
+  return %x(adb shell 'for n in ${PATH//:/ } ; do ls "$n" ; done 2>/dev/null').split(/\n/)
+end
+
+def list_services()
+  return %x(adb shell dumpsys -l 2>/dev/null).split(/\n/)[1..-1].map{|x| x.strip}
+end
+
 
 Completer.define do
   flags %w(-a -d -e -H -P)
@@ -73,7 +85,7 @@ Completer.define do
 
   auto_state %w(install install-multiple) do
     flags %w(-l -r -t -s -d -g)
-    candidates arg_file
+    candidates matched_files
   end
 
   auto_state "uninstall" do
@@ -81,19 +93,43 @@ Completer.define do
     candidates -> {list_packages}
   end
 
+  auto_state "ls" do
+    candidates -> {list_files(word)}
+  end
+
   auto_state "push" do
-    # TODO
-    finish
+    candidate matched_files if word(-1) == "push"
+    candidate -> {list_files(word)} if word(-2) == "push"
   end
 
   auto_state "pull" do
-    # TODO
-    finish
+    candidate matched_files if word(-2) == "push"
+    candidate -> {list_files(word)} if word(-1) == "push"
   end
 
   auto_state "shell" do
-    # TODO
-    finish
+    if at_cursor?
+      if word(-1) == "shell"
+        # Command name.
+        if word.start_with? "/"
+          # Full path command name.
+          candidate -> {list_files(word)}
+        else
+          # Show all files in PATH
+          candidate -> {list_commands}
+        end
+      else
+        # Arguments.
+        case word(-1)
+        when "dumpsys"
+          candidates -> {list_services}
+          finish
+        end
+
+        # Unless finished, always add filenames.
+        candidate -> {list_files(word)}
+      end
+    end
   end
 end
 
