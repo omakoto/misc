@@ -23,6 +23,8 @@ $complete_ignore_case = false
 =begin
 TODOs
 
+- unshescape doens't support $'...' yet.
+
 - Nested state should have a fully-qualified name too.
 
 - Propagate shell variables and jobs to completer somehow

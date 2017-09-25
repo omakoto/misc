@@ -29,8 +29,8 @@ def unshescape(arg, expand_home: true)
   while pos < arg.length
     ch = arg[pos]
 
-    case ch
-    when "'"
+    case
+    when ch == "'"
       pos += 1
       while pos < arg.length
         ch = arg[pos]
@@ -40,7 +40,7 @@ def unshescape(arg, expand_home: true)
         end
         ret += ch
       end
-    when '"'
+    when ch == '"'
       pos += 1
       while pos < arg.length
         ch = arg[pos]
@@ -55,12 +55,28 @@ def unshescape(arg, expand_home: true)
         end
         ret += ch
       end
-    when '\\'
+    when ch == '\\'
       pos += 1
       if pos < arg.length
         ret += arg[pos]
         pos += 1
       end
+
+    # TODO $'...' isn't supported yet.
+    # when ch == '$' and arg[pos+1] == "'"
+    #   pos += 1
+    #   while pos < arg.length
+    #     ch = arg[pos]
+    #     pos += 1
+    #     if ch == "'"
+    #       break
+    #     elsif ch == '\\'
+    #       case arg[pos+1]
+
+
+    #     end
+    #     ret += ch
+    #   end
     else
       ret += ch
       pos += 1
