@@ -8,6 +8,8 @@ export TAB="$(echo -e "\t")"
 
 export SHELL=/bin/bash
 
+umask 0077
+
 unset PS0
 unset PS1
 unset PS2
@@ -714,6 +716,11 @@ EOF
 
 assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx ns-statec <<EOF
 'ccc '
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx --files <<EOF
+aaa/
+'--reset '
 EOF
 
 #===========================================================

@@ -748,13 +748,17 @@ class CompletionEngine
   # state when detecting a word in the command line that is
   # the state name.
   # Useful for handling subcommands, as well as "--".
-  def auto_state(state_name, &b)
+  # If sate_name is provided, use this as a state name instead.
+  def auto_state(on_word, state_name: nil, &b)
+    die "on_word() must be a String (for now)" unless on_word.instance_of? String
+    state_name = on_word unless state_name
+
     if prescan?
       add_state state_name, &b
       self.instance_eval &b
     else
-      candidates state_name if at_cursor?
-      if state_name == word
+      candidates on_word if at_cursor?
+      if word == on_word
         next_state state_name
       end
     end

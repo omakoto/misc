@@ -34,7 +34,7 @@ Completer.define do
 
   option "--nice", arg_number(allow_negative:true)
 
-  auto_state "--" do
+  auto_state "--", state_name: "file-only" do
     reset_state on_word: "--reset"
 
     candidate "--reset"
@@ -67,4 +67,6 @@ Completer.define do
   next_state "state-b", on_word: ["ns-stateb"]
 
   next_state "state-c", on_word: /^ns-statec/
+
+  next_state "file-only", on_word: "--files"
 end

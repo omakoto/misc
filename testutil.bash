@@ -1,11 +1,17 @@
 
 set +e # Don't use set -e, which may mask real bugs in tests.
 
-. colors.bash
+. mutil.sh
 
 declare -i _num_successes=0
 declare -i _num_failures=0
 declare -i _need_newline_before_failure=0
+
+diff_opts=""
+
+if diff --help 2>/dev/null| grep -q -- "--color" ; then
+  diff_opts='--color=always'
+fi
 
 _at_exit() {
   echo ""
@@ -73,17 +79,12 @@ assert_out() {
   local rc
   if (( $use_wdiff )) ; then
     local wdiff_opts=""
-    if test -t 1 ; then
+    if iscon 1 ; then
       wdiff_opts='-w '$'\033[30;41m'' -x '$'\033[0m'' -y '$'\033[30;42m'' -z '$'\033[0m'
     fi
     out=$(wdiff -n $wdiff_opts <("$@" | $filter) <($filter))
     rc=$?
   else
-    local diff_opts=""
-    # Grr, old diff doesn't support it.
-    # if test -t 1 ; then
-    #   diff_opts='--color=always'
-    # fi
     out=$(diff -c $diff_opts <("$@" | $filter) <($filter))
     rc=$?
   fi
