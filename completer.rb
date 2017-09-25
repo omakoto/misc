@@ -5,6 +5,9 @@ require 'fileutils'
 require 'pathname'
 require 'pp'
 
+require 'rubygems' # For version check on<1.9
+abort "#{$0.sub(/^.*\//, "")} requires ruby >= 2.4" if Gem::Version.new(RUBY_VERSION) < Gem::Version.new('2.4')
+
 $debug_file = ENV['COMPLETER_DEBUG']
 $debug = $debug_file ? true : false
 $debug_file ||= "/tmp/completer-debug.txt"
