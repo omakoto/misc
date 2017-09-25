@@ -779,15 +779,22 @@ class CompletionEngine
   # Useful for handling subcommands, as well as "--".
   # If sate_name is provided, use this as a state name instead.
   def auto_state(on_word, state_name: nil, &b)
-    die "on_word() must be a String (for now)" unless on_word.instance_of? String
-    state_name = on_word unless state_name
+    if !state_name
+      if on_word.instance_of? String
+        state_name = on_word
+      elsif on_word.respond_to? :first
+        state_name = on_word.first
+      else
+        die "auto_state(): first argument must be a String or a String array."
+      end
+    end
 
     if prescan?
       add_state state_name, &b
       self.instance_eval &b
     else
       candidates on_word if at_cursor?
-      if word == on_word
+      if matches_cs? on_word, word
         next_state state_name
       end
     end
