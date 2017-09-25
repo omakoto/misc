@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Cat on the alternate screen buffer
+# Note it can't eat from STDIN. Use ca-alt <(...)
+
+if (( $# == 0 )) ; then
+  echo "$0: Reading from STDIN is not supported. Pass files as arguments." 1>&2
+  exit 1
+fi
+
+tput smcup
+trap 'tput rmcup' EXIT
+tput clear
+
+cat "$@"
+
+echo ""
+echo -n "[Press CTRL+C to quit]"
+read

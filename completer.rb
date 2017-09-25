@@ -455,6 +455,14 @@ class BashProxy
     # Output will be eval'ed, so need double-escaping unless raw.
     puts(candidate.raw ? s : shescape(s))
   end
+
+  def variable_completable?(word)
+    return (word =~ /^\$([a-z0-9\_]*)$/i) ? $1 : nil
+  end
+
+  def variable_expandable?(word)
+    return (word =~ /^\$([a-z0-9\_]*)\/$/i) ? $1 : nil
+  end
 end
 
 def get_proxy()
@@ -517,7 +525,8 @@ class CompleterEngine
     @candidates = []
   end
 
-  attr_reader *%i(state cursor_index ignore_case position orig_words words comp_line comp_point)
+  attr_reader *%i(state cursor_index ignore_case position orig_words words
+      comp_line comp_point proxy)
 
   # Whether in the precan mode, i.e. position == 0.
   # During prescan, we execute all state blocks in order to collect
@@ -795,24 +804,23 @@ class CompleterEngine
 
     cow = cursor_orig_word
 
-    return unless cow.start_with?("$")
+    if (name = proxy.variable_completable?(cow)) != nil
+      debug "Maybe variable: #{name}"
+      env.keys.each do |k|
+        if k.has_prefix?(name)
+          candidate("\f$" + k + "\r") # Raw candidate
+        end
+      end
+      return
+    end
 
-    if cow =~ /^\$([a-z0-9\_]*)(\/?)$/i
-      name, slash = $1, $2
-      if slash == "/"
-        value = env[name]
-        if File.directory?(value)
-          value += "/"
-          value += "\r" if is_non_empty_dir(value)
-          candidate value, always:true
-        end
-      else
-        debug "Maybe variable: #{name}"
-        env.keys.each do |k|
-          if k.has_prefix?(name)
-            candidate("\f$" + k + "\r") # Raw candidate
-          end
-        end
+    if (name = proxy.variable_expandable?(cow)) != nil
+      debug "Maybe variable: #{name}"
+      value = env[name]
+      if value and File.directory?(value)
+        value += "/"
+        value += "\r" if is_non_empty_dir(value)
+        candidate value, always:true
       end
     end
   end

@@ -8,6 +8,10 @@ exec ruby -x "$0" -i -d xxx
 
 ruby -x completer-test.rb -i -c 2 xxx --max
 
+__completer_context_passer | ruby -x completer-test.rb -i -c 1 xxx $ho
+
+__completer_context_passer | ruby -x completer-test.rb -i -c 1 xxx $HO
+
 =end
 
 require_relative "completer"
