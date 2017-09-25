@@ -310,9 +310,15 @@ module CompleterRefinements
     end
 
     # Read all lines from a file, if exists.
-    def read_file_lines(file)
+    def read_file_lines(file, ignore_comments:true)
       file = file.expand_home
-      return (File.exist? file) ? open(file, "r").read.split(/\n/) : []
+      ret = (File.exist? file) ? open(file, "r").read.split(/\n/) : []
+
+      if ignore_comments
+        ret = ret.reject {|x| x =~/^\#/ }
+      end
+
+      return ret;
     end
   end # refine Kernel
 
@@ -515,6 +521,9 @@ class CompletionEngine
     # Cursor word index; 0-based.
     @cursor_index = index
 
+    # Command name
+    @command = @words[0].gsub(%r(^.*/), "")
+
     # Whether do case-insensitive comparison or not;
     # this comes from the -i option.
     @ignore_case = ignore_case
@@ -546,10 +555,14 @@ class CompletionEngine
     # out at once at the end.
     # Call clear_candidates() to clear it.
     @candidates = []
+
+    @in_init_block = false
+
+    @start_state
   end
 
   attr_reader *%i(state cursor_index ignore_case position orig_words words
-      comp_line comp_point proxy)
+      comp_line comp_point proxy command)
 
   # Whether in the precan mode, i.e. position == 0.
   # During prescan, we execute all state blocks in order to collect
@@ -561,11 +574,6 @@ class CompletionEngine
   # Whether we're at the cursor word, i.e. position == cursor_index.
   def at_cursor?()
     return @position == @cursor_index
-  end
-
-  # Return the command name, such as "adb", "cargo" or "go".
-  def command()
-    return @words[0]
   end
 
   # Returns the current word in the command line.
@@ -604,17 +612,34 @@ class CompletionEngine
 
   # Define a "begin" block, which will be executed only once
   # during prescan.
+  # next_state() can't be used in init-blocks. Use "start_state" instead.
   def init_block(&b)
     b or die "init() requires a block."
     return unless prescan?
 
-    b.call()
+    @in_init_block and die "init_block() can't nest."
+
+    @in_init_block = true
+    begin
+      b.call()
+    ensure
+      @in_init_block = false
+    end
+  end
+
+  # Define a state_state. Typically, it's used to jump to a state depending
+  # on the value of command().
+  def start_state(state_name)
+    return unless prescan?
+
+    @start_state = state_name
   end
 
   # Move to a state.
   # When on_word is provided, only move the state when detecting
   # the word.
   def next_state(state_name, on_word:nil)
+    @in_init_block and die "next_state() can't be called from a init_block."
     return if prescan?
 
     # This is a little confusing, so removed it.
@@ -624,11 +649,15 @@ class CompletionEngine
       return unless matches_cs? on_word, word
     end
 
+    _change_state state_name
+    next_word
+  end
+
+  def _change_state(state_name)
     b = @states[state_name]
     b or die "State #{state_name} not found."
     @current_block = b
     debug "State -> #{state_name}"
-    next_word
   end
 
   # Equivalent to next_state START
@@ -860,9 +889,9 @@ class CompletionEngine
   def run_completion(&b)
     proxy.start_completion
     begin
-    # Move to the cursor position so that candidates() will accept
-    # arguments.
-    @position = @cursor_index
+      # Move to the cursor position so that candidates() will accept
+      # arguments.
+      @position = @cursor_index
 
       # If the cursor word starts with a variable name, we want to
       # complete or expand it.
@@ -886,6 +915,9 @@ class CompletionEngine
             debug "Pass -> #{@position} \"#{word}\""
             catch :NextWord do
               self.instance_eval &@current_block
+            end
+            if @position == 0 and @start_state
+              _change_state @start_state
             end
             @position += 1
           end

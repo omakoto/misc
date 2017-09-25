@@ -1,4 +1,4 @@
-exec ruby -x "$0" -i -d lunch a-lunch
+exec ruby -x "$0" -i lunch a-lunch
 #!ruby
 
 # Completion for "lunch".

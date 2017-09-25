@@ -72,6 +72,7 @@ cd ddd2
 cat >$HOME/.android-devices <<EOF
 max
 boss
+#notused
 EOF
 
 # Test for lunch.
@@ -721,6 +722,27 @@ EOF
 assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx --files <<EOF
 aaa/
 '--reset '
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 1 alias-file-only <<EOF
+aaa/
+'--reset '
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 1 /path/to/alias-file-only <<EOF
+aaa/
+'--reset '
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx from-file <<EOF
+'boss '
+'max '
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx from-file-all <<EOF
+'boss '
+'max '
+''\''#notused'\'' '
 EOF
 
 #===========================================================

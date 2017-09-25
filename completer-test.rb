@@ -19,7 +19,14 @@ __completer_context_passer | ruby -x completer-test.rb -i -c 3 xxx --end \<
 require_relative "completer"
 using CompleterRefinements
 
+loaded_from_file = read_file_lines("~/.android-devices")
+loaded_from_file_all = read_file_lines("~/.android-devices", ignore_comments:false)
+
 Completer.define do
+  # If the command name is alias-file-only, then directly jump to
+  # the file-only state.
+  start_state "file-only" if command == "alias-file-only"
+
   option "--file", arg_file
 
   option %w(--ignore-file --exclude), arg_file
@@ -69,4 +76,12 @@ Completer.define do
   next_state "state-c", on_word: /^ns-statec/
 
   next_state "file-only", on_word: "--files"
+
+  add_state "from-file", on_word: "from-file" do
+    candidates loaded_from_file
+  end
+
+  add_state "from-file-all", on_word: "from-file-all" do
+    candidates loaded_from_file_all
+  end
 end
