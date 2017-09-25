@@ -1,4 +1,4 @@
-exec ruby -x "$0" -i -d adb
+exec ruby -x "$0" -i adb dumpsys acmd ashell am pm
 #!ruby
 
 =begin
@@ -35,8 +35,17 @@ def list_services()
   return %x(adb shell dumpsys -l 2>/dev/null).split(/\n/)[1..-1].map{|x| x.strip}
 end
 
-
 Completer.define do
+  init_block do
+    case command
+    when "dumpsys"; start_state "dumpsys"
+    when "ashell"; start_state "shell"
+    when "acmd"; start_state "cmd"
+    when "am"; start_state "am"
+    when "pm"; start_state "pm"
+    end
+  end
+
   flags %w(-a -d -e -H -P)
   option "-s", -> {list_device_serials}
   option "-L", []
@@ -109,27 +118,66 @@ Completer.define do
 
   auto_state "shell" do
     if at_cursor?
-      if word(-1) == "shell"
-        # Command name.
-        if word.start_with? "/"
-          # Full path command name.
-          candidate -> {list_files(word)}
-        else
-          # Show all files in PATH
-          candidate -> {list_commands}
-        end
-      else
-        # Arguments.
-        case word(-1)
-        when "dumpsys"
-          candidates -> {list_services}
-          finish
-        end
-
-        # Unless finished, always add filenames.
+      # Command name.
+      if word.start_with? "/"
+        # Full path command name.
         candidate -> {list_files(word)}
+      else
+        # Show all files in PATH
+        candidate -> {list_commands}
+      end
+    else
+      case word
+      when "dumpsys"; next_state "dumpsys"
+      when "cmd"; next_state "cmd"
+      when "am"; next_state "am"
+      when "pm"; next_state "pm"
+      else
+        next_state "device-file-completion"
       end
     end
+  end
+
+  add_state "cmd" do
+    if at_cursor?
+      candidates -> {list_services}
+    else
+      case word
+      when "activity"; next_state "activity"
+      when "package"; next_state "package"
+      else
+        next_state "device-file-completion"
+      end
+    end
+  end
+
+  add_state "dumpsys" do
+    if at_cursor?
+      candidates -> {list_services}
+    else
+      case word
+      when "activity"; next_state "activity"
+      when "package"; next_state "package"
+      else
+        next_state "device-file-completion"
+      end
+    end
+  end
+
+  add_state "device-file-completion" do
+    candidate -> {list_files(word)}
+  end
+
+  add_state "am" do
+  end
+
+  add_state "activity" do
+  end
+
+  add_state "pm" do
+  end
+
+  add_state "package" do
   end
 end
 

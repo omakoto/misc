@@ -1,4 +1,4 @@
-exec ruby -x "$0" -i -d rg ~/cbin/rg-*
+exec ruby -x "$0" -i rg ~/cbin/rg-*
 #!ruby
 
 =begin

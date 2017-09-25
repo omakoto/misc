@@ -1,4 +1,4 @@
-exec ruby -x "$0" -i -d cargo
+exec ruby -x "$0" -i cargo
 #!ruby
 
 =begin

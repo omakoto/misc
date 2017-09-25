@@ -1,4 +1,4 @@
-exec ruby -x "$0" -i -d xxx
+exec ruby -x "$0" -i xxx
 #!ruby
 
 =begin
