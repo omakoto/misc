@@ -26,8 +26,6 @@ TODOs
 - unshescape doens't support $'...' yet -> it's probably not important
 in completion usecases.
 
-- Nested state should have a fully-qualified name too.
-
 - Handle jobs too.
 
 UNTODOs.
@@ -181,12 +179,22 @@ module CompleterRefinements
       return ret
     end
 
-    # True if a list contains a value, or
-    def contains(list_or_str, val)
-      if list_or_str.instance_of? String
-        return list_or_str == val
+    # True if list_or_str_or_reg is a string and is equal to val,
+    # or supports "includes?" and contains, or is a Regexp and matches
+    # val.
+    # Note this is intend to detect a flag (e.g. it's used by "option()",
+    # so it's always case sensitive.)
+    def matches_cs?(list_or_str_or_reg, val)
+      return false unless list_or_str_or_reg
+
+      if list_or_str_or_reg.instance_of? String
+        return list_or_str_or_reg == val
+      elsif list_or_str_or_reg.instance_of? Regexp
+        return list_or_str_or_reg.match? val
+      elsif list_or_str_or_reg.respond_to? "include?"
+        return list_or_str_or_reg.include? val
       else
-        return list_or_str.include?(val)
+        die "Unsupported type: #{list_or_str_or_reg.inspect}"
       end
     end
 
@@ -606,14 +614,15 @@ class CompletionEngine
   def next_state(state_name, on_word:nil)
     return if prescan?
 
-    candidates on_word if on_word
+    # This is a little confusing, so removed it.
+    #  candidates on_word if on_word and on_word.instance_of? String
 
-    if on_word and on_word != word
-      return
+    if on_word
+      return unless matches_cs? on_word, word
     end
 
     b = @states[state_name]
-    b or abort "state #{state_name} not found."
+    b or die "State #{state_name} not found."
     @current_block = b
     debug "State -> #{state_name}"
     next_word
@@ -719,12 +728,17 @@ class CompletionEngine
   end
 
   # Add a new state.
-  def add_state(name, &b)
+  # If on_word is not nil,
+  def add_state(state_name, on_word:nil, &b)
     b or die "add_state() requires a block."
-    return unless prescan?
-    @states[name] and die "State #{name} is already defined."
-
-    @states[name] = b
+    if prescan?
+      @states[state_name] and die "State #{state_name} is already defined."
+      @states[state_name] = b
+      return
+    end
+    if on_word
+      next_state state_name if matches_cs? on_word, word
+    end
   end
 
   # Defines a new state, and also automatically move to the
@@ -750,7 +764,7 @@ class CompletionEngine
 
     # If the previous word was the flag, then add the
     # candidates for the argument.
-    if contains flags, word(-1)
+    if matches_cs? flags, word(-1)
       if arg_optional
         # If an argument is optional, then we just add
         # the candidates for the argument, but we still

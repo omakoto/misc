@@ -660,6 +660,62 @@ assert_comp ruby -x $medir/completer-test.rb -c 3 xxx --end ">>" <<EOF
 aaa/
 EOF
 
+assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx tostatea <<EOF
+'aaa '
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx ns-statea <<EOF
+'aaa '
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx Tostatea <<EOF
+'-- '
+'--always-test '
+'--directory '
+'--end '
+'--exclude '
+'--file '
+'--ignore-file '
+'--image '
+'--max '
+'--nice '
+'--threads '
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx XXX <<EOF
+'bbb '
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx YYY <<EOF
+'bbb '
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx ns-stateb <<EOF
+'bbb '
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx xxx <<EOF
+'-- '
+'--always-test '
+'--directory '
+'--end '
+'--exclude '
+'--file '
+'--ignore-file '
+'--image '
+'--max '
+'--nice '
+'--threads '
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx STATECxxx <<EOF
+'ccc '
+EOF
+
+assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx ns-statec <<EOF
+'ccc '
+EOF
+
 #===========================================================
 # Variable expansion
 #===========================================================
