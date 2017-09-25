@@ -22,6 +22,9 @@ class TestUnshescape < Test::Unit::TestCase
     assert_equal(%q(a b  '' xx\" '), unshescape(%q(a\ b\  "''" 'xx\"' \')))
 
     assert_equal(%q(a b b), unshescape(%q(a\ \b \b)))
+
+    # $'...' not supported yet.
+    # assert_equal(%q(abcdef), unshescape(%q($'abc'def)))
   end
 end
 

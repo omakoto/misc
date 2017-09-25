@@ -2,6 +2,11 @@
 
 # $DEBUG = true
 
+=begin
+Basic shell escape/unescape helper. It doesn't support complicated
+cases like $'multi\nlines' and "$(echo "o  k")".
+=end
+
 class InvalidCommandLineError < StandardError
 end
 
@@ -19,7 +24,7 @@ end
 #-----------------------------------------------------------
 # Shell-unescape a single token.
 #-----------------------------------------------------------
-def unshescape(arg, expand_home: true)
+def unshescape(arg)
   if arg !~ / [ \' \" \\ ] /x
     return arg
   end
