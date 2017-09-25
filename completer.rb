@@ -27,6 +27,9 @@ TODOs
 
 - Propagate shell variables and jobs to completer somehow
 
+- Do a regular filecompletion after > and <. Somehow >&, <&, &<, &>
+are already handled by readline?
+
 Feed "declare -p" to the command from the bash side.
 
   Variables: done, untested.
@@ -38,6 +41,11 @@ Feed "declare -p" to the command from the bash side.
 --context=[TAB]
 --context 123 /e[TAB]
 --context=132 /e[TAB]
+
+  - Turned out wordbreak is automatic.
+  - = is not part of default wordbreak.
+  - = is normally optional, so don't have to support it.
+
 
 [Maybe?]
 COMP_WORDBREAKS should only work when the original word can't be completed. Test case:

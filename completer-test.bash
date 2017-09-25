@@ -6,6 +6,8 @@
 export MOCK_HOME=/tmp/home
 export TAB="$(echo -e "\t")"
 
+export SHELL=/bin/bash
+
 unset PS0
 unset PS1
 unset PS2
@@ -77,9 +79,20 @@ assert_comp() {
     echo -n "> "
     shescape $@
   fi
-  # Note we can't use pipe, which would break test counting in testutil.bash
 
-  assert_out -ds cat <("$@" </dev/null | sed -e '1d; $d')
+  local vars=""
+
+  local OPTIND
+  while getopts "v:" opt; do
+    case "$opt" in
+      v) vars="$OPTARG" ;;
+    esac
+  done
+  shift $(($OPTIND - 1))
+
+  # Note we can't use pipe here, which would break test counting in
+  # testutil.bash, so <( ... )
+  assert_out -ds cat <("$@" <<<"$vars" | sed -e '1d; $d')
 }
 
 assert_comp ruby -x $medir/completer-lunch.rb -i -c 1 lunch <<EOF
@@ -616,6 +629,79 @@ EOF
 
 assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --always-test xyz <<EOF
 'aaaa '
+EOF
+
+#===========================================================
+# Variable expansion
+#===========================================================
+
+assert_comp -v "declare -- HOME=$HOME
+declare -- HOST=hostname
+declare -- hostname=hostname.domain.com
+declare -- PATH=\"a:b:c\"" \
+ruby -x $medir/completer-test.rb -c 1 xxx '$' xyz <<'EOF'
+'$HOME'
+'$HOST'
+'$hostname'
+'$PATH'
+EOF
+
+assert_comp -v "declare -- HOME=$HOME
+declare -- HOST=hostname
+declare -- hostname=hostname.domain.com
+declare -- PATH=\"a:b:c\"" \
+ruby -x $medir/completer-test.rb -i -c 1 xxx '$h' xyz <<'EOF'
+'$HOME'
+'$HOST'
+'$hostname'
+EOF
+
+assert_comp -v "declare -- HOME=$HOME
+declare -- HOST=hostname
+declare -- hostname=hostname.domain.com
+declare -- PATH=\"a:b:c\"" \
+ruby -x $medir/completer-test.rb -i -c 1 xxx '$HO' xyz <<'EOF'
+'$HOME'
+'$HOST'
+'$hostname'
+EOF
+
+assert_comp -v "declare -- HOME=$HOME
+declare -- HOST=hostname
+declare -- hostname=hostname.domain.com
+declare -- PATH=\"a:b:c\"" \
+ruby -x $medir/completer-test.rb -c 1 xxx '$h' xyz <<'EOF'
+'$hostname'
+EOF
+
+assert_comp -v "declare -- HOME=$HOME
+declare -- HOST=hostname
+declare -- hostname=hostname.domain.com
+declare -- PATH=\"a:b:c\"" \
+ruby -x $medir/completer-test.rb -i -c 1 xxx '$HOm' xyz <<'EOF'
+'$HOME'
+EOF
+
+assert_comp -v "declare -- HOME=$HOME
+declare -- HOST=hostname
+declare -- hostname=hostname.domain.com
+declare -- PATH=\"a:b:c\"" \
+ruby -x $medir/completer-test.rb -i -c 1 xxx '$abcde' xyz <<'EOF'
+EOF
+
+assert_comp -v "declare -- HOME=$HOME
+declare -- HOST=hostname
+declare -- hostname=hostname.domain.com
+declare -- PATH=\"a:b:c\"" \
+ruby -x $medir/completer-test.rb -i -c 1 xxx '$HOME/' xyz <<EOF
+$HOME/
+EOF
+
+assert_comp -v "declare -- HOME=$HOME
+declare -- HOST=hostname
+declare -- hostname=hostname.domain.com
+declare -- PATH=\"a:b:c\"" \
+ruby -x $medir/completer-test.rb -i -c 1 xxx '$PATH/' xyz <<'EOF'
 EOF
 
 #===========================================================
