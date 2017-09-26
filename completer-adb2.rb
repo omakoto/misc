@@ -328,7 +328,7 @@ completion do
     # TODO Can we support optional argument? That'd be very tricky.
     # TODO These are not real ADB flags. Remove them later.
     maybe %w(-f --flags), take_file
-    maybe("--") { break_loop }
+    maybe "--" do break_loop ; end
   end
 
   # next_word # Don't need.
