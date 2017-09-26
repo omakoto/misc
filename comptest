@@ -26,6 +26,7 @@ declare -p Arguments | perl -pe 's/^.*?(?=Arguments)//'
 exit 0
 
 #__COMPLETION_SCRIPT__
+local IFS
 {
   for n in \
       COMP_CWORD \

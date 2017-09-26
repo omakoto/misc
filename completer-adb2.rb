@@ -1,5 +1,10 @@
-exec ruby -wx "$0" -i adb dumpsys acmd logcat ashell am pm
+. <( exec ruby -wx "${BASH_SOURCE[0]}" -i adb2 )
+: <<__END_RUBY_CODE__
 #!ruby
+
+puts "export XYZ=OK"
+
+exit 0
 
 =begin
 
@@ -320,100 +325,121 @@ completion do
     lazy { %x(adb shell dumpsys -l 2>/dev/null).split(/\n/)[1..-1].map{|x| x.strip} }
   end
 
-  for_next_word(/^-/) do
-    maybe %w(-a -d -e -H -P) # When maybe is used in a loop, this implies continue_loop.
-    maybe "-s", take_device_serial
-    maybe "-L", [] # No candidates.
+  def main()
+    if command == "dumpsys"
+      dumpsys
+    end
 
-    # TODO Can we support optional argument? That'd be very tricky.
-    # TODO These are not real ADB flags. Remove them later.
-    maybe %w(-f --flags), take_file
-    maybe "--" do break_loop ; end
-  end
+    while (word =~ /^-/) do
+      maybe %w(-a -d -e -H -P) # When maybe is used in a loop, this implies continue_loop.
+      maybe "-s", take_device_serial
+      maybe "-L", [] # No candidates.
 
-  # next_word # Don't need.
+      # TODO Can we support optional argument? That'd be very tricky.
+      # TODO These are not real ADB flags. Remove them later.
+      maybe %w(-f --flags), take_file
+      maybe %w(--color --colors), %w(always never auto)
+      maybe "--" do
+        break
+      end
+    end
 
-  #
-  maybe %w(devices help version root unroot reboot-bootloader usb get-state get-serialno
-      get-devpath start-server kill-server wait-for-device remount) do
-    finish
-  end
+    # next_word # Don't need.
 
-  maybe %w(install install-multiple) do # Do implies next_word.
-    for_next_word(/^-/) do
-      maybe %w(-a -d -e -H -P)
+    maybe %w(devices help version root unroot reboot-bootloader usb get-state get-serialno
+        get-devpath start-server kill-server wait-for-device remount) do
+      return
     end
-    next_must take_file
-  end
-  maybe "uninstall" do
-    maybe %w(-k)
-    next_must take_package
-  end
-  maybe "push" do
-    next_must take_file
-    next_must take_device_file
-  end
-  maybe "pull" do
-    next_must take_device_file
-    next_must take_file
-  end
-  maybe "reboot" do
-    maybe %w(bootloader recovery sideload sideload-auto-reboot) do
-      finish
-    end
-  end
-  maybe "logcat" do
-    # TODO
-  end
-  maybe "shell" do
-    maybe "am" do
-      jump("am")
-    end
-    maybe "pm" do
-      jump("pm")
-    end
-    maybe "cmd" do
-      jump("cmd")
-    end
-    maybe "dumpsys" do
-      jump("dumpsys")
-    end
-    # TODO
-  end
 
-  label "cmd" do
-    # TODO: This would have to always run the command. Hmm.
-    maybe take_service do
-      finish
+    maybe %w(install install-multiple) do # Do implies next_word.
+      while (word =~ /^-/) do
+        maybe %w(-a -d -e -H -P)
+      end
+      next_must take_file
+      return
     end
-    maybe "activity" do
-      jump("am")
-    end
-    maybe "package" do
-      jump("pm")
-    end
+    # maybe "uninstall" do
+    #   maybe %w(-k)
+    #   next_must take_package
+    # end
+    # maybe "push" do
+    #   next_must take_file
+    #   next_must take_device_file
+    # end
+    # maybe "pull" do
+    #   next_must take_device_file
+    #   next_must take_file
+    # end
+    # maybe "reboot" do
+    #   maybe %w(bootloader recovery sideload sideload-auto-reboot) do
+    #     finish
+    #   end
+    # end
+    # maybe "logcat" do
+    #   # TODO
+    # end
+    # maybe "shell" do
+    #   maybe "am" do
+    #     am
+    #   end
+    #   maybe "pm" do
+    #     pm
+    #   end
+    #   maybe "cmd" do
+    #     cmd
+    #   end
+    #   maybe "dumpsys" do
+    #     dumpsys
+    #   end
+    #   # TODO
+    # end
   end
 
-  label "dumpsys" do
-    maybe take_service do
-      finish
-    end
-  end
-
-  label "am" do
+  def am()
     maybe %w(start startservice) do
-      finish
+      return
     end
   end
 
-  label "dumpsys-activity" do
+  def dumpsys()
+    maybe take_service do
+      return
+    end
   end
 
-  label "pm" do
-  end
+  # label "cmd" do
+  #   # TODO: This would have to always run the command. Hmm.
+  #   maybe take_service do
+  #     finish
+  #   end
+  #   maybe "activity" do
+  #     jump("am")
+  #   end
+  #   maybe "package" do
+  #     jump("pm")
+  #   end
+  # end
 
-  label "dumpsys-package" do
-  end
+  # label "dumpsys" do
+  #   maybe take_service do
+  #     finish
+  #   end
+  # end
+
+  # label "am" do
+  #   maybe %w(start startservice) do
+  #     finish
+  #   end
+  # end
+
+  # label "dumpsys-activity" do
+  # end
+
+  # label "pm" do
+  # end
+
+  # label "dumpsys-package" do
+  # end
 end
 
 =begin
@@ -1025,3 +1051,4 @@ pm remove-user: remove the user with the given USER_IDENTIFIER,
 
 
 =end
+__END_RUBY_CODE__
