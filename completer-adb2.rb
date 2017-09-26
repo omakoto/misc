@@ -123,7 +123,7 @@ class Node
   OP_JUMP = :jump
 
   def initialize(op, args=nil, &block)
-    check_arg(arg)
+    check_arg(args)
     @op = op
     @args = args
     @next = nil
@@ -138,7 +138,15 @@ class Node
     return if args.instance_of? String
 
 # TODO Ensure args don't contain other nodes.
-# But we don't want to execute lazy enums yet. Hmm.
+# But we don't want to execute lazy enums yet
+# Hmm, so for now, we only check nested arguments.
+
+    die "operators can't nest." if args.instance_of? Node
+    if args.respond_to? :each
+      args.each do |arg|
+        die "operators can't nest." if arg.instance_of? Node
+      end
+    end
   end
 
   def set_next(node)
@@ -182,13 +190,16 @@ end
 
 class LazyList
   include Enumerable
+
   def initialize(&block)
     block or die "block must be provided."
     @block = block
+    @list = nil
   end
 
   def each(&block)
-    @block.call().each block
+    @list = @block.call() unless @list
+    @listl.each block
   end
 end
 
@@ -324,7 +335,9 @@ completion do
 
   #
   maybe %w(devices help version root unroot reboot-bootloader usb get-state get-serialno
-      get-devpath start-server kill-server wait-for-device remount), finish
+      get-devpath start-server kill-server wait-for-device remount) do
+    finish
+  end
 
   maybe %w(install install-multiple) do # Do implies next_word.
     for_next_word(/^-/) do
@@ -353,10 +366,18 @@ completion do
     # TODO
   end
   maybe "shell" do
-    maybe "am", jump("am")
-    maybe "pm", jump("pm")
-    maybe "cmd", jump("cmd")
-    maybe "dumpsys", jump("dumpsys")
+    maybe "am" do
+      jump("am")
+    end
+    maybe "pm" do
+      jump("pm")
+    end
+    maybe "cmd" do
+      jump("cmd")
+    end
+    maybe "dumpsys" do
+      jump("dumpsys")
+    end
     # TODO
   end
 
@@ -365,8 +386,12 @@ completion do
     maybe take_service do
       finish
     end
-    maybe "activity", jump("am")
-    maybe "package", jump("pm")
+    maybe "activity" do
+      jump("am")
+    end
+    maybe "package" do
+      jump("pm")
+    end
   end
 
   label "dumpsys" do
