@@ -1,17 +1,15 @@
-. <( exec ruby -wx "${BASH_SOURCE[0]}" -i adb2 )
+. <( exec ruby -wx "${BASH_SOURCE[0]}" "${@}" -i adb2 )
 : <<__END_RUBY_CODE__
 #!ruby
-
-puts "export XYZ=OK"
-
-exit 0
 
 =begin
 
 # Install
 . <(~/cbin/misc/completer-adb.rb)
 
-__completer_context_passer | ruby -x completer-test.rb -i -c 2 xxx --max
+ruby -x completer-adb4.rb  1    adb
+
+
 
 =end
 
@@ -26,17 +24,31 @@ require 'pp'
 require 'rubygems' # For version check on<1.9
 abort "#{$0.sub(/^.*\//, "")} requires ruby >= 2.4" if Gem::Version.new(RUBY_VERSION) < Gem::Version.new('2.4')
 
+=begin
+- To enable debug output, use:
+export COMPLETER_DEBUG=/tmp/completer-debug.txt
+
+- Can also be enabled with -d.
+=end
+
 $debug_file = ENV['COMPLETER_DEBUG']
 $debug = $debug_file ? true : false
 $debug_file ||= "/tmp/completer-debug.txt"
 $debug_out = nil
 
-# Shod debug output.
-def debug(*msg, &block)
-  if $debug
-    # If stdout is TTY, assume the script is executed directly for
-    # testing, and write log to stderr.
-    if msg
+# Whether completion is being performed in case-insensitive mode.
+# For simplicity, we just use a global var.
+$complete_ignore_case = false
+
+module CompleterRefinements
+  refine Kernel do
+    # Shod debug output.
+    def debug(*msg, &b)
+      if !$debug
+        return 0
+      end
+      # If stdout is TTY, assume the script is executed directly for
+      # testing, and write log to stderr.
       if $stdout.tty?
         $stderr.puts msg
       else
@@ -44,175 +56,403 @@ def debug(*msg, &block)
         $debug_out.puts msg
         $debug_out.flush
       end
+      debug(b.call()) if b
+      return 1
     end
-    if block
-      debug block.call()
+
+    def die(*msg)
+      abort "#{__FILE__}: " + msg.join("")
     end
-    return 1
-  else
-    return 0
-  end
-end
 
-def die(*msg)
-  abort "#{__FILE__}: " + msg.join("") + "\n" + caller.join("\n")
-end
-
-# Shell-escape a single token.
-def shescape(arg)
-  if arg =~ /[^a-zA-Z0-9\-\.\_\/\:\+\@]/
-      return "'" + arg.gsub(/'/, "'\\\\''") + "'"
-  else
-      return arg;
-  end
-end
-
-# Shell-unescape a single token.
-def unshescape(arg)
-  if arg !~ / [\'\"\\] /x
-    return arg
-  end
-
-  ret = ""
-  pos = 0
-  while pos < arg.length
-    ch = arg[pos]
-
-    case ch
-    when "'"
-      pos += 1
-      while pos < arg.length
-        ch = arg[pos]
-        pos += 1
-        if ch == "'"
-          break
-        end
-        ret += ch
+    # Shell-escape a single token.
+    def shescape(arg)
+      if arg =~ /[^a-zA-Z0-9\-\.\_\/\:\+\@]/
+          return "'" + arg.gsub(/'/, "'\\\\''") + "'"
+      else
+          return arg;
       end
-    when '"'
-      pos += 1
+    end
+
+    # Shell-unescape a single token.
+    def unshescape(arg)
+      if arg !~ /[\'\"\\]/
+        return arg
+      end
+
+      ret = ""
+      pos = 0
       while pos < arg.length
         ch = arg[pos]
-        pos += 1
-        if ch == '"'
-          break
-        elsif ch == '\\'
-          if pos < arg.length
-           ret += arg[pos]
+
+        case ch
+        when "'"
+          pos += 1
+          while pos < arg.length
+            ch = arg[pos]
+            pos += 1
+            if ch == "'"
+              break
+            end
+            ret += ch
           end
+        when '"'
+          pos += 1
+          while pos < arg.length
+            ch = arg[pos]
+            pos += 1
+            if ch == '"'
+              break
+            elsif ch == '\\'
+              if pos < arg.length
+               ret += arg[pos]
+              end
+              pos += 1
+            end
+            ret += ch
+          end
+        when '\\'
+          pos += 1
+          if pos < arg.length
+            ret += arg[pos]
+            pos += 1
+          end
+        else
+          ret += ch
           pos += 1
         end
-        ret += ch
       end
-    when '\\'
-      pos += 1
-      if pos < arg.length
-        ret += arg[pos]
-        pos += 1
-      end
-    else
-      ret += ch
-      pos += 1
+
+      return ret
     end
-  end
 
-  return ret
-end
+    # # True if list_or_str_or_reg is a string and is equal to val,
+    # # or supports "includes?" and contains, or is a Regexp and matches
+    # # val.
+    # # Note this is intend to detect a flag (e.g. it's used by "option()",
+    # # so it's always case sensitive.)
+    # def matches_cs?(list_or_str_or_reg, val)
+    #   return false unless list_or_str_or_reg
 
-# Return true if a given path is a directory and not empty.
-def is_non_empty_dir(f, ignore_files: false)
-  begin
-    return false unless File.directory?(f)
+    #   if list_or_str_or_reg.instance_of? String
+    #     return list_or_str_or_reg == val
+    #   elsif list_or_str_or_reg.instance_of? Regexp
+    #     return list_or_str_or_reg.match? val
+    #   elsif list_or_str_or_reg.respond_to? "include?"
+    #     return list_or_str_or_reg.include? val
+    #   else
+    #     die "Unsupported type: #{list_or_str_or_reg.inspect}"
+    #   end
+    # end
 
-    if ignore_files
-      return f.children.any? { |x| x.directory? }
-    else
-      return !Dir.empty?(f)
-    end
-  rescue SystemCallError => e
-    debug e.inspect
-    # Just ignore any errors.
-    return false
-  end
-end
+    # Takes a String or a Candidate and return as a Candidate.
+    def as_candidate(value, raw:nil, completed: nil, help: nil)
+      if value.instance_of? Candidate
+        return value
+      elsif value.instance_of? String
+        # If a string contains a TAB, the following section is a
+        # help string.
+        (candidate, s_help) = value.split(/\t/, 2)
 
-# Find matching files for a given word.
-def get_matched_files(word, wildcard = "*")
-  # Remove the last path component.
-  dir = word.sub(%r([^\/]*$), "")
+        # If a candidate starts with a tab, it's a raw candidate.
+        s_raw = candidate.sub!(/^\t/, "") ? true : false
 
-  debug "word=#{word} dir=#{dir} wildcard=#{wildcard}"
+        # If a candidate ends with a BS, it's not a completed
+        # candidate.
+        s_completed = candidate.sub!(/\b$/, "") ? false : true
 
-  if dir != "" and !Dir.exists? dir
-    return
-  end
+        # If one is provided as an argument, use it.
+        raw = s_raw if raw == nil
+        completed = s_completed if completed == nil
+        help = s_help if help == nil
 
-  ret = []
-
-  flag = File::FNM_DOTMATCH
-  if $complete_ignore_case
-    flag |= File::FNM_CASEFOLD
-  end
-
-  begin
-    Pathname.new(dir == "" ? "." : dir).children.each do |path|
-      if path.directory?
-        cand = path.to_s
-        cand += "/"
-        cand += "\r" if is_non_empty_dir(path)
+        return Candidate.new(candidate, raw:raw, completed:completed, help:help)
       else
-        # If it's a file, only add when the basename matches wildcard.
-        next unless File.fnmatch(wildcard, path.basename, flag)
-        cand = path.to_s
+        return nil
       end
-      ret.push(cand)
     end
-  rescue SystemCallError => e
-    debug e.inspect
-  end
 
-  return ret
-end
+    # Return true if a given path is a directory and not empty.
+    def is_non_empty_dir(f, ignore_files: false)
+      begin
+        return false unless File.directory?(f)
 
-# Find matching directories for a given word.
-def get_matched_dirs(word)
-  # Remove the last path component.
-  dir = word.sub(%r([^\/]*$), "")
-
-  if dir != "" and !Dir.exists? dir
-    return
-  end
-
-  ret = []
-
-  begin
-    Pathname.new(dir == "" ? "." : dir).children.each do |path|
-      next unless path.directory?
-      cand = path.to_s
-      cand += "/"
-      cand += "\r" if is_non_empty_dir(path, ignore_files:true)
-      ret.push(cand)
+        if ignore_files
+          return f.children.any? { |x| x.directory? }
+        else
+          return !Dir.empty?(f)
+        end
+      rescue SystemCallError => e
+        debug {"is_non_empty_dir(): #{e.inspect}"}
+        # Just ignore any errors.
+        return false
+      end
     end
-  rescue SystemCallError => e
-    debug e.inspect
-  end
 
-  return ret
+    # Find matching files for a given word.
+    def get_matched_files(word, wildcard = "*")
+      # Remove the last path component.
+      dir = word.sub(%r([^\/]*$), "")
+
+      debug {"word=#{word} dir=#{dir} wildcard=#{wildcard}"}
+
+      if dir != "" and !Dir.exists? dir
+        return
+      end
+
+      ret = []
+
+      flag = File::FNM_DOTMATCH
+      if $complete_ignore_case
+        flag |= File::FNM_CASEFOLD
+      end
+
+      begin
+        Pathname.new(dir == "" ? "." : dir).children.each do |path|
+          if path.directory?
+            cand = path.to_s
+            cand += "/"
+            cand += "\r" if is_non_empty_dir(path)
+          else
+            # If it's a file, only add when the basename matches wildcard.
+            next unless File.fnmatch(wildcard, path.basename, flag)
+            cand = path.to_s
+          end
+          ret.push(cand)
+        end
+      rescue SystemCallError => e
+        debug {"get_matched_files(): #{e.inspect}"}
+      end
+
+      return ret
+    end
+
+    # Find matching directories for a given word.
+    def get_matched_dirs(word)
+      # Remove the last path component.
+      dir = word.sub(%r([^\/]*$), "")
+
+      if dir != "" and !Dir.exists? dir
+        return
+      end
+
+      ret = []
+
+      begin
+        Pathname.new(dir == "" ? "." : dir).children.each do |path|
+          next unless path.directory?
+          cand = path.to_s
+          cand += "/"
+          cand += "\r" if is_non_empty_dir(path, ignore_files:true)
+          ret.push(cand)
+        end
+      rescue SystemCallError => e
+        debug {"get_matched_dirs(): #{e.inspect}"}
+      end
+
+      return ret
+    end
+
+    # Read all lines from a file, if exists.
+    def read_file_lines(file, ignore_comments:true)
+      file = file.expand_home
+      ret = (File.exist? file) ? open(file, "r").read.split(/\n/) : []
+
+      if ignore_comments
+        ret = ret.reject {|x| x =~/^\#/ }
+      end
+
+      return ret;
+    end
+  end # refine Kernel
+
+  refine String do
+    # When a string starts with "~/", then expand to the home directory.
+    # Doesn't support ~USERNAME/.
+    def expand_home()
+      return self.sub(/^~\//, "#{Dir.home}/")
+    end
+
+    # Same as self.start_with?(prefix), except it can do case-insensitive
+    # comparison when needed.
+    def has_prefix?(prefix)
+      return true unless prefix
+      if $complete_ignore_case
+        return self.downcase.start_with? prefix.downcase
+      else
+        return self.start_with? prefix
+      end
+    end
+
+    # Build a candidate from a String.
+    def as_candidate(raw:nil, completed: nil, help: nil)
+      return Kernel.as_candidate(value, raw:raw, completed:completed, help:help)
+    end
+  end # refine String
 end
 
-# Read all lines from a file, if exists.
-def read_file_lines(file, ignore_comments:true)
-  file = file.expand_home
-  ret = (File.exist? file) ? open(file, "r").read.split(/\n/) : []
+using CompleterRefinements
 
-  if ignore_comments
-    ret = ret.reject {|x| x =~/^\#/ }
+# Represents a single candidate.
+class Candidate
+  using CompleterRefinements
+
+  def initialize(value, raw:false, completed: true, help: "")
+    value or die "Empty candidate detected."
+
+    @value = value.chomp
+    @raw= raw
+    @completed = completed
+    @help = help
   end
 
-  return ret;
+  # The candidate text.
+  attr_reader :value
+
+  # Raw candidates will not be escaped.
+  attr_reader :raw
+
+  # When a candidate is "completed", it's not a prefix of another text.
+  # A completed candidate will be followed by a space when expanded.
+  attr_reader :completed
+
+  # Help text, bash can't show it, but maybe zsh can.
+  attr_reader :help
+
+  # Whether a candidate has a prefix or not.
+  def has_prefix?(prefix)
+    return @value.has_prefix?(prefix)
+  end
+
+  def as_candidate()
+    return self
+  end
+
+  def to_s()
+    return "{Candidate:value=#{shescape value}#{raw ? " [raw]" : ""}" +
+        "#{completed ? " [completed]" : ""}" +
+        "#{help ? " " + help : ""}}"
+  end
 end
 
-#==============================================================================
+# Class that eats information sent by bash via stdin.
+class BashProxy
+  SECTION_SEPARATOR = "\n-*-*-*-COMPLETER-*-*-*-\n"
+
+  def initialize()
+    # Shell and environmental variables.
+    @env = {}
+    @jobs = []
+    @engine = nil
+  end
+
+  attr_reader :env, :jobs
+
+  attr_accessor :engine
+
+  def install(commands, script, ignore_case)
+    command = commands[0]
+    func = "_#{command.gsub(/[^a-z0-9]/i) {|c| "_" + c.ord.to_s(16)}}_completion"
+
+    debug {"Installing completion for '#{command}', function='#{func}'"}
+
+    script_file = File.expand_path $0
+
+    debug_flag = debug ? "-d" : ""
+    ignore_case_flag = ignore_case ? "-i" : ""
+
+    # Note, we generate "COMPREPLY=(" and ")" by code too, which will
+    # allow us to execute any code from the script if needed.
+    puts <<~EOF
+        function __completer_context_passer {
+            declare -p
+            echo -n "#{SECTION_SEPARATOR}"
+            jobs
+        }
+
+        function #{func} {
+          . <( __completer_context_passer |
+              ruby -x "#{script_file}" #{debug_flag} #{ignore_case_flag} \
+                  -p "$COMP_POINT" \
+                  -l "$COMP_LINE" \
+                  -c "$COMP_CWORD" "${COMP_WORDS[@]}" \
+                  )
+        }
+        EOF
+
+    commands.each do |c|
+      puts "complete -o nospace -F #{func} #{c}"
+    end
+  end
+
+  # Called when completion is about to start.
+  def start_completion()
+    vars, jobs = $stdin.read.split(SECTION_SEPARATOR)
+    vars and vars.split(/\n/).each do |line|
+      if line =~ /^declare\s+(\S+)\s+([^=]+)\=(.*)$/ then
+        flag, name, value = $1, $2, $3
+        debug {"#{flag}: #{name} = #{value}"}
+        next if flag =~ /[aA]/ # Ignore arrays and hashes
+        @env[name] = unshescape value
+      end
+    end
+
+    # TODO Parse jobs
+    jobs = jobs # suppress warning.
+
+    # debug @env
+    puts <<~EOF
+          IFS=$'\\n' COMPREPLY=(
+        EOF
+  end
+
+  def end_completion()
+    puts <<~EOF
+          ) # END COMPREPLY
+        EOF
+  end
+
+  def maybe_override_candidates()
+    do_filename_completion = false
+    1.upto(engine.cursor_index - 1).each do |i|
+      # When there's an unquoted redirect marker, do a filename completion.
+      word = engine.orig_words[i]
+      if word =~ /^[\<\>]/
+        do_filename_completion = true
+      end
+    end
+    if do_filename_completion
+      engine.candidates engine.matched_files
+    end
+  end
+
+  # Return as a candidate string for bash.
+  # Note bash can't show a help string.
+  def add_candidate(candidate)
+    s = shescape(candidate.value)
+    s += " " if candidate.completed
+
+    # Output will be eval'ed, so need double-escaping unless raw.
+    puts(candidate.raw ? s : shescape(s))
+  end
+
+  def variable_completable?(word)
+    return (word =~ /^\$([a-z0-9\_]*)$/i) ? $1 : nil
+  end
+
+  def variable_expandable?(word)
+    return (word =~ /^\$([a-z0-9\_]*)\/$/i) ? $1 : nil
+  end
+end
+
+def get_proxy()
+  shell = Pathname.new(ENV["SHELL"]).basename.to_s
+  case shell
+  when "bash"
+    return BashProxy.new
+  else
+    die "Unsupported shell '#{shell}'"
+  end
+end
 
 def lazy(&block)
   return LazyList.new(&block)
@@ -237,19 +477,29 @@ class Completer
   FINISH_LABEL = :FinishLabel
 
   def initialize(cursor_index, words)
-    @cursor_index = cursor_index
-    @orig_words = @words
-    @words = @words.map {|x| unshescape x}
+    @cursor_index = cursor_index.to_i
+    @orig_words = words
+    @words = words.map {|x| unshescape x}
 
     @index = 0
 
     @current_consumed = false
+
+    @candidates = []
   end
 
   attr_reader :cursor_index, :orig_words, :words, :index
 
   def command()
     return words[0]
+  end
+
+  def cursor_word()
+    return words[cursor_index]
+  end
+
+  def cursor_orig_word()
+    return orig_words[cursor_index]
   end
 
   def word(relative_index = 0)
@@ -264,40 +514,154 @@ class Completer
     return orig_words[i]
   end
 
+  def at_cursor?()
+    return index == cursor_index
+  end
+
+  def after_cursor?()
+    return index > cursor_index
+  end
+
+  def before_cursor?()
+    return index < cursor_index
+  end
+
+  def current_consumed?
+    return @current_consumed
+  end
+
+  # Whether a candidate(s) are already registered.
+  def has_candidates?()
+    return @candidates.size > 0
+  end
+
+  # Clear all the candidates that have been added so far.
+  def clear_candidates()
+    debug "Candidate(s) removed."
+    @candidates = []
+  end
+
+  # Add a single candidate.
+  # If always is true, candidates will be always added, even
+  # if the candidate doesn't start with the cursor word.
+  def _candidate_single(arg, always:false)
+    # debug {"_candidate_single: #{arg} #{always}"}
+
+    return unless at_cursor?
+    return unless arg
+    die "#{arg.inspect} is not a Candidate" unless arg.instance_of? Candidate
+    return unless arg.value
+    if !always
+      return unless arg.has_prefix? cursor_word
+    end
+
+    debug {"Candidate added: #{arg}"}
+
+    @candidates.push(arg)
+  end
+
+  # Push candidates.
+  # "args" can be a string, an array of strings, or a proc.
+  # If always is true, candidates will be always added, even
+  # if they don't start with the cursor word.
+  def candidates(*args, always:false , &block)
+    return unless at_cursor?
+
+    args.each {|arg|
+      c = as_candidate(arg)
+      # debug {"as_candidate=#{c.inspect}"}
+      if c
+        _candidate_single c, always:always
+      elsif arg.respond_to? :each
+        arg.each {|x| candidates x, always:always}
+      elsif arg.respond_to? :call
+        candidates(arg.call(), always:always)
+      end
+    }
+    if block
+      candidates(block.call(), always:always)
+    end
+  end
+
+  alias candidate candidates
+  alias flag candidates
+  alias flags candidates
+
   def next_word(&block)
     if @index <= @cursor_index
       @index += 1
       @current_consumed = false
     end
     debug {"next_word -> now at #{index}"}
+  end
 
+  def for_arg(match=nil, &block)
+    block or die "for_each_word() requires a block."
+
+    while before_cursor?
+      if match == nil or match === word
+        block.call()
+      end
+      @index += 1
+    end
+
+    # at cursor now.
+    block.call()
   end
 
   def maybe(*args, &block)
+    args.length == 0 and die "maybe() requires at least one argument."
+    debug {"maybe(#{index}/#{cursor_index}): #{args}#{block ? " (has block)" : ""}"}
+    if at_cursor?
+      debug {"maybe: adding candidate(s)."}
+      candidate args[0]
+    end
   end
 
   def next_word_must(*args, &block)
+    args.length == 0 and die "next_word_must() requires at least one argument."
+    if at_cursor?
+      candidate args[0]
+    end
   end
 
   def finish()
-    block_given? and die "finish() doesn't take block."
+    block_given? and die "finish() doesn't take a block."
     debug "finish()"
     throw FINISH_LABEL
   end
 
   def _real_main(&block)
     catch FINISH_LABEL do
+      debug "Starting the user block."
+
+      @index = 1
       instance_eval(&block)
+
+      # If the block defined main(), also run it.
+      if self.respond_to? :main
+        debug "Detected main(), also running it."
+        self.main
+      end
+    end
+    if debug
+      debug "Final candidates:"
+      @candidates.each do |c|
+        debug "  " + c.to_s
+      end
     end
   end
 end
 
-def completion(&b)
-  index = ARGV.shift
+def completion(&block)
+  block or die "completion() requires a block."
+  index = ARGV.shift.to_i
   args = ARGV
 
+  debug {"Index: #{index} Args: #{args}"}
+
   c = Completer.new(index, args)
-  c._real_main(&b)
+  c._real_main(&block)
 end
 
 completion do
@@ -326,19 +690,25 @@ completion do
   end
 
   def main()
+    maybe %w(-a -d -e -H -P)
+    maybe "-s", take_device_serial
+
+
+
+
+
+
+
+
+    return
     if command == "dumpsys"
       dumpsys
       return
     end
 
-# When [TAB] is pressed at this point, we need to collect candidates
-# from both within and after the loop. So we can't just use the pure
-# "while".
-
-    while (next_word =~ /^-/) do
-# How to advance to the next loop, with skipping all the following maybe's?
-
 # Once a word is consumed by "maybe", the current word won't match other "maybe's" u
+
+    for_arg(/^-/) do
       maybe %w(-a -d -e -H -P)
       maybe "-s", take_device_serial
       maybe "-L", [] # No candidates.
@@ -360,7 +730,7 @@ completion do
     end
 
     maybe %w(install install-multiple) do # Do implies next_word.
-      while (next_word =~ /^-/) do
+    for_arg(/^-/) do
         maybe %w(-a -d -e -H -P)
       end
       next_word_must take_file
@@ -1059,4 +1429,7 @@ pm remove-user: remove the user with the given USER_IDENTIFIER,
 
 
 =end
+
+# This makes ruby happy with the last line
+def __END_RUBY_CODE__; end
 __END_RUBY_CODE__
