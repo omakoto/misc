@@ -8,7 +8,7 @@ for n in "$@" ; do
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
 
-    COMPREPLY=( $(compgen -W "$(adb shell ls -dp1 "${cur}*" 2>/dev/null)" -- ${cur}) )
+    COMPREPLY=( $(compgen -W "$(adb shell "ls -dp1 '${cur}'* 2>/dev/null")" -- ${cur}) )
 }
 EOF
     echo "complete -o nospace -F _${script}_command ${script}"
