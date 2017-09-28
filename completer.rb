@@ -10,6 +10,7 @@ abort "#{$0.sub(/^.*\//, "")} requires ruby >= 2.4" if Gem::Version.new(RUBY_VER
 
 =begin
 - To enable debug output, use:
+
 export COMPLETER_DEBUG=/tmp/completer-debug.txt
 
 - Can also be enabled with -d.
@@ -452,7 +453,7 @@ class BashProxy
       end
     end
     if do_filename_completion
-      engine.candidates engine.matched_files
+      engine.candidates engine.get_matched_files engine.cursor_word
     end
   end
 
@@ -530,6 +531,11 @@ class CompletionEngine
 
   attr_reader :proxy, :orig_words, :words, :cursor_index, :command,
       :ignore_case, :comp_line, :comp_point, :index
+
+  # Returns the shell and environmental variables.
+  def env()
+    return @proxy.env
+  end
 
   def cursor_word()
     return words[cursor_index] || ""
@@ -671,7 +677,7 @@ class CompletionEngine
       res = catch FOR_ARG_LABEL do
         while !after_cursor?
           debug {"[for_arg](#{index}/#{cursor_index})"}
-          next_word
+          next_word if current_consumed?
           debug {"  #{match} vs #{word}"}
           if match == nil or at_cursor? or match? match, word
             debug {"    matched."}
@@ -772,7 +778,7 @@ class CompletionEngine
       debug { "Maybe variable: #{name}" }
       env.keys.each do |k|
         if k.has_prefix?(name)
-          candidate("\f$" + k + "\r") # Raw candidate
+          candidate("\e$" + k + "\b") # Raw candidate
         end
       end
       return
@@ -784,7 +790,7 @@ class CompletionEngine
       value = env[name]
       if value and File.directory?(value)
         value += "/"
-        value += "\r" if is_non_empty_dir(value)
+        value += "\b" if is_non_empty_dir(value)
         candidate value, always:true
       end
     end
@@ -812,6 +818,7 @@ class CompletionEngine
           debug "Starting the user block."
 
           @index = 0
+          consume
           instance_eval(&block)
 
           # If the block defined main(), also run it.

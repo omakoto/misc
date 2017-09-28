@@ -1,21 +1,26 @@
-. <( exec ruby -wx "${BASH_SOURCE[0]}" -i adb2 )
+. <( exec ruby -wx "${BASH_SOURCE[0]}" -i adb )
 : <<__END_RUBY_CODE__
 #!ruby
+def __END_RUBY_CODE__; end
 
 =begin
 
 # Install
 . <(~/cbin/misc/completer-adb.rb)
 
-echo | ruby -x completer-adb4.rb  2 adb
-echo | ruby -x completer-adb4.rb  2 adb -s
-echo | ruby -x completer-adb4.rb  3 adb -s SE
-echo | ruby -x completer-adb4.rb  4 adb -s serial --
+echo | ruby -x completer-adb.rb -ic  2 adb
+echo | ruby -x completer-adb.rb -ic  2 adb -s
+echo | ruby -x completer-adb.rb -ic  3 adb -s SE
+echo | ruby -x completer-adb.rb -ic  4 adb -s serial --
 
-echo | ruby -x completer-adb4.rb  2 adb pull
+echo | ruby -x completer-adb.rb -ic  2 adb pull
 
-echo | ruby -x completer-adb4.rb  2 adb uninstall
-echo | ruby -x completer-adb4.rb  3 adb uninstall -k
+echo | ruby -x completer-adb.rb -ic  2 adb install
+
+echo | ruby -x completer-adb.rb -ic  2 adb uninstall
+echo | ruby -x completer-adb.rb -ic  3 adb uninstall -k
+
+__completer_context_passer | ruby -x completer-adb.rb -ic  1 adb '$'
 
 =end
 
@@ -24,46 +29,53 @@ using CompleterRefinements
 
 TESTING = ENV["ADB_TEST_COMP"] == "1"
 
+# Run a command, optionally allowing a "mocked output".
+def run_command(command)
+  debug {"Executing: #{command}"}
+  out = ENV['ADB_MOCK_OUT'] || %x(#{command})
+  debug {"Output: <<EOF\n#{out}\nEOF"}
+  return out || ''
+end
+
+# Generates candidates for device serial numbers.
+def take_device_serial()
+  lazy do
+    ret = []
+    run_command(%(adb devices)).split(/\n/).each do |l|
+      serial, type = l.split(/\s+/, 2)
+      (ret << serial) if type == "device"
+    end
+    debug {"Serial(s): #{ret.inspect}"}
+    ret
+  end
+end
+
+# Generates candidates for installed packages.
+def take_package()
+  lazy { run_command(%(adb shell pm list packages 2>/dev/null)).split(/\n/).map {|x| x.sub(/^package\:/, "")} }
+end
+
+# Generates candidates for device files.
+def take_device_file()
+  lazy do
+    w = word
+    w = "/" if w == "" || w == nil
+    run_command(%(adb shell ls -pd1 #{shescape w}'* 2>/dev/null')).split(/\n/).map{|x| x + "\b"}
+  end
+end
+
+# Generates candidates for device side executable commands.
+def take_command()
+  lazy { run_command(%(adb shell 'for n in ${PATH//:/ } ; do ls "$n" ; done 2>/dev/null')).split(/\n/) }
+end
+
+# Generates candidates for system service names..
+def take_service()
+  lazy { run_command(%(adb shell dumpsys -l 2>/dev/null)).split(/\n/)[1..-1].map{|x| x.strip} }
+end
+
+
 Completer.define do
-  def run_command(command)
-    debug {"Executing: #{command}"}
-    out = ENV['ADB_MOCK_OUT'] || %x(#{command})
-    debug {"Output: <<EOF\n#{out}\nEOF"}
-    return out || ''
-  end
-
-  def take_device_serial()
-    lazy do
-      ret = []
-      run_command(%(adb devices)).split(/\n/).each do |l|
-        serial, type = l.split(/\s+/, 2)
-        (ret << serial) if type == "device"
-      end
-      debug {"Serial(s): #{ret.inspect}"}
-      ret
-    end
-  end
-
-  def take_package()
-    lazy { run_command(%(adb shell pm list packages 2>/dev/null)).split(/\n/).map {|x| x.sub(/^package\:/, "")} }
-  end
-
-  def take_device_file()
-    lazy do
-      w = word
-      w = "/" if w == "" || w == nil
-      run_command(%(adb shell ls -pd1 #{shescape w}'* 2>/dev/null')).split(/\n/).map{|x| x + "\r"}
-    end
-  end
-
-  def take_command()
-    lazy { run_command(%(adb shell 'for n in ${PATH//:/ } ; do ls "$n" ; done 2>/dev/null')).split(/\n/) }
-  end
-
-  def take_service()
-    lazy { run_command(%(adb shell dumpsys -l 2>/dev/null)).split(/\n/)[1..-1].map{|x| x.strip} }
-  end
-
   def main()
     for_arg(/^-/) do
       maybe %w(-a -d -e -H -P)
@@ -86,7 +98,7 @@ Completer.define do
 
     maybe %w(devices help version root unroot reboot-bootloader usb get-state get-serialno
         get-devpath start-server kill-server wait-for-device remount) do
-      return
+      finish
     end
 
     maybe %w(install install-multiple) do # Do implies next_word.
@@ -97,68 +109,76 @@ Completer.define do
         end
       end
       next_word_must take_file
-      return
+      finish
     end
+
     maybe "uninstall" do
       maybe %w(-k)
       next_word_must take_package
+      finish
     end
+
     maybe "push" do
       next_word_must take_file, take_device_file
+      finish
     end
+
     maybe "pull" do
       next_word_must take_device_file
       next_word_must take_file
+      finish
     end
-    # maybe "reboot" do
-    #   maybe %w(bootloader recovery sideload sideload-auto-reboot) do
-    #     finish
-    #   end
-    # end
-    # maybe "logcat" do
-    #   # TODO
-    # end
-    # maybe "shell" do
-    #   maybe "am" do
-    #     am
-    #   end
-    #   maybe "pm" do
-    #     pm
-    #   end
-    #   maybe "cmd" do
-    #     cmd
-    #   end
-    #   maybe "dumpsys" do
-    #     dumpsys
-    #   end
-    #   # TODO
-    # end
+
+    maybe "reboot" do
+      maybe %w(bootloader recovery sideload sideload-auto-reboot)
+      finish
+    end
+
+    maybe "logcat" do
+      # TODO
+      finish
+    end
+
+    maybe "shell" do
+      maybe "am" do
+        am
+      end
+      maybe "pm" do
+        pm
+      end
+      maybe "cmd" do
+        cmd
+      end
+      maybe "dumpsys" do
+        dumpsys
+      end
+      # TODO
+    end
   end
 
   def am()
-    maybe %w(start startservice) do
-      return
-    end
+    maybe %w(start startservice)
+    finish
   end
 
   def dumpsys()
     maybe take_service do
-      return
+      finish
     end
   end
 
-  # label "cmd" do
-  #   # TODO: This would have to always run the command. Hmm.
-  #   maybe take_service do
-  #     finish
-  #   end
-  #   maybe "activity" do
-  #     jump("am")
-  #   end
-  #   maybe "package" do
-  #     jump("pm")
-  #   end
-  # end
+  def cmd()
+    # TODO: This would have to always run the command. Hmm.
+    maybe take_service do
+      finish
+    end
+    maybe "activity" do
+      am
+    end
+    maybe "package" do
+      pm
+    end
+  end
 
   # label "dumpsys" do
   #   maybe take_service do
@@ -792,6 +812,4 @@ pm remove-user: remove the user with the given USER_IDENTIFIER,
 
 =end
 
-# This makes ruby happy with the last line
-def __END_RUBY_CODE__; end
 __END_RUBY_CODE__

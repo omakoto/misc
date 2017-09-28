@@ -85,23 +85,13 @@ assert_comp() {
     shescape $@
   fi
 
-  local vars=""
-
-  local OPTIND
-  while getopts "v:" opt; do
-    case "$opt" in
-      v) vars="$OPTARG" ;;
-    esac
-  done
-  shift $(($OPTIND - 1))
-
   # Note we can't use pipe here, which would break test counting in
   # testutil.bash, so <( ... )
-  assert_out -ds cat <("$@" <<<"$vars" | sed -e '1d; $d')
+  assert_out -ds cat <("$@" <<<"$VARS" | sed -e '1d; $d')
 }
 
 test_adb() {
-  ADB_TEST_COMP=1 assert_comp ruby -wx $medir/completer-adb4.rb -ic "$@"
+  ADB_TEST_COMP=1 assert_comp ruby -wx $medir/completer-adb.rb -ic "$@"
 }
 
 test_adb 1 adb <<EOF
@@ -138,6 +128,9 @@ test_adb 1 adb <<EOF
 'usb '
 'version '
 'wait-for-device '
+'logcat '
+'reboot '
+'shell '
 EOF
 
 test_adb 1 adb - <<EOF
@@ -213,6 +206,9 @@ test_adb 3 adb -s serial <<EOF
 'usb '
 'version '
 'wait-for-device '
+'logcat '
+'reboot '
+'shell '
 EOF
 
 test_adb 3 adb -s serial g <<EOF
@@ -222,6 +218,7 @@ test_adb 3 adb -s serial g <<EOF
 EOF
 
 test_adb 3 adb -s -s2 s<<EOF
+'shell '
 'start-server '
 EOF
 
@@ -251,17 +248,19 @@ test_adb 4 adb -s serial -- <<EOF
 'usb '
 'version '
 'wait-for-device '
+'logcat '
+'reboot '
+'shell '
 EOF
-
 
 export ADB_MOCK_OUT='/default.prop
 /data/
 /system/'
 
 test_adb 2 adb pull <<EOF
-'/data/ '
-'/default.prop '
-'/system/ '
+/data/
+/default.prop
+/system/
 EOF
 
 test_adb 3 adb pull /data  <<EOF
@@ -281,14 +280,14 @@ aaa/
 EOF
 
 test_adb 3 adb push aaa <<EOF
-'/data/ '
-'/default.prop '
-'/system/ '
+/data/
+/default.prop
+/system/
 EOF
 
 test_adb 3 adb push aaa /d <<EOF
-'/data/ '
-'/default.prop '
+/data/
+/default.prop
 EOF
 
 export ADB_MOCK_OUT='package:android
@@ -317,6 +316,62 @@ test_adb 3 adb uninstall -k <<EOF
 'com.android.systemui '
 EOF
 
+test_adb 2 adb install <<EOF
+'-a '
+'-d '
+'-e '
+'-H '
+'-P '
+aaa/
+'dir2/ '
+'file1 '
+EOF
 
+VARS="declare -- HOME=$HOME
+declare -- HOST=hostname
+declare -- hostname=hostname.domain.com
+declare -- PATH=\"a:b:c\"" test_adb 1 adb '$' <<'EOF'
+'$HOME'
+'$HOST'
+'$hostname'
+'$PATH'
+EOF
+
+VARS="declare -- HOME=$HOME
+declare -- HOST=hostname
+declare -- hostname=hostname.domain.com
+declare -- PATH=\"a:b:c\"" test_adb 1 adb '$h' <<'EOF'
+'$HOME'
+'$HOST'
+'$hostname'
+EOF
+
+VARS="declare -- HOME=$HOME
+declare -- HOST=hostname
+declare -- hostname=hostname.domain.com
+declare -- PATH=\"a:b:c\"" test_adb 1 adb '$p' <<'EOF'
+'$PATH'
+EOF
+
+VARS="declare -- HOME=$HOME
+declare -- HOST=hostname
+declare -- hostname=hostname.domain.com
+declare -- PATH=\"a:b:c\"" test_adb 1 adb '$home' <<'EOF'
+'$HOME'
+EOF
+
+VARS="declare -- HOME=$HOME
+declare -- HOST=hostname
+declare -- hostname=hostname.domain.com
+declare -- PATH=\"a:b:c\"" test_adb 1 adb '$HOME' <<'EOF'
+'$HOME'
+EOF
+
+VARS="declare -- HOME=$HOME
+declare -- HOST=hostname
+declare -- hostname=hostname.domain.com
+declare -- PATH=\"a:b:c\"" test_adb 1 adb '$HOME/' <<'EOF'
+/tmp/home/
+EOF
 
 done_testing
