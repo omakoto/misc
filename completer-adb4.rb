@@ -7,7 +7,7 @@
 # Install
 . <(~/cbin/misc/completer-adb.rb)
 
-ruby -x completer-adb4.rb  1    adb
+ruby -x completer-adb4.rb  2 adb -s
 
 
 
@@ -38,7 +38,7 @@ $debug_out = nil
 
 # Whether completion is being performed in case-insensitive mode.
 # For simplicity, we just use a global var.
-$complete_ignore_case = false
+$complete_ignore_case = true
 
 module CompleterRefinements
   refine Kernel do
@@ -61,7 +61,7 @@ module CompleterRefinements
     end
 
     def die(*msg)
-      abort "#{__FILE__}: " + msg.join("")
+      abort "#{__FILE__}: " + msg.join("") + "\n" + caller.map{|x|x.to_s}.join("\n")
     end
 
     # Shell-escape a single token.
@@ -469,12 +469,13 @@ class LazyList
 
   def each(&block)
     @list = @block.call() unless @list
-    @listl.each block
+    @list.each(&block)
   end
 end
 
 class Completer
   FINISH_LABEL = :FinishLabel
+  FOR_ARG_LABEL = :ForArg
 
   def initialize(cursor_index, words)
     @cursor_index = cursor_index.to_i
@@ -486,6 +487,8 @@ class Completer
     @current_consumed = false
 
     @candidates = []
+
+    @candidates_nest = 0 # for debugging
   end
 
   attr_reader :cursor_index, :orig_words, :words, :index
@@ -504,7 +507,7 @@ class Completer
 
   def word(relative_index = 0)
     i = index + relative_index
-    return nil if i < 0 || r >= words.length
+    return nil if i < 0 || i >= words.length
     return words[i]
   end
 
@@ -551,11 +554,12 @@ class Completer
     return unless arg
     die "#{arg.inspect} is not a Candidate" unless arg.instance_of? Candidate
     return unless arg.value
-    if !always
-      return unless arg.has_prefix? cursor_word
+    if !always and !arg.has_prefix? cursor_word
+      debug {"#{"  " * @candidates_nest}candidate rejected."}
+      return
     end
 
-    debug {"Candidate added: #{arg}"}
+    debug {"#{"  " * @candidates_nest}candidate added: #{arg}"}
 
     @candidates.push(arg)
   end
@@ -567,20 +571,28 @@ class Completer
   def candidates(*args, always:false , &block)
     return unless at_cursor?
 
+    @candidates_nest += 1
+
     args.each {|arg|
+      debug {"#{"  " * @candidates_nest}candidate?: arg=#{arg.inspect}"}
       c = as_candidate(arg)
       # debug {"as_candidate=#{c.inspect}"}
       if c
+        @candidates_nest += 1
         _candidate_single c, always:always
+        @candidates_nest -= 1
       elsif arg.respond_to? :each
         arg.each {|x| candidates x, always:always}
       elsif arg.respond_to? :call
         candidates(arg.call(), always:always)
+      else
+        debug {"Ignoring unsupported candidate: #{arg.inspect}"}
       end
     }
     if block
       candidates(block.call(), always:always)
     end
+    @candidates_nest -= 1
   end
 
   alias candidate candidates
@@ -591,30 +603,85 @@ class Completer
     if @index <= @cursor_index
       @index += 1
       @current_consumed = false
+      block.call() if block
     end
-    debug {"next_word -> now at #{index}"}
+    debug {"next_word -> now at #{index}, \"#{word}\""}
+
+    return !after_cursor?
+  end
+
+  def consume()
+    @current_consumed = true
+    debug {"word at #{index} consumed."}
+  end
+
+  def match?(condition, value)
+    debug {"match?: #{condition}, #{value}"}
+    if condition.instance_of? String
+      return condition == value # For a full match, we're always case sensitive.
+    elsif condition.instance_of? Regexp
+      return value =~ condition
+    elsif condition.respond_to? :each
+      return condition.any?{|x| x == value}
+    else
+      die "Unsupported match type: condition"
+    end
   end
 
   def for_arg(match=nil, &block)
     block or die "for_each_word() requires a block."
 
-    while before_cursor?
-      if match == nil or match === word
-        block.call()
+    catch FOR_ARG_LABEL do
+      while !after_cursor?
+        debug {"for_arg:"}
+        finish unless next_word
+        debug {"  #{match} vs #{word}"}
+        if match == nil or at_cursor? or match? match, word
+          debug {"    matched."}
+          block.call()
+        end
       end
-      @index += 1
     end
+  end
 
-    # at cursor now.
-    block.call()
+  def for_break()
+    throw FOR_ARG_LABEL
+  end
+
+# TODO Doesn't work
+  def for_next()
+    throw FOR_ARG_LABEL
   end
 
   def maybe(*args, &block)
     args.length == 0 and die "maybe() requires at least one argument."
+
+    return if current_consumed?
     debug {"maybe(#{index}/#{cursor_index}): #{args}#{block ? " (has block)" : ""}"}
+
     if at_cursor?
-      debug {"maybe: adding candidate(s)."}
-      candidate args[0]
+      debug {" at_cursor: adding candidate(s)."}
+      candidates args[0]
+    else
+      if match? args[0], word
+      debug {"  maybe: found a match."}
+        # adb -s SERIAL1 SERIAL2^ shell  # cursor_index = 3, len = 5
+        #     ^ index = 1
+        #     maybe "-s", take_serial, take_serial
+        next_word
+        (args.length - 1).times do |i|
+          if at_cursor?
+            candidates args[i + 1]
+            break
+          end
+          # Just skip this argument, pretending it matches.
+          finish unless next_word
+        end
+
+        block.call() if block
+
+# Note this should call for_next, but probably not when a block is given.
+      end
     end
   end
 
@@ -635,7 +702,7 @@ class Completer
     catch FINISH_LABEL do
       debug "Starting the user block."
 
-      @index = 1
+      @index = 0
       instance_eval(&block)
 
       # If the block defined main(), also run it.
@@ -669,65 +736,61 @@ completion do
     lazy {get_matched_files word }
   end
 
+  def run_command(command)
+    debug {"Executing: #{command}"}
+    out = %x(#{command})
+    debug {"Output: <<EOF\n#{out}\nEOF"}
+    return out
+  end
+
   def take_device_serial()
-    lazy { %x(adb devices).split(/\n/)[1..-1].map {|x| x.split(/\s+/)[0]} }
+    lazy do
+      ret = []
+      run_command(%(adb devices)).split(/\n/).each do |l|
+        serial, type = l.split(/\s+/, 2)
+        (ret << serial) if type == "device"
+      end
+      debug {"Serial(s): #{ret.inspect}"}
+      ret
+    end
   end
 
   def take_package()
-    lazy { %x(adb shell pm list packages 2>/dev/null).split(/\n/).map {|x| x.sub(/^package\:/, "")} }
+    lazy { run_command(%(adb shell pm list packages 2>/dev/null)).split(/\n/).map {|x| x.sub(/^package\:/, "")} }
   end
 
   def take_device_file()
-    lazy { %x(adb shell ls -pd1 #{shescape word}'* 2>/dev/null').split(/\n/).map{|x| x + "\r"} }
+    lazy { run_command(%(adb shell ls -pd1 #{shescape word}'* 2>/dev/null')).split(/\n/).map{|x| x + "\r"} }
   end
 
   def take_command()
-    lazy { %x(adb shell 'for n in ${PATH//:/ } ; do ls "$n" ; done 2>/dev/null').split(/\n/) }
+    lazy { run_command(%(adb shell 'for n in ${PATH//:/ } ; do ls "$n" ; done 2>/dev/null')).split(/\n/) }
   end
 
   def take_service()
-    lazy { %x(adb shell dumpsys -l 2>/dev/null).split(/\n/)[1..-1].map{|x| x.strip} }
+    lazy { run_command(%(adb shell dumpsys -l 2>/dev/null)).split(/\n/)[1..-1].map{|x| x.strip} }
   end
 
   def main()
-    maybe %w(-a -d -e -H -P)
-    maybe "-s", take_device_serial
-
-
-
-
-
-
-
-
-    return
-    if command == "dumpsys"
-      dumpsys
-      return
-    end
-
-# Once a word is consumed by "maybe", the current word won't match other "maybe's" u
-
     for_arg(/^-/) do
-      maybe %w(-a -d -e -H -P)
-      maybe "-s", take_device_serial
-      maybe "-L", [] # No candidates.
+      maybe %w(-a -d -e -H -P) # for_next[default in for], for_break, fallthrough
+      maybe "-s", take_device_serial # , for_next <- implied.
+      maybe "-L", [], for_next # No candidates.
 
       # TODO Can we support optional argument? That'd be very tricky.
       # TODO These are not real ADB flags. Remove them later.
       maybe %w(-f --flags), take_file
       maybe %w(--color --colors), %w(always never auto)
-      maybe "--" do
-        break
-      end
+      maybe "--", for_break
     end
-
-    # next_word # Don't need.
 
     maybe %w(devices help version root unroot reboot-bootloader usb get-state get-serialno
         get-devpath start-server kill-server wait-for-device remount) do
       return
     end
+
+    debug "not implemented"
+    return
 
     maybe %w(install install-multiple) do # Do implies next_word.
     for_arg(/^-/) do
