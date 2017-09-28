@@ -673,11 +673,16 @@ class CompletionEngine
   def for_arg(match=nil, &block)
     block or die "for_each_word() requires a block."
 
+    move_next_word = current_consumed?
+
     begin
       res = catch FOR_ARG_LABEL do
         while !after_cursor?
           debug {"[for_arg](#{index}/#{cursor_index})"}
-          next_word if current_consumed?
+
+          next_word if move_next_word # First move may be skipped.
+          move_next_word = true
+
           debug {"  #{match} vs #{word}"}
           if match == nil or at_cursor? or match? match, word
             debug {"    matched."}
@@ -742,6 +747,14 @@ class CompletionEngine
 
     if block
       next_word implicit:true
+      block.call
+    end
+  end
+
+  def otherwise(&block)
+    block or die "otherwise() requires a block."
+
+    maybe(//) do
       block.call
     end
   end

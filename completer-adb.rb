@@ -91,9 +91,7 @@ Completer.define do
           for_break
         end
       end
-      maybe(//) do # If nothing above matched, break.
-        for_break
-      end
+      otherwise { for_break }
     end
 
     maybe %w(devices help version root unroot reboot-bootloader usb get-state get-serialno
@@ -104,9 +102,7 @@ Completer.define do
     maybe %w(install install-multiple) do # Do implies next_word.
       for_arg(/^-/) do
         maybe %w(-a -d -e -H -P)
-        maybe(//) do # If nothing above matched, break.
-          for_break
-        end
+        otherwise { for_break }
       end
       next_word_must take_file
       finish
@@ -152,11 +148,18 @@ Completer.define do
       maybe "dumpsys" do
         dumpsys
       end
-      # TODO
     end
+
+    otherwise { catch_all }
   end
 
+
   def am()
+    maybe %w(start startservice)
+    finish
+  end
+
+  def pm()
     maybe %w(start startservice)
     finish
   end
@@ -168,38 +171,29 @@ Completer.define do
   end
 
   def cmd()
-    # TODO: This would have to always run the command. Hmm.
-    maybe take_service do
-      finish
-    end
     maybe "activity" do
       am
     end
     maybe "package" do
       pm
     end
+
+    # This will execute the command, so only do it when completion
+    # is needed.
+    if at_cursor?
+      maybe take_service do
+        finish
+      end
+    else
+      otherwise { catch_all }
+    end
   end
 
-  # label "dumpsys" do
-  #   maybe take_service do
-  #     finish
-  #   end
-  # end
-
-  # label "am" do
-  #   maybe %w(start startservice) do
-  #     finish
-  #   end
-  # end
-
-  # label "dumpsys-activity" do
-  # end
-
-  # label "pm" do
-  # end
-
-  # label "dumpsys-package" do
-  # end
+  def catch_all()
+    for_arg do
+      maybe take_device_file
+    end
+  end
 end
 
 =begin

@@ -374,4 +374,14 @@ declare -- PATH=\"a:b:c\"" test_adb 1 adb '$HOME/' <<'EOF'
 /tmp/home/
 EOF
 
+export ADB_MOCK_OUT='/default.prop
+/data/
+/system/'
+
+test_adb 2 adb cat <<EOF
+/data/
+/default.prop
+/system/
+EOF
+
 done_testing
