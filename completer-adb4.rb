@@ -7,7 +7,9 @@
 # Install
 . <(~/cbin/misc/completer-adb.rb)
 
-ruby -x completer-adb4.rb  2 adb -s
+echo | ruby -x completer-adb4.rb  2 adb
+echo | ruby -x completer-adb4.rb  2 adb -s
+echo | ruby -x completer-adb4.rb  4 adb -s serial --
 
 
 
@@ -153,12 +155,12 @@ module CompleterRefinements
         # help string.
         (candidate, s_help) = value.split(/\t/, 2)
 
-        # If a candidate starts with a tab, it's a raw candidate.
-        s_raw = candidate.sub!(/^\t/, "") ? true : false
+        # If a candidate starts with an ESC, it's a raw candidate.
+        s_raw = candidate.sub!(/^\x1b/, "") ? true : false
 
         # If a candidate ends with a BS, it's not a completed
         # candidate.
-        s_completed = candidate.sub!(/\b$/, "") ? false : true
+        s_completed = candidate.sub!(/\x08$/, "") ? false : true
 
         # If one is provided as an argument, use it.
         raw = s_raw if raw == nil
@@ -476,6 +478,9 @@ end
 class Completer
   FINISH_LABEL = :FinishLabel
   FOR_ARG_LABEL = :ForArg
+  ANY_OF_LABEL = :AnyOf
+
+  FOR_AGAIN = 1
 
   def initialize(cursor_index, words)
     @cursor_index = cursor_index.to_i
@@ -607,7 +612,7 @@ class Completer
     end
     debug {"next_word -> now at #{index}, \"#{word}\""}
 
-    return !after_cursor?
+    finish if after_cursor?
   end
 
   def consume()
@@ -631,16 +636,29 @@ class Completer
   def for_arg(match=nil, &block)
     block or die "for_each_word() requires a block."
 
-    catch FOR_ARG_LABEL do
-      while !after_cursor?
-        debug {"for_arg:"}
-        finish unless next_word
-        debug {"  #{match} vs #{word}"}
-        if match == nil or at_cursor? or match? match, word
-          debug {"    matched."}
-          block.call()
+    begin
+      res = catch FOR_ARG_LABEL do
+        while !after_cursor?
+          debug {"for_arg(#{index}/#{cursor_index})"}
+          next_word
+          debug {"  #{match} vs #{word}"}
+          if match == nil or at_cursor? or match? match, word
+            debug {"    matched."}
+            block.call()
+          end
+          # If at_cursor, don't advance to the next word and continue after the loop.
+          if at_cursor?
+            break
+          end
         end
       end
+    end while res == FOR_AGAIN
+  end
+
+  def any_of(&block)
+    block or die "any_of() requires a block."
+    catch ANY_OF_LABEL do
+      block.call
     end
   end
 
@@ -648,9 +666,8 @@ class Completer
     throw FOR_ARG_LABEL
   end
 
-# TODO Doesn't work
   def for_next()
-    throw FOR_ARG_LABEL
+    throw FOR_ARG_LABEL, FOR_AGAIN
   end
 
   def maybe(*args, &block)
@@ -664,18 +681,15 @@ class Completer
       candidates args[0]
     else
       if match? args[0], word
-      debug {"  maybe: found a match."}
-        # adb -s SERIAL1 SERIAL2^ shell  # cursor_index = 3, len = 5
-        #     ^ index = 1
-        #     maybe "-s", take_serial, take_serial
-        next_word
+        debug {"  maybe: found a match."}
+
         (args.length - 1).times do |i|
+          next_word
           if at_cursor?
             candidates args[i + 1]
+            next_word
             break
           end
-          # Just skip this argument, pretending it matches.
-          finish unless next_word
         end
 
         block.call() if block
@@ -711,12 +725,18 @@ class Completer
         self.main
       end
     end
-    if debug
-      debug "Final candidates:"
-      @candidates.each do |c|
-        debug "  " + c.to_s
-      end
+    # if debug
+    #   debug "Final candidates:"
+    #   @candidates.each do |c|
+    #     debug "  " + c.to_s
+    #   end
+    # end
+    proxy = get_proxy
+    proxy.start_completion
+    @candidates.each do |c|
+      proxy.add_candidate c
     end
+    proxy.end_completion
   end
 end
 
@@ -738,9 +758,9 @@ completion do
 
   def run_command(command)
     debug {"Executing: #{command}"}
-    out = %x(#{command})
+    out = ENV['ADB_MOCK_OUT'] || %x(#{command})
     debug {"Output: <<EOF\n#{out}\nEOF"}
-    return out
+    return out || ''
   end
 
   def take_device_serial()
@@ -773,15 +793,19 @@ completion do
 
   def main()
     for_arg(/^-/) do
-      maybe %w(-a -d -e -H -P) # for_next[default in for], for_break, fallthrough
-      maybe "-s", take_device_serial # , for_next <- implied.
-      maybe "-L", [], for_next # No candidates.
+      maybe %w(-a -d -e -H -P)
+      maybe "-s", take_device_serial # maybe really should do "next". See the broken test *1.
+      maybe "-s2", take_device_serial, take_device_serial
+      maybe "-s3", take_device_serial, take_device_serial, take_device_serial
+      maybe "-L", []
 
       # TODO Can we support optional argument? That'd be very tricky.
       # TODO These are not real ADB flags. Remove them later.
       maybe %w(-f --flags), take_file
       maybe %w(--color --colors), %w(always never auto)
-      maybe "--", for_break
+      maybe "--" do
+        for_break
+      end
     end
 
     maybe %w(devices help version root unroot reboot-bootloader usb get-state get-serialno
@@ -793,7 +817,7 @@ completion do
     return
 
     maybe %w(install install-multiple) do # Do implies next_word.
-    for_arg(/^-/) do
+      for_arg(/^-/) do
         maybe %w(-a -d -e -H -P)
       end
       next_word_must take_file
