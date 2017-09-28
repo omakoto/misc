@@ -63,6 +63,8 @@ make_file 700 ddd2/aaa/ccc/file1
 make_file 700 ddd2/aaa/ccc/File1
 make_file 700 ddd2/aaa/ccc/file2
 make_file 700 ddd2/aaa/ccc/.dot1
+make_dir  700 ddd2/dir2
+make_file 400 ddd2/file1
 make_dir  000 zzz/
 
 export HOME=$MOCK_HOME
@@ -98,754 +100,223 @@ assert_comp() {
   assert_out -ds cat <("$@" <<<"$vars" | sed -e '1d; $d')
 }
 
-assert_comp ruby -x $medir/completer-lunch.rb -i -c 1 lunch <<EOF
-'generic-eng '
-'generic-userdebug '
-'full-eng '
-'full-userdebug '
-'bullhead-eng '
-'bullhead-userdebug '
-'angler-eng '
-'angler-userdebug '
-'marlin-eng '
-'marlin-userdebug '
-'sailfish-eng '
-'sailfish-userdebug '
-'walleye-eng '
-'walleye-userdebug '
-'taimen-eng '
-'taimen-userdebug '
-'max-eng '
-'max-userdebug '
-'boss-eng '
-'boss-userdebug '
-EOF
-
-assert_comp ruby -x $medir/completer-lunch.rb -i -c 1 lunch m  <<EOF
-'marlin-eng '
-'marlin-userdebug '
-'max-eng '
-'max-userdebug '
-EOF
-
-assert_comp ruby -x $medir/completer-lunch.rb -i -c 1 lunch MA <<EOF
-'marlin-eng '
-'marlin-userdebug '
-'max-eng '
-'max-userdebug '
-EOF
-
-assert_comp ruby -x $medir/completer-lunch.rb -c 1 lunch MA <<EOF
-EOF
-
-assert_comp ruby -x $medir/completer-lunch.rb -i -c 1 lunch MAr <<EOF
-'marlin-eng '
-'marlin-userdebug '
-EOF
-
-assert_comp ruby -x $medir/completer-lunch.rb -i -c 1 lunch marlin-e <<EOF
-'marlin-eng '
-EOF
-
-#===========================================================
-# RG
-#===========================================================
-
-assert_comp ruby -x $medir/completer-rg.rb -i -c 2 rg --color  <<EOF
-'always '
-'auto '
-'never '
-EOF
-
-# This could fail if rg supports a new filetype that stats with any of the following types.
-assert_comp bash -c "ruby -x $medir/completer-rg.rb -i -c 2 rg --type y" <<EOF
-'yacc '
-'yaml '
-'yocto '
-EOF
-
-assert_comp ruby -x $medir/completer-rg.rb -i -c 2 rg --context  <<EOF
-'0 '
-'1 '
-'2 '
-'3 '
-'4 '
-'5 '
-'6 '
-'7 '
-'8 '
-'9 '
-EOF
-
-assert_comp ruby -x $medir/completer-rg.rb -i -c 1 rg  <<EOF
-'-0 '
-'-- '
-'-a '
-'-A '
-aaa/
-'--after-context '
-'-B '
-'--before-context '
-'-c '
-'-C '
-'--case-sensitive '
-'--color '
-'--colors '
-'--column '
-'--context '
-'--context-separator '
-'--count '
-'--debug '
-'--dfa-size-limit '
-'--encoding '
-'-F '
-'--file '
-'--files '
-'--files-with-matches '
-'--files-without-match '
-'--fixed-strings '
-'--follow '
-'-g '
-'--glob '
-'-h '
-'-H '
-'--heading '
-'--help '
-'--hidden '
-'-i '
-'--iglob '
-'--ignore-case '
-'--ignore-file '
-'--invert-match '
-'-j '
-'-l '
-'-L '
-'--line-number '
-'--line-regexp '
-'-m '
-'-M '
-'--max-columns '
-'--max-count '
-'--maxdepth '
-'--max-filesize '
-'--mmap '
-'-n '
-'-N '
-'--no-filename '
-'--no-heading '
-'--no-ignore '
-'--no-ignore-parent '
-'--no-ignore-vcs '
-'--no-line-number '
-'--no-messages '
-'--no-mmap '
-'--null '
-'-o '
-'--only-matching '
-'-p '
-'--path-separator '
-'--pretty '
-'-q '
-'--quiet '
-'--regexp '
-'--regex-size-limit '
-'--replace '
-'-s '
-'-S '
-'--smart-case '
-'--sort-files '
-'--text '
-'--threads '
-'--type '
-'--type-add '
-'--type-clear '
-'--type-not '
-'-u '
-'--unrestricted '
-'-v '
-'-V '
-'--version '
-'--vimgrep '
-'-w '
-'--with-filename '
-'--word-regexp '
-'-x '
-'--type-list '
-EOF
-
-# --type-list shows up only at pos 1.
-assert_comp ruby -x $medir/completer-rg.rb -i -c 2 rg -i <<EOF
-'-0 '
-'-- '
-'-a '
-'-A '
-aaa/
-'--after-context '
-'-B '
-'--before-context '
-'-c '
-'-C '
-'--case-sensitive '
-'--color '
-'--colors '
-'--column '
-'--context '
-'--context-separator '
-'--count '
-'--debug '
-'--dfa-size-limit '
-'--encoding '
-'-F '
-'--file '
-'--files '
-'--files-with-matches '
-'--files-without-match '
-'--fixed-strings '
-'--follow '
-'-g '
-'--glob '
-'-h '
-'-H '
-'--heading '
-'--help '
-'--hidden '
-'-i '
-'--iglob '
-'--ignore-case '
-'--ignore-file '
-'--invert-match '
-'-j '
-'-l '
-'-L '
-'--line-number '
-'--line-regexp '
-'-m '
-'-M '
-'--max-columns '
-'--max-count '
-'--maxdepth '
-'--max-filesize '
-'--mmap '
-'-n '
-'-N '
-'--no-filename '
-'--no-heading '
-'--no-ignore '
-'--no-ignore-parent '
-'--no-ignore-vcs '
-'--no-line-number '
-'--no-messages '
-'--no-mmap '
-'--null '
-'-o '
-'--only-matching '
-'-p '
-'--path-separator '
-'--pretty '
-'-q '
-'--quiet '
-'--regexp '
-'--regex-size-limit '
-'--replace '
-'-s '
-'-S '
-'--smart-case '
-'--sort-files '
-'--text '
-'--threads '
-'--type '
-'--type-add '
-'--type-clear '
-'--type-not '
-'-u '
-'--unrestricted '
-'-v '
-'-V '
-'--version '
-'--vimgrep '
-'-w '
-'--with-filename '
-'--word-regexp '
-'-x '
-EOF
-
-# No arguments allowed after --type-list.
-assert_comp ruby -x $medir/completer-rg.rb -i -c 2 rg --type-list <<EOF
-EOF
-
-# Only files are allowed after --.
-assert_comp ruby -x $medir/completer-rg.rb -i -c 2 rg -- <<EOF
-aaa/
-EOF
-
-#===========================================================
-# completer-test
-#===========================================================
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 1 xxx <<EOF
-'-- '
-'--exclude '
-'--file '
-'--ignore-file '
-'--directory '
-'--max '
-'--nice '
-'--threads '
-'--image '
-'--always-test '
-'--end '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx -- <<EOF
-aaa/
-'--reset '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx -- /tmp/ ../ <<EOF
-'../.aa1 '
-'../aa1 '
-'../.aa2 '
-'../aa2 '
-'../.android-devices '
-'../.bb1 '
-'../bb1 '
-../ddd1/
-../ddd2/
-'../zzz/ '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 5 xxx -- /tmp/ ../ --reset <<EOF
-'-- '
-'--exclude '
-'--file '
-'--ignore-file '
-'--directory '
-'--max '
-'--nice '
-'--threads '
-'--image '
-'--always-test '
-'--end '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx -- "~/" <<EOF
-'/tmp/home/.android-devices '
-'/tmp/home/.aa1 '
-'/tmp/home/aa1 '
-'/tmp/home/.aa2 '
-'/tmp/home/aa2 '
-'/tmp/home/.bb1 '
-'/tmp/home/bb1 '
-/tmp/home/ddd1/
-/tmp/home/ddd2/
-'/tmp/home/zzz/ '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx -- "~/d" <<EOF
-/tmp/home/ddd1/
-/tmp/home/ddd2/
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx -- "~/Z" <<EOF
-'/tmp/home/zzz/ '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx -- "~/zzz" <<EOF
-'/tmp/home/zzz/ '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx -- "~/zzz/" <<EOF
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx --image "~/ddd1/bbbb/" <<EOF
-'/tmp/home/ddd1/bbbb/aaa.jpg '
-'/tmp/home/ddd1/bbbb/fff1.jpg '
-'/tmp/home/ddd1/bbbb/FFF2.jpg '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx --image "~/ddd1/bbbb/f" <<EOF
-'/tmp/home/ddd1/bbbb/fff1.jpg '
-'/tmp/home/ddd1/bbbb/FFF2.jpg '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --image "~/ddd1/bbbb/F" <<EOF
-'/tmp/home/ddd1/bbbb/FFF2.jpg '
-EOF
-
-# Even with *.jpg mask, all directories should still show up.
-assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx --image "~/ddd1/b" <<EOF
-/tmp/home/ddd1/bbbb/
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx --directory "~/" <<EOF
-/tmp/home/ddd1/
-/tmp/home/ddd2/
-'/tmp/home/zzz/ '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx --directory "~/d" <<EOF
-/tmp/home/ddd1/
-/tmp/home/ddd2/
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx --directory "~/ddd1" <<EOF
-/tmp/home/ddd1/
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx --directory "~/ddd1/" <<EOF
-'/tmp/home/ddd1/aaaa/ '
-'/tmp/home/ddd1/AAAA/ '
-'/tmp/home/ddd1/aabb/ '
-'/tmp/home/ddd1/bbbb/ '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 2 xxx --directory "~/ddd1/a" <<EOF
-'/tmp/home/ddd1/aaaa/ '
-'/tmp/home/ddd1/AAAA/ '
-'/tmp/home/ddd1/aabb/ '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --directory "~/ddd1/a" <<EOF
-'/tmp/home/ddd1/aaaa/ '
-'/tmp/home/ddd1/aabb/ '
-EOF
-
-# Test for numbers
-
-assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --threads <<EOF
-'-- '
-'0 '
-'1 '
-'2 '
-'3 '
-'4 '
-'5 '
-'6 '
-'7 '
-'8 '
-'9 '
-'--directory '
-'--exclude '
-'--file '
-'--ignore-file '
-'--image '
-'--max '
-'--nice '
-'--threads '
-'--always-test '
-'--end '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --threads 2 <<EOF
-'20 '
-'21 '
-'22 '
-'23 '
-'24 '
-'25 '
-'26 '
-'27 '
-'28 '
-'29 '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --max <<EOF
-'0 '
-'1 '
-'2 '
-'3 '
-'4 '
-'5 '
-'6 '
-'7 '
-'8 '
-'9 '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --max 0 <<EOF
-'00 '
-'01 '
-'02 '
-'03 '
-'04 '
-'05 '
-'06 '
-'07 '
-'08 '
-'09 '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --max 0a <<EOF
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --nice <<EOF
-'0 '
-'1 '
-'2 '
-'3 '
-'4 '
-'5 '
-'6 '
-'7 '
-'8 '
-'9 '
-'-1 '
-'-2 '
-'-3 '
-'-4 '
-'-5 '
-'-6 '
-'-7 '
-'-8 '
-'-9 '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --nice 3 <<EOF
-'30 '
-'31 '
-'32 '
-'33 '
-'34 '
-'35 '
-'36 '
-'37 '
-'38 '
-'39 '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --nice -3 <<EOF
-'-30 '
-'-31 '
-'-32 '
-'-33 '
-'-34 '
-'-35 '
-'-36 '
-'-37 '
-'-38 '
-'-39 '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --nice -3x <<EOF
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --always-test <<EOF
-'aaaa '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --always-test xyz <<EOF
-'aaaa '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --end <<EOF
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -c 2 xxx --end / <<EOF
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -c 3 xxx --end / <<EOF
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -c 3 xxx --end \< \~/ <<EOF
-'/tmp/home/.aa1 '
-'/tmp/home/aa1 '
-'/tmp/home/.aa2 '
-'/tmp/home/aa2 '
-'/tmp/home/.android-devices '
-'/tmp/home/.bb1 '
-'/tmp/home/bb1 '
-/tmp/home/ddd1/
-/tmp/home/ddd2/
-'/tmp/home/zzz/ '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -c 3 xxx --end ">>" <<EOF
-aaa/
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx tostatea <<EOF
-'aaa '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx ns-statea <<EOF
-'aaa '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx Tostatea <<EOF
-'-- '
-'--always-test '
-'--directory '
-'--end '
-'--exclude '
-'--file '
-'--ignore-file '
-'--image '
-'--max '
-'--nice '
-'--threads '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx XXX <<EOF
-'bbb '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx YYY <<EOF
-'bbb '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx ns-stateb <<EOF
-'bbb '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx xxx <<EOF
-'-- '
-'--always-test '
-'--directory '
-'--end '
-'--exclude '
-'--file '
-'--ignore-file '
-'--image '
-'--max '
-'--nice '
-'--threads '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx STATECxxx <<EOF
-'ccc '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx ns-statec <<EOF
-'ccc '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx --files <<EOF
-aaa/
-'--reset '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 1 alias-file-only <<EOF
-aaa/
-'--reset '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 1 /path/to/alias-file-only <<EOF
-aaa/
-'--reset '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx from-file <<EOF
-'boss '
-'max '
-EOF
-
-assert_comp ruby -x $medir/completer-test.rb -i -c 3 xxx from-file-all <<EOF
-'boss '
-'max '
-''\''#notused'\'' '
-EOF
-
-#===========================================================
-# Variable expansion
-#===========================================================
-
-assert_comp -v "declare -- HOME=$HOME
-declare -- HOST=hostname
-declare -- hostname=hostname.domain.com
-declare -- PATH=\"a:b:c\"" \
-ruby -x $medir/completer-test.rb -c 1 xxx '$' xyz <<'EOF'
-'$HOME'
-'$HOST'
-'$hostname'
-'$PATH'
-EOF
-
-assert_comp -v "declare -- HOME=$HOME
-declare -- HOST=hostname
-declare -- hostname=hostname.domain.com
-declare -- PATH=\"a:b:c\"" \
-ruby -x $medir/completer-test.rb -i -c 1 xxx '$h' xyz <<'EOF'
-'$HOME'
-'$HOST'
-'$hostname'
-EOF
-
-assert_comp -v "declare -- HOME=$HOME
-declare -- HOST=hostname
-declare -- hostname=hostname.domain.com
-declare -- PATH=\"a:b:c\"" \
-ruby -x $medir/completer-test.rb -i -c 1 xxx '$HO' xyz <<'EOF'
-'$HOME'
-'$HOST'
-'$hostname'
-EOF
-
-assert_comp -v "declare -- HOME=$HOME
-declare -- HOST=hostname
-declare -- hostname=hostname.domain.com
-declare -- PATH=\"a:b:c\"" \
-ruby -x $medir/completer-test.rb -c 1 xxx '$h' xyz <<'EOF'
-'$hostname'
-EOF
-
-assert_comp -v "declare -- HOME=$HOME
-declare -- HOST=hostname
-declare -- hostname=hostname.domain.com
-declare -- PATH=\"a:b:c\"" \
-ruby -x $medir/completer-test.rb -i -c 1 xxx '$HOm' xyz <<'EOF'
-'$HOME'
-EOF
-
-assert_comp -v "declare -- HOME=$HOME
-declare -- HOST=hostname
-declare -- hostname=hostname.domain.com
-declare -- PATH=\"a:b:c\"" \
-ruby -x $medir/completer-test.rb -i -c 1 xxx '$abcde' xyz <<'EOF'
-EOF
-
-assert_comp -v "declare -- HOME=$HOME
-declare -- HOST=hostname
-declare -- hostname=hostname.domain.com
-declare -- PATH=\"a:b:c\"" \
-ruby -x $medir/completer-test.rb -i -c 1 xxx '$HOME/' xyz <<EOF
-$HOME/
-EOF
-
-assert_comp -v "declare -- HOME=$HOME
-declare -- HOST=hostname
-declare -- hostname=hostname.domain.com
-declare -- PATH=\"a:b:c\"" \
-ruby -x $medir/completer-test.rb -i -c 1 xxx '$PATH/' xyz <<'EOF'
-EOF
-
-#===========================================================
-# End-to-end test
-# TODO Test multiple candidates
-#===========================================================
-
-cat >$MOCK_HOME/.inputrc <<EOF
-set bell-style none
-EOF
-
-cat >$MOCK_HOME/.bashrc <<EOF
-alias lunch=echo
-PS1=">"
-. <($medir/completer-lunch.rb)
-stty -echo
-EOF
-
-function lunch_test_1() {
-  {
-    script -q -c "/bin/bash --noprofile" /dev/null <<EOF
-lunch a${TAB}u${TAB}
-exit
-EOF
-  } | tr -d '\r'
+test_adb() {
+  assert_comp ruby -wx $medir/completer-adb4.rb -c "$@"
 }
 
-assert_comp lunch_test_1 <<EOF
->angler-userdebug
-exit
+test_adb 1 adb <<EOF
+'-a '
+'-d '
+'-e '
+'-H '
+'-P '
+'-s '
+'-s2 '
+'-s3 '
+'-L '
+'-f '
+'--flags '
+'--color '
+'--colors '
+'-- '
+'devices '
+'get-devpath '
+'get-serialno '
+'get-state '
+'install '
+'install-multiple '
+'help '
+'kill-server '
+'pull '
+'push '
+'reboot-bootloader '
+'remount '
+'root '
+'start-server '
+'uninstall '
+'unroot '
+'usb '
+'version '
+'wait-for-device '
 EOF
+
+test_adb 1 adb - <<EOF
+'-a '
+'-d '
+'-e '
+'-H '
+'-P '
+'-s '
+'-s2 '
+'-s3 '
+'-L '
+'-f '
+'--flags '
+'--color '
+'--colors '
+'-- '
+EOF
+
+export ADB_MOCK_OUT='List of devices attached
+SERIALNUMBER1    device
+SERIALNUMBER2    device
+other_device     device
+
+'
+
+test_adb 2 adb -s <<EOF
+'SERIALNUMBER1 '
+'SERIALNUMBER2 '
+'other_device '
+EOF
+
+test_adb 2 adb -s s <<EOF
+'SERIALNUMBER1 '
+'SERIALNUMBER2 '
+EOF
+
+test_adb 2 adb -s o <<EOF
+'other_device '
+EOF
+
+test_adb 3 adb -s serial <<EOF
+'-a '
+'-d '
+'-e '
+'-H '
+'-P '
+'-s '
+'-s2 '
+'-s3 '
+'-L '
+'-f '
+'--flags '
+'--color '
+'--colors '
+'-- '
+'devices '
+'get-devpath '
+'get-serialno '
+'get-state '
+'install '
+'install-multiple '
+'help '
+'kill-server '
+'pull '
+'push '
+'reboot-bootloader '
+'remount '
+'root '
+'start-server '
+'uninstall '
+'unroot '
+'usb '
+'version '
+'wait-for-device '
+EOF
+
+test_adb 3 adb -s serial g <<EOF
+'get-devpath '
+'get-serialno '
+'get-state '
+EOF
+
+test_adb 3 adb -s -s2 s<<EOF
+'start-server '
+EOF
+
+test_adb 3 adb -s2 serial <<EOF
+'SERIALNUMBER1 '
+'SERIALNUMBER2 '
+'other_device '
+EOF
+
+test_adb 4 adb -s serial -- <<EOF
+'devices '
+'get-devpath '
+'get-serialno '
+'get-state '
+'install '
+'install-multiple '
+'help '
+'kill-server '
+'pull '
+'push '
+'reboot-bootloader '
+'remount '
+'root '
+'start-server '
+'uninstall '
+'unroot '
+'usb '
+'version '
+'wait-for-device '
+EOF
+
+
+export ADB_MOCK_OUT='/default.prop
+/data/
+/system/'
+
+test_adb 2 adb pull <<EOF
+'/data/ '
+'/default.prop '
+'/system/ '
+EOF
+
+test_adb 3 adb pull /data  <<EOF
+aaa/
+'dir2/ '
+'file1 '
+EOF
+
+test_adb 2 adb push  <<EOF
+aaa/
+'dir2/ '
+'file1 '
+EOF
+
+test_adb 2 adb push a <<EOF
+aaa/
+EOF
+
+test_adb 3 adb push aaa <<EOF
+'/data/ '
+'/default.prop '
+'/system/ '
+EOF
+
+test_adb 3 adb push aaa /d <<EOF
+'/data/ '
+'/default.prop '
+EOF
+
+export ADB_MOCK_OUT='package:android
+package:com.android.systemui
+package:com.android.settings'
+
+test_adb 2 adb uninstall <<EOF
+'android '
+'com.android.settings '
+'com.android.systemui '
+'-k '
+EOF
+
+test_adb 2 adb uninstall - <<EOF
+'-k '
+EOF
+
+test_adb 2 adb uninstall com <<EOF
+'com.android.settings '
+'com.android.systemui '
+EOF
+
+test_adb 3 adb uninstall -k <<EOF
+'android '
+'com.android.settings '
+'com.android.systemui '
+EOF
+
+
 
 done_testing
