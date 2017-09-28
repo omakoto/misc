@@ -101,7 +101,7 @@ assert_comp() {
 }
 
 test_adb() {
-  assert_comp ruby -wx $medir/completer-adb4.rb -c "$@"
+  ADB_TEST_COMP=1 assert_comp ruby -wx $medir/completer-adb4.rb -ic "$@"
 }
 
 test_adb 1 adb <<EOF

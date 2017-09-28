@@ -17,11 +17,12 @@ echo | ruby -x completer-adb4.rb  2 adb pull
 echo | ruby -x completer-adb4.rb  2 adb uninstall
 echo | ruby -x completer-adb4.rb  3 adb uninstall -k
 
-
 =end
 
 require_relative "completer"
 using CompleterRefinements
+
+TESTING = ENV["ADB_TEST_COMP"] == "1"
 
 Completer.define do
   def run_command(command)
@@ -71,11 +72,14 @@ Completer.define do
       maybe "-s3", take_device_serial, take_device_serial, take_device_serial
       maybe "-L", []
 
-      # TODO Can we support optional argument? That'd be very tricky.
-      # TODO These are not real ADB flags. Remove them later.
-      maybe %w(-f --flags), take_file
-      maybe %w(--color --colors), %w(always never auto)
-      maybe "--" do
+      if TESTING
+        maybe %w(-f --flags), take_file
+        maybe %w(--color --colors), %w(always never auto)
+        maybe "--" do
+          for_break
+        end
+      end
+      maybe(//) do # If nothing above matched, break.
         for_break
       end
     end
