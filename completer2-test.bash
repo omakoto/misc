@@ -63,6 +63,8 @@ make_file 700 ddd2/aaa/ccc/file1
 make_file 700 ddd2/aaa/ccc/File1
 make_file 700 ddd2/aaa/ccc/file2
 make_file 700 ddd2/aaa/ccc/.dot1
+make_dir  700 ddd2/dir2
+make_file 400 ddd2/file1
 make_dir  000 zzz/
 
 export HOME=$MOCK_HOME
@@ -121,12 +123,17 @@ test_adb 1 adb <<EOF
 'get-devpath '
 'get-serialno '
 'get-state '
+'install '
+'install-multiple '
 'help '
 'kill-server '
+'pull '
+'push '
 'reboot-bootloader '
 'remount '
 'root '
 'start-server '
+'uninstall '
 'unroot '
 'usb '
 'version '
@@ -191,12 +198,17 @@ test_adb 3 adb -s serial <<EOF
 'get-devpath '
 'get-serialno '
 'get-state '
+'install '
+'install-multiple '
 'help '
 'kill-server '
+'pull '
+'push '
 'reboot-bootloader '
 'remount '
 'root '
 'start-server '
+'uninstall '
 'unroot '
 'usb '
 'version '
@@ -209,11 +221,8 @@ test_adb 3 adb -s serial g <<EOF
 'get-state '
 EOF
 
-# This is because "maybe" in a loop won't call "next". *1
-test_adb 3 adb -s -s2 g <<EOF
-'get-devpath '
-'get-serialno '
-'get-state '
+test_adb 3 adb -s -s2 s<<EOF
+'start-server '
 EOF
 
 test_adb 3 adb -s2 serial <<EOF
@@ -222,22 +231,92 @@ test_adb 3 adb -s2 serial <<EOF
 'other_device '
 EOF
 
-# test_adb 4 adb -s serial -- <<EOF
-# 'devices '
-# 'get-devpath '
-# 'get-serialno '
-# 'get-state '
-# 'help '
-# 'kill-server '
-# 'reboot-bootloader '
-# 'remount '
-# 'root '
-# 'start-server '
-# 'unroot '
-# 'usb '
-# 'version '
-# 'wait-for-device '
-# EOF
+test_adb 4 adb -s serial -- <<EOF
+'devices '
+'get-devpath '
+'get-serialno '
+'get-state '
+'install '
+'install-multiple '
+'help '
+'kill-server '
+'pull '
+'push '
+'reboot-bootloader '
+'remount '
+'root '
+'start-server '
+'uninstall '
+'unroot '
+'usb '
+'version '
+'wait-for-device '
+EOF
+
+
+export ADB_MOCK_OUT='/default.prop
+/data/
+/system/'
+
+test_adb 2 adb pull <<EOF
+'/data/ '
+'/default.prop '
+'/system/ '
+EOF
+
+test_adb 3 adb pull /data  <<EOF
+aaa/
+'dir2/ '
+'file1 '
+EOF
+
+test_adb 2 adb push  <<EOF
+aaa/
+'dir2/ '
+'file1 '
+EOF
+
+test_adb 2 adb push a <<EOF
+aaa/
+EOF
+
+test_adb 3 adb push aaa <<EOF
+'/data/ '
+'/default.prop '
+'/system/ '
+EOF
+
+test_adb 3 adb push aaa /d <<EOF
+'/data/ '
+'/default.prop '
+EOF
+
+export ADB_MOCK_OUT='package:android
+package:com.android.systemui
+package:com.android.settings'
+
+test_adb 2 adb uninstall <<EOF
+'android '
+'com.android.settings '
+'com.android.systemui '
+'-k '
+EOF
+
+test_adb 2 adb uninstall - <<EOF
+'-k '
+EOF
+
+test_adb 2 adb uninstall com <<EOF
+'com.android.settings '
+'com.android.systemui '
+EOF
+
+test_adb 3 adb uninstall -k <<EOF
+'android '
+'com.android.settings '
+'com.android.systemui '
+EOF
+
 
 
 done_testing

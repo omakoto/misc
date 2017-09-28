@@ -9,8 +9,13 @@
 
 echo | ruby -x completer-adb4.rb  2 adb
 echo | ruby -x completer-adb4.rb  2 adb -s
+echo | ruby -x completer-adb4.rb  3 adb -s SE
 echo | ruby -x completer-adb4.rb  4 adb -s serial --
 
+echo | ruby -x completer-adb4.rb  2 adb pull
+
+echo | ruby -x completer-adb4.rb  2 adb uninstall
+echo | ruby -x completer-adb4.rb  3 adb uninstall -k
 
 
 =end
@@ -213,7 +218,7 @@ module CompleterRefinements
           if path.directory?
             cand = path.to_s
             cand += "/"
-            cand += "\r" if is_non_empty_dir(path)
+            cand += "\b" if is_non_empty_dir(path)
           else
             # If it's a file, only add when the basename matches wildcard.
             next unless File.fnmatch(wildcard, path.basename, flag)
@@ -244,7 +249,7 @@ module CompleterRefinements
           next unless path.directory?
           cand = path.to_s
           cand += "/"
-          cand += "\r" if is_non_empty_dir(path, ignore_files:true)
+          cand += "\b" if is_non_empty_dir(path, ignore_files:true)
           ret.push(cand)
         end
       rescue SystemCallError => e
@@ -494,6 +499,8 @@ class Completer
     @candidates = []
 
     @candidates_nest = 0 # for debugging
+
+    @last_move_was_implicit = false
   end
 
   attr_reader :cursor_index, :orig_words, :words, :index
@@ -512,14 +519,14 @@ class Completer
 
   def word(relative_index = 0)
     i = index + relative_index
-    return nil if i < 0 || i >= words.length
-    return words[i]
+    return nil if i < 0 || i > cursor_index
+    return words[i] || ""
   end
 
   def orig_word(relative_index = 0)
     i = index + relative_index
-    return nil if i < 0 || r >= orig_words.length
-    return orig_words[i]
+    return nil if i < 0 || i > cursor_index
+    return orig_words[i] || ""
   end
 
   def at_cursor?()
@@ -604,13 +611,14 @@ class Completer
   alias flag candidates
   alias flags candidates
 
-  def next_word(&block)
+  def next_word(implicit:false, &block)
     if @index <= @cursor_index
+      @last_move_was_implicit = implicit
       @index += 1
       @current_consumed = false
       block.call() if block
     end
-    debug {"next_word -> now at #{index}, \"#{word}\""}
+    debug {"[next_word] -> now at #{index}, \"#{word}\""}
 
     finish if after_cursor?
   end
@@ -639,14 +647,18 @@ class Completer
     begin
       res = catch FOR_ARG_LABEL do
         while !after_cursor?
-          debug {"for_arg(#{index}/#{cursor_index})"}
+          debug {"[for_arg](#{index}/#{cursor_index})"}
           next_word
           debug {"  #{match} vs #{word}"}
           if match == nil or at_cursor? or match? match, word
             debug {"    matched."}
             block.call()
+          else
+            return
           end
-          # If at_cursor, don't advance to the next word and continue after the loop.
+
+          # If at_cursor, we need to run the rest of the code after the loop,
+          # with the current word (without advancing the index).
           if at_cursor?
             break
           end
@@ -655,12 +667,12 @@ class Completer
     end while res == FOR_AGAIN
   end
 
-  def any_of(&block)
-    block or die "any_of() requires a block."
-    catch ANY_OF_LABEL do
-      block.call
-    end
-  end
+  # def any_of(&block)
+  #   block or die "any_of() requires a block."
+  #   catch ANY_OF_LABEL do
+  #     block.call
+  #   end
+  # end
 
   def for_break()
     throw FOR_ARG_LABEL
@@ -674,35 +686,51 @@ class Completer
     args.length == 0 and die "maybe() requires at least one argument."
 
     return if current_consumed?
-    debug {"maybe(#{index}/#{cursor_index}): #{args}#{block ? " (has block)" : ""}"}
+    debug {"[maybe](#{index}/#{cursor_index}): #{args}#{block ? " (has block)" : ""}"}
 
+    # If we're at cursor, just add the candidates.
     if at_cursor?
       debug {" at_cursor: adding candidate(s)."}
       candidates args[0]
-    else
-      if match? args[0], word
-        debug {"  maybe: found a match."}
+      return
+    end
 
-        (args.length - 1).times do |i|
-          next_word
-          if at_cursor?
-            candidates args[i + 1]
-            next_word
-            break
-          end
-        end
+    if !match? args[0], word
+      return
+    end
 
-        block.call() if block
+    # Otherwise, eat words.
+    debug {"  maybe: found a match."}
 
-# Note this should call for_next, but probably not when a block is given.
+    (args.length - 1).times do |i|
+      next_word
+      if at_cursor?
+        candidates args[i + 1]
+        finish
       end
+    end
+    consume
+
+    if block
+      next_word implicit:true
+      block.call
     end
   end
 
   def next_word_must(*args, &block)
     args.length == 0 and die "next_word_must() requires at least one argument."
-    if at_cursor?
-      candidate args[0]
+
+    debug {"[next_word_must](#{index}/#{cursor_index}): #{args}#{block ? " (has block)" : ""}"}
+
+    next_word if current_consumed?
+    # next_word unless @last_move_was_implicit
+
+    (args.length).times do |n|
+      if at_cursor?
+        candidates args[n]
+        finish
+      end
+      next_word
     end
   end
 
@@ -780,7 +808,11 @@ completion do
   end
 
   def take_device_file()
-    lazy { run_command(%(adb shell ls -pd1 #{shescape word}'* 2>/dev/null')).split(/\n/).map{|x| x + "\r"} }
+    lazy do
+      w = word
+      w = "/" if w == "" || w == nil
+      run_command(%(adb shell ls -pd1 #{shescape w}'* 2>/dev/null')).split(/\n/).map{|x| x + "\r"}
+    end
   end
 
   def take_command()
@@ -813,12 +845,12 @@ completion do
       return
     end
 
-    debug "not implemented"
-    return
-
     maybe %w(install install-multiple) do # Do implies next_word.
       for_arg(/^-/) do
         maybe %w(-a -d -e -H -P)
+        maybe // do # If nothing above matched, break.
+          for_break
+        end
       end
       next_word_must take_file
       return
@@ -828,8 +860,7 @@ completion do
       next_word_must take_package
     end
     maybe "push" do
-      next_word_must take_file
-      next_word_must take_device_file
+      next_word_must take_file, take_device_file
     end
     maybe "pull" do
       next_word_must take_device_file
