@@ -639,17 +639,26 @@ class CompletionEngine
   alias flag candidates
   alias flags candidates
 
+  def next_word(force:false)
+    block_given? and die "next_word() doesn't take a block."
 
-  def next_word(implicit:false, &block)
+    if !force and !current_consumed?
+       debug {"[next_word] -> still at #{index}, not consumed yet"}
+      return
+    end
+
     if @index <= @cursor_index
-      @last_move_was_implicit = implicit
       @index += 1
       @current_consumed = false
-      block.call() if block
     end
     debug {"[next_word] -> now at #{index}, \"#{word}\""}
 
     finish if after_cursor?
+  end
+
+  def unconsume()
+    @current_consumed = false
+    debug {"word at #{index} unconsumed."}
   end
 
   def consume()
@@ -673,15 +682,17 @@ class CompletionEngine
   def for_arg(match=nil, &block)
     block or die "for_each_word() requires a block."
 
-    move_next_word = current_consumed?
-
+    last_start_index = -1
     begin
       res = catch FOR_ARG_LABEL do
+        if last_start_index == @index and !current_consumed?
+          next_word force:true
+        end
+        last_start_index = @index
         while !after_cursor?
           debug {"[for_arg](#{index}/#{cursor_index})"}
 
-          next_word if move_next_word # First move may be skipped.
-          move_next_word = true
+          next_word
 
           debug {"  #{match} vs #{word}"}
           if match == nil or at_cursor? or match? match, word
@@ -735,9 +746,11 @@ class CompletionEngine
 
     # Otherwise, eat words.
     debug {"  maybe: found a match."}
+    consume
 
     (args.length - 1).times do |i|
       next_word
+      consume
       if at_cursor?
         candidates args[i + 1]
         finish
@@ -746,7 +759,7 @@ class CompletionEngine
     consume
 
     if block
-      next_word implicit:true
+      next_word
       block.call
     end
   end
@@ -764,14 +777,15 @@ class CompletionEngine
 
     debug {"[next_word_must](#{index}/#{cursor_index}): #{args}#{block ? " (has block)" : ""}"}
 
-    next_word if current_consumed?
-    # next_word unless @last_move_was_implicit
+    next_word
+    consume
 
     (args.length).times do |n|
       if at_cursor?
         candidates args[n]
         finish
       end
+      consume
       next_word
     end
   end
@@ -830,8 +844,8 @@ class CompletionEngine
         catch FINISH_LABEL do
           debug "Starting the user block."
 
-          @index = 0
-          consume
+          @index = 1
+          unconsume
           instance_eval(&block)
 
           # If the block defined main(), also run it.
