@@ -73,7 +73,7 @@ module CompleterRefinements
     end
 
     # Shell-escape a single token, basic "bourne" version.
-    def b_shescape(arg)
+    def bourne_shescape(arg)
       if arg =~ /[^a-zA-Z0-9\-\.\_\/\:\+\@]/
           return "'" + arg.gsub(/'/, "'\\\\''") + "'"
       else
@@ -82,7 +82,7 @@ module CompleterRefinements
     end
 
     # Shell-unescape a single token, basic "bourne" version.
-    def b_unshescape(arg)
+    def bourne_unshescape(arg)
       if arg !~ /[\'\"\\]/
         return arg
       end
@@ -432,28 +432,44 @@ end
 # Shell interface
 #===============================================================================
 
-# Class that eats information sent by bash via stdin.
-class BashAgent
-  SECTION_SEPARATOR = "\n-*-*-*-COMPLETER-*-*-*-\n"
-
+class BasicShellAgent
   def initialize()
     # Shell and environmental variables.
     @env = {}
     @jobs = []
-    @engine = nil
   end
 
   attr_reader :env, :jobs
 
-  attr_accessor :engine
-
   def shescape(arg)
-    b_shescape arg
+    bourne_shescape arg
   end
 
   def unshescape(arg)
-    b_unshescape arg
+    bourne_unshescape arg
   end
+
+  def install(commands, script, ignore_case)
+  end
+
+  def maybe_override_candidates(engine)
+    # Nothing to do
+  end
+
+  def variable_completable?(arg)
+    # Assume variables start with "$"
+    return (arg =~ /^\$([a-z0-9\_]*)$/i) ? $1 : nil
+  end
+
+  def variable_expandable?(arg)
+    # Assume variables start with "$"
+    return (arg =~ /^\$([a-z0-9\_]*)\/$/i) ? $1 : nil
+  end
+end
+
+
+class BashAgent < BasicShellAgent
+  SECTION_SEPARATOR = "\n-*-*-*-COMPLETER-*-*-*-\n"
 
   def install(commands, script, ignore_case)
     command = commands[0]
@@ -523,7 +539,7 @@ class BashAgent
         EOF
   end
 
-  def maybe_override_candidates()
+  def maybe_override_candidates(engine)
     do_filename_completion = false
     1.upto(engine.cursor_index - 1).each do |i|
       # When there's an unquoted redirect marker, do a filename completion.
@@ -546,15 +562,8 @@ class BashAgent
     # Output will be eval'ed, so need double-escaping unless raw.
     puts(candidate.raw ? s : shescape(s))
   end
-
-  def variable_completable?(arg)
-    return (arg =~ /^\$([a-z0-9\_]*)$/i) ? $1 : nil
-  end
-
-  def variable_expandable?(arg)
-    return (arg =~ /^\$([a-z0-9\_]*)\/$/i) ? $1 : nil
-  end
 end
+
 #-----------------------------------------------------------
 # Engine
 #-----------------------------------------------------------
@@ -916,7 +925,7 @@ class CompletionEngine
 
       # Bash unfortunately calls a completion function even after < and >.
       # Give the shell a chance to detect it and do a filename completion.
-      shell.maybe_override_candidates
+      shell.maybe_override_candidates self
 
       # If no one generated candidates yet, let the user-defined code
       # generates some.
@@ -975,7 +984,6 @@ class Completer
     $complete_ignore_case = ignore_case
     shell = get_shell
     engine = CompletionEngine.new shell, args, cursor_pos, ignore_case, line, point
-    shell.engine = engine
 
     debug <<~EOF
         OrigArgs: #{engine.orig_args.join ", "}
