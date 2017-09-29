@@ -27,6 +27,8 @@ $debug_indent_level = 0
 # For simplicity, we just use a global var.
 $complete_ignore_case = true
 
+$cached_shell = nil
+
 module CompleterRefinements
   refine Kernel do
     # Debug print.
@@ -70,8 +72,8 @@ module CompleterRefinements
       abort "#{__FILE__}: " + msg.join("") + "\n" + caller.map{|x|x.to_s}.join("\n")
     end
 
-    # Shell-escape a single token.
-    def shescape(arg)
+    # Shell-escape a single token, basic "bourne" version.
+    def b_shescape(arg)
       if arg =~ /[^a-zA-Z0-9\-\.\_\/\:\+\@]/
           return "'" + arg.gsub(/'/, "'\\\\''") + "'"
       else
@@ -79,8 +81,8 @@ module CompleterRefinements
       end
     end
 
-    # Shell-unescape a single token.
-    def unshescape(arg)
+    # Shell-unescape a single token, basic "bourne" version.
+    def b_unshescape(arg)
       if arg !~ /[\'\"\\]/
         return arg
       end
@@ -129,6 +131,31 @@ module CompleterRefinements
       end
 
       return ret
+    end
+
+    def shescape(arg)
+      get_shell.shescape(arg)
+    end
+
+    def unshescape(arg)
+      get_shell.unshescape(arg)
+    end
+
+    def get_shell(reset:false)
+      $cached_shell = nil if reset
+
+      return $cached_shell if $cached_shell
+
+      $cached_shell = (-> {
+        shell_name = ENV["SHELL"].sub(/^.*\//, "")
+        case shell_name
+        when "bash"
+          debug "Shell is bash."
+          return BashAgent.new
+        else
+          die "Unsupported shell '#{shell_name}'"
+        end
+      }).call
     end
 
     # Takes a String or a Candidate and return as a Candidate.
@@ -225,7 +252,7 @@ end
 using CompleterRefinements
 
 #===============================================================================
-# Argument helpers
+# Helpers
 #===============================================================================
 module CompleterHelper
   # Return true if a given path is a directory and not empty.
@@ -406,7 +433,7 @@ end
 #===============================================================================
 
 # Class that eats information sent by bash via stdin.
-class BashProxy
+class BashAgent
   SECTION_SEPARATOR = "\n-*-*-*-COMPLETER-*-*-*-\n"
 
   def initialize()
@@ -419,6 +446,14 @@ class BashProxy
   attr_reader :env, :jobs
 
   attr_accessor :engine
+
+  def shescape(arg)
+    b_shescape arg
+  end
+
+  def unshescape(arg)
+    b_unshescape arg
+  end
 
   def install(commands, script, ignore_case)
     command = commands[0]
@@ -520,16 +555,6 @@ class BashProxy
     return (arg =~ /^\$([a-z0-9\_]*)\/$/i) ? $1 : nil
   end
 end
-
-def get_proxy()
-  shell = Pathname.new(ENV["SHELL"]).basename.to_s
-  case shell
-  when "bash"
-    return BashProxy.new
-  else
-    die "Unsupported shell '#{shell}'"
-  end
-end
 #-----------------------------------------------------------
 # Engine
 #-----------------------------------------------------------
@@ -541,8 +566,8 @@ class CompletionEngine
   FOR_ARG_LABEL = :ForArg
   FOR_AGAIN = 1
 
-  def initialize(proxy, orig_args, index, ignore_case, comp_line, comp_point)
-    @proxy = proxy
+  def initialize(shell, orig_args, index, ignore_case, comp_line, comp_point)
+    @shell = shell
 
     @orig_args = orig_args
 
@@ -570,12 +595,12 @@ class CompletionEngine
     @candidates = []
   end
 
-  attr_reader :proxy, :orig_args, :args, :cursor_index, :command,
+  attr_reader :shell, :orig_args, :args, :cursor_index, :command,
       :ignore_case, :comp_line, :comp_point, :index
 
   # Returns the shell and environmental variables.
   def env()
-    return @proxy.env
+    return @shell.env
   end
 
   def cursor_arg()
@@ -853,7 +878,7 @@ class CompletionEngine
 
     # First, see if the current arg may be a prefix of an environmental
     # variable, in which case we can complete.
-    var_name = proxy.variable_completable?(arg)
+    var_name = shell.variable_completable?(arg)
     if var_name
       debug { "Maybe variable: #{var_name}" }
       env.keys.each do |k|
@@ -866,7 +891,7 @@ class CompletionEngine
 
     # Next, see if the current arg contains an "expandable" environmental
     # variable. e.g. on bash, $HOME/[TAB] will expand to /home/USER/.
-    var_name = proxy.variable_expandable?(arg)
+    var_name = shell.variable_expandable?(arg)
     if var_name
       debug "Maybe variable: #{var_name}"
       value = env[var_name]
@@ -880,7 +905,7 @@ class CompletionEngine
 
   # Entry point.
   def run_completion(&block)
-    proxy.start_completion
+    shell.start_completion
     begin
       # Need this so candidates() will accept candidates.
       @index = @cursor_index
@@ -890,8 +915,8 @@ class CompletionEngine
       _maybe_handle_variable
 
       # Bash unfortunately calls a completion function even after < and >.
-      # Give the proxy a chance to detect it and do a filename completion.
-      proxy.maybe_override_candidates
+      # Give the shell a chance to detect it and do a filename completion.
+      shell.maybe_override_candidates
 
       # If no one generated candidates yet, let the user-defined code
       # generates some.
@@ -915,10 +940,10 @@ class CompletionEngine
 
       # Add collected candidates.
       @candidates.each do |c|
-        proxy.add_candidate c
+        shell.add_candidate c
       end
     ensure
-      proxy.end_completion
+      shell.end_completion
     end
   end
 
@@ -941,16 +966,16 @@ class Completer
 
     # Remove directories from command names.
     commands = commands.map {|p| p.sub(%r(^.*/), "")}
-    get_proxy.install(commands, script, ignore_case)
+    get_shell.install(commands, script, ignore_case)
   end
 
   # Perform completion
   def do_completion(cursor_pos, args, line:nil, point:nil, ignore_case:false, &b)
     b or die "do_completion() requires a block."
     $complete_ignore_case = ignore_case
-    proxy = get_proxy
-    engine = CompletionEngine.new proxy, args, cursor_pos, ignore_case, line, point
-    proxy.engine = engine
+    shell = get_shell
+    engine = CompletionEngine.new shell, args, cursor_pos, ignore_case, line, point
+    shell.engine = engine
 
     debug <<~EOF
         OrigArgs: #{engine.orig_args.join ", "}
