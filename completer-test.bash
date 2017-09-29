@@ -104,7 +104,7 @@ Completer.define do
 end
 '
 
-
+done_testing
 
 
 
