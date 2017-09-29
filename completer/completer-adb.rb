@@ -1,4 +1,4 @@
-. <( exec ruby -wx "${BASH_VERSION+${BASH_SOURCE[0]}}${ZSH_VERSION+${${(%):-%N}}}" "$@" adb dumpsys acmd am pm )
+. <( exec ruby -wx "${BASH_VERSION+${BASH_SOURCE[0]}}${ZSH_VERSION+${${(%):-%N}}}" "$@" adb dumpsys acmd am pm settings )
 : <<__END_RUBY_CODE__
 #!ruby
 def __END_RUBY_CODE__; end
@@ -57,6 +57,21 @@ def take_package()
   end
 end
 
+# Generates candidates for installed packages.
+def take_package_or_component()
+  lazy do
+    if arg =~ %r(^(.*?)/) then
+      # Component name completion, which we don't support, since there's no command to dump
+      # all components.
+    else
+      # Package name completion.
+      run_command(%(adb shell pm list packages 2>/dev/null)).split(/\n/).map do |x|
+        x.sub(/^package\:/, "") + "/"
+      end
+    end
+  end
+end
+
 # Generates candidates for device files.
 def take_device_file()
   lazy do
@@ -86,6 +101,7 @@ Completer.define do
     am if command == "am"
     pm if command == "pm"
     cmd if command == "acmd"
+    settings if command == "settings"
 
     for_arg(/^-/) do
       maybe %w(-a -d -e -H -P)
@@ -224,18 +240,12 @@ Completer.define do
         maybe %w(-n -T -t -x)
         maybe "-e", ["none"]
       end
-      maybe "am" do
-        am
-      end
-      maybe "pm" do
-        pm
-      end
-      maybe "cmd" do
-        cmd
-      end
-      maybe "dumpsys" do
-        dumpsys
-      end
+      maybe("am") {am}
+      maybe("pm") {pm}
+      maybe("cmd") {cmd}
+      maybe("dumpsys") {dumpsys}
+      maybe("settings") {settings}
+
       maybe take_command
     end
 
@@ -248,7 +258,17 @@ Completer.define do
   end
 
   def pm()
-    maybe %w(dump)
+    maybe("dump", take_package) {finish}
+    maybe "clear" do
+      maybe "--user", take_number
+      next_arg_must take_package
+      finish
+    end
+    maybe %w(enable disable disable-user disable-until-used default-state hide unhide) do
+      maybe "--user", take_number
+      next_arg_must take_package_or_component
+      finish
+    end
     finish
   end
 
@@ -274,6 +294,15 @@ Completer.define do
     else
       otherwise { catch_all }
     end
+  end
+
+  def settings()
+    next_arg_must %w(get put delete reset)
+    next_arg
+    maybe "--user", take_number
+    maybe "current"
+    next_arg_must %w(global system secure)
+    finish
   end
 
   def catch_all()
