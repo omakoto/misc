@@ -152,6 +152,9 @@ module CompleterRefinements
         when "bash"
           debug "Shell is bash."
           return BashAgent.new
+        when "zsh"
+          debug "Shell is zsh."
+          return ZshAgent.new
         else
           die "Unsupported shell '#{shell_name}'"
         end
@@ -450,6 +453,17 @@ class BasicShellAgent
   end
 
   def install(commands, script, ignore_case)
+    die "install() must be overridden."
+  end
+
+  def add_candidate(candidate)
+    die "install() must be overridden."
+  end
+
+  def start_completion()
+  end
+
+  def end_completion()
   end
 
   def maybe_override_candidates(engine)
@@ -564,6 +578,48 @@ class BashAgent < BasicShellAgent
   end
 end
 
+# Interface for Zsh. (WIP)
+# See:
+# http://www.csse.uwa.edu.au/programming/linux/zsh-doc/zsh_23.html
+# https://linux.die.net/man/1/zshcompsys
+# http://zsh.sourceforge.net/Guide/zshguide06.html
+#
+# TOOD zsh doesn't seem to select the only candidate.
+# TODO Support environmental variables.
+# TODO Pass "help" as a description.
+class ZshAgent < BasicShellAgent
+  def install(commands, script, ignore_case)
+
+    command = commands[0]
+    func = "_#{command.gsub(/[^a-z0-9]/i) {|c| "_" + c.ord.to_s(16)}}_completion"
+
+    debug {"Installing zsh completion for '#{command}', function='#{func}'"}
+
+    script_file = File.expand_path $0
+
+    debug_flag = debug ? "-d" : ""
+    ignore_case_flag = ignore_case ? "-i" : ""
+
+    puts <<~EOF
+        function #{func} {
+          . <(ruby -x "#{script_file}" #{debug_flag} #{ignore_case_flag} \
+                  -c "$(( $CURRENT - 1 ))" "${words[@]}" \
+                  )
+        }
+        EOF
+
+    commands.each do |c|
+      puts "compdef #{func} #{c}"
+    end
+  end
+
+  def add_candidate(candidate)
+    s = shescape(candidate.value)
+    # s += " " if candidate.completed # TODO How do we do this?
+
+    puts "compadd -x #{candidate.help} #{(candidate.raw ? s : shescape(s))}"
+  end
+end
 #-----------------------------------------------------------
 # Engine
 #-----------------------------------------------------------

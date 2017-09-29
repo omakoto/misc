@@ -1,4 +1,4 @@
-. <( exec ruby -wx "${BASH_SOURCE[0]}" -i adb dumpsys acmd am pm )
+. <( exec ruby -wx "${BASH_VERSION+${BASH_SOURCE[0]}}${ZSH_VERSION+${${(%):-%N}}}" -i adb dumpsys acmd am pm )
 : <<__END_RUBY_CODE__
 #!ruby
 def __END_RUBY_CODE__; end
