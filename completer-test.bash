@@ -95,10 +95,10 @@ assert_raw_comp() {
 }
 
 assert_raw_comp -e 'require "completer"
-Completer.define do
-  candidates %w(aaa aab abb ccc)
-end
-' -- -ic 1 cat <<'EOF'
+    Completer.define do
+      candidates %w(aaa aab abb ccc)
+    end
+    ' -- -ic 1 cat <<'EOF'
 'aaa '
 'aab '
 'abb '
@@ -106,38 +106,38 @@ end
 EOF
 
 assert_raw_comp -e 'require "completer"
-Completer.define do
-  candidates %w(aaa aab abb ccc)
-end
-' -- -ic 1 cat a <<'EOF'
+    Completer.define do
+      candidates %w(aaa aab abb ccc)
+    end
+    ' -- -ic 1 cat a <<'EOF'
 'aaa '
 'aab '
 'abb '
 EOF
 
 assert_raw_comp -e 'require "completer"
-Completer.define do
-  candidates %w(aaa aab abb ccc)
-end
-' -- -ic 1 cat Aa <<'EOF'
+    Completer.define do
+      candidates %w(aaa aab abb ccc)
+    end
+    ' -- -ic 1 cat Aa <<'EOF'
 'aaa '
 'aab '
 EOF
 
 assert_raw_comp -e 'require "completer"
-Completer.define do
-  candidates %w(aaa aab abb ccc)
-end
-' -- -c 1 cat Aa <<'EOF'
+    Completer.define do
+      candidates %w(aaa aab abb ccc)
+    end
+    ' -- -c 1 cat Aa <<'EOF'
 EOF
 
 assert_raw_comp -e 'require "completer"
-Completer.define do
-  for_arg do
-    candidates %w(aaa aab abb ccc)
-  end
-end
-' -- -ic 2 cat xyz <<'EOF'
+    Completer.define do
+      for_arg do
+        candidates %w(aaa aab abb ccc)
+      end
+    end
+    ' -- -ic 2 cat xyz <<'EOF'
 'aaa '
 'aab '
 'abb '
@@ -145,46 +145,46 @@ end
 EOF
 
 assert_raw_comp -e 'require "completer"
-Completer.define do
-  next_word_must take_file
-end
-' -- -ic 1 cat <<'EOF'
+    Completer.define do
+      next_word_must take_file
+    end
+    ' -- -ic 1 cat <<'EOF'
 aaa/
 'dir2/ '
 'file1 '
 EOF
 
 assert_raw_comp -e 'require "completer"
-Completer.define do
-  next_word_must %w(aaa bbb), %w(xxx yyy)
-end
-' -- -ic 1 cat <<'EOF'
+    Completer.define do
+      next_word_must %w(aaa bbb), %w(xxx yyy)
+    end
+    ' -- -ic 1 cat <<'EOF'
 'aaa '
 'bbb '
 EOF
 
 assert_raw_comp -e 'require "completer"
-Completer.define do
-  next_word_must %w(aaa bbb), %w(xxx yyy)
-end
-' -- -ic 1 cat a <<'EOF'
+    Completer.define do
+      next_word_must %w(aaa bbb), %w(xxx yyy)
+    end
+    ' -- -ic 1 cat a <<'EOF'
 'aaa '
 EOF
 
 assert_raw_comp -e 'require "completer"
-Completer.define do
-  next_word_must %w(aaa bbb), %w(xxx yyy)
-end
-' -- -ic 2 cat a <<'EOF'
+    Completer.define do
+      next_word_must %w(aaa bbb), %w(xxx yyy)
+    end
+    ' -- -ic 2 cat a <<'EOF'
 'xxx '
 'yyy '
 EOF
 
 assert_raw_comp -e 'require "completer"
-Completer.define do
-  next_word_must %w(aaa bbb), %w(xxx yyy)
-end
-' -- -ic 3 cat a x <<'EOF'
+    Completer.define do
+      next_word_must %w(aaa bbb), %w(xxx yyy)
+    end
+    ' -- -ic 3 cat a x <<'EOF'
 EOF
 
 
