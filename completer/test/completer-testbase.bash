@@ -72,6 +72,7 @@ make_dir  700 ddd2/aaa/bbb
 make_file 700 ddd2/aaa/ccc/file1
 make_file 700 ddd2/aaa/ccc/File1
 make_file 700 ddd2/aaa/ccc/file2
+make_file 700 ddd2/aaa/ccc/file2.apk
 make_file 700 ddd2/aaa/ccc/.dot1
 make_dir  700 ddd2/dir2
 make_file 400 ddd2/file1

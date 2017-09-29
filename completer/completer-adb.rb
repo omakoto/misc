@@ -8,17 +8,17 @@ def __END_RUBY_CODE__; end
 # Install
 . ~/cbin/misc/completer-adb.rb
 
-ruby -x completer-adb-auto.rb -ic  2 adb
-ruby -x completer-adb-auto.rb -ic  2 adb -s
-ruby -x completer-adb-auto.rb -ic  3 adb -s SE
-ruby -x completer-adb-auto.rb -ic  4 adb -s serial --
+ruby -x completer-adb.rb -ic 2 adb
+ruby -x completer-adb.rb -ic 2 adb -s
+ruby -x completer-adb.rb -ic 3 adb -s SE
+ruby -x completer-adb.rb -ic 4 adb -s serial --
 
-ruby -x completer-adb-auto.rb -ic  2 adb pull
+ruby -x completer-adb.rb -ic 2 adb pull
 
-ruby -x completer-adb-auto.rb -ic  2 adb install
+ruby -x completer-adb.rb -ic 2 adb install
 
-ruby -x completer-adb-auto.rb -ic  2 adb uninstall
-ruby -x completer-adb-auto.rb -ic  3 adb uninstall -k
+ruby -x completer-adb.rb -ic 2 adb uninstall
+ruby -x completer-adb.rb -ic 3 adb uninstall -k
 
 __completer_context_passer | ruby -x completer-adb.rb -ic  1 adb '$'
 
@@ -50,7 +50,11 @@ end
 
 # Generates candidates for installed packages.
 def take_package()
-  lazy { run_command(%(adb shell pm list packages 2>/dev/null)).split(/\n/).map {|x| x.sub(/^package\:/, "")} }
+  lazy do
+    run_command(%(adb shell pm list packages 2>/dev/null)).split(/\n/).map do |x|
+      x.sub(/^package\:/, "")
+    end
+  end
 end
 
 # Generates candidates for device files.
@@ -64,35 +68,115 @@ end
 
 # Generates candidates for device side executable commands.
 def take_command()
-  lazy { run_command(%(adb shell 'for n in ${PATH//:/ } ; do ls "$n" ; done 2>/dev/null')).split(/\n/) }
+  lazy do
+    run_command(%(adb shell 'for n in ${PATH//:/ } ; do ls -1 "$n" ; done 2>/dev/null')).split(/\n/)
+  end
 end
 
 # Generates candidates for system service names..
 def take_service()
-  lazy { run_command(%(adb shell dumpsys -l 2>/dev/null)).split(/\n/)[1..-1].map{|x| x.strip} }
+  lazy do
+    run_command(%(adb shell dumpsys -l 2>/dev/null)).split(/\n/)[1..-1].map{|x| x.strip}
+  end
 end
-
 
 Completer.define do
   def main()
     for_arg(/^-/) do
       maybe %w(-a -d -e -H -P)
       maybe "-s", take_device_serial
-      maybe "-L", []
+      maybe "-L", take_number # Listen port.
       otherwise { for_break }
     end
 
-    maybe %w(devices help version root unroot reboot-bootloader usb get-state get-serialno
-        get-devpath start-server kill-server wait-for-device remount) do
+    # Subcommands with no arguments
+    maybe %w(
+        help
+        version
+        root unroot
+        reboot-bootloader
+        usb
+        get-state get-serialno get-devpath
+        start-server kill-server
+        wait-for-device
+        remount
+        jdwp
+        disable-verity
+        enable-verity
+        ) do
+      finish
+    end
+
+    # Subcommands that take arguments that this script doesn't support yet.
+    maybe words(%(
+        connect     # HOST[:PORT]
+        disconnect  # [HOST[:PORT]]
+        ppp         # TTY [PARAMETER...]
+        )) do
+      finish
+    end
+
+    # Subcommands that take a file.
+    maybe %w(bugreport keygen sideload) do
+      maybe take_file
+      finish
+    end
+
+    # Subcommands that take a number.
+    maybe %w(tcpip) do
+      maybe take_number
+      finish
+    end
+
+    maybe "forward" do
+      maybe("--list") { finish }
+      maybe("--remove", []) { finish } # takes LOCAL
+      maybe("--remove-all") { finish }
+=begin
+ forward [--no-rebind] LOCAL REMOTE
+     forward socket connection using:
+       tcp:<port> (<local> may be "tcp:0" to pick any open port)
+       localabstract:<unix domain socket name>
+       localreserved:<unix domain socket name>
+       localfilesystem:<unix domain socket name>
+       dev:<character device name>
+       jdwp:<process pid> (remote only)
+=end
+      maybe "--no-rebind"
+      finish
+    end
+
+    maybe "reverse" do
+      maybe("--list") { finish }
+      maybe("--remove", []) { finish } # takes REMOTE
+      maybe("--remove-all") { finish }
+=begin
+ reverse [--no-rebind] REMOTE LOCAL
+     reverse socket connection using:
+       tcp:<port> (<remote> may be "tcp:0" to pick any open port)
+       localabstract:<unix domain socket name>
+       localreserved:<unix domain socket name>
+       localfilesystem:<unix domain socket name>
+=end
+      maybe "--no-rebind"
+      finish
+    end
+
+    maybe "devices" do
+      maybe "-l"
+      finish
+    end
+
+    maybe "reconnect" do
+      maybe %w(device offline)
       finish
     end
 
     maybe %w(install install-multiple) do # Do implies next_arg.
       for_arg(/^-/) do
         maybe %w(-a -d -e -H -P)
-        otherwise { for_break }
       end
-      next_arg_must take_file
+      next_arg_must take_file "*.apk"
       finish
     end
 
@@ -103,13 +187,20 @@ Completer.define do
     end
 
     maybe "push" do
+      maybe "--sync"
       next_arg_must take_file, take_device_file
       finish
     end
 
     maybe "pull" do
+      maybe "--pull"
       next_arg_must take_device_file
       next_arg_must take_file
+      finish
+    end
+
+    maybe "sync" do
+      maybe %w(system vendor oem data all)
       finish
     end
 
@@ -124,6 +215,10 @@ Completer.define do
     end
 
     maybe "shell" do
+      for_arg(/^-/) do
+        maybe %w(-n -T -t -x)
+        maybe "-e", ["none"]
+      end
       maybe "am" do
         am
       end
@@ -136,6 +231,7 @@ Completer.define do
       maybe "dumpsys" do
         dumpsys
       end
+      maybe take_command
     end
 
     otherwise { catch_all }

@@ -7,7 +7,7 @@
 # ==============================================================================
 
 test_adb() {
-  ADB_TEST_COMP=1 assert_comp ruby -wx $compdir/completer-adb-auto.rb -ic "$@"
+  ADB_TEST_COMP=1 assert_comp ruby -wx $compdir/completer-adb.rb -ic "$@"
 }
 
 test_adb 1 adb <<EOF
@@ -40,6 +40,20 @@ test_adb 1 adb <<EOF
 'logcat '
 'reboot '
 'shell '
+'bugreport '
+'connect '
+'disable-verity '
+'disconnect '
+'enable-verity '
+'forward '
+'jdwp '
+'keygen '
+'ppp '
+'reconnect '
+'reverse '
+'sideload '
+'sync '
+'tcpip '
 EOF
 
 test_adb 1 adb - <<EOF
@@ -104,6 +118,20 @@ test_adb 3 adb -s serial <<EOF
 'logcat '
 'reboot '
 'shell '
+'bugreport '
+'connect '
+'disable-verity '
+'disconnect '
+'enable-verity '
+'forward '
+'jdwp '
+'keygen '
+'ppp '
+'reconnect '
+'reverse '
+'sideload '
+'sync '
+'tcpip '
 EOF
 
 test_adb 3 adb -s serial g <<EOF
@@ -115,10 +143,14 @@ EOF
 test_adb 3 adb -s -s s<<EOF
 'shell '
 'start-server '
+'sideload '
+'sync '
 EOF
 
 test_adb 3 adb -s serial d <<EOF
 'devices '
+'disable-verity '
+'disconnect '
 EOF
 
 export ADB_MOCK_OUT='/default.prop
@@ -129,6 +161,7 @@ test_adb 2 adb pull <<EOF
 /data/
 /default.prop
 /system/
+'--pull '
 EOF
 
 test_adb 3 adb pull /data  <<EOF
@@ -141,6 +174,7 @@ test_adb 2 adb push  <<EOF
 aaa/
 'dir2/ '
 'file1 '
+'--sync '
 EOF
 
 test_adb 2 adb push a <<EOF
@@ -192,7 +226,10 @@ test_adb 2 adb install <<EOF
 '-P '
 aaa/
 'dir2/ '
-'file1 '
+EOF
+
+test_adb 2 adb install ~/ddd2/aaa/ccc/ <<EOF
+'/tmp/home/ddd2/aaa/ccc/file2.apk '
 EOF
 
 export ADB_MOCK_OUT='/default.prop

@@ -13,7 +13,7 @@ EOF
 # ==============================================================================
 
 test_lunch() {
-  assert_comp run_ruby -x $compdir/completer-lunch-auto.rb -i -c "$@"
+  assert_comp run_ruby -x $compdir/completer-lunch.rb -i -c "$@"
 }
 
 test_lunch 1 lunch <<EOF

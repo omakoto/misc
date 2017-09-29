@@ -7,7 +7,7 @@ def __END_RUBY_CODE__; end
 
 # Install
 
-. ~/cbin/misc/completer-adb.rb
+. ~/cbin/misc/completer-rg.rb
 
 =end
 
