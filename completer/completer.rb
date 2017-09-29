@@ -584,9 +584,10 @@ end
 # https://linux.die.net/man/1/zshcompsys
 # http://zsh.sourceforge.net/Guide/zshguide06.html
 #
-# TOOD zsh doesn't seem to select the only candidate.
-# TODO Support environmental variables.
+# Note zsh always seems to do variable expansions, so we don't have to do it.
+#
 # TODO Pass "help" as a description.
+# TODO Expanding a filename that contains a space doesn't seem to work.
 class ZshAgent < BasicShellAgent
   def install(commands, script, ignore_case)
 
@@ -615,9 +616,14 @@ class ZshAgent < BasicShellAgent
 
   def add_candidate(candidate)
     s = shescape(candidate.value)
-    # s += " " if candidate.completed # TODO How do we do this?
+    s += " " if candidate.completed
 
-    puts "compadd -x #{candidate.help} #{(candidate.raw ? s : shescape(s))}"
+    # -S '' tells zsh not to add a space afterward, since gqui does this for us.
+    # -Q prevents zsh from quoting metacharacters in the results.
+    # -f treats the result as filenames.
+    out = "compadd -S '' -Q -- #{(candidate.raw ? s : shescape(s))}"
+    debug out
+    puts out
   end
 end
 #-----------------------------------------------------------
