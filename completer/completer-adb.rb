@@ -1,4 +1,4 @@
-. <( exec ruby -wx "${BASH_SOURCE[0]}" -i adb )
+. <( exec ruby -wx "${BASH_SOURCE[0]}" -i adb dumpsys acmd am pm )
 : <<__END_RUBY_CODE__
 #!ruby
 def __END_RUBY_CODE__; end
@@ -82,6 +82,11 @@ end
 
 Completer.define do
   def main()
+    dumpsys if command == "dumpsys"
+    am if command == "am"
+    pm if command == "pm"
+    cmd if command == "acmd"
+
     for_arg(/^-/) do
       maybe %w(-a -d -e -H -P)
       maybe "-s", take_device_serial
@@ -237,21 +242,19 @@ Completer.define do
     otherwise { catch_all }
   end
 
-
   def am()
     maybe %w(start startservice)
     finish
   end
 
   def pm()
-    maybe %w(start startservice)
+    maybe %w(dump)
     finish
   end
 
   def dumpsys()
-    maybe take_service do
-      finish
-    end
+    maybe take_service
+    finish
   end
 
   def cmd()
