@@ -90,6 +90,29 @@ assert_comp() {
   assert_out -ds cat <("$@" <<<"$VARS" | sed -e '1d; $d')
 }
 
+assert_raw_comp() {
+  assert_comp ruby -e "$*"
+}
+
+assert_raw_comp '
+require_relative "completer"
+using CompleterRefinements
+Completer.define do
+  for_arg do
+    candidates %w(aaa aab abb ccc)
+  end
+end
+'
+
+
+
+
+
+
+
+# ==============================================================================
+# ADB TEST
+# ==============================================================================
 test_adb() {
   ADB_TEST_COMP=1 assert_comp ruby -wx $medir/completer-adb.rb -ic "$@"
 }
