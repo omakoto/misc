@@ -15,12 +15,10 @@ require_relative "completer"
 using CompleterRefinements
 
 def load_devices()
-  lazy do
-    devices = %w(generic full bullhead angler marlin sailfish walleye taimen)
-    devices.push(* read_file_lines("~/.android-devices"))
-    devices.uniq!
-    next devices
-  end
+  devices = %w(generic full bullhead angler marlin sailfish walleye taimen)
+  devices.push(* read_file_lines("~/.android-devices"))
+  devices.uniq!
+  return devices
 end
 
 def device_flavors

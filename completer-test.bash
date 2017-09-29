@@ -79,8 +79,6 @@ boss
 #notused
 EOF
 
-# Test for lunch.
-
 assert_comp() {
   if (( $verbose )) ; then
     echo -n "> "
@@ -95,6 +93,55 @@ assert_comp() {
 assert_raw_comp() {
   assert_comp ruby -I "$medir" "$@"
 }
+
+assert_comp ruby -x $medir/completer-lunch.rb -i -c 1 lunch <<EOF
+'generic-eng '
+'generic-userdebug '
+'full-eng '
+'full-userdebug '
+'bullhead-eng '
+'bullhead-userdebug '
+'angler-eng '
+'angler-userdebug '
+'marlin-eng '
+'marlin-userdebug '
+'sailfish-eng '
+'sailfish-userdebug '
+'walleye-eng '
+'walleye-userdebug '
+'taimen-eng '
+'taimen-userdebug '
+'max-eng '
+'max-userdebug '
+'boss-eng '
+'boss-userdebug '
+EOF
+
+assert_comp ruby -x $medir/completer-lunch.rb -i -c 1 lunch m  <<EOF
+'marlin-eng '
+'marlin-userdebug '
+'max-eng '
+'max-userdebug '
+EOF
+
+assert_comp ruby -x $medir/completer-lunch.rb -i -c 1 lunch MA <<EOF
+'marlin-eng '
+'marlin-userdebug '
+'max-eng '
+'max-userdebug '
+EOF
+
+assert_comp ruby -x $medir/completer-lunch.rb -c 1 lunch MA <<EOF
+EOF
+
+assert_comp ruby -x $medir/completer-lunch.rb -i -c 1 lunch MAr <<EOF
+'marlin-eng '
+'marlin-userdebug '
+EOF
+
+assert_comp ruby -x $medir/completer-lunch.rb -i -c 1 lunch marlin-e <<EOF
+'marlin-eng '
+EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
@@ -412,10 +459,104 @@ aaa/
 'file1 '
 EOF
 
+# ==============================================================================
+# Numbers
+# ==============================================================================
 
+assert_raw_comp -e 'require "completer"
+    Completer.define do
+      next_arg_must take_number
+    end
+    ' -- -ic 1 cat <<'EOF'
+'0 '
+'1 '
+'2 '
+'3 '
+'4 '
+'5 '
+'6 '
+'7 '
+'8 '
+'9 '
+EOF
 
+assert_raw_comp -e 'require "completer"
+    Completer.define do
+      next_arg_must take_number
+    end
+    ' -- -ic 1 cat 2 <<'EOF'
+'20 '
+'21 '
+'22 '
+'23 '
+'24 '
+'25 '
+'26 '
+'27 '
+'28 '
+'29 '
+EOF
 
-done_testing
+assert_raw_comp -e 'require "completer"
+    Completer.define do
+      next_arg_must take_number allow_negative:true
+    end
+    ' -- -ic 1 cat <<'EOF'
+'0 '
+'1 '
+'2 '
+'3 '
+'4 '
+'5 '
+'6 '
+'7 '
+'8 '
+'9 '
+'-1 '
+'-2 '
+'-3 '
+'-4 '
+'-5 '
+'-6 '
+'-7 '
+'-8 '
+'-9 '
+EOF
+
+assert_raw_comp -e 'require "completer"
+    Completer.define do
+      next_arg_must take_number allow_negative:true
+    end
+    ' -- -ic 1 cat 3 <<'EOF'
+'30 '
+'31 '
+'32 '
+'33 '
+'34 '
+'35 '
+'36 '
+'37 '
+'38 '
+'39 '
+EOF
+
+assert_raw_comp -e 'require "completer"
+    Completer.define do
+      next_arg_must take_number allow_negative:true
+    end
+    ' -- -ic 1 cat -3 <<'EOF'
+'-30 '
+'-31 '
+'-32 '
+'-33 '
+'-34 '
+'-35 '
+'-36 '
+'-37 '
+'-38 '
+'-39 '
+EOF
+
 
 # ==============================================================================
 # ADB TEST

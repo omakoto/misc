@@ -141,6 +141,22 @@ module CompleterRefinements
       return LazyList.new(&block)
     end
 
+    # This is basically same as %w(...), except it treats # as comments.
+    def words(*args)
+      ret = []
+      args.each do |arg|
+        arg.split(/\n/).each do |line|
+          l = line.sub(/^\s+/, "").sub(/\s*\#.*/, "")
+          if l.length > 0
+            l.split(/\s+/).each do |word|
+              ret << word
+            end
+          end
+        end
+      end
+      return ret
+    end
+
   end # refine Kernel
 
   refine String do
