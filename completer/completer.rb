@@ -229,7 +229,7 @@ module CompleterRefinements
 
     # Build a candidate from a String.
     def as_candidate(raw:nil, completed: nil, help: nil)
-      return Kernel.as_candidate(value, raw:raw, completed:completed, help:help)
+      return Kernel.as_candidate(self, raw:raw, completed:completed, help:help)
     end
   end # refine String
 end

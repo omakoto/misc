@@ -62,7 +62,7 @@ def take_device_file()
   lazy do
     w = arg
     w = "/" if w == ""
-    run_command(%(adb shell "ls -pd1 #{shescape w}* 2>/dev/null")).split(/\n/).map{|x| x + "\b"}
+    run_command(%(adb shell "ls -pd1 #{shescape w}* 2>/dev/null")).split(/\n/).map{|x| x.as_candidate completed:false}
   end
 end
 
