@@ -685,18 +685,17 @@ class CompletionEngine
     last_start_index = -1
     begin
       res = catch FOR_ARG_LABEL do
-        if last_start_index == @index and !current_consumed?
-          next_word force:true
-        end
-        last_start_index = @index
         while !after_cursor?
+          force_next = last_start_index == @index and !current_consumed?
+          last_start_index = @index
+
           debug {"[for_arg](#{index}/#{cursor_index})"}
 
-          next_word
+          next_word force:force_next
 
-          debug {"  #{match} vs #{word}"}
+          debug {"  #{match} vs #{word}"} if match
           if match == nil or at_cursor? or match? match, word
-            debug {"    matched."}
+            debug {"  matched."}
             block.call()
           else
             return
@@ -844,8 +843,10 @@ class CompletionEngine
         catch FINISH_LABEL do
           debug "Starting the user block."
 
+          # Start from the first argument, unconsumed.
           @index = 1
           unconsume
+
           instance_eval(&block)
 
           # If the block defined main(), also run it.

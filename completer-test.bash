@@ -82,7 +82,7 @@ EOF
 assert_comp() {
   if (( $verbose )) ; then
     echo -n "> "
-    shescape $@
+    shescape "$@"
   fi
 
   # Note we can't use pipe here, which would break test counting in
@@ -91,18 +91,108 @@ assert_comp() {
 }
 
 assert_raw_comp() {
-  assert_comp ruby -e "$*"
+  assert_comp ruby -I "$medir" "$@"
 }
 
-assert_raw_comp '
-require_relative "completer"
-using CompleterRefinements
+assert_raw_comp -e 'require "completer"
+Completer.define do
+  candidates %w(aaa aab abb ccc)
+end
+' -- -ic 1 cat <<'EOF'
+'aaa '
+'aab '
+'abb '
+'ccc '
+EOF
+
+assert_raw_comp -e 'require "completer"
+Completer.define do
+  candidates %w(aaa aab abb ccc)
+end
+' -- -ic 1 cat a <<'EOF'
+'aaa '
+'aab '
+'abb '
+EOF
+
+assert_raw_comp -e 'require "completer"
+Completer.define do
+  candidates %w(aaa aab abb ccc)
+end
+' -- -ic 1 cat Aa <<'EOF'
+'aaa '
+'aab '
+EOF
+
+assert_raw_comp -e 'require "completer"
+Completer.define do
+  candidates %w(aaa aab abb ccc)
+end
+' -- -c 1 cat Aa <<'EOF'
+EOF
+
+assert_raw_comp -e 'require "completer"
 Completer.define do
   for_arg do
     candidates %w(aaa aab abb ccc)
   end
 end
-'
+' -- -ic 2 cat xyz <<'EOF'
+'aaa '
+'aab '
+'abb '
+'ccc '
+EOF
+
+assert_raw_comp -e 'require "completer"
+Completer.define do
+  next_word_must take_file
+end
+' -- -ic 1 cat <<'EOF'
+aaa/
+'dir2/ '
+'file1 '
+EOF
+
+assert_raw_comp -e 'require "completer"
+Completer.define do
+  next_word_must %w(aaa bbb), %w(xxx yyy)
+end
+' -- -ic 1 cat <<'EOF'
+'aaa '
+'bbb '
+EOF
+
+assert_raw_comp -e 'require "completer"
+Completer.define do
+  next_word_must %w(aaa bbb), %w(xxx yyy)
+end
+' -- -ic 1 cat a <<'EOF'
+'aaa '
+EOF
+
+assert_raw_comp -e 'require "completer"
+Completer.define do
+  next_word_must %w(aaa bbb), %w(xxx yyy)
+end
+' -- -ic 2 cat a <<'EOF'
+'xxx '
+'yyy '
+EOF
+
+assert_raw_comp -e 'require "completer"
+Completer.define do
+  next_word_must %w(aaa bbb), %w(xxx yyy)
+end
+' -- -ic 3 cat a x <<'EOF'
+EOF
+
+
+
+
+
+
+
 
 done_testing
 
