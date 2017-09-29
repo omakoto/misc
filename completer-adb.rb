@@ -6,7 +6,7 @@ def __END_RUBY_CODE__; end
 =begin
 
 # Install
-. <(~/cbin/misc/completer-adb.rb)
+. ~/cbin/misc/completer-adb.rb
 
 echo | ruby -x completer-adb.rb -ic  2 adb
 echo | ruby -x completer-adb.rb -ic  2 adb -s

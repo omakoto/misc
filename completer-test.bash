@@ -299,6 +299,8 @@ assert_raw_comp -e 'require "completer"
 aaa/ccc/
 EOF
 
+# Environmental variable completion.
+
 VARS="declare -- HOME=$HOME
 declare -- HOST=hostname
 declare -- hostname=hostname.domain.com
@@ -357,6 +359,7 @@ declare -- PATH=\"a:b:c\"" assert_raw_comp -e 'require "completer"
     ' -- -c 1 cat '$PATH/' <<'EOF'
 EOF
 
+# Special casing redirect operators.
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
@@ -364,6 +367,50 @@ assert_raw_comp -e 'require "completer"
     ' -- -ic 1 cat <<'EOF'
 EOF
 
+assert_raw_comp -e 'require "completer"
+    Completer.define do
+    end
+    ' -- -ic 2 cat '<' <<'EOF'
+aaa/
+'dir2/ '
+'file1 '
+EOF
+
+assert_raw_comp -e 'require "completer"
+    Completer.define do
+    end
+    ' -- -ic 2 cat '<<<' <<'EOF'
+aaa/
+'dir2/ '
+'file1 '
+EOF
+
+assert_raw_comp -e 'require "completer"
+    Completer.define do
+    end
+    ' -- -ic 2 cat '>' <<'EOF'
+aaa/
+'dir2/ '
+'file1 '
+EOF
+
+assert_raw_comp -e 'require "completer"
+    Completer.define do
+    end
+    ' -- -ic 2 cat '>>' <<'EOF'
+aaa/
+'dir2/ '
+'file1 '
+EOF
+
+assert_raw_comp -e 'require "completer"
+    Completer.define do
+    end
+    ' -- -ic 2 cat '>!' <<'EOF'
+aaa/
+'dir2/ '
+'file1 '
+EOF
 
 
 

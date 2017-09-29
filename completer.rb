@@ -286,19 +286,19 @@ module CompleterHelper
   def get_matched_numbers(prefix, allow_negative:false)
     lazy do
       if allow_negative
-        return [] unless prefix =~ /^\-?\d*$/
+        next [] unless prefix =~ /^\-?\d*$/
       else
-        return [] unless prefix =~ /^\d*$/
+        next [] unless prefix =~ /^\d*$/
       end
 
       if prefix == ""
         if allow_negative
-          return ["-1".."-9", "0".."9"]
+          next ["-1".."-9", "0".."9"]
         else
-          return ["0".."9"]
+          next ["0".."9"]
         end
       else
-        return ("0".."9").map {|x| prefix + x }
+        next ("0".."9").map {|x| prefix + x }
       end
     end
   end
@@ -312,7 +312,7 @@ module CompleterHelper
   end
 
   def take_number(allow_negative:false)
-    lazy { get_matched_numbers arg, allow_negative }
+    lazy { get_matched_numbers arg, allow_negative:allow_negative }
   end
 end
 
