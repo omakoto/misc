@@ -35,67 +35,74 @@ def run_command(command)
   return out || ''
 end
 
-# Generates candidates for device serial numbers.
-def take_device_serial()
-  lazy do
-    ret = []
-    run_command(%(adb devices)).split(/\n/).each do |l|
-      serial, type = l.split(/\s+/, 2)
-      (ret << serial) if type == "device"
-    end
-    debug {"Serial(s): #{ret.inspect}"}
-    ret
-  end
-end
-
-# Generates candidates for installed packages.
-def take_package()
-  lazy do
-    run_command(%(adb shell pm list packages 2>/dev/null)).split(/\n/).map do |x|
-      x.sub(/^package\:/, "")
+Completer.define do
+  # Generates candidates for device serial numbers.
+  def take_device_serial()
+    lazy do
+      ret = []
+      run_command(%(adb devices)).split(/\n/).each do |l|
+        serial, type = l.split(/\s+/, 2)
+        (ret << serial) if type == "device"
+      end
+      debug {"Serial(s): #{ret.inspect}"}
+      ret
     end
   end
-end
 
-# Generates candidates for installed packages.
-def take_package_or_component()
-  lazy do
-    if arg =~ %r(^(.*?)/) then
-      # Component name completion, which we don't support, since there's no command to dump
-      # all components.
-    else
-      # Package name completion.
+  # Generates candidates for installed packages.
+  def take_package()
+    lazy do
       run_command(%(adb shell pm list packages 2>/dev/null)).split(/\n/).map do |x|
-        x.sub(/^package\:/, "") + "/"
+        x.sub(/^package\:/, "")
       end
     end
   end
-end
 
-# Generates candidates for device files.
-def take_device_file()
-  lazy do
-    w = arg
-    w = "/" if w == ""
-    run_command(%(adb shell "ls -pd1 #{shescape w}* 2>/dev/null")).split(/\n/).map{|x| x.as_candidate completed:false}
+  # Generates candidates for installed packages.
+  def take_package_or_component()
+    lazy do
+      if arg =~ %r(^(.*?)/) then
+        # Component name completion, which we don't support, since there's no command to dump
+        # all components.
+      else
+        # Package name completion.
+        run_command(%(adb shell pm list packages 2>/dev/null)).split(/\n/).map do |x|
+          x.sub(/^package\:/, "") + "/"
+        end
+      end
+    end
   end
-end
 
-# Generates candidates for device side executable commands.
-def take_command()
-  lazy do
-    run_command(%(adb shell 'for n in ${PATH//:/ } ; do ls -1 "$n" ; done 2>/dev/null')).split(/\n/)
+  # Generates candidates for device files.
+  def take_device_file()
+    lazy do
+      w = arg
+      w = "/" if w == ""
+      run_command(%(adb shell "ls -pd1 #{shescape w}* 2>/dev/null")).split(/\n/).map{|x| x.as_candidate completed:false}
+    end
   end
-end
 
-# Generates candidates for system service names..
-def take_service()
-  lazy do
-    run_command(%(adb shell dumpsys -l 2>/dev/null)).split(/\n/)[1..-1].map{|x| x.strip}
+  # Generates candidates for device side executable commands.
+  def take_command()
+    lazy do
+      run_command(%(adb shell 'for n in ${PATH//:/ } ; do ls -1 "$n" ; done 2>/dev/null')).split(/\n/)
+    end
   end
-end
 
-Completer.define do
+  # Generates candidates for system service names..
+  def take_service()
+    lazy do
+      run_command(%(adb shell dumpsys -l 2>/dev/null)).split(/\n/)[1..-1].map{|x| x.strip}
+    end
+  end
+
+  # Generates candidates for a user-id.
+  def take_user_id
+    lazy do
+      take_number.to_a + %w(all current)
+    end
+  end
+
   def main()
     dumpsys if command == "dumpsys"
     am if command == "am"
@@ -260,12 +267,12 @@ Completer.define do
   def pm()
     maybe("dump", take_package) {finish}
     maybe "clear" do
-      maybe "--user", take_number
+      maybe "--user", take_user_id
       next_arg_must take_package
       finish
     end
     maybe %w(enable disable disable-user disable-until-used default-state hide unhide) do
-      maybe "--user", take_number
+      maybe "--user", take_user_id
       next_arg_must take_package_or_component
       finish
     end
@@ -297,11 +304,13 @@ Completer.define do
   end
 
   def settings()
-    next_arg_must %w(get put delete reset)
-    next_arg
-    maybe "--user", take_number
-    maybe "current"
-    next_arg_must %w(global system secure)
+    maybe %w(get put reset) do
+      maybe "--user", take_user_id
+      next_arg_must %w(global system secure)
+    end
+    maybe %w(delete list) do
+      next_arg_must %w(global system secure)
+    end
     finish
   end
 

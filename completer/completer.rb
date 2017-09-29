@@ -635,7 +635,23 @@ class CompletionEngine
 
   FINISH_LABEL = :FinishLabel
   FOR_ARG_LABEL = :ForArg
+
   FOR_AGAIN = 1
+
+  class Sentinel
+    def initialize(function)
+      @function = function
+    end
+
+    attr_reader :function
+  end
+
+  RESULT_MAYBE = Sentinel.new("maybe")
+  RESULT_NEXT_ARG_MUST =  Sentinel.new("next_arg_must")
+  RESULT_FOR_ARG =  Sentinel.new("for_arg")
+  RESULT_NEXT_ARG =  Sentinel.new("next_arg")
+  RESULT_CONSUME =  Sentinel.new("consume")
+  RESULT_UNCONSUME =  Sentinel.new("unconsume")
 
   def initialize(shell, orig_args, index, ignore_case, comp_line, comp_point)
     @shell = shell
@@ -746,6 +762,7 @@ class CompletionEngine
   # If always is true, candidates will be always added, even
   # if they don't start with the cursor arg.
   def candidates(*vals, always:false , &block)
+    _detect_invalid_params(vals)
     debug_indent do
       return unless at_cursor?
 
@@ -772,21 +789,29 @@ class CompletionEngine
   alias flag candidates
   alias flags candidates
 
+  def _detect_invalid_params(vals)
+    vals.each do |v|
+      if v.instance_of? Sentinel
+        die "Passing function '#{v.function}' as a method argument is likely a bug."
+      end
+    end
+  end
+
   def next_arg(force:false)
     block_given? and die "next_arg() doesn't take a block."
 
     if !force and !current_consumed?
-       debug {"[next_arg] -> still at #{index}, not consumed yet"}
-      return
-    end
+      debug {"[next_arg] -> still at #{index}, not consumed yet"}
+    else
+      if @index <= @cursor_index
+        @index += 1
+        @current_consumed = false
+      end
+      debug {"[next_arg] -> now at #{index}, \"#{arg}\""}
 
-    if @index <= @cursor_index
-      @index += 1
-      @current_consumed = false
+      finish if after_cursor?
     end
-    debug {"[next_arg] -> now at #{index}, \"#{arg}\""}
-
-    finish if after_cursor?
+    return RESULT_NEXT_ARG
   end
 
   def unconsume()
@@ -794,6 +819,7 @@ class CompletionEngine
       @current_consumed = false
       debug {"arg at #{index} unconsumed."}
     end
+    return RESULT_UNCONSUME
   end
 
   def consume()
@@ -801,6 +827,7 @@ class CompletionEngine
       @current_consumed = true
       debug {"arg at #{index} consumed."}
     end
+    return RESULT_CONSUME
   end
 
   def match?(condition, value)
@@ -838,7 +865,7 @@ class CompletionEngine
               block.call()
             end
           else
-            return
+            throw FOR_ARG_LABEL
           end
 
           # If at_cursor, we need to run the rest of the code after the loop,
@@ -849,6 +876,8 @@ class CompletionEngine
         end
       end
     end while res == FOR_AGAIN
+
+    return RESULT_FOR_ARG
   end
 
   # Exits the inner most for_arg loop.
@@ -865,7 +894,13 @@ class CompletionEngine
   end
 
   def maybe(*vals, &block)
+    _maybe_inner vals, &block
+    return RESULT_MAYBE
+  end
+
+  def _maybe_inner(vals, &block)
     vals.length == 0 and die "maybe() requires at least one argument."
+    _detect_invalid_params(vals)
 
     return if current_consumed?
     debug {"[maybe](#{index}/#{cursor_index}): #{vals}#{block ? " (has block)" : ""}"}
@@ -910,13 +945,14 @@ class CompletionEngine
   def otherwise(&block)
     block or die "otherwise() requires a block."
 
-    maybe(//) do
+    return maybe(//) do
       block.call
     end
   end
 
   def next_arg_must(*vals, &block)
     vals.length == 0 and die "next_arg_must() requires at least one argument."
+    _detect_invalid_params(vals)
 
     debug {"[next_arg_must](#{index}/#{cursor_index}): #{vals}#{block ? " (has block)" : ""}"}
 
@@ -933,6 +969,7 @@ class CompletionEngine
         next_arg
       end
     end
+    return RESULT_NEXT_ARG_MUST
   end
 
   def finish()
