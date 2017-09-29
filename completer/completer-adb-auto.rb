@@ -8,17 +8,17 @@ def __END_RUBY_CODE__; end
 # Install
 . ~/cbin/misc/completer-adb.rb
 
-echo | ruby -x completer-adb.rb -ic  2 adb
-echo | ruby -x completer-adb.rb -ic  2 adb -s
-echo | ruby -x completer-adb.rb -ic  3 adb -s SE
-echo | ruby -x completer-adb.rb -ic  4 adb -s serial --
+ruby -x completer-adb-auto.rb -ic  2 adb
+ruby -x completer-adb-auto.rb -ic  2 adb -s
+ruby -x completer-adb-auto.rb -ic  3 adb -s SE
+ruby -x completer-adb-auto.rb -ic  4 adb -s serial --
 
-echo | ruby -x completer-adb.rb -ic  2 adb pull
+ruby -x completer-adb-auto.rb -ic  2 adb pull
 
-echo | ruby -x completer-adb.rb -ic  2 adb install
+ruby -x completer-adb-auto.rb -ic  2 adb install
 
-echo | ruby -x completer-adb.rb -ic  2 adb uninstall
-echo | ruby -x completer-adb.rb -ic  3 adb uninstall -k
+ruby -x completer-adb-auto.rb -ic  2 adb uninstall
+ruby -x completer-adb-auto.rb -ic  3 adb uninstall -k
 
 __completer_context_passer | ruby -x completer-adb.rb -ic  1 adb '$'
 
@@ -57,8 +57,8 @@ end
 def take_device_file()
   lazy do
     w = arg
-    w = "/" if w == "" || w == nil
-    run_command(%(adb shell ls -pd1 #{shescape w}'* 2>/dev/null')).split(/\n/).map{|x| x + "\b"}
+    w = "/" if w == ""
+    run_command(%(adb shell "ls -pd1 #{shescape w}* 2>/dev/null")).split(/\n/).map{|x| x + "\b"}
   end
 end
 

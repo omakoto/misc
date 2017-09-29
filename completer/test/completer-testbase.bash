@@ -15,6 +15,8 @@ fi
 RUBY=$(which ruby)
 export PATH="$(dirname "$RUBY"):/bin:/usr/bin/"
 
+RUBYOPTS=-w
+
 # ==============================================================================
 # Create a virtual home directory under /tmp.
 # ==============================================================================
@@ -94,6 +96,10 @@ assert_comp() {
   assert_out -s cat <("$@" <<<"$VARS" | sed -e '1d; $d')
 }
 
+run_ruby() {
+  "$RUBY" $RUBYOPTS "$@"
+}
+
 assert_raw_comp() {
-  assert_comp ruby -I "$compdir" "$@"
+  assert_comp run_ruby -I "$compdir" "$@"
 }

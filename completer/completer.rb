@@ -21,28 +21,49 @@ $debug = $debug_file ? true : false
 $debug_file ||= "/tmp/completer-debug.txt"
 $debug_out = nil
 
+$debug_indent_level = 0
+
 # Whether completion is being performed in case-insensitive mode.
 # For simplicity, we just use a global var.
 $complete_ignore_case = true
 
 module CompleterRefinements
   refine Kernel do
-    # Shod debug output.
-    def debug(*msg, &b)
-      if !$debug
-        return 0
-      end
-      # If stdout is TTY, assume the script is executed directly for
-      # testing, and write log to stderr.
-      if $stdout.tty?
-        $stderr.puts msg
-      else
-        $debug_out = open $debug_file, "w" unless $debug_out
-        $debug_out.puts msg
-        $debug_out.flush
+    # Debug print.
+    def debug(*args, &b)
+      return false unless $debug
+
+      if args.length > 0
+        msg = args.join("\n").gsub(/^/m, "  " * $debug_indent_level + "D:").chomp
+
+        # If stdout is TTY, assume the script is executed directly for
+        # testing, and write log to stderr.
+        if $stdout.tty?
+          $stderr.puts msg
+        else
+          $debug_out = open $debug_file, "w" unless $debug_out
+          $debug_out.puts msg
+          $debug_out.flush
+        end
       end
       debug(b.call()) if b
-      return 1
+      return true
+    end
+
+    def debug_indent(&block)
+      $debug_indent_level += 1
+
+      if block
+        begin
+          block.call()
+        ensure
+          $debug_indent_level -= 1
+        end
+      end
+    end
+
+    def debug_unindent()
+      $debug_indent_level -= 1
     end
 
     def die(*msg)
@@ -137,6 +158,8 @@ module CompleterRefinements
       end
     end
 
+    # Takes a block that generates a list. The block will be executed only when
+    # needed.
     def lazy(&block)
       return LazyList.new(&block)
     end
@@ -166,7 +189,7 @@ module CompleterRefinements
       return self.sub(/^~\//, "#{Dir.home}/")
     end
 
-    # Same as self.start_with?(prefix), except it can do case-insensitive
+    # Same as self.start_with?(prefix), except it does case-insensitive
     # comparison when needed.
     def has_prefix?(prefix)
       return true unless prefix
@@ -222,14 +245,14 @@ module CompleterHelper
     end
   end
 
-  # Find matching files for a given prefix.
+  # Find matching files for a given prefix, with a mask.
   def get_matched_files(prefix, wildcard = "*")
     # Remove the last path component.
     dir = prefix.sub(%r([^\/]*$), "")
 
     debug {"prefix=#{prefix} dir=#{dir} wildcard=#{wildcard}"}
 
-    if dir != "" and !Dir.exists? dir
+    if dir != "" and !Dir.exist? dir
       return
     end
 
@@ -438,22 +461,24 @@ class BashProxy
     # variables and jobs.
     # If STDIN is tty, just skip it, which is handy when debugging.
     if !$stdin.tty?
-      vars, jobs = $stdin.read.split(SECTION_SEPARATOR)
-      vars and vars.split(/\n/).each do |line|
-        if line =~ /^declare\s+(\S+)\s+([^=]+)\=(.*)$/ then
-          flag, name, value = $1, $2, $3
-          debug {"#{flag}: #{name} = #{value}"}
-          next if flag =~ /[aA]/ # Ignore arrays and hashes
-          @env[name] = unshescape value
+      debug_indent do
+        vars, jobs = $stdin.read.split(SECTION_SEPARATOR)
+        vars and vars.split(/\n/).each do |line|
+          if line =~ /^declare\s+(\S+)\s+([^=]+)\=(.*)$/ then
+            flag, name, value = $1, $2, $3
+            debug {"#{flag}: #{name} = #{value}"}
+            next if flag =~ /[aA]/ # Ignore arrays and hashes
+            @env[name] = unshescape value
+          end
         end
-      end
 
-      # TODO Parse jobs
-      jobs = jobs # suppress warning.
+        # TODO Parse jobs
+        jobs = jobs # suppress warning.
+      end
     end
 
     puts <<~EOF
-          IFS=$'\\n' COMPREPLY=(
+          local IFS=$'\\n'; COMPREPLY=(
         EOF
   end
 
@@ -543,8 +568,6 @@ class CompletionEngine
     @index = 0
     @current_consumed = false
     @candidates = []
-
-    @candidates_nest = 0 # for debugging
   end
 
   attr_reader :proxy, :orig_args, :args, :cursor_index, :command,
@@ -606,18 +629,20 @@ class CompletionEngine
   # If always is true, candidates will be always added, even
   # if the candidate doesn't start with the cursor arg.
   def _candidate_single(cand, always:false)
-    return unless at_cursor?
-    return unless cand
-    die "#{cand.inspect} is not a Candidate" unless cand.instance_of? Candidate
-    return unless cand.value
-    if !always and !cand.has_prefix? cursor_arg
-      debug {"#{"  " * @candidates_nest}candidate rejected."}
-      return
+    debug_indent do
+      return unless at_cursor?
+      return unless cand
+      die "#{cand.inspect} is not a Candidate" unless cand.instance_of? Candidate
+      return unless cand.value
+      if !always and !cand.has_prefix? cursor_arg
+        debug {"candidate rejected."}
+        return
+      end
+
+      debug {"candidate added: #{cand}"}
+
+      @candidates.push(cand)
     end
-
-    debug {"#{"  " * @candidates_nest}candidate added: #{cand}"}
-
-    @candidates.push(cand)
   end
 
   # Push candidates.
@@ -625,30 +650,26 @@ class CompletionEngine
   # If always is true, candidates will be always added, even
   # if they don't start with the cursor arg.
   def candidates(*vals, always:false , &block)
-    return unless at_cursor?
+    debug_indent do
+      return unless at_cursor?
 
-    @candidates_nest += 1
-
-    vals.each {|val|
-      debug {"#{"  " * @candidates_nest}candidate?: val=#{val.inspect}"}
-      c = as_candidate(val)
-      # debug {"as_candidate=#{c.inspect}"}
-      if c
-        @candidates_nest += 1
-        _candidate_single c, always:always
-        @candidates_nest -= 1
-      elsif val.respond_to? :each
-        val.each {|x| candidates x, always:always}
-      elsif val.respond_to? :call
-        candidates(val.call(), always:always)
-      else
-        debug {"Ignoring unsupported candidate: #{val.inspect}"}
+      vals.each {|val|
+        debug {"Possible candidate: val=#{val.inspect}"}
+        c = as_candidate(val)
+        if c
+          _candidate_single c, always:always
+        elsif val.respond_to? :each
+          val.each {|x| candidates x, always:always}
+        elsif val.respond_to? :call
+          candidates(val.call(), always:always)
+        else
+          debug {"Ignoring unsupported candidate: #{val.inspect}"}
+        end
+      }
+      if block
+        candidates(block.call(), always:always)
       end
-    }
-    if block
-      candidates(block.call(), always:always)
     end
-    @candidates_nest -= 1
   end
 
   alias candidate candidates
@@ -673,17 +694,21 @@ class CompletionEngine
   end
 
   def unconsume()
-    @current_consumed = false
-    debug {"arg at #{index} unconsumed."}
+    if @current_consumed
+      @current_consumed = false
+      debug {"arg at #{index} unconsumed."}
+    end
   end
 
   def consume()
-    @current_consumed = true
-    debug {"arg at #{index} consumed."}
+    if !@current_consumed
+      @current_consumed = true
+      debug {"arg at #{index} consumed."}
+    end
   end
 
   def match?(condition, value)
-    debug {"match?: #{condition}, #{value}"}
+    debug {"match?: \"#{condition}\", #{shescape value}"}
     if condition.instance_of? String
       return condition == value # For a full match, we're always case sensitive.
     elsif condition.instance_of? Regexp
@@ -711,10 +736,11 @@ class CompletionEngine
 
           start_index = @index
 
-          debug {"  #{match} vs #{arg}"} if match
           if match == nil or at_cursor? or match? match, arg
             debug {"Executing loop body."}
-            block.call()
+            debug_indent do
+              block.call()
+            end
           else
             return
           end
@@ -722,7 +748,7 @@ class CompletionEngine
           # If at_cursor, we need to run the rest of the code after the loop,
           # with the current arg (without advancing the index).
           if start_index == @cursor_index
-            break
+            throw FOR_ARG_LABEL
           end
         end
       end
@@ -731,12 +757,14 @@ class CompletionEngine
 
   # Exits the inner most for_arg loop.
   def for_break()
+    debug "for_break()"
     throw FOR_ARG_LABEL
   end
 
   # Jump back to the top the inner most for_arg loop and process the
   # next argument.
   def for_next()
+    debug "for_next()"
     throw FOR_ARG_LABEL, FOR_AGAIN
   end
 
@@ -746,34 +774,40 @@ class CompletionEngine
     return if current_consumed?
     debug {"[maybe](#{index}/#{cursor_index}): #{vals}#{block ? " (has block)" : ""}"}
 
-    # If we're at cursor, just add the candidates.
-    if at_cursor?
-      debug {" at_cursor: adding candidate(s)."}
-      candidates vals[0]
-      return
-    end
-
-    if !match? vals[0], arg
-      return
-    end
-
-    # Otherwise, eat words.
-    debug {"  maybe: found a match."}
-    consume
-
-    1.upto(vals.length - 1) do |i|
-      debug {"maybe(): processing arg ##{i} #{vals[i].inspect}"}
-      next_arg
-      consume
+    debug_indent do
+      # If we're at cursor, just add the candidates.
       if at_cursor?
-        candidates vals[i]
-        finish
+        debug {" at_cursor: adding candidate(s)."}
+        candidates vals[0]
+        return
       end
-    end
 
-    if block
-      next_arg
-      block.call
+      if !match? vals[0], arg
+        return
+      end
+
+      # Otherwise, eat words.
+      debug {"maybe: found a match."}
+      consume
+
+      debug_indent do
+        1.upto(vals.length - 1) do |i|
+          debug {"maybe(): processing arg ##{i} #{vals[i].inspect}"}
+          next_arg
+          consume
+          if at_cursor?
+            candidates vals[i]
+            finish
+          end
+        end
+      end
+
+      if block
+        next_arg
+        debug_indent do
+          block.call
+        end
+      end
     end
   end
 
@@ -790,16 +824,18 @@ class CompletionEngine
 
     debug {"[next_arg_must](#{index}/#{cursor_index}): #{vals}#{block ? " (has block)" : ""}"}
 
-    next_arg
-    consume
-
-    (vals.length).times do |n|
-      if at_cursor?
-        candidates vals[n]
-        finish
-      end
-      consume
+    debug_indent do
       next_arg
+      consume
+
+      (vals.length).times do |n|
+        if at_cursor?
+          candidates vals[n]
+          finish
+        end
+        consume
+        next_arg
+      end
     end
   end
 
