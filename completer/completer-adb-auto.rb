@@ -27,8 +27,6 @@ __completer_context_passer | ruby -x completer-adb.rb -ic  1 adb '$'
 require_relative "completer"
 using CompleterRefinements
 
-TESTING = ENV["ADB_TEST_COMP"] == "1"
-
 # Run a command, optionally allowing a "mocked output".
 def run_command(command)
   debug {"Executing: #{command}"}
@@ -79,18 +77,8 @@ Completer.define do
   def main()
     for_arg(/^-/) do
       maybe %w(-a -d -e -H -P)
-      maybe "-s", take_device_serial # maybe really should do "next". See the broken test *1.
-      maybe "-s2", take_device_serial, take_device_serial
-      maybe "-s3", take_device_serial, take_device_serial, take_device_serial
+      maybe "-s", take_device_serial
       maybe "-L", []
-
-      if TESTING
-        maybe %w(-f --flags), take_file
-        maybe %w(--color --colors), %w(always never auto)
-        maybe "--" do
-          for_break
-        end
-      end
       otherwise { for_break }
     end
 

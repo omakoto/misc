@@ -1,0 +1,65 @@
+#!/bin/bash
+
+. "${0%/*}/completer-testbase.bash"
+
+cat >$HOME/.android-devices <<EOF
+max
+boss
+#notused
+EOF
+
+# ==============================================================================
+# Start tests
+# ==============================================================================
+
+test_lunch() {
+  assert_comp ruby -x $compdir/completer-lunch-auto.rb -i -c "$@"
+}
+
+test_lunch 1 lunch <<EOF
+'generic-eng '
+'generic-userdebug '
+'full-eng '
+'full-userdebug '
+'bullhead-eng '
+'bullhead-userdebug '
+'angler-eng '
+'angler-userdebug '
+'marlin-eng '
+'marlin-userdebug '
+'sailfish-eng '
+'sailfish-userdebug '
+'walleye-eng '
+'walleye-userdebug '
+'taimen-eng '
+'taimen-userdebug '
+'max-eng '
+'max-userdebug '
+'boss-eng '
+'boss-userdebug '
+EOF
+
+test_lunch 1 lunch m  <<EOF
+'marlin-eng '
+'marlin-userdebug '
+'max-eng '
+'max-userdebug '
+EOF
+
+test_lunch 1 lunch MA <<EOF
+'marlin-eng '
+'marlin-userdebug '
+'max-eng '
+'max-userdebug '
+EOF
+
+test_lunch 1 lunch MAr <<EOF
+'marlin-eng '
+'marlin-userdebug '
+EOF
+
+test_lunch 1 lunch marlin-e <<EOF
+'marlin-eng '
+EOF
+
+done_testing
