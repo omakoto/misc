@@ -94,7 +94,7 @@ assert_comp() {
 
   # Note we can't use pipe here, which would break test counting in
   # testutil.bash, so <( ... )
-  assert_out -s cat <("$@" <<<"$VARS" | sed -e '1d; $d')
+  assert_out $ASSERT_OPT cat <("$@" <<<"$VARS" | sed -e '1d; $d')
 }
 
 run_ruby() {
@@ -104,3 +104,7 @@ run_ruby() {
 assert_raw_comp() {
   assert_comp run_ruby -I "$compdir" "$@"
 }
+
+
+# Sort output before diff by default.
+ASSERT_OPT=-s

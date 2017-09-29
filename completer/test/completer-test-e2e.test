@@ -1,0 +1,40 @@
+#!/bin/bash
+
+. "${0%/*}/completer-testbase.bash"
+
+cat >$HOME/.android-devices <<EOF
+max
+boss
+#notused
+EOF
+
+# ==============================================================================
+# Start tests
+# ==============================================================================
+
+cat >$MOCK_HOME/.inputrc <<EOF
+set bell-style none
+EOF
+
+cat >$MOCK_HOME/.bashrc <<EOF
+alias lunch=echo
+PS1=":"
+. $compdir/completer-lunch.rb
+stty -echo
+EOF
+
+function lunch_test_1() {
+  {
+    script -q -c "/bin/bash --noprofile" /dev/null <<EOF
+lunch a${TAB}u${TAB}
+exit
+EOF
+  } | tr -d '\r'
+}
+
+ASSERT_OPT="" assert_comp lunch_test_1 <<EOF
+exit
+:angler-userdebug
+EOF
+
+done_testing
