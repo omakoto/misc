@@ -358,6 +358,12 @@ declare -- PATH=\"a:b:c\"" assert_raw_comp -e 'require "completer"
 EOF
 
 
+assert_raw_comp -e 'require "completer"
+    Completer.define do
+    end
+    ' -- -ic 1 cat <<'EOF'
+EOF
+
 
 
 
