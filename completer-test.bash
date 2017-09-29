@@ -187,6 +187,67 @@ assert_raw_comp -e 'require "completer"
     ' -- -ic 3 cat a x <<'EOF'
 EOF
 
+assert_raw_comp -e 'require "completer"
+    Completer.define do
+      maybe %w(-a -b -c)
+      maybe "--colors", %w(always never auto)
+      next_word_must %w(aaa bbb), %w(xxx yyy)
+    end
+    ' -- -ic 1 cat <<'EOF'
+'-a '
+'-b '
+'-c '
+'--colors '
+'aaa '
+'bbb '
+EOF
+
+assert_raw_comp -e 'require "completer"
+    Completer.define do
+      maybe %w(-a -b -c)
+      maybe "--colors", %w(always never auto)
+      next_word_must %w(aaa bbb), %w(xxx yyy)
+    end
+    ' -- -ic 1 cat - <<'EOF'
+'-a '
+'-b '
+'-c '
+'--colors '
+EOF
+
+assert_raw_comp -e 'require "completer"
+    Completer.define do
+      maybe %w(-a -b -c)
+      maybe "--colors", %w(always never auto)
+      next_word_must %w(aaa bbb), %w(xxx yyy)
+    end
+    ' -- -ic 1 cat -- <<'EOF'
+'--colors '
+EOF
+
+assert_raw_comp -e 'require "completer"
+    Completer.define do
+      maybe %w(-a -b -c)
+      maybe "--colors", %w(always never auto)
+      next_word_must %w(aaa bbb), %w(xxx yyy)
+    end
+    ' -- -ic 2 cat --colors <<'EOF'
+'auto '
+'always '
+'never '
+EOF
+
+assert_raw_comp -e 'require "completer"
+    Completer.define do
+      maybe %w(-a -b -c)
+      maybe "--colors", %w(always never auto)
+      next_word_must %w(aaa bbb), %w(xxx yyy)
+    end
+    ' -- -ic 3 cat --colors always <<'EOF'
+'aaa '
+'bbb '
+EOF
+
 
 
 
