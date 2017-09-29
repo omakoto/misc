@@ -58,7 +58,7 @@ end
 # Generates candidates for device files.
 def take_device_file()
   lazy do
-    w = word
+    w = arg
     w = "/" if w == "" || w == nil
     run_command(%(adb shell ls -pd1 #{shescape w}'* 2>/dev/null')).split(/\n/).map{|x| x + "\b"}
   end
@@ -99,29 +99,29 @@ Completer.define do
       finish
     end
 
-    maybe %w(install install-multiple) do # Do implies next_word.
+    maybe %w(install install-multiple) do # Do implies next_arg.
       for_arg(/^-/) do
         maybe %w(-a -d -e -H -P)
         otherwise { for_break }
       end
-      next_word_must take_file
+      next_arg_must take_file
       finish
     end
 
     maybe "uninstall" do
       maybe %w(-k)
-      next_word_must take_package
+      next_arg_must take_package
       finish
     end
 
     maybe "push" do
-      next_word_must take_file, take_device_file
+      next_arg_must take_file, take_device_file
       finish
     end
 
     maybe "pull" do
-      next_word_must take_device_file
-      next_word_must take_file
+      next_arg_must take_device_file
+      next_arg_must take_file
       finish
     end
 

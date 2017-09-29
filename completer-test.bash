@@ -6,6 +6,8 @@
 export MOCK_HOME=/tmp/home
 export TAB="$(echo -e "\t")"
 
+unset COMPLETER_DEBUG
+
 export SHELL=/bin/bash
 
 umask 0077
@@ -105,6 +107,20 @@ assert_raw_comp -e 'require "completer"
 'ccc '
 EOF
 
+# If main() is defined, call it too.
+assert_raw_comp -e 'require "completer"
+    Completer.define do
+      def main
+        candidates %w(aaa aab abb ccc)
+      end
+    end
+    ' -- -ic 1 cat <<'EOF'
+'aaa '
+'aab '
+'abb '
+'ccc '
+EOF
+
 assert_raw_comp -e 'require "completer"
     Completer.define do
       candidates %w(aaa aab abb ccc)
@@ -146,7 +162,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      next_word_must take_file
+      next_arg_must take_file
     end
     ' -- -ic 1 cat <<'EOF'
 aaa/
@@ -156,7 +172,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      next_word_must %w(aaa bbb), %w(xxx yyy)
+      next_arg_must %w(aaa bbb), %w(xxx yyy)
     end
     ' -- -ic 1 cat <<'EOF'
 'aaa '
@@ -165,7 +181,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      next_word_must %w(aaa bbb), %w(xxx yyy)
+      next_arg_must %w(aaa bbb), %w(xxx yyy)
     end
     ' -- -ic 1 cat a <<'EOF'
 'aaa '
@@ -173,7 +189,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      next_word_must %w(aaa bbb), %w(xxx yyy)
+      next_arg_must %w(aaa bbb), %w(xxx yyy)
     end
     ' -- -ic 2 cat a <<'EOF'
 'xxx '
@@ -182,7 +198,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      next_word_must %w(aaa bbb), %w(xxx yyy)
+      next_arg_must %w(aaa bbb), %w(xxx yyy)
     end
     ' -- -ic 3 cat a x <<'EOF'
 EOF
@@ -191,7 +207,7 @@ assert_raw_comp -e 'require "completer"
     Completer.define do
       maybe %w(-a -b -c)
       maybe "--colors", %w(always never auto)
-      next_word_must %w(aaa bbb), %w(xxx yyy)
+      next_arg_must %w(aaa bbb), %w(xxx yyy)
     end
     ' -- -ic 1 cat <<'EOF'
 '-a '
@@ -206,7 +222,7 @@ assert_raw_comp -e 'require "completer"
     Completer.define do
       maybe %w(-a -b -c)
       maybe "--colors", %w(always never auto)
-      next_word_must %w(aaa bbb), %w(xxx yyy)
+      next_arg_must %w(aaa bbb), %w(xxx yyy)
     end
     ' -- -ic 1 cat - <<'EOF'
 '-a '
@@ -219,7 +235,7 @@ assert_raw_comp -e 'require "completer"
     Completer.define do
       maybe %w(-a -b -c)
       maybe "--colors", %w(always never auto)
-      next_word_must %w(aaa bbb), %w(xxx yyy)
+      next_arg_must %w(aaa bbb), %w(xxx yyy)
     end
     ' -- -ic 1 cat -- <<'EOF'
 '--colors '
@@ -229,7 +245,7 @@ assert_raw_comp -e 'require "completer"
     Completer.define do
       maybe %w(-a -b -c)
       maybe "--colors", %w(always never auto)
-      next_word_must %w(aaa bbb), %w(xxx yyy)
+      next_arg_must %w(aaa bbb), %w(xxx yyy)
     end
     ' -- -ic 2 cat --colors <<'EOF'
 'auto '
@@ -241,11 +257,104 @@ assert_raw_comp -e 'require "completer"
     Completer.define do
       maybe %w(-a -b -c)
       maybe "--colors", %w(always never auto)
-      next_word_must %w(aaa bbb), %w(xxx yyy)
+      next_arg_must %w(aaa bbb), %w(xxx yyy)
     end
     ' -- -ic 3 cat --colors always <<'EOF'
 'aaa '
 'bbb '
+EOF
+
+assert_raw_comp -e 'require "completer"
+    Completer.define do
+      for_arg do
+        next_arg_must take_file
+      end
+    end
+    ' -- -ic 1 cat <<'EOF'
+aaa/
+'dir2/ '
+'file1 '
+EOF
+
+assert_raw_comp -e 'require "completer"
+    Completer.define do
+      for_arg do
+        next_arg_must take_file
+      end
+    end
+    ' -- -ic 2 cat x <<'EOF'
+aaa/
+'dir2/ '
+'file1 '
+EOF
+
+assert_raw_comp -e 'require "completer"
+    Completer.define do
+      for_arg do
+        next_arg_must take_file
+      end
+    end
+    ' -- -ic 2 cat x aaa/ <<'EOF'
+'aaa/bbb/ '
+aaa/ccc/
+EOF
+
+VARS="declare -- HOME=$HOME
+declare -- HOST=hostname
+declare -- hostname=hostname.domain.com
+declare -- PATH=\"a:b:c\"" assert_raw_comp -e 'require "completer"
+    Completer.define {} # body does not matter for this test
+    ' -- -ic 1 cat '$' <<'EOF'
+'$HOME'
+'$HOST'
+'$hostname'
+'$PATH'
+EOF
+
+VARS="declare -- HOME=$HOME
+declare -- HOST=hostname
+declare -- hostname=hostname.domain.com
+declare -- PATH=\"a:b:c\"" assert_raw_comp -e 'require "completer"
+    Completer.define {} # body does not matter for this test
+    ' -- -ic 1 cat '$h' <<'EOF'
+'$HOME'
+'$HOST'
+'$hostname'
+EOF
+
+VARS="declare -- HOME=$HOME
+declare -- HOST=hostname
+declare -- hostname=hostname.domain.com
+declare -- PATH=\"a:b:c\"" assert_raw_comp -e 'require "completer"
+    Completer.define {} # body does not matter for this test
+    ' -- -c 1 cat '$h' <<'EOF'
+'$hostname'
+EOF
+
+VARS="declare -- HOME=$HOME
+declare -- HOST=hostname
+declare -- hostname=hostname.domain.com
+declare -- PATH=\"a:b:c\"" assert_raw_comp -e 'require "completer"
+    Completer.define {} # body does not matter for this test
+    ' -- -c 1 cat '$HOME' <<'EOF'
+'$HOME'
+EOF
+
+VARS="declare -- HOME=$HOME
+declare -- HOST=hostname
+declare -- hostname=hostname.domain.com
+declare -- PATH=\"a:b:c\"" assert_raw_comp -e 'require "completer"
+    Completer.define {} # body does not matter for this test
+    ' -- -c 1 cat '$HOME/' <<'EOF'
+/tmp/home/
+EOF
+
+VARS="declare -- HOME=$HOME
+declare -- HOST=hostname
+declare -- hostname=hostname.domain.com
+declare -- PATH=\"a:b:c\"" assert_raw_comp -e 'require "completer"
+    Completer.define {} # body does not matter for this test
+    ' -- -c 1 cat '$PATH/' <<'EOF'
 EOF
 
 
@@ -253,13 +362,7 @@ EOF
 
 
 
-
-
 done_testing
-
-
-
-
 
 # ==============================================================================
 # ADB TEST

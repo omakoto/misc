@@ -206,12 +206,12 @@ module CompleterHelper
     end
   end
 
-  # Find matching files for a given word.
-  def get_matched_files(word, wildcard = "*")
+  # Find matching files for a given prefix.
+  def get_matched_files(prefix, wildcard = "*")
     # Remove the last path component.
-    dir = word.sub(%r([^\/]*$), "")
+    dir = prefix.sub(%r([^\/]*$), "")
 
-    debug {"word=#{word} dir=#{dir} wildcard=#{wildcard}"}
+    debug {"prefix=#{prefix} dir=#{dir} wildcard=#{wildcard}"}
 
     if dir != "" and !Dir.exists? dir
       return
@@ -244,10 +244,10 @@ module CompleterHelper
     return ret
   end
 
-  # Find matching directories for a given word.
-  def get_matched_dirs(word)
+  # Find matching directories for a given prefix.
+  def get_matched_dirs(prefix)
     # Remove the last path component.
-    dir = word.sub(%r([^\/]*$), "")
+    dir = prefix.sub(%r([^\/]*$), "")
 
     if dir != "" and !Dir.exists? dir
       return
@@ -283,36 +283,36 @@ module CompleterHelper
   end
 
   # Accept an integer.
-  def get_matched_numbers(word, allow_negative:false)
+  def get_matched_numbers(prefix, allow_negative:false)
     lazy do
       if allow_negative
-        return [] unless word =~ /^\-?\d*$/
+        return [] unless prefix =~ /^\-?\d*$/
       else
-        return [] unless word =~ /^\d*$/
+        return [] unless prefix =~ /^\d*$/
       end
 
-      if word == ""
+      if prefix == ""
         if allow_negative
           return ["-1".."-9", "0".."9"]
         else
           return ["0".."9"]
         end
       else
-        return ("0".."9").map {|x| word + x }
+        return ("0".."9").map {|x| prefix + x }
       end
     end
   end
 
   def take_file(wildcard="*")
-    lazy { get_matched_files word, wildcard }
+    lazy { get_matched_files arg, wildcard }
   end
 
   def take_dir()
-    lazy { get_matched_dirs word }
+    lazy { get_matched_dirs arg }
   end
 
   def take_number(allow_negative:false)
-    lazy { get_matched_numbers word, allow_negative }
+    lazy { get_matched_numbers arg, allow_negative }
   end
 end
 
@@ -418,20 +418,24 @@ class BashProxy
 
   # Called when completion is about to start.
   def start_completion()
-    vars, jobs = $stdin.read.split(SECTION_SEPARATOR)
-    vars and vars.split(/\n/).each do |line|
-      if line =~ /^declare\s+(\S+)\s+([^=]+)\=(.*)$/ then
-        flag, name, value = $1, $2, $3
-        debug {"#{flag}: #{name} = #{value}"}
-        next if flag =~ /[aA]/ # Ignore arrays and hashes
-        @env[name] = unshescape value
+    # Parse output from __completer_context_passer and extract
+    # variables and jobs.
+    # If STDIN is tty, just skip it, which is handy when debugging.
+    if !$stdin.tty?
+      vars, jobs = $stdin.read.split(SECTION_SEPARATOR)
+      vars and vars.split(/\n/).each do |line|
+        if line =~ /^declare\s+(\S+)\s+([^=]+)\=(.*)$/ then
+          flag, name, value = $1, $2, $3
+          debug {"#{flag}: #{name} = #{value}"}
+          next if flag =~ /[aA]/ # Ignore arrays and hashes
+          @env[name] = unshescape value
+        end
       end
+
+      # TODO Parse jobs
+      jobs = jobs # suppress warning.
     end
 
-    # TODO Parse jobs
-    jobs = jobs # suppress warning.
-
-    # debug @env
     puts <<~EOF
           IFS=$'\\n' COMPREPLY=(
         EOF
@@ -447,13 +451,13 @@ class BashProxy
     do_filename_completion = false
     1.upto(engine.cursor_index - 1).each do |i|
       # When there's an unquoted redirect marker, do a filename completion.
-      word = engine.orig_words[i]
-      if word =~ /^[\<\>]/
+      arg = engine.orig_args[i]
+      if arg =~ /^[\<\>]/
         do_filename_completion = true
       end
     end
     if do_filename_completion
-      engine.candidates engine.get_matched_files engine.cursor_word
+      engine.candidates engine.get_matched_files engine.cursor_arg
     end
   end
 
@@ -467,12 +471,12 @@ class BashProxy
     puts(candidate.raw ? s : shescape(s))
   end
 
-  def variable_completable?(word)
-    return (word =~ /^\$([a-z0-9\_]*)$/i) ? $1 : nil
+  def variable_completable?(arg)
+    return (arg =~ /^\$([a-z0-9\_]*)$/i) ? $1 : nil
   end
 
-  def variable_expandable?(word)
-    return (word =~ /^\$([a-z0-9\_]*)\/$/i) ? $1 : nil
+  def variable_expandable?(arg)
+    return (arg =~ /^\$([a-z0-9\_]*)\/$/i) ? $1 : nil
   end
 end
 
@@ -496,19 +500,19 @@ class CompletionEngine
   FOR_ARG_LABEL = :ForArg
   FOR_AGAIN = 1
 
-  def initialize(proxy, orig_words, index, ignore_case, comp_line, comp_point)
+  def initialize(proxy, orig_args, index, ignore_case, comp_line, comp_point)
     @proxy = proxy
 
-    @orig_words = orig_words
+    @orig_args = orig_args
 
     # All words in the command line.
-    @words = orig_words.map { |w| unshescape(w.expand_home) }
+    @args = orig_args.map { |w| unshescape(w.expand_home) }
 
-    # Cursor word index; 0-based.
+    # Cursor arg index; 0-based.
     @cursor_index = index
 
     # Command name
-    @command = @words[0].gsub(%r(^.*/), "")
+    @command = @args[0].gsub(%r(^.*/), "")
 
     # Whether do case-insensitive comparison or not;
     # this comes from the -i option.
@@ -521,15 +525,13 @@ class CompletionEngine
     @comp_point = comp_point
 
     @index = 0
-
     @current_consumed = false
-
     @candidates = []
 
     @candidates_nest = 0 # for debugging
   end
 
-  attr_reader :proxy, :orig_words, :words, :cursor_index, :command,
+  attr_reader :proxy, :orig_args, :args, :cursor_index, :command,
       :ignore_case, :comp_line, :comp_point, :index
 
   # Returns the shell and environmental variables.
@@ -537,24 +539,24 @@ class CompletionEngine
     return @proxy.env
   end
 
-  def cursor_word()
-    return words[cursor_index] || ""
+  def cursor_arg()
+    return args[cursor_index] || ""
   end
 
-  def cursor_orig_word()
-    return orig_words[cursor_index] || ""
+  def cursor_orig_arg()
+    return orig_args[cursor_index] || ""
   end
 
-  def word(relative_index = 0)
+  def arg(relative_index = 0)
     i = index + relative_index
     return nil if i < 0 || i > cursor_index
-    return words[i] || ""
+    return args[i] || ""
   end
 
-  def orig_word(relative_index = 0)
+  def orig_arg(relative_index = 0)
     i = index + relative_index
     return nil if i < 0 || i > cursor_index
-    return orig_words[i] || ""
+    return orig_args[i] || ""
   end
 
   def at_cursor?()
@@ -586,47 +588,45 @@ class CompletionEngine
 
   # Add a single candidate.
   # If always is true, candidates will be always added, even
-  # if the candidate doesn't start with the cursor word.
-  def _candidate_single(arg, always:false)
-    # debug {"_candidate_single: #{arg} #{always}"}
-
+  # if the candidate doesn't start with the cursor arg.
+  def _candidate_single(cand, always:false)
     return unless at_cursor?
-    return unless arg
-    die "#{arg.inspect} is not a Candidate" unless arg.instance_of? Candidate
-    return unless arg.value
-    if !always and !arg.has_prefix? cursor_word
+    return unless cand
+    die "#{cand.inspect} is not a Candidate" unless cand.instance_of? Candidate
+    return unless cand.value
+    if !always and !cand.has_prefix? cursor_arg
       debug {"#{"  " * @candidates_nest}candidate rejected."}
       return
     end
 
-    debug {"#{"  " * @candidates_nest}candidate added: #{arg}"}
+    debug {"#{"  " * @candidates_nest}candidate added: #{cand}"}
 
-    @candidates.push(arg)
+    @candidates.push(cand)
   end
 
   # Push candidates.
   # "args" can be a string, an array of strings, or a proc.
   # If always is true, candidates will be always added, even
-  # if they don't start with the cursor word.
-  def candidates(*args, always:false , &block)
+  # if they don't start with the cursor arg.
+  def candidates(*vals, always:false , &block)
     return unless at_cursor?
 
     @candidates_nest += 1
 
-    args.each {|arg|
-      debug {"#{"  " * @candidates_nest}candidate?: arg=#{arg.inspect}"}
-      c = as_candidate(arg)
+    vals.each {|val|
+      debug {"#{"  " * @candidates_nest}candidate?: val=#{val.inspect}"}
+      c = as_candidate(val)
       # debug {"as_candidate=#{c.inspect}"}
       if c
         @candidates_nest += 1
         _candidate_single c, always:always
         @candidates_nest -= 1
-      elsif arg.respond_to? :each
-        arg.each {|x| candidates x, always:always}
-      elsif arg.respond_to? :call
-        candidates(arg.call(), always:always)
+      elsif val.respond_to? :each
+        val.each {|x| candidates x, always:always}
+      elsif val.respond_to? :call
+        candidates(val.call(), always:always)
       else
-        debug {"Ignoring unsupported candidate: #{arg.inspect}"}
+        debug {"Ignoring unsupported candidate: #{val.inspect}"}
       end
     }
     if block
@@ -639,11 +639,11 @@ class CompletionEngine
   alias flag candidates
   alias flags candidates
 
-  def next_word(force:false)
-    block_given? and die "next_word() doesn't take a block."
+  def next_arg(force:false)
+    block_given? and die "next_arg() doesn't take a block."
 
     if !force and !current_consumed?
-       debug {"[next_word] -> still at #{index}, not consumed yet"}
+       debug {"[next_arg] -> still at #{index}, not consumed yet"}
       return
     end
 
@@ -651,19 +651,19 @@ class CompletionEngine
       @index += 1
       @current_consumed = false
     end
-    debug {"[next_word] -> now at #{index}, \"#{word}\""}
+    debug {"[next_arg] -> now at #{index}, \"#{arg}\""}
 
     finish if after_cursor?
   end
 
   def unconsume()
     @current_consumed = false
-    debug {"word at #{index} unconsumed."}
+    debug {"arg at #{index} unconsumed."}
   end
 
   def consume()
     @current_consumed = true
-    debug {"word at #{index} consumed."}
+    debug {"arg at #{index} consumed."}
   end
 
   def match?(condition, value)
@@ -691,19 +691,21 @@ class CompletionEngine
 
           debug {"[for_arg](#{index}/#{cursor_index})"}
 
-          next_word force:force_next
+          next_arg force:force_next
 
-          debug {"  #{match} vs #{word}"} if match
-          if match == nil or at_cursor? or match? match, word
-            debug {"  matched."}
+          start_index = @index
+
+          debug {"  #{match} vs #{arg}"} if match
+          if match == nil or at_cursor? or match? match, arg
+            debug {"Executing loop body."}
             block.call()
           else
             return
           end
 
           # If at_cursor, we need to run the rest of the code after the loop,
-          # with the current word (without advancing the index).
-          if at_cursor?
+          # with the current arg (without advancing the index).
+          if start_index == @cursor_index
             break
           end
         end
@@ -711,35 +713,31 @@ class CompletionEngine
     end while res == FOR_AGAIN
   end
 
-  # def any_of(&block)
-  #   block or die "any_of() requires a block."
-  #   catch ANY_OF_LABEL do
-  #     block.call
-  #   end
-  # end
-
+  # Exits the inner most for_arg loop.
   def for_break()
     throw FOR_ARG_LABEL
   end
 
+  # Jump back to the top the inner most for_arg loop and process the
+  # next argument.
   def for_next()
     throw FOR_ARG_LABEL, FOR_AGAIN
   end
 
-  def maybe(*args, &block)
-    args.length == 0 and die "maybe() requires at least one argument."
+  def maybe(*vals, &block)
+    vals.length == 0 and die "maybe() requires at least one argument."
 
     return if current_consumed?
-    debug {"[maybe](#{index}/#{cursor_index}): #{args}#{block ? " (has block)" : ""}"}
+    debug {"[maybe](#{index}/#{cursor_index}): #{vals}#{block ? " (has block)" : ""}"}
 
     # If we're at cursor, just add the candidates.
     if at_cursor?
       debug {" at_cursor: adding candidate(s)."}
-      candidates args[0]
+      candidates vals[0]
       return
     end
 
-    if !match? args[0], word
+    if !match? vals[0], arg
       return
     end
 
@@ -747,18 +745,18 @@ class CompletionEngine
     debug {"  maybe: found a match."}
     consume
 
-    (args.length - 1).times do |i|
-      next_word
+    1.upto(vals.length - 1) do |i|
+      debug {"maybe(): processing arg ##{i} #{vals[i].inspect}"}
+      next_arg
       consume
       if at_cursor?
-        candidates args[i + 1]
+        candidates vals[i]
         finish
       end
     end
-    consume
 
     if block
-      next_word
+      next_arg
       block.call
     end
   end
@@ -771,21 +769,21 @@ class CompletionEngine
     end
   end
 
-  def next_word_must(*args, &block)
-    args.length == 0 and die "next_word_must() requires at least one argument."
+  def next_arg_must(*vals, &block)
+    vals.length == 0 and die "next_arg_must() requires at least one argument."
 
-    debug {"[next_word_must](#{index}/#{cursor_index}): #{args}#{block ? " (has block)" : ""}"}
+    debug {"[next_arg_must](#{index}/#{cursor_index}): #{vals}#{block ? " (has block)" : ""}"}
 
-    next_word
+    next_arg
     consume
 
-    (args.length).times do |n|
+    (vals.length).times do |n|
       if at_cursor?
-        candidates args[n]
+        candidates vals[n]
         finish
       end
       consume
-      next_word
+      next_arg
     end
   end
 
@@ -795,25 +793,31 @@ class CompletionEngine
     throw FINISH_LABEL
   end
 
-  # If the cursor word starts with "$", then see if it's expandable.
-  def maybe_handle_variable()
-    cow = cursor_orig_word
+  # If the cursor arg starts with "$", then see if it's expandable.
+  def _maybe_handle_variable()
+    arg = cursor_orig_arg
 
-    name = proxy.variable_completable?(cow)
-    if name
-      debug { "Maybe variable: #{name}" }
+    debug { "_maybe_handle_variable(): arg=#{arg}" }
+
+    # First, see if the current arg may be a prefix of an environmental
+    # variable, in which case we can complete.
+    var_name = proxy.variable_completable?(arg)
+    if var_name
+      debug { "Maybe variable: #{var_name}" }
       env.keys.each do |k|
-        if k.has_prefix?(name)
+        if k.has_prefix?(var_name)
           candidate("\e$" + k + "\b") # Raw candidate
         end
       end
       return
     end
 
-    name = proxy.variable_expandable?(cow)
-    if name
-      debug "Maybe variable: #{name}"
-      value = env[name]
+    # Next, see if the current arg contains an "expandable" environmental
+    # variable. e.g. on bash, $HOME/[TAB] will expand to /home/USER/.
+    var_name = proxy.variable_expandable?(arg)
+    if var_name
+      debug "Maybe variable: #{var_name}"
+      value = env[var_name]
       if value and File.directory?(value)
         value += "/"
         value += "\b" if is_non_empty_dir(value)
@@ -829,9 +833,9 @@ class CompletionEngine
       # Need this so candidates() will accept candidates.
       @index = @cursor_index
 
-      # If the cursor word starts with a variable name, we want to
+      # If the cursor arg starts with a variable name, we want to
       # complete or expand it.
-      maybe_handle_variable
+      _maybe_handle_variable
 
       # Bash unfortunately calls a completion function even after < and >.
       # Give the proxy a chance to detect it and do a filename completion.
@@ -889,18 +893,18 @@ class Completer
   end
 
   # Perform completion
-  def do_completion(cursor_pos, words, line:nil, point:nil, ignore_case:false, &b)
+  def do_completion(cursor_pos, args, line:nil, point:nil, ignore_case:false, &b)
     b or die "do_completion() requires a block."
     $complete_ignore_case = ignore_case
     proxy = get_proxy
-    engine = CompletionEngine.new proxy, words, cursor_pos, ignore_case, line, point
+    engine = CompletionEngine.new proxy, args, cursor_pos, ignore_case, line, point
     proxy.engine = engine
 
     debug <<~EOF
-        OrigWords: #{engine.orig_words.join ", "}
-        Words: #{engine.words.join ", "}
+        OrigArgs: #{engine.orig_args.join ", "}
+        Args: #{engine.args.join ", "}
         Index: #{engine.cursor_index}
-        Current: #{engine.cursor_word}
+        Current: #{engine.cursor_arg}
         Line: #{engine.comp_line}
         Point: #{engine.comp_point}
         EOF
@@ -922,8 +926,8 @@ class Completer
       # "-i" "-d" will be ignored.
       opts.on("-c", "Perform completion (shouldn't be used directly)") do
         cursor_pos = ARGV.shift.to_i
-        words = ARGV
-        do_completion cursor_pos, words, line:line, point:point, ignore_case: ignore_case, &b
+        args = ARGV
+        do_completion cursor_pos, args, line:line, point:point, ignore_case: ignore_case, &b
         return
       end
 
