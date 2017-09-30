@@ -22,15 +22,16 @@ TODO:
 
 =end
 
-$debug = (ENV['COMPLETER_DEBUG'] == "1")
-$debug_file = ENV['COMPLETER_DEBUG_OUT']
-$debug ||= ($debug_file ? true : false)
-$debug_file ||= "/tmp/completer-debug.txt"
+APP_DIR = Dir.home + "/.completer/"
+Dir.exist?(APP_DIR) or FileUtils.mkdir_p(APP_DIR)
 
-$debug_indent_level = 0
+DEBUG = (ENV['COMPLETER_DEBUG'] == "1")
+DEBUG_FILE = APP_DIR + "/completer-debug.txt"
 
 # Whether completion is being performed in case-insensitive mode.
-$complete_ignore_case = (ENV['COMPLETER_IGNORE_CASE'] == "1")
+IGNORE_CASE = (ENV['COMPLETER_IGNORE_CASE'] == "1")
+
+$debug_indent_level = 0
 
 $cached_shell = nil
 
@@ -42,7 +43,7 @@ module CompleterRefinements
   refine Kernel do
     # Debug print.
     def debug(*args, &b)
-      return false unless $debug
+      return false unless DEBUG
 
       if args.length > 0
         msg = args.join("\n").gsub(/^/m, "  " * $debug_indent_level + "D:").chomp
@@ -52,7 +53,7 @@ module CompleterRefinements
         if $stdout.tty?
           $stderr.puts msg
         else
-          $debug_out = open $debug_file, "w" unless $debug_out
+          $debug_out = ($debug_out or open(DEBUG_FILE, "w"))
           $debug_out.puts msg
           $debug_out.flush
         end
@@ -250,7 +251,7 @@ module CompleterRefinements
     # comparison when needed.
     def has_prefix?(prefix)
       return true unless prefix
-      if $complete_ignore_case
+      if IGNORE_CASE
         return self.downcase.start_with? prefix.downcase
       else
         return self.start_with? prefix
@@ -316,7 +317,7 @@ module CompleterHelper
     ret = []
 
     flag = File::FNM_DOTMATCH
-    if $complete_ignore_case
+    if IGNORE_CASE
       flag |= File::FNM_CASEFOLD
     end
 
