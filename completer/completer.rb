@@ -4,6 +4,7 @@ require 'optparse'
 require 'fileutils'
 require 'pathname'
 require 'singleton'
+require 'json'
 require 'pp'
 
 require 'rubygems' # For version check on<1.9
@@ -412,6 +413,36 @@ module CompleterHelper
 end
 
 #===============================================================================
+# Class to store the information from the previous invocation.
+#===============================================================================
+class Store
+  include Singleton
+
+  STORE_FILE = APP_DIR + "prev_session.json"
+
+  def initialize
+    @values = {}
+
+    if File.exist? STORE_FILE
+      @values = JSON.parse(open(STORE_FILE, "r").read)
+    end
+  end
+
+  def save()
+    open(STORE_FILE, "w").write(JSON.generate(@values))
+  end
+
+  def get(key, default)
+    return @values.fetch(key, default)
+  end
+
+  def set(key, value)
+    @values[key] = value
+  end
+end
+
+
+#===============================================================================
 # Candidate
 #===============================================================================
 
@@ -705,13 +736,17 @@ class FzfFilter
   require 'open3'
 
   def filter(cursor_arg, candidates)
+    if candidates.length <= 1
+      return candidates
+    end
     debug "Executing fzf with the following candidates..."
     debug_indent do
       query_opt = cursor_arg.to_s.empty? ? "" : "-q #{shescape cursor_arg}"
 
       sep = "\x1f"
 
-      Open3.popen2("fzf -d '#{sep}' #{query_opt} --read0 --print0 -1 -0 --with-nth 2") do |i,o,t|
+      Open3.popen2("fzf -d '#{sep}' #{query_opt} --no-multi" \
+          + " --read0 --print0 -1 -0 --with-nth 2") do |i,o,t|
         wrote = {}
         candidates.each do |c|
           debug {c.inspect}
@@ -1130,40 +1165,39 @@ class CompletionEngine
     end
   end
 
+  def _collect_candidate(&block)
+    # Need this so candidates() will accept candidates.
+    @index = @cursor_index
+
+    # If the cursor arg starts with a variable name, we want to
+    # complete or expand it.
+    _maybe_handle_variable
+
+    # Bash unfortunately calls a completion function even after < and >.
+    # Give the shell a chance to detect it and do a filename completion.
+    shell.maybe_override_candidates self
+
+    # If no one generated candidates yet, let the user-defined code
+    # generates some.
+    if !has_candidates?
+      catch FINISH_LABEL do
+        debug "Starting the user block."
+
+        # Start from the first argument, unconsumed.
+        @index = 1
+        unconsume
+
+        instance_eval(&block)
+      end
+    end
+  end
+
   # Entry point.
   def run_completion(&block)
+
     shell.start_completion
     begin
-      # Need this so candidates() will accept candidates.
-      @index = @cursor_index
-
-      # If the cursor arg starts with a variable name, we want to
-      # complete or expand it.
-      _maybe_handle_variable
-
-      # Bash unfortunately calls a completion function even after < and >.
-      # Give the shell a chance to detect it and do a filename completion.
-      shell.maybe_override_candidates self
-
-      # If no one generated candidates yet, let the user-defined code
-      # generates some.
-      if !has_candidates?
-        catch FINISH_LABEL do
-          debug "Starting the user block."
-
-          # Start from the first argument, unconsumed.
-          @index = 1
-          unconsume
-
-          instance_eval(&block)
-
-          # If the block defined main(), also run it.
-          if self.respond_to? :main
-            debug "Detected main(), also running it."
-            self.main
-          end
-        end
-      end
+      _collect_candidate(&block)
 
       # Add collected candidates.
       Filter.get_instance().filter(cursor_arg, @candidates).each do |c|

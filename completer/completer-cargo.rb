@@ -58,8 +58,9 @@ Completer.define do
       end
       finish
     end
-
   end
+
+  main()
 end
 
 =begin

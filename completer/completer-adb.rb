@@ -319,6 +319,8 @@ Completer.define do
       maybe take_device_file
     end
   end
+
+  main() # Make sure to run this.
 end
 
 =begin

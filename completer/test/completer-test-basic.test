@@ -31,6 +31,7 @@ assert_raw_comp -e 'require "completer"
       def main
         candidates %w(aaa aab abb ccc)
       end
+      main
     end
     ' -- -c 1 cat <<'EOF'
 'aaa '

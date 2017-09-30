@@ -87,6 +87,11 @@ cd ddd2
 # Test runners.
 # ==============================================================================
 
+shescape() {
+  ruby -e 'require "shellwords"; puts ARGV.map{|v| Shellwords.escape v}.join(" ")' "$@"
+}
+
+
 assert_comp() {
   if (( $verbose )) ; then
     echo -n "> "
