@@ -12,11 +12,13 @@ EOF
 # Start tests
 # ==============================================================================
 
+export COMPLETER_IGNORE_CASE=1
+
 assert_raw_comp -e 'require "completer"
     Completer.define do
       candidates %w(aaa aab abb ccc)
     end
-    ' -- -ic 1 cat <<'EOF'
+    ' -- -c 1 cat <<'EOF'
 'aaa '
 'aab '
 'abb '
@@ -30,7 +32,7 @@ assert_raw_comp -e 'require "completer"
         candidates %w(aaa aab abb ccc)
       end
     end
-    ' -- -ic 1 cat <<'EOF'
+    ' -- -c 1 cat <<'EOF'
 'aaa '
 'aab '
 'abb '
@@ -41,7 +43,7 @@ assert_raw_comp -e 'require "completer"
     Completer.define do
       candidates %w(aaa aab abb ccc)
     end
-    ' -- -ic 1 cat a <<'EOF'
+    ' -- -c 1 cat a <<'EOF'
 'aaa '
 'aab '
 'abb '
@@ -51,11 +53,12 @@ assert_raw_comp -e 'require "completer"
     Completer.define do
       candidates %w(aaa aab abb ccc)
     end
-    ' -- -ic 1 cat Aa <<'EOF'
+    ' -- -c 1 cat Aa <<'EOF'
 'aaa '
 'aab '
 EOF
 
+export COMPLETER_IGNORE_CASE=0
 assert_raw_comp -e 'require "completer"
     Completer.define do
       candidates %w(aaa aab abb ccc)
@@ -63,13 +66,14 @@ assert_raw_comp -e 'require "completer"
     ' -- -c 1 cat Aa <<'EOF'
 EOF
 
+export COMPLETER_IGNORE_CASE=1
 assert_raw_comp -e 'require "completer"
     Completer.define do
       for_arg do
         candidates %w(aaa aab abb ccc)
       end
     end
-    ' -- -ic 2 cat xyz <<'EOF'
+    ' -- -c 2 cat xyz <<'EOF'
 'aaa '
 'aab '
 'abb '
@@ -80,7 +84,7 @@ assert_raw_comp -e 'require "completer"
     Completer.define do
       next_arg_must take_file
     end
-    ' -- -ic 1 cat <<'EOF'
+    ' -- -c 1 cat <<'EOF'
 aaa/
 'dir2/ '
 'file1 '
@@ -90,7 +94,7 @@ assert_raw_comp -e 'require "completer"
     Completer.define do
       next_arg_must %w(aaa bbb), %w(xxx yyy)
     end
-    ' -- -ic 1 cat <<'EOF'
+    ' -- -c 1 cat <<'EOF'
 'aaa '
 'bbb '
 EOF
@@ -99,7 +103,7 @@ assert_raw_comp -e 'require "completer"
     Completer.define do
       next_arg_must %w(aaa bbb), %w(xxx yyy)
     end
-    ' -- -ic 1 cat a <<'EOF'
+    ' -- -c 1 cat a <<'EOF'
 'aaa '
 EOF
 
@@ -107,7 +111,7 @@ assert_raw_comp -e 'require "completer"
     Completer.define do
       next_arg_must %w(aaa bbb), %w(xxx yyy)
     end
-    ' -- -ic 2 cat a <<'EOF'
+    ' -- -c 2 cat a <<'EOF'
 'xxx '
 'yyy '
 EOF
@@ -116,7 +120,7 @@ assert_raw_comp -e 'require "completer"
     Completer.define do
       next_arg_must %w(aaa bbb), %w(xxx yyy)
     end
-    ' -- -ic 3 cat a x <<'EOF'
+    ' -- -c 3 cat a x <<'EOF'
 EOF
 
 assert_raw_comp -e 'require "completer"
@@ -125,7 +129,7 @@ assert_raw_comp -e 'require "completer"
       maybe "--colors", %w(always never auto)
       next_arg_must %w(aaa bbb), %w(xxx yyy)
     end
-    ' -- -ic 1 cat <<'EOF'
+    ' -- -c 1 cat <<'EOF'
 '-a '
 '-b '
 '-c '
@@ -140,7 +144,7 @@ assert_raw_comp -e 'require "completer"
       maybe "--colors", %w(always never auto)
       next_arg_must %w(aaa bbb), %w(xxx yyy)
     end
-    ' -- -ic 1 cat - <<'EOF'
+    ' -- -c 1 cat - <<'EOF'
 '-a '
 '-b '
 '-c '
@@ -153,7 +157,7 @@ assert_raw_comp -e 'require "completer"
       maybe "--colors", %w(always never auto)
       next_arg_must %w(aaa bbb), %w(xxx yyy)
     end
-    ' -- -ic 1 cat -- <<'EOF'
+    ' -- -c 1 cat -- <<'EOF'
 '--colors '
 EOF
 
@@ -163,7 +167,7 @@ assert_raw_comp -e 'require "completer"
       maybe "--colors", %w(always never auto)
       next_arg_must %w(aaa bbb), %w(xxx yyy)
     end
-    ' -- -ic 2 cat --colors <<'EOF'
+    ' -- -c 2 cat --colors <<'EOF'
 'auto '
 'always '
 'never '
@@ -175,7 +179,7 @@ assert_raw_comp -e 'require "completer"
       maybe "--colors", %w(always never auto)
       next_arg_must %w(aaa bbb), %w(xxx yyy)
     end
-    ' -- -ic 3 cat --colors always <<'EOF'
+    ' -- -c 3 cat --colors always <<'EOF'
 'aaa '
 'bbb '
 EOF
@@ -186,7 +190,7 @@ assert_raw_comp -e 'require "completer"
         next_arg_must take_file
       end
     end
-    ' -- -ic 1 cat <<'EOF'
+    ' -- -c 1 cat <<'EOF'
 aaa/
 'dir2/ '
 'file1 '
@@ -198,7 +202,7 @@ assert_raw_comp -e 'require "completer"
         next_arg_must take_file
       end
     end
-    ' -- -ic 2 cat x <<'EOF'
+    ' -- -c 2 cat x <<'EOF'
 aaa/
 'dir2/ '
 'file1 '
@@ -210,7 +214,7 @@ assert_raw_comp -e 'require "completer"
         next_arg_must take_file
       end
     end
-    ' -- -ic 2 cat x aaa/ <<'EOF'
+    ' -- -c 2 cat x aaa/ <<'EOF'
 'aaa/bbb/ '
 aaa/ccc/
 EOF
@@ -222,7 +226,7 @@ declare -- HOST=hostname
 declare -- hostname=hostname.domain.com
 declare -- PATH=\"a:b:c\"" assert_raw_comp -e 'require "completer"
     Completer.define {} # body does not matter for this test
-    ' -- -ic 1 cat '$' <<'EOF'
+    ' -- -c 1 cat '$' <<'EOF'
 '$HOME'
 '$HOST'
 '$hostname'
@@ -234,12 +238,13 @@ declare -- HOST=hostname
 declare -- hostname=hostname.domain.com
 declare -- PATH=\"a:b:c\"" assert_raw_comp -e 'require "completer"
     Completer.define {} # body does not matter for this test
-    ' -- -ic 1 cat '$h' <<'EOF'
+    ' -- -c 1 cat '$h' <<'EOF'
 '$HOME'
 '$HOST'
 '$hostname'
 EOF
 
+export COMPLETER_IGNORE_CASE=0
 VARS="declare -- HOME=$HOME
 declare -- HOST=hostname
 declare -- hostname=hostname.domain.com
@@ -277,16 +282,18 @@ EOF
 
 # Special casing redirect operators.
 
+export COMPLETER_IGNORE_CASE=1
+
 assert_raw_comp -e 'require "completer"
     Completer.define do
     end
-    ' -- -ic 1 cat <<'EOF'
+    ' -- -c 1 cat <<'EOF'
 EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
     end
-    ' -- -ic 2 cat '<' <<'EOF'
+    ' -- -c 2 cat '<' <<'EOF'
 aaa/
 'dir2/ '
 'file1 '
@@ -295,7 +302,7 @@ EOF
 assert_raw_comp -e 'require "completer"
     Completer.define do
     end
-    ' -- -ic 2 cat '<<<' <<'EOF'
+    ' -- -c 2 cat '<<<' <<'EOF'
 aaa/
 'dir2/ '
 'file1 '
@@ -304,7 +311,7 @@ EOF
 assert_raw_comp -e 'require "completer"
     Completer.define do
     end
-    ' -- -ic 2 cat '>' <<'EOF'
+    ' -- -c 2 cat '>' <<'EOF'
 aaa/
 'dir2/ '
 'file1 '
@@ -313,7 +320,7 @@ EOF
 assert_raw_comp -e 'require "completer"
     Completer.define do
     end
-    ' -- -ic 2 cat '>>' <<'EOF'
+    ' -- -c 2 cat '>>' <<'EOF'
 aaa/
 'dir2/ '
 'file1 '
@@ -322,7 +329,7 @@ EOF
 assert_raw_comp -e 'require "completer"
     Completer.define do
     end
-    ' -- -ic 2 cat '>!' <<'EOF'
+    ' -- -c 2 cat '>!' <<'EOF'
 aaa/
 'dir2/ '
 'file1 '
@@ -336,7 +343,7 @@ assert_raw_comp -e 'require "completer"
     Completer.define do
       next_arg_must take_number
     end
-    ' -- -ic 1 cat <<'EOF'
+    ' -- -c 1 cat <<'EOF'
 '0 '
 '1 '
 '2 '
@@ -353,7 +360,7 @@ assert_raw_comp -e 'require "completer"
     Completer.define do
       next_arg_must take_number
     end
-    ' -- -ic 1 cat 2 <<'EOF'
+    ' -- -c 1 cat 2 <<'EOF'
 '20 '
 '21 '
 '22 '
@@ -370,7 +377,7 @@ assert_raw_comp -e 'require "completer"
     Completer.define do
       next_arg_must take_number allow_negative:true
     end
-    ' -- -ic 1 cat <<'EOF'
+    ' -- -c 1 cat <<'EOF'
 '0 '
 '1 '
 '2 '
@@ -396,7 +403,7 @@ assert_raw_comp -e 'require "completer"
     Completer.define do
       next_arg_must take_number allow_negative:true
     end
-    ' -- -ic 1 cat 3 <<'EOF'
+    ' -- -c 1 cat 3 <<'EOF'
 '30 '
 '31 '
 '32 '
@@ -413,7 +420,7 @@ assert_raw_comp -e 'require "completer"
     Completer.define do
       next_arg_must take_number allow_negative:true
     end
-    ' -- -ic 1 cat -3 <<'EOF'
+    ' -- -c 1 cat -3 <<'EOF'
 '-30 '
 '-31 '
 '-32 '

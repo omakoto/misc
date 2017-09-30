@@ -13,7 +13,7 @@ EOF
 # ==============================================================================
 
 test_lunch() {
-  assert_comp run_ruby -x $compdir/completer-lunch.rb -i -c "$@"
+  COMPLETER_IGNORE_CASE=1 assert_comp run_ruby -x $compdir/completer-lunch.rb -c "$@"
 }
 
 test_lunch 1 lunch <<EOF
