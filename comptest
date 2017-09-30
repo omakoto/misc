@@ -1,4 +1,5 @@
-#!bash Source this file on bash.
+#!/bin/bash
+#Source this file on bash to install
 
 # Bash completion tester.
 
@@ -42,5 +43,5 @@ local IFS
 } >/tmp/compin.txt
 # EE_QUIET=1 1 /tmp/compin.txt
 IFS=$'\n'
-#COMPREPLY=($(cat /tmp/compreply.txt 2>/dev/null))
-COMPREPLY=($(ls $HOME | fzf))
+COMPREPLY=($(cat /tmp/compreply.txt 2>/dev/null))
+# COMPREPLY=($(ls $HOME | fzf))

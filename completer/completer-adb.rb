@@ -285,6 +285,7 @@ Completer.define do
   end
 
   def cmd()
+# TODO the completion at this point seems broken.
     maybe "activity" do
       am
     end

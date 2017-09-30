@@ -18,8 +18,16 @@ export COMPLETER_DEBUG=/tmp/completer-debug.txt
 - Can also be enabled with -d.
 
 TODO:
-- Test -e option
 
+- There seems to be a bash bug when completing the same command line twice
+in a row, the first one got no candidates, and the second one got one.
+This breaks FZF completion.
+Figure out a workaround.
+
+https://www.gnu.org/software/bash/manual/html_node/Programmable-Completion.html#Programmable-Completion
+https://www.gnu.org/software/bash/manual/html_node/Programmable-Completion.html#Programmable-Completion
+
+- Test -e option
 - Zsh parameter description not working properly. -X seems to be a wrong option.
 
 =end
@@ -30,13 +38,15 @@ DEBUG = (ENV['COMPLETER_DEBUG'] == "1")
 # Whether completion is being performed in case-insensitive mode.
 IGNORE_CASE = (ENV['COMPLETER_IGNORE_CASE'] == "1")
 
-# Whether always use FZF or not.
-ALWAYS_FZF = (ENV['COMPLETER_ALWAYS_FZF'] == "1")
-
 # If a completion happens for the same command in a row within this many seconds,
 # we reuse the last result.
 # Set "-1" to disable cache.
 CACHE_TIMEOUT = (ENV['COMPLETER_CACHE_TIMEOUT'] || 5).to_f
+
+# Note FZF doesn't seem to work well on zsh.
+
+# Whether always use FZF or not.
+ALWAYS_FZF = (ENV['COMPLETER_ALWAYS_FZF'] == "1")
 
 # If a completion happens for the same command in a row within this many seconds,
 # we reuse the last result, and use FZF.
@@ -52,6 +62,7 @@ DEBUG_FILE = APP_DIR + "/completer-debug.txt"
 
 $debug_indent_level = 0
 $_cached_shell = nil
+$debug_out= nil
 
 RAW_MARKER = "\e"
 HELP_MARKER = "\t"
@@ -537,6 +548,7 @@ class CandidateCache
 
     ret = []
     open(STORE_FILE, "r").each_line do |line|
+      line.chomp!
       ret << line.chomp.as_candidate
     end
     return ret
@@ -596,6 +608,10 @@ end
 
 class BashAgent < BasicShellAgent
   SECTION_SEPARATOR = "\n-*-*-*-COMPLETER-*-*-*-\n"
+
+  def fzf_supported()
+    return true
+  end
 
   def install(commands, script, extras)
     command = commands[0]
@@ -704,6 +720,10 @@ Note zsh always seems to do variable expansions, so we don't have to do it.
 
 =end
 class ZshAgent < BasicShellAgent
+  def fzf_supported()
+    return false # FZF doesn't seem to work well in the zsh completion context.
+  end
+
   def install(commands, script, extras)
 
     command = commands[0]
@@ -798,7 +818,7 @@ class FzfFilter
         ret = []
         result = o.read
         debug "Selection was:"
-        result.split(/\0/).each do |line|
+        result.split("\0").each do |line|
           index = line[/^\d+/].to_i
           c = dedupe_list[index]
           debug {c.inspect}
@@ -1240,8 +1260,10 @@ class CompletionEngine
     begin
       use_fzf = ALWAYS_FZF
 
+      # Check the cached candidates.
       last_time = Store.instance.get STORE_LAST_COMPLETE_TIME, 0
       cache_age = Time.now.to_f - last_time.to_f
+
       if (cache_age > 0 and cache_age < CACHE_TIMEOUT) and
           (Store.instance.get(STORE_LAST_CURSOR_INDEX) == cursor_index) and
           (Store.instance.get(STORE_LAST_ORIG_ARGS) == orig_args)
@@ -1260,23 +1282,32 @@ class CompletionEngine
         Store.instance.set STORE_LAST_CURSOR_INDEX, cursor_index
         Store.instance.set STORE_LAST_ORIG_ARGS, orig_args
 
+        debug "Saving candidates..."
         CandidateCache.instance.save(@candidates)
+        debug "Done saving candidates."
       end
 
+      use_fzf = false unless shell.fzf_supported
+
       filter = use_fzf ? FzfFilter.new : EmptyFilter.new
+
+      debug "Start adding candidates."
 
       # Add collected candidates.
       filter.filter(cursor_arg, @candidates).each do |c|
         shell.add_candidate c
       end
 
+      debug "Candidates all added."
+
       Store.instance.set STORE_LAST_COMPLETE_TIME, Time.now.to_f
     ensure
       shell.end_completion
-      Store.instance.save()
     end
-  end
 
+    Store.instance.save()
+    debug "Done"
+  end
 end
 
 
