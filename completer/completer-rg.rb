@@ -31,10 +31,10 @@ Completer.define do
   end
 
   for_arg(/^-/) do
-    maybe words %(
-      # -s  --case-sensitive
-      #     --column
-      -c  --count
+    maybe build_candidates %(
+      -s  --case-sensitive      : Search case sensitively.
+          --column              : Show column numbers.
+      -c  --count               : Only show count of matches for each file.
       #     --debug
           --files
       -l  --files-with-matches

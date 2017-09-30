@@ -21,6 +21,8 @@ TODO:
   - Pass "help" as a description.
   - Expanding a filename that contains a space doesn't seem to work.
 
+- fzf filter, apparently this is doable.
+
 =end
 
 $debug = (ENV['COMPLETER_DEBUG'] == "1")
@@ -216,6 +218,24 @@ module CompleterRefinements
       return ret
     end
 
+    def build_candidates(*args)
+      ret = []
+      args.each do |arg|
+        arg.split(/\n/).each do |line|
+          # Remove leading spaces and comments.
+          l = line.sub(/^\s+/, "").sub(/\s* \# .*/x, "")
+
+          l, help = l.split(/\s* : \s*/x, 2)
+
+          if l != nil && l.length > 0
+            l.split(/\s+/).each do |word|
+              ret << word.as_candidate(help:help)
+            end
+          end
+        end
+      end
+      return ret
+    end
   end # refine Kernel
 
   refine String do
@@ -405,7 +425,7 @@ class Candidate
     @value = value.chomp
     @raw= raw
     @completed = completed
-    @help = help
+    @help = help == "" ? nil : help
   end
 
   # The candidate text.
@@ -584,13 +604,18 @@ class BashAgent < BasicShellAgent
   end
 end
 
-# Interface for Zsh.
-# See:
-# http://www.csse.uwa.edu.au/programming/linux/zsh-doc/zsh_23.html
-# https://linux.die.net/man/1/zshcompsys
-# http://zsh.sourceforge.net/Guide/zshguide06.html
-#
-# Note zsh always seems to do variable expansions, so we don't have to do it.
+=begin
+Interface for Zsh.
+See:
+http://www.csse.uwa.edu.au/programming/linux/zsh-doc/zsh_23.html
+https://linux.die.net/man/1/zshcompsys
+http://zsh.sourceforge.net/Guide/zshguide06.html
+https://linux.die.net/man/1/zshcompwid (compadd)
+
+Note zsh always seems to do variable expansions, so we don't have to do it.
+
+
+=end
 class ZshAgent < BasicShellAgent
   def install(commands, script, extras)
 
@@ -624,11 +649,26 @@ class ZshAgent < BasicShellAgent
     # -S '' tells zsh not to add a space afterward, since gqui does this for us.
     # -Q prevents zsh from quoting metacharacters in the results.
     # -f treats the result as filenames.
-    out = "compadd -S '' -Q -- #{(candidate.raw ? s : shescape(s))}"
+    # -X description
+    descopt = candidate.help ? "-X #{shescape candidate.help}" : ""
+
+    fileopt = File.exist?(s) ? "-f" : ""
+
+    out = "compadd -S '' -Q #{descopt} #{fileopt} -- #{(candidate.raw ? s : shescape(s))}"
     debug out
     puts out
   end
 end
+
+#===============================================================================
+# Filter
+#===============================================================================
+class Filter
+  def filter(candidates)
+    return candidates
+  end
+end
+
 #-----------------------------------------------------------
 # Engine
 #-----------------------------------------------------------

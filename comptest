@@ -1,4 +1,4 @@
-# Source this file on bash.
+#!bash Source this file on bash.
 
 # Bash completion tester.
 
@@ -40,5 +40,7 @@ local IFS
     declare -p "$n"
   done
 } >/tmp/compin.txt
-EE_QUIET=1 1 /tmp/compin.txt
-IFS=$'\n' COMPREPLY=($(cat /tmp/compreply.txt 2>/dev/null))
+# EE_QUIET=1 1 /tmp/compin.txt
+IFS=$'\n'
+#COMPREPLY=($(cat /tmp/compreply.txt 2>/dev/null))
+COMPREPLY=($(ls $HOME | fzf))
