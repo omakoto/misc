@@ -20,8 +20,6 @@ TODO:
 
 - Zsh parameter description not working properly. -X seems to be a wrong option.
 
-- fzf filter, apparently this is doable.
-
 =end
 
 $debug = (ENV['COMPLETER_DEBUG'] == "1")
@@ -35,6 +33,10 @@ $debug_indent_level = 0
 $complete_ignore_case = (ENV['COMPLETER_IGNORE_CASE'] == "1")
 
 $cached_shell = nil
+
+RAW_MARKER = "\e"
+HELP_MARKER = "\t"
+INCOMPLETE_MARKER = "\b"
 
 module CompleterRefinements
   refine Kernel do
@@ -175,14 +177,14 @@ module CompleterRefinements
       elsif value.instance_of? String
         # If a string contains a TAB, the following section is a
         # help string.
-        (candidate, s_help) = value.split(/\t/, 2)
+        (candidate, s_help) = value.split(HELP_MARKER, 2)
 
         # If a candidate starts with an ESC, it's a raw candidate.
-        s_raw = candidate.sub!(/^\x1b/, "") ? true : false
+        s_raw = candidate.sub!(/^#{RAW_MARKER}/o, "") ? true : false
 
         # If a candidate ends with a BS, it's not a completed
         # candidate.
-        s_completed = candidate.sub!(/\x08$/, "") ? false : true
+        s_completed = candidate.sub!(/#{INCOMPLETE_MARKER}$/, "") ? false : true
 
         # If one is provided as an argument, use it.
         raw = s_raw if raw == nil
@@ -323,7 +325,7 @@ module CompleterHelper
         if path.directory?
           cand = path.to_s
           cand += "/"
-          cand += "\b" if is_non_empty_dir(path)
+          cand += INCOMPLETE_MARKER if is_non_empty_dir(path)
         else
           # If it's a file, only add when the basename matches wildcard.
           next unless File.fnmatch(wildcard, path.basename, flag)
@@ -354,7 +356,7 @@ module CompleterHelper
         next unless path.directory?
         cand = path.to_s
         cand += "/"
-        cand += "\b" if is_non_empty_dir(path, ignore_files:true)
+        cand += INCOMPLETE_MARKER if is_non_empty_dir(path, ignore_files:true)
         ret.push(cand)
       end
     rescue SystemCallError => e
@@ -453,6 +455,18 @@ class Candidate
     return "{Candidate:value=#{shescape value}#{raw ? " [raw]" : ""}" +
         "#{completed ? " [completed]" : ""}" +
         "#{help ? " " + help : ""}}"
+  end
+
+  def to_parsable()
+    ret = ""
+    ret << RAW_MARKER if raw
+    ret << value
+    ret << INCOMPLETE_MARKER unless completed
+    if help
+      ret << HELP_MARKER
+      ret << help
+    end
+    return ret
   end
 end
 
@@ -666,9 +680,61 @@ end
 #===============================================================================
 # Filter
 #===============================================================================
+
+# Base (and empty) filter.
 class Filter
-  def filter(candidates)
+  @@instance = nil
+
+  DEFAULT_FILTER = "Filter"
+  # DEFAULT_FILTER = "FzfFilter"
+
+  def filter(cursor_arg, candidates)
     return candidates
+  end
+
+  def self.get_instance()
+    if @@instance == nil
+      clazz = ENV['COMPLETER_FILTER_CLASS'] || DEFAULT_FILTER
+      @@instance = Object::const_get(clazz).new
+    end
+    return @@instance
+  end
+end
+
+# Runs FZF to help completion.
+class FzfFilter
+  require 'open3'
+
+  def filter(cursor_arg, candidates)
+    debug "Executing fzf with the following candidates..."
+    debug_indent do
+      query_opt = cursor_arg.to_s.empty? ? "" : "-q #{shescape cursor_arg}"
+
+      sep = "\x1f"
+
+      Open3.popen2("fzf -d '#{sep}' #{query_opt} --read0 --print0 -1 -0 --with-nth 2") do |i,o,t|
+        wrote = {}
+        candidates.each do |c|
+          debug {c.inspect}
+          next if wrote[c.value]
+          wrote[c.value] = true
+          i.print(c.to_parsable, sep, c.value.ljust(40), " ", c.help, "\0")
+        end
+        i.close()
+        debug "Wrote candidates, waiting for selection..."
+
+        ret = []
+        result = o.read
+        debug "Selection was:"
+        result.split(/\0/).each do |line|
+          src = line.split(sep, 2)[0]
+          c = src.as_candidate()
+          debug {c.inspect}
+          ret << c
+        end
+        return ret
+      end
+    end
   end
 end
 
@@ -1045,7 +1111,7 @@ class CompletionEngine
       debug { "Maybe variable: #{var_name}" }
       env.keys.each do |k|
         if k.has_prefix?(var_name)
-          candidate("\e$" + k + "\b") # Raw candidate
+          candidate(RAW_MARKER + "$" + k + INCOMPLETE_MARKER) # Raw candidate
         end
       end
       return
@@ -1059,7 +1125,7 @@ class CompletionEngine
       value = env[var_name]
       if value and File.directory?(value)
         value += "/"
-        value += "\b" if is_non_empty_dir(value)
+        value += INCOMPLETE_MARKER if is_non_empty_dir(value)
         candidate value, always:true
       end
     end
@@ -1101,7 +1167,7 @@ class CompletionEngine
       end
 
       # Add collected candidates.
-      @candidates.each do |c|
+      Filter.get_instance().filter(cursor_arg, @candidates).each do |c|
         shell.add_candidate c
       end
     ensure

@@ -24,6 +24,7 @@ export MOCK_HOME=/tmp/home
 export TAB="$(echo -e "\t")"
 
 unset COMPLETER_DEBUG
+unset COMPLETER_FILTER_CLASS
 
 export SHELL=/bin/bash
 
