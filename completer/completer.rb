@@ -24,11 +24,8 @@ TODO:
 
 =end
 
-APP_DIR = Dir.home + "/.completer/"
-Dir.exist?(APP_DIR) or FileUtils.mkdir_p(APP_DIR)
-
+# Whether to enable debug or not.
 DEBUG = (ENV['COMPLETER_DEBUG'] == "1")
-DEBUG_FILE = APP_DIR + "/completer-debug.txt"
 
 # Whether completion is being performed in case-insensitive mode.
 IGNORE_CASE = (ENV['COMPLETER_IGNORE_CASE'] == "1")
@@ -45,6 +42,13 @@ CACHE_TIMEOUT = (ENV['COMPLETER_CACHE_TIMEOUT'] || 5).to_f
 # we reuse the last result, and use FZF.
 # Set "-1" to disable cache.
 AUTO_FZF_TIMEOUT = (ENV['COMPLETER_FZF_TIMEOUT'] || 1.5).to_f
+
+# Data files and debug log goes to this directory.
+APP_DIR = Dir.home + "/.completer/"
+Dir.exist?(APP_DIR) or FileUtils.mkdir_p(APP_DIR)
+
+# Debug output goes to this file.
+DEBUG_FILE = APP_DIR + "/completer-debug.txt"
 
 $debug_indent_level = 0
 $_cached_shell = nil
