@@ -33,6 +33,9 @@ DEBUG_FILE = APP_DIR + "/completer-debug.txt"
 # Whether completion is being performed in case-insensitive mode.
 IGNORE_CASE = (ENV['COMPLETER_IGNORE_CASE'] == "1")
 
+CACHE_TIMEOUT = (ENV['COMPLETER_CACHE_TIMEOUT'] || 3).to_f
+AUTO_FZF_TIMEOUT = (ENV['COMPLETER_FZF_TIMEOUT'] || 0.5).to_f
+
 $debug_indent_level = 0
 $_cached_shell = nil
 
@@ -432,7 +435,7 @@ class Store
     open(STORE_FILE, "w").write(JSON.generate(@values))
   end
 
-  def get(key, default)
+  def get(key, default=nil)
     return @values.fetch(key, default)
   end
 
@@ -494,6 +497,33 @@ class Candidate
     if help
       ret << HELP_MARKER
       ret << help
+    end
+    return ret
+  end
+end
+
+class CandidateCache
+  include Singleton
+
+  STORE_FILE = APP_DIR + "last_candidates.dat"
+
+  def initialize
+  end
+
+  def save(candidates)
+    open(STORE_FILE, "w") do |out|
+      candidates.each do |c|
+        out.puts c.to_parsable
+      end
+    end
+  end
+
+  def load()
+    return [] unless File.exist? STORE_FILE
+
+    ret = []
+    open(STORE_FILE, "r").each_line do |line|
+      ret << line.chomp.as_candidate
     end
     return ret
   end
@@ -1205,13 +1235,25 @@ class CompletionEngine
   def run_completion(&block)
     shell.start_completion
     begin
-      # Note, start_completion needs to happen before this, because
-      # that's where we read variables from bash.
-      _collect_candidate(&block)
+      last_time = Store.instance.get STORE_LAST_COMPLETE_TIME, 0
+      cache_age = Time.now.to_i - last_time
+      if (cache_age > 0 and cache_age <= CACHE_TIMEOUT) and
+          (Store.instance.get(STORE_LAST_CURSOR_INDEX) == cursor_index) and
+          (Store.instance.get(STORE_LAST_ORIG_ARGS) == orig_args)
+        @candidates = CandidateCache.instance.load()
+      end
 
-      Store.instance.set STORE_LAST_COMPLETE_TIME, Time.now.to_i
-      Store.instance.set STORE_LAST_CURSOR_INDEX, cursor_index
-      Store.instance.set STORE_LAST_ORIG_ARGS, orig_args
+      if @candidates.length == 0
+        # Note, start_completion needs to happen before this, because
+        # that's where we read variables from bash.
+        _collect_candidate(&block)
+
+        Store.instance.set STORE_LAST_COMPLETE_TIME, Time.now.to_i
+        Store.instance.set STORE_LAST_CURSOR_INDEX, cursor_index
+        Store.instance.set STORE_LAST_ORIG_ARGS, orig_args
+
+        CandidateCache.instance.save(@candidates)
+      end
 
       # Add collected candidates.
       Filter.get_instance().filter(cursor_arg, @candidates).each do |c|
