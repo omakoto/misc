@@ -418,7 +418,7 @@ end
 class Store
   include Singleton
 
-  STORE_FILE = APP_DIR + "prev_session.json"
+  STORE_FILE = APP_DIR + "last_session.json"
 
   def initialize
     @values = {}
@@ -440,7 +440,6 @@ class Store
     @values[key] = value
   end
 end
-
 
 #===============================================================================
 # Candidate
@@ -659,7 +658,6 @@ https://linux.die.net/man/1/zshcompwid (for compadd command)
 
 Note zsh always seems to do variable expansions, so we don't have to do it.
 
-
 =end
 class ZshAgent < BasicShellAgent
   def install(commands, script, extras)
@@ -745,14 +743,21 @@ class FzfFilter
 
       sep = "\x1f"
 
+      dedupe_list = []
+
       Open3.popen2("fzf -d '#{sep}' #{query_opt} --no-multi" \
           + " --read0 --print0 -1 -0 --with-nth 2") do |i,o,t|
         wrote = {}
+        index = 0
         candidates.each do |c|
-          debug {c.inspect}
           next if wrote[c.value]
+
           wrote[c.value] = true
-          i.print(c.to_parsable, sep, c.value.ljust(40), " ", c.help, "\0")
+          dedupe_list << c
+
+          just_length = [((c.value.length / 10) + 1) * 10, 30].max
+          i.print(index, sep, c.value.ljust(just_length), " ", c.help, "\0")
+          index += 1
         end
         i.close()
         debug "Wrote candidates, waiting for selection..."
@@ -761,8 +766,8 @@ class FzfFilter
         result = o.read
         debug "Selection was:"
         result.split(/\0/).each do |line|
-          src = line.split(sep, 2)[0]
-          c = src.as_candidate()
+          index = line[/^\d+/].to_i
+          c = dedupe_list[index]
           debug {c.inspect}
           ret << c
         end
@@ -798,6 +803,10 @@ class CompletionEngine
   RESULT_NEXT_ARG =  Sentinel.new("next_arg")
   RESULT_CONSUME =  Sentinel.new("consume")
   RESULT_UNCONSUME =  Sentinel.new("unconsume")
+
+  STORE_LAST_COMPLETE_TIME = "engine.last_complete_time"
+  STORE_LAST_CURSOR_INDEX = "engine.last_cursor_index"
+  STORE_LAST_ORIG_ARGS = "engine.last_cursor_args"
 
   def initialize(shell, orig_args, index, comp_line, comp_point,
       extras)
@@ -1194,10 +1203,15 @@ class CompletionEngine
 
   # Entry point.
   def run_completion(&block)
-
     shell.start_completion
     begin
+      # Note, start_completion needs to happen before this, because
+      # that's where we read variables from bash.
       _collect_candidate(&block)
+
+      Store.instance.set STORE_LAST_COMPLETE_TIME, Time.now.to_i
+      Store.instance.set STORE_LAST_CURSOR_INDEX, cursor_index
+      Store.instance.set STORE_LAST_ORIG_ARGS, orig_args
 
       # Add collected candidates.
       Filter.get_instance().filter(cursor_arg, @candidates).each do |c|
@@ -1205,6 +1219,7 @@ class CompletionEngine
       end
     ensure
       shell.end_completion
+      Store.instance.save()
     end
   end
 
