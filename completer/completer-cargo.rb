@@ -19,7 +19,7 @@ STANDARD_FLAGS = %w(-h --help -V --version -v --verbose -vv -q --quiet --frozen 
 Completer.define do
 
   def take_target()
-    lazy {%w(i686-unknown-linux-gnu) + read_file_lines("~/.cargo-targets")}
+    lazy_list {%w(i686-unknown-linux-gnu) + read_file_lines("~/.cargo-targets")}
   end
 
   def maybe_take_color

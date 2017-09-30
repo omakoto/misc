@@ -17,7 +17,7 @@ require_relative "completer"
 using CompleterRefinements
 
 def gen_type_list
-  lazy do
+  lazy_list do
     %x(rg --type-list).split(/\n/).map do |x|
       type, desc = x.split(/\s* \: \s*/x, 2)
       type.as_candidate(help: desc)

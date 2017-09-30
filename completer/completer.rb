@@ -3,6 +3,7 @@
 require 'optparse'
 require 'fileutils'
 require 'pathname'
+require 'singleton'
 require 'pp'
 
 require 'rubygems' # For version check on<1.9
@@ -32,8 +33,7 @@ DEBUG_FILE = APP_DIR + "/completer-debug.txt"
 IGNORE_CASE = (ENV['COMPLETER_IGNORE_CASE'] == "1")
 
 $debug_indent_level = 0
-
-$cached_shell = nil
+$_cached_shell = nil
 
 RAW_MARKER = "\e"
 HELP_MARKER = "\t"
@@ -82,7 +82,7 @@ module CompleterRefinements
       abort "#{__FILE__}: " + msg.join("") + "\n" + caller.map{|x|x.to_s}.join("\n")
     end
 
-    # Shell-escape a single token, basic "bourne" version.
+    # Shell-escape a single token; basic "bourne" version.
     def bourne_shescape(arg)
       if arg =~ /[^a-zA-Z0-9\-\.\_\/\:\+\@]/
           return "'" + arg.gsub(/'/, "'\\\\''") + "'"
@@ -91,7 +91,7 @@ module CompleterRefinements
       end
     end
 
-    # Shell-unescape a single token, basic "bourne" version.
+    # Shell-unescape a single token; basic "bourne" version.
     def bourne_unshescape(arg)
       if arg !~ /[\'\"\\]/
         return arg
@@ -151,12 +151,10 @@ module CompleterRefinements
       get_shell.unshescape(arg)
     end
 
-    def get_shell(reset:false)
-      $cached_shell = nil if reset
+    def get_shell()
+      return $_cached_shell if $_cached_shell
 
-      return $cached_shell if $cached_shell
-
-      $cached_shell = (-> {
+      $_cached_shell = (-> {
         shell_name = ENV["SHELL"].sub(/^.*\//, "")
         case shell_name
         when "bash"
@@ -200,7 +198,7 @@ module CompleterRefinements
 
     # Takes a block that generates a list. The block will be executed only when
     # needed.
-    def lazy(&block)
+    def lazy_list(&block)
       return LazyList.new(&block)
     end
 
@@ -381,7 +379,7 @@ module CompleterHelper
 
   # Accept an integer.
   def get_matched_numbers(prefix, allow_negative:false)
-    lazy do
+    lazy_list do
       if allow_negative
         next [] unless prefix =~ /^\-?\d*$/
       else
@@ -401,15 +399,15 @@ module CompleterHelper
   end
 
   def take_file(wildcard="*")
-    lazy { get_matched_files arg, wildcard }
+    lazy_list { get_matched_files arg, wildcard }
   end
 
   def take_dir()
-    lazy { get_matched_dirs arg }
+    lazy_list { get_matched_dirs arg }
   end
 
   def take_number(allow_negative:false)
-    lazy { get_matched_numbers arg, allow_negative:allow_negative }
+    lazy_list { get_matched_numbers arg, allow_negative:allow_negative }
   end
 end
 

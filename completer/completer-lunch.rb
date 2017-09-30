@@ -22,7 +22,7 @@ def load_devices()
 end
 
 def device_flavors
-  lazy do
+  lazy_list do
     ret = []
     load_devices.each {|d|
       %w(eng userdebug).each {|f|

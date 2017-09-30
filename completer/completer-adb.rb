@@ -38,7 +38,7 @@ end
 Completer.define do
   # Generates candidates for device serial numbers.
   def take_device_serial()
-    lazy do
+    lazy_list do
       ret = []
       run_command(%(adb devices)).split(/\n/).each do |l|
         serial, type = l.split(/\s+/, 2)
@@ -51,7 +51,7 @@ Completer.define do
 
   # Generates candidates for installed packages.
   def take_package()
-    lazy do
+    lazy_list do
       run_command(%(adb shell pm list packages 2>/dev/null)).split(/\n/).map do |x|
         x.sub(/^package\:/, "")
       end
@@ -60,7 +60,7 @@ Completer.define do
 
   # Generates candidates for installed packages.
   def take_package_or_component()
-    lazy do
+    lazy_list do
       if arg =~ %r(^(.*?)/) then
         # Component name completion, which we don't support, since there's no command to dump
         # all components.
@@ -75,7 +75,7 @@ Completer.define do
 
   # Generates candidates for device files.
   def take_device_file()
-    lazy do
+    lazy_list do
       w = arg
       w = "/" if w == ""
       run_command(%(adb shell "ls -pd1 #{shescape w}* 2>/dev/null")).split(/\n/).map{|x| x.as_candidate completed:false}
@@ -84,21 +84,21 @@ Completer.define do
 
   # Generates candidates for device side executable commands.
   def take_command()
-    lazy do
+    lazy_list do
       run_command(%(adb shell 'for n in ${PATH//:/ } ; do ls -1 "$n" ; done 2>/dev/null')).split(/\n/)
     end
   end
 
   # Generates candidates for system service names..
   def take_service()
-    lazy do
+    lazy_list do
       run_command(%(adb shell dumpsys -l 2>/dev/null)).split(/\n/)[1..-1].map{|x| x.strip}
     end
   end
 
   # Generates candidates for a user-id.
   def take_user_id
-    lazy do
+    lazy_list do
       take_number.to_a + %w(all current)
     end
   end
