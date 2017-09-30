@@ -43,5 +43,9 @@ local IFS
 } >/tmp/compin.txt
 # EE_QUIET=1 1 /tmp/compin.txt
 IFS=$'\n'
+COMPTYPE=33
 COMPREPLY=($(cat /tmp/compreply.txt 2>/dev/null))
 # COMPREPLY=($(ls $HOME | fzf))
+
+# declare -- COMP_TYPE="33" -- first call
+# declare -- COMP_TYPE="63" -- second call

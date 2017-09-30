@@ -24,6 +24,7 @@ in a row, the first one got no candidates, and the second one got one.
 This breaks FZF completion.
 Figure out a workaround.
 
+See:
 https://www.gnu.org/software/bash/manual/html_node/Programmable-Completion.html#Programmable-Completion
 https://www.gnu.org/software/bash/manual/html_node/Programmable-Completion.html#Programmable-Completion
 

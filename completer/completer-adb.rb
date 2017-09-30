@@ -30,7 +30,7 @@ using CompleterRefinements
 # Run a command, optionally allowing a "mocked output".
 def run_command(command)
   debug {"Executing: #{command}"}
-  out = ENV['ADB_MOCK_OUT'] || %x(#{command})
+  out = ENV['ADB_MOCK_OUT'] || %x(#{command} 2>/dev/null)
   debug {"Output: <<EOF\n#{out}\nEOF"}
   return out || ''
 end
@@ -92,7 +92,7 @@ Completer.define do
   # Generates candidates for system service names..
   def take_service()
     lazy_list do
-      run_command(%(adb shell dumpsys -l 2>/dev/null)).split(/\n/)[1..-1].map{|x| x.strip}
+      run_command(%(adb shell dumpsys -l 2>/dev/null)).split(/\n/).drop(1).map{|x| x.strip}
     end
   end
 
