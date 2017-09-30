@@ -33,8 +33,18 @@ DEBUG_FILE = APP_DIR + "/completer-debug.txt"
 # Whether completion is being performed in case-insensitive mode.
 IGNORE_CASE = (ENV['COMPLETER_IGNORE_CASE'] == "1")
 
-CACHE_TIMEOUT = (ENV['COMPLETER_CACHE_TIMEOUT'] || 3).to_f
-AUTO_FZF_TIMEOUT = (ENV['COMPLETER_FZF_TIMEOUT'] || 0.5).to_f
+# Whether always use FZF or not.
+ALWAYS_FZF = (ENV['COMPLETER_ALWAYS_FZF'] == "1")
+
+# If a completion happens for the same command in a row within this many seconds,
+# we reuse the last result.
+# Set "-1" to disable cache.
+CACHE_TIMEOUT = (ENV['COMPLETER_CACHE_TIMEOUT'] || 5).to_f
+
+# If a completion happens for the same command in a row within this many seconds,
+# we reuse the last result, and use FZF.
+# Set "-1" to disable cache.
+AUTO_FZF_TIMEOUT = (ENV['COMPLETER_FZF_TIMEOUT'] || 1.5).to_f
 
 $debug_indent_level = 0
 $_cached_shell = nil
@@ -739,23 +749,12 @@ end
 # Filter
 #===============================================================================
 
-# Base (and empty) filter.
-class Filter
+# Empty filter.
+class EmptyFilter
   @@instance = nil
-
-  DEFAULT_FILTER = "Filter"
-  # DEFAULT_FILTER = "FzfFilter"
 
   def filter(cursor_arg, candidates)
     return candidates
-  end
-
-  def self.get_instance()
-    if @@instance == nil
-      clazz = ENV['COMPLETER_FILTER_CLASS'] || DEFAULT_FILTER
-      @@instance = Object::const_get(clazz).new
-    end
-    return @@instance
   end
 end
 
@@ -1235,12 +1234,18 @@ class CompletionEngine
   def run_completion(&block)
     shell.start_completion
     begin
+      use_fzf = ALWAYS_FZF
+
       last_time = Store.instance.get STORE_LAST_COMPLETE_TIME, 0
-      cache_age = Time.now.to_i - last_time
-      if (cache_age > 0 and cache_age <= CACHE_TIMEOUT) and
+      cache_age = Time.now.to_f - last_time.to_f
+      if (cache_age > 0 and cache_age < CACHE_TIMEOUT) and
           (Store.instance.get(STORE_LAST_CURSOR_INDEX) == cursor_index) and
           (Store.instance.get(STORE_LAST_ORIG_ARGS) == orig_args)
         @candidates = CandidateCache.instance.load()
+
+        debug "Loaded #{@candidates.length} candidate(s) from cache; age=#{cache_age}"
+
+        use_fzf = true if cache_age < AUTO_FZF_TIMEOUT
       end
 
       if @candidates.length == 0
@@ -1248,17 +1253,20 @@ class CompletionEngine
         # that's where we read variables from bash.
         _collect_candidate(&block)
 
-        Store.instance.set STORE_LAST_COMPLETE_TIME, Time.now.to_i
         Store.instance.set STORE_LAST_CURSOR_INDEX, cursor_index
         Store.instance.set STORE_LAST_ORIG_ARGS, orig_args
 
         CandidateCache.instance.save(@candidates)
       end
 
+      filter = use_fzf ? FzfFilter.new : EmptyFilter.new
+
       # Add collected candidates.
-      Filter.get_instance().filter(cursor_arg, @candidates).each do |c|
+      filter.filter(cursor_arg, @candidates).each do |c|
         shell.add_candidate c
       end
+
+      Store.instance.set STORE_LAST_COMPLETE_TIME, Time.now.to_f
     ensure
       shell.end_completion
       Store.instance.save()

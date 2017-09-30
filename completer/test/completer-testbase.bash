@@ -24,7 +24,10 @@ export MOCK_HOME=/tmp/home
 export TAB="$(echo -e "\t")"
 
 unset COMPLETER_DEBUG
-unset COMPLETER_FILTER_CLASS
+unset COMPLETER_ALWAYS_FZF
+export COMPLETER_CACHE_TIMEOUT=-1
+export COMPLETER_FZF_TIMEOUT=-1
+
 
 export SHELL=/bin/bash
 
