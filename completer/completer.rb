@@ -17,9 +17,8 @@ export COMPLETER_DEBUG=/tmp/completer-debug.txt
 
 TODO:
 - Test -e option
-- Improve zsh support
-  - Pass "help" as a description.
-  - Expanding a filename that contains a space doesn't seem to work.
+
+- Zsh parameter description not working properly. -X seems to be a wrong option.
 
 - fzf filter, apparently this is doable.
 
@@ -600,7 +599,9 @@ class BashAgent < BasicShellAgent
     s += " " if candidate.completed
 
     # Output will be eval'ed, so need double-escaping unless raw.
-    puts(candidate.raw ? s : shescape(s))
+    out = candidate.raw ? s : shescape(s)
+    debug out
+    puts out
   end
 end
 
@@ -610,7 +611,7 @@ See:
 http://www.csse.uwa.edu.au/programming/linux/zsh-doc/zsh_23.html
 https://linux.die.net/man/1/zshcompsys
 http://zsh.sourceforge.net/Guide/zshguide06.html
-https://linux.die.net/man/1/zshcompwid (compadd)
+https://linux.die.net/man/1/zshcompwid (for compadd command)
 
 Note zsh always seems to do variable expansions, so we don't have to do it.
 
@@ -646,15 +647,17 @@ class ZshAgent < BasicShellAgent
     s = shescape(candidate.value)
     s += " " if candidate.completed
 
-    # -S '' tells zsh not to add a space afterward, since gqui does this for us.
-    # -Q prevents zsh from quoting metacharacters in the results.
+    # -S '' tells zsh not to add a space afterward. (because we do it by ourselves.)
+    # -Q prevents zsh from quoting metacharacters in the results, which we do too.
     # -f treats the result as filenames.
-    # -X description
+    # -X description -> TODO This seems to be a wrong flag to use.
+    # -U suppress filtering by zsh
     descopt = candidate.help ? "-X #{shescape candidate.help}" : ""
 
     fileopt = File.exist?(s) ? "-f" : ""
 
-    out = "compadd -S '' -Q #{descopt} #{fileopt} -- #{(candidate.raw ? s : shescape(s))}"
+    # Need -Q to make zsh preserve the last space.
+    out = "compadd -S '' -Q -U #{descopt} #{fileopt} -- #{(candidate.raw ? s : shescape(s))}"
     debug out
     puts out
   end
@@ -874,12 +877,21 @@ class CompletionEngine
 
   def match?(condition, value)
     debug {"match?: \"#{condition}\", #{shescape value}"}
+
     if condition.instance_of? String
       return condition == value # For a full match, we're always case sensitive.
+
+    elsif condition.instance_of? Candidate
+      return condition.value == value
+
     elsif condition.instance_of? Regexp
       return value =~ condition
+
     elsif condition.respond_to? :each
-      return condition.any?{|x| x == value}
+      debug_indent do
+        return condition.any?{|x| match?(x, value)}
+      end
+
     else
       die "Unsupported match type: condition"
     end
