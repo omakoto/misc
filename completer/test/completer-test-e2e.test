@@ -33,8 +33,8 @@ EOF
 }
 
 ASSERT_OPT="" assert_comp lunch_test_1 <<EOF
-angler-userdebug
 exit
+angler-userdebug
 EOF
 
 done_testing

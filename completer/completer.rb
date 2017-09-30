@@ -14,6 +14,13 @@ abort "#{$0.sub(/^.*\//, "")} requires ruby >= 2.4" if Gem::Version.new(RUBY_VER
 export COMPLETER_DEBUG=/tmp/completer-debug.txt
 
 - Can also be enabled with -d.
+
+TODO:
+- Test -e option
+- Improve zsh support
+  - Pass "help" as a description.
+  - Expanding a filename that contains a space doesn't seem to work.
+
 =end
 
 $debug_file = ENV['COMPLETER_DEBUG']
@@ -452,12 +459,12 @@ class BasicShellAgent
     bourne_unshescape arg
   end
 
-  def install(commands, script, ignore_case)
+  def install(commands, script, ignore_case, extras)
     die "install() must be overridden."
   end
 
   def add_candidate(candidate)
-    die "install() must be overridden."
+    die "add_candidate() must be overridden."
   end
 
   def start_completion()
@@ -485,7 +492,7 @@ end
 class BashAgent < BasicShellAgent
   SECTION_SEPARATOR = "\n-*-*-*-COMPLETER-*-*-*-\n"
 
-  def install(commands, script, ignore_case)
+  def install(commands, script, ignore_case, extras)
     command = commands[0]
     func = "_#{command.gsub(/[^a-z0-9]/i) {|c| "_" + c.ord.to_s(16)}}_completion"
 
@@ -495,6 +502,7 @@ class BashAgent < BasicShellAgent
 
     debug_flag = debug ? "-d" : ""
     ignore_case_flag = ignore_case ? "-i" : ""
+    extra_option = (extras == nil or extras == "") ? "" : "-e #{shescape extras}"
 
     # Note, we generate "COMPREPLY=(" and ")" by code too, which will
     # allow us to execute any code from the script if needed.
@@ -510,6 +518,7 @@ class BashAgent < BasicShellAgent
               ruby -x "#{script_file}" #{debug_flag} #{ignore_case_flag} \
                   -p "$COMP_POINT" \
                   -l "$COMP_LINE" \
+                  #{extra_option} \
                   -c "$COMP_CWORD" "${COMP_WORDS[@]}" \
                   )
         }
@@ -578,18 +587,15 @@ class BashAgent < BasicShellAgent
   end
 end
 
-# Interface for Zsh. (WIP)
+# Interface for Zsh.
 # See:
 # http://www.csse.uwa.edu.au/programming/linux/zsh-doc/zsh_23.html
 # https://linux.die.net/man/1/zshcompsys
 # http://zsh.sourceforge.net/Guide/zshguide06.html
 #
 # Note zsh always seems to do variable expansions, so we don't have to do it.
-#
-# TODO Pass "help" as a description.
-# TODO Expanding a filename that contains a space doesn't seem to work.
 class ZshAgent < BasicShellAgent
-  def install(commands, script, ignore_case)
+  def install(commands, script, ignore_case, extras)
 
     command = commands[0]
     func = "_#{command.gsub(/[^a-z0-9]/i) {|c| "_" + c.ord.to_s(16)}}_completion"
@@ -600,11 +606,12 @@ class ZshAgent < BasicShellAgent
 
     debug_flag = debug ? "-d" : ""
     ignore_case_flag = ignore_case ? "-i" : ""
+    extra_option = (extras == nil or extras == "") ? "" : "-e #{shescape extras}"
 
     puts <<~EOF
         function #{func} {
           . <(ruby -x "#{script_file}" #{debug_flag} #{ignore_case_flag} \
-                  -c "$(( $CURRENT - 1 ))" "${words[@]}" \
+                  #{extra_option} -c "$(( $CURRENT - 1 ))" "${words[@]}" \
                   )
         }
         EOF
@@ -653,7 +660,8 @@ class CompletionEngine
   RESULT_CONSUME =  Sentinel.new("consume")
   RESULT_UNCONSUME =  Sentinel.new("unconsume")
 
-  def initialize(shell, orig_args, index, ignore_case, comp_line, comp_point)
+  def initialize(shell, orig_args, index, ignore_case, comp_line, comp_point,
+      extras)
     @shell = shell
 
     @orig_args = orig_args
@@ -677,13 +685,15 @@ class CompletionEngine
     # Cursor point
     @comp_point = comp_point
 
+    @extras = extras
+
     @index = 0
     @current_consumed = false
     @candidates = []
   end
 
   attr_reader :shell, :orig_args, :args, :cursor_index, :command,
-      :ignore_case, :comp_line, :comp_point, :index
+      :ignore_case, :comp_line, :comp_point, :index, :extras
 
   # Returns the shell and environmental variables.
   def env()
@@ -1069,20 +1079,22 @@ class Completer
   end
 
   # Install completion
-  def do_install(commands, script, ignore_case)
+  def do_install(commands, script, ignore_case:false, extras:nil)
     commands or die "Missing commands."
 
     # Remove directories from command names.
     commands = commands.map {|p| p.sub(%r(^.*/), "")}
-    get_shell.install(commands, script, ignore_case)
+    get_shell.install(commands, script, ignore_case, extras)
   end
 
   # Perform completion
-  def do_completion(cursor_pos, args, line:nil, point:nil, ignore_case:false, &b)
+  def do_completion(cursor_pos, args, line:nil, point:nil, ignore_case:false, \
+        extras:nil, &b)
     b or die "do_completion() requires a block."
     $complete_ignore_case = ignore_case
     shell = get_shell
-    engine = CompletionEngine.new shell, args, cursor_pos, ignore_case, line, point
+    engine = CompletionEngine.new shell, args, cursor_pos, ignore_case, line, \
+        point, extras
 
     debug <<~EOF
         OrigArgs: #{engine.orig_args.join ", "}
@@ -1102,6 +1114,7 @@ class Completer
     ignore_case = false
     line = nil
     point = nil
+    extras = nil
 
     OptionParser.new { |opts|
       opts.banner = "Usage: [OPTIONS] command-name"
@@ -1111,7 +1124,8 @@ class Completer
       opts.on("-c", "Perform completion (shouldn't be used directly)") do
         cursor_pos = ARGV.shift.to_i
         args = ARGV
-        do_completion cursor_pos, args, line:line, point:point, ignore_case: ignore_case, &b
+        do_completion cursor_pos, args, line:line, point:point, \
+            ignore_case: ignore_case, extras:extras, &b
         return
       end
 
@@ -1127,6 +1141,10 @@ class Completer
         ignore_case = true
       end
 
+      opts.on("-e", "Extra options to pass to the completion script") do |v|
+        extras = v
+      end
+
       opts.on("-d", "Enable debug mode") do
         $debug = true
       end
@@ -1134,7 +1152,7 @@ class Completer
 
     ARGV or die("Missing command name(s).")
 
-    do_install ARGV, $0, ignore_case
+    do_install ARGV, $0, ignore_case:ignore_case, extras:extras
   end
 
   # The entry point called by the outer script.
