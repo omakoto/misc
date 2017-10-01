@@ -253,10 +253,13 @@ module CompleterRefinements
           # Remove leading spaces and comments.
           l = line.sub(/^\s+/, "").sub(/\s* \# .*/x, "")
 
+          # : will separate flags and helps
           l, help = l.split(/\s* : \s*/x, 2)
 
+          # flags are separated by spaces or commas.
           if l != nil && l.length > 0
-            l.split(/\s+/).each do |word|
+            l.split(/[\s\,]+/).each do |word|
+              next if word.length == 0
               ret << word.as_candidate(help:help)
             end
           end
@@ -636,9 +639,9 @@ class BashAgent < BasicShellAgent
         # wouldn't be inserted into command line.
         #
         # The following keybindings fixes it.
-        bind '"\exx1": overwrite-mode'
-        bind '"\exx2": complete'
-        bind '"\C-i": "\exx1\exx1\exx2"'
+        bind '"\\ecp1": overwrite-mode'
+        bind '"\\ecp2": complete'
+        bind '"\\C-i": "\\ecp1\\ecp1\\ecp2"'
 
         function __completer_context_passer {
             declare -p
@@ -1369,7 +1372,7 @@ class Completer
         return
       end
 
-      opts.on("-e", "Extra options to pass to the completion script") do |v|
+      opts.on("-eEXTRAS", "Extra options to pass to the completion script") do |v|
         extras = v
       end
     }.parse!
