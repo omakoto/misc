@@ -659,9 +659,8 @@ class BashAgent < BasicShellAgent
           export COMP_TYPE
           export COMP_WORDBREAKS
           . <( __completer_context_passer |
-              ruby -x "#{script_file}" #{extra_option} \
-                  -c "$COMP_CWORD" "${COMP_WORDS[@]}" \
-                  )
+              ruby -wx "#{script_file}" #{extra_option} -c -- \
+                  "$COMP_CWORD" "${COMP_WORDS[@]}" )
         }
         EOF
 
@@ -759,9 +758,8 @@ class ZshAgent < BasicShellAgent
 
     puts <<~EOF
         function #{func} {
-          . <(ruby -x "#{script_file}" #{extra_option} \
-                  -c "$(( $CURRENT - 1 ))" "${words[@]}" \
-                  )
+          . <(ruby -wx "#{script_file}" #{extra_option} -c -- \
+              "$(( $CURRENT - 1 ))" "${words[@]}" )
         }
         EOF
 
@@ -1365,26 +1363,27 @@ class Completer
   def real_main(&b)
     extras = nil
 
-    OptionParser.new { |opts|
-      opts.banner = "Usage: [OPTIONS] command-name"
+    install = true
 
-      # Note "-c" must be the last option; otherwise other flags such as
-      # "-e" will be ignored.
-      opts.on("-c", "Perform completion (shouldn't be used directly)") do
-        cursor_pos = ARGV.shift.to_i
-        args = ARGV
-        do_completion cursor_pos, args, extras:extras, &b
-        return
+    OptionParser.new { |opts|
+      opts.on("-c", "Run in completion mode. If not specified, #{$0} prints a install script.") do
+        install = false
       end
 
       opts.on("-eEXTRAS", "Extra options to pass to the completion script") do |v|
         extras = v
       end
-    }.parse!
+    }.order!
 
-    ARGV or die("Missing command name(s).")
-
-    do_install ARGV, $0, extras:extras
+    if install
+      (ARGV.length == 0) && die("Missing command name(s).")
+      do_install ARGV, $0, extras:extras
+    else
+      # run completion
+      cursor_pos = ARGV.shift.to_i
+      (ARGV.length == 0) && die("Missing arguments.")
+      do_completion cursor_pos, ARGV, extras:extras, &b
+    end
   end
 
   # The entry point called by the outer script.
