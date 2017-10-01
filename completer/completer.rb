@@ -12,7 +12,6 @@ abort "#{$0.sub(/^.*\//, "")} requires ruby >= 2.4" if Gem::Version.new(RUBY_VER
 
 =begin
 - To enable debug output, use:
-
 export COMPLETER_DEBUG=1
 
 TODO:
@@ -21,8 +20,8 @@ See:
 https://www.gnu.org/software/bash/manual/html_node/Programmable-Completion.html#Programmable-Completion
 https://www.gnu.org/software/bash/manual/html_node/Programmable-Completion-Builtins.html#Programmable-Completion-Builtins
 
-- Test -e option
 - Zsh parameter description not working properly. -X seems to be a wrong option.
+- Zsh doesn't split words with : by default. What's the common behavior?
 
 =end
 

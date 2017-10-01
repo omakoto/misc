@@ -35,6 +35,17 @@ def run_command(command)
   return out || ''
 end
 
+=begin
+Ports for adb forward/reverse.
+
+Canonical port definition, which we don't fully support.
+       tcp:<port> (<local> may be "tcp:0" to pick any open port)
+       localabstract:<unix domain socket name>
+       localreserved:<unix domain socket name>
+       localfilesystem:<unix domain socket name>
+       dev:<character device name>
+       jdwp:<process pid> (remote only)
+=end
 PORTS = %w(tcp: localabstract: localreserved: localfilesystem: dev: jdwp:
     ).map{|v| v.as_candidate completed:false}
 
