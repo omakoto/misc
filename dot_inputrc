@@ -1,5 +1,27 @@
-"\e[3~": delete-char
-"\e[2~": quoted-insert
+#"\e[3~": delete-char
+#"\e[2~": quoted-insert
+
+#"\e[D": backward-char
+#"\e[C": forward-char
+#"\C-i": complete
+#"\e\e": complete
+
+
+# # Map TAB to "toggle overwrite-mode twice, then complete".
+# # This just performs a completion, but it resets the completion context,
+# # so even if the first completion returns an empty result, and the user
+# # hits TAB again, it won't switch to the "just show all candidates, but
+# # don't put in the command line" mode.
+# # This is important when using fzf in completion.
+# "\exx1": overwrite-mode
+# "\exx2": complete
+# "\C-i": "\exx1\exx1\exx2"
+
+set show-all-if-ambiguous on
+set show-all-if-unmodified on
+set expand-tilde on
+set skip-completed-text on
+
 
 set bell-style none
 
@@ -10,15 +32,11 @@ set completion-map-case on
 
 #set completion-prefix-display-length 2
 
-set expand-tilde on
-
-set show-all-if-ambiguous on
-set show-all-if-unmodified on
-
-set skip-completed-text on
 
 set mark-symlinked-directories on
+
 set input-meta on
 set output-meta on
 
 set completion-query-items 300
+

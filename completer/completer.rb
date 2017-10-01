@@ -13,9 +13,7 @@ abort "#{$0.sub(/^.*\//, "")} requires ruby >= 2.4" if Gem::Version.new(RUBY_VER
 =begin
 - To enable debug output, use:
 
-export COMPLETER_DEBUG=/tmp/completer-debug.txt
-
-- Can also be enabled with -d.
+export COMPLETER_DEBUG=1
 
 TODO:
 
@@ -622,12 +620,26 @@ class BashAgent < BasicShellAgent
 
     script_file = File.expand_path $0
 
-    debug_flag = debug ? "-d" : ""
     extra_option = (extras == nil or extras == "") ? "" : "-e #{shescape extras}"
 
     # Note, we generate "COMPREPLY=(" and ")" by code too, which will
     # allow us to execute any code from the script if needed.
     puts <<~EOF
+        # Map [TAB] to "toggle overwrite-mode twice, then complete".
+        # This will run a completion *after resetting the context*.
+        # Normally, when the user does a completion twice in a row
+        # on the same command line, readline switches to the
+        # "show matched candidates, but don't insert to the command line"
+        # mode. This wouldn't work well with FZF -- if the user cancels
+        # on FZF first, then hit TAB again, readline would fall into
+        # this mode, and the result from the second FZF invocation
+        # wouldn't be inserted into command line.
+        #
+        # The following keybindings fixes it.
+        bind '"\exx1": overwrite-mode'
+        bind '"\exx2": complete'
+        bind '"\C-i": "\exx1\exx1\exx2"'
+
         function __completer_context_passer {
             declare -p
             echo -n "#{SECTION_SEPARATOR}"
@@ -635,10 +647,11 @@ class BashAgent < BasicShellAgent
         }
 
         function #{func} {
+          export COMP_POINT
+          export COMP_LINE
+          export COMP_TYPE
           . <( __completer_context_passer |
-              ruby -x "#{script_file}" #{debug_flag} #{extra_option} \
-                  -p "$COMP_POINT" \
-                  -l "$COMP_LINE" \
+              ruby -x "#{script_file}" #{extra_option} \
                   -c "$COMP_CWORD" "${COMP_WORDS[@]}" \
                   )
         }
@@ -734,12 +747,11 @@ class ZshAgent < BasicShellAgent
 
     script_file = File.expand_path $0
 
-    debug_flag = debug ? "-d" : ""
     extra_option = (extras == nil or extras == "") ? "" : "-e #{shescape extras}"
 
     puts <<~EOF
         function #{func} {
-          . <(ruby -x "#{script_file}" #{debug_flag} #{extra_option} \
+          . <(ruby -x "#{script_file}" #{extra_option} \
                   -c "$(( $CURRENT - 1 ))" "${words[@]}" \
                   )
         }
@@ -862,8 +874,7 @@ class CompletionEngine
   STORE_LAST_CURSOR_INDEX = "engine.last_cursor_index"
   STORE_LAST_ORIG_ARGS = "engine.last_cursor_args"
 
-  def initialize(shell, orig_args, index, comp_line, comp_point,
-      extras)
+  def initialize(shell, orig_args, index, extras)
     @shell = shell
 
     @orig_args = orig_args
@@ -877,12 +888,6 @@ class CompletionEngine
     # Command name
     @command = @args[0].gsub(%r(^.*/), "")
 
-    # Whole command line
-    @comp_line = comp_line
-
-    # Cursor point
-    @comp_point = comp_point
-
     @extras = extras
 
     @index = 0
@@ -891,7 +896,7 @@ class CompletionEngine
   end
 
   attr_reader :shell, :orig_args, :args, :cursor_index, :command,
-      :comp_line, :comp_point, :index, :extras
+      :index, :extras
 
   # Returns the shell and environmental variables.
   def env()
@@ -1332,19 +1337,16 @@ class Completer
   end
 
   # Perform completion
-  def do_completion(cursor_pos, args, line:nil, point:nil, \
-        extras:nil, &b)
+  def do_completion(cursor_pos, args, extras:nil, &b)
     b or die "do_completion() requires a block."
     shell = get_shell
-    engine = CompletionEngine.new shell, args, cursor_pos, line, point, extras
+    engine = CompletionEngine.new shell, args, cursor_pos, extras
 
     debug <<~EOF
         OrigArgs: #{engine.orig_args.join ", "}
         Args: #{engine.args.join ", "}
         Index: #{engine.cursor_index}
         Current: #{engine.cursor_arg}
-        Line: #{engine.comp_line}
-        Point: #{engine.comp_point}
         EOF
 
     engine.run_completion(&b)
@@ -1353,36 +1355,22 @@ class Completer
   # Main
   public
   def real_main(&b)
-    line = nil
-    point = nil
     extras = nil
 
     OptionParser.new { |opts|
       opts.banner = "Usage: [OPTIONS] command-name"
 
       # Note "-c" must be the last option; otherwise other flags such as
-      # "-i" "-d" will be ignored.
+      # "-e" will be ignored.
       opts.on("-c", "Perform completion (shouldn't be used directly)") do
         cursor_pos = ARGV.shift.to_i
         args = ARGV
-        do_completion cursor_pos, args, line:line, point:point, extras:extras, &b
+        do_completion cursor_pos, args, extras:extras, &b
         return
-      end
-
-      opts.on("-lLINE", "Pass whole command line") do |v|
-        line = v
-      end
-
-      opts.on("-pPOS", "Pass completion point") do |v|
-        point = v
       end
 
       opts.on("-e", "Extra options to pass to the completion script") do |v|
         extras = v
-      end
-
-      opts.on("-d", "Enable debug mode") do
-        $debug = true
       end
     }.parse!
 
