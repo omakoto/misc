@@ -117,36 +117,6 @@ Completer.define do
     end
   end
 
-=begin
-canonical port definition:
-       tcp:<port> (<local> may be "tcp:0" to pick any open port)
-       localabstract:<unix domain socket name>
-       localreserved:<unix domain socket name>
-       localfilesystem:<unix domain socket name>
-       dev:<character device name>
-       jdwp:<process pid> (remote only)
-
-  However completing this is tricky because ':' is a default word break
-  character.
-
-  def take_port_x(forward:true, local:true)
-    lazy_list do
-      if arg !~ /:/
-        next %w(tcp: localabstract: localreserved: localfilesystem: dev: jdwp:
-            ).map{|v| v.as_candidate completed:false}
-      else
-        case
-        when arg =~ /^((?:tcp|jdwp)\:)(\d*)/ # takes a number
-          prefix, val = $1, $2
-          debug "take_port: #{prefix}, #{val}"
-          next take_number(val).map{|v| prefix + v}
-        end
-        next []
-      end
-    end
-  end
-=end
-
   def main()
     dumpsys if command == "dumpsys"
     am if command == "am"
