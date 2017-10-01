@@ -47,6 +47,7 @@ ALWAYS_FZF = (ENV['COMPLETER_ALWAYS_FZF'] == "1")
 AUTO_FZF_TIMEOUT = (ENV['COMPLETER_FZF_TIMEOUT'] || 1.5).to_f
 
 # Max number of candidates to show.
+# Note this won't apply on zsh/FZF.
 MAX_CANDIDATES = (ENV['COMPLETER_MAX_CANDIDATES'] || 50).to_f
 
 # Data files and debug log goes to this directory.
@@ -574,6 +575,14 @@ class BasicShellAgent
 
   attr_reader :env, :jobs
 
+  def supports_fzf?()
+    return false
+  end
+
+  def supports_menu_completion?
+    return false
+  end
+
   def shescape(arg)
     bourne_shescape arg
   end
@@ -615,7 +624,7 @@ end
 class BashAgent < BasicShellAgent
   SECTION_SEPARATOR = "\n-*-*-*-COMPLETER-*-*-*-\n"
 
-  def fzf_supported()
+  def supports_fzf?()
     return true
   end
 
@@ -744,8 +753,12 @@ Note zsh always seems to do variable expansions, so we don't have to do it.
 
 =end
 class ZshAgent < BasicShellAgent
-  def fzf_supported()
-    return false # FZF doesn't seem to work well in the zsh completion context.
+  def initialize()
+    @candidates = []
+  end
+
+  def supports_menu_completion?
+    return true # FZF hangs when invoked during completion.
   end
 
   def install(commands, script, extras)
@@ -771,6 +784,13 @@ class ZshAgent < BasicShellAgent
     end
   end
 
+  # def start_completion()
+  #   puts <<~EOF
+  #       COMPLETER_CANDIDATES_VAL=()
+  #       COMPLETER_CANDIDATES_DISP=()
+  #       EOF
+  # end
+
   def add_candidate(candidate)
     s = shescape(candidate.value)
     s += " " if candidate.completed
@@ -780,15 +800,26 @@ class ZshAgent < BasicShellAgent
     # -f treats the result as filenames.
     # -X description -> TODO This seems to be a wrong flag to use.
     # -U suppress filtering by zsh
-    descopt = candidate.help ? "-X #{shescape candidate.help}" : ""
 
     fileopt = File.exist?(s) ? "-f" : ""
 
+    desc = candidate.value
+    if candidate.help
+      desc = desc.ljust([40, ((desc.length / 10) + 1) * 10].max)
+      desc << ": "
+      desc << candidate.help
+    end
+
     # Need -Q to make zsh preserve the last space.
-    out = "compadd -S '' -Q -U #{descopt} #{fileopt} -- #{(candidate.raw ? s : shescape(s))}"
+    out = "COMPLETER_D=(#{shescape desc})\n" + \
+        "compadd -S '' -Q -U #{fileopt} -d COMPLETER_D -- #{(candidate.raw ? s : shescape(s))}"
     debug out
     puts out
   end
+
+  # def end_completion()
+  #   puts "compadd -S '' -Q -U -F COMPLETER_CANDIDATES_VAL -d COMPLETER_CANDIDATES_DISP"
+  # end
 end
 
 #===============================================================================
@@ -967,7 +998,7 @@ class CompletionEngine
       return unless at_cursor?
       return unless cand
       die "#{cand.inspect} is not a Candidate" unless cand.instance_of? Candidate
-      return unless cand.value
+      return if (cand.value == nil) or (cand.value.rstrip().length == 0)
       if !always and !cand.has_prefix? cursor_arg
         debug {"candidate rejected."}
         return
@@ -1305,7 +1336,7 @@ class CompletionEngine
 
       # Candidates collected, print them, maybe optionally passing
       # through FZF.
-      use_fzf = false unless shell.fzf_supported
+      use_fzf = false unless shell.supports_fzf?
 
       filter = use_fzf ? FzfFilter.new : EmptyFilter.new
 
@@ -1315,7 +1346,7 @@ class CompletionEngine
       count = 0
       filter.filter(cursor_arg, @candidates).each do |c|
         count += 1
-        if count <= MAX_CANDIDATES
+        if count <= MAX_CANDIDATES or shell.supports_menu_completion?
           shell.add_candidate c
         else
           shell.add_candidate "[REST OMITTED]".as_candidate
