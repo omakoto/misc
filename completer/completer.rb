@@ -46,6 +46,9 @@ ALWAYS_FZF = (ENV['COMPLETER_ALWAYS_FZF'] == "1")
 # Set "-1" to disable cache.
 AUTO_FZF_TIMEOUT = (ENV['COMPLETER_FZF_TIMEOUT'] || 1.5).to_f
 
+# Max number of candidates to show.
+MAX_CANDIDATES = (ENV['COMPLETER_MAX_CANDIDATES'] || 50).to_f
+
 # Data files and debug log goes to this directory.
 APP_DIR = Dir.home + "/.completer/"
 Dir.exist?(APP_DIR) or FileUtils.mkdir_p(APP_DIR)
@@ -1286,6 +1289,7 @@ class CompletionEngine
         use_fzf = true if cache_age < AUTO_FZF_TIMEOUT
       end
 
+      # If no candidates are read from the cache, run the user-defined method.
       if @candidates.length == 0
         # Note, start_completion needs to happen before this, because
         # that's where we read variables from bash.
@@ -1299,6 +1303,8 @@ class CompletionEngine
         debug "Done saving candidates."
       end
 
+      # Candidates collected, print them, maybe optionally passing
+      # through FZF.
       use_fzf = false unless shell.fzf_supported
 
       filter = use_fzf ? FzfFilter.new : EmptyFilter.new
@@ -1306,8 +1312,15 @@ class CompletionEngine
       debug "Start adding candidates."
 
       # Add collected candidates.
+      count = 0
       filter.filter(cursor_arg, @candidates).each do |c|
-        shell.add_candidate c
+        count += 1
+        if count <= MAX_CANDIDATES
+          shell.add_candidate c
+        else
+          shell.add_candidate "[REST OMITTED]".as_candidate
+          break
+        end
       end
 
       debug "Candidates all added."
