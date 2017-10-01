@@ -9,7 +9,7 @@ Install a simple completion for a file,
 
 # How to install.
 
-. completer-simple.rb -e '
+. simplecomp.rb -e "$(cat <<'EOF'
   -A, --show-all           : equivalent to -vET
   -b, --number-nonblank    : number nonempty output lines, overrides -n
   -e                       : equivalent to -vE
@@ -22,9 +22,10 @@ Install a simple completion for a file,
   -v, --show-nonprinting   : use ^ and M- notation, except for LFD and TAB
       --help               : display this help and exit
       --version            : output version information and exit
-' cat
+EOF
+)"  cat
 
-. completer-simple.rb -e '
+. simplecomp.rb -e '
 #nofile  # This command does not take filenames
  -A, -e               : all processes
  -a                   : all with tty, except session leaders

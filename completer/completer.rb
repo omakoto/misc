@@ -643,12 +643,15 @@ class BashAgent < BasicShellAgent
         bind '"\\ecp2": complete'
         bind '"\\C-i": "\\ecp1\\ecp1\\ecp2"'
 
+        # This feeds information within shell (e.g. shell variables)
+        # to completer.
         function __completer_context_passer {
             declare -p
             echo -n "#{SECTION_SEPARATOR}"
             jobs
         }
 
+        # Actual completion function.
         function #{func} {
           export COMP_POINT
           export COMP_LINE
@@ -661,7 +664,7 @@ class BashAgent < BasicShellAgent
         EOF
 
     commands.each do |c|
-      puts "complete -o nospace -F #{func} #{c}"
+      puts "complete -o nospace -F #{func} -- #{c}"
     end
   end
 

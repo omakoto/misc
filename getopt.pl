@@ -226,18 +226,24 @@ if ($set_flags[$BASH_COMPLETION_OPTION_INDEX]) {
     my ($flags, $arg) = ($1, $2);
     for my $f (split(/\|/, $flags)) {
       if (length($f) == 1) {
-        push @all_flags, "-$f";
+        push @all_flags, "-$f\t:$spec->{help}";
       } else {
-        push @all_flags, "--$f";
+        push @all_flags, "--$f\t:$spec->{help}";
       }
     }
   }
-  my $allow_files_flag = $complete_allow_files ? "-F" : "";
-  my $flags_flag = join(" ", @all_flags);
+  my $allow_files_flag = $complete_allow_files ? "" : "#nofile";
+  my $flags_flag = join("\n", @all_flags);
 
-  print <<EOF;
-bashcomp -c "\$_go_command" -f "$flags_flag" $allow_files_flag
+  print <<EOF3;
+sed -e "s/{{go_command}}/\$_go_command/g" <<'EOF2'
+. simplecomp.rb -e "\$(cat <<'EOF'
+$allow_files_flag
+$flags_flag
 EOF
+)" "{{go_command}}"
+EOF2
+EOF3
   print_exit 0;
   exit 0;
 }
