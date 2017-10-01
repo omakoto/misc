@@ -35,6 +35,9 @@ def run_command(command)
   return out || ''
 end
 
+PORTS = %w(tcp: localabstract: localreserved: localfilesystem: dev: jdwp:
+    ).map{|v| v.as_candidate completed:false}
+
 Completer.define do
   # Generates candidates for device serial numbers.
   def take_device_serial()
@@ -103,6 +106,36 @@ Completer.define do
     end
   end
 
+=begin
+canonical port definition:
+       tcp:<port> (<local> may be "tcp:0" to pick any open port)
+       localabstract:<unix domain socket name>
+       localreserved:<unix domain socket name>
+       localfilesystem:<unix domain socket name>
+       dev:<character device name>
+       jdwp:<process pid> (remote only)
+
+  However completing this is tricky because ':' is a default word break
+  character.
+
+  def take_port_x(forward:true, local:true)
+    lazy_list do
+      if arg !~ /:/
+        next %w(tcp: localabstract: localreserved: localfilesystem: dev: jdwp:
+            ).map{|v| v.as_candidate completed:false}
+      else
+        case
+        when arg =~ /^((?:tcp|jdwp)\:)(\d*)/ # takes a number
+          prefix, val = $1, $2
+          debug "take_port: #{prefix}, #{val}"
+          next take_number(val).map{|v| prefix + v}
+        end
+        next []
+      end
+    end
+  end
+=end
+
   def main()
     dumpsys if command == "dumpsys"
     am if command == "am"
@@ -160,17 +193,15 @@ Completer.define do
       maybe("--list") { finish }
       maybe("--remove", []) { finish } # takes LOCAL
       maybe("--remove-all") { finish }
-=begin
- forward [--no-rebind] LOCAL REMOTE
-     forward socket connection using:
-       tcp:<port> (<local> may be "tcp:0" to pick any open port)
-       localabstract:<unix domain socket name>
-       localreserved:<unix domain socket name>
-       localfilesystem:<unix domain socket name>
-       dev:<character device name>
-       jdwp:<process pid> (remote only)
-=end
       maybe "--no-rebind"
+
+      # This part is tricky because : is a default word break character
+      # on bash. So for now, we just complete the prefixes.
+      for_arg do
+        maybe PORTS
+        maybe take_number
+        maybe take_file
+      end
       finish
     end
 
@@ -178,15 +209,15 @@ Completer.define do
       maybe("--list") { finish }
       maybe("--remove", []) { finish } # takes REMOTE
       maybe("--remove-all") { finish }
-=begin
- reverse [--no-rebind] REMOTE LOCAL
-     reverse socket connection using:
-       tcp:<port> (<remote> may be "tcp:0" to pick any open port)
-       localabstract:<unix domain socket name>
-       localreserved:<unix domain socket name>
-       localfilesystem:<unix domain socket name>
-=end
       maybe "--no-rebind"
+
+      # This part is tricky because : is a default word break character
+      # on bash. So for now, we just complete the prefixes.
+      for_arg do
+        maybe PORTS
+        maybe take_number
+        maybe take_file
+      end
       finish
     end
 

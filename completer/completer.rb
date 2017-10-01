@@ -286,6 +286,10 @@ module CompleterRefinements
     def as_candidate(raw:nil, completed: nil, help: nil)
       return Kernel.as_candidate(self, raw:raw, completed:completed, help:help)
     end
+
+    def no_space(help: nil)
+      return as_candidate(completed:false, help:help)
+    end
   end # refine String
 end
 
@@ -300,7 +304,7 @@ class LazyList
 
   def each(&block)
     @list = @block.call() unless @list
-    @list.each(&block)
+    @list.each(&block) if @list
   end
 end
 
@@ -424,16 +428,19 @@ module CompleterHelper
     end
   end
 
-  def take_file(wildcard="*")
-    lazy_list { get_matched_files arg, wildcard }
+  def take_file(wildcard="*", prefix:nil)
+    prefix ||= arg
+    lazy_list { get_matched_files prefix, wildcard }
   end
 
-  def take_dir()
-    lazy_list { get_matched_dirs arg }
+  def take_dir(prefix:nil)
+    prefix ||= arg
+    lazy_list { get_matched_dirs prefix }
   end
 
-  def take_number(allow_negative:false)
-    lazy_list { get_matched_numbers arg, allow_negative:allow_negative }
+  def take_number(prefix:nil, allow_negative:false)
+    prefix ||= arg
+    lazy_list { get_matched_numbers arg, allow_negative:allow_negative}
   end
 end
 
@@ -651,6 +658,7 @@ class BashAgent < BasicShellAgent
           export COMP_POINT
           export COMP_LINE
           export COMP_TYPE
+          export COMP_WORDBREAKS
           . <( __completer_context_passer |
               ruby -x "#{script_file}" #{extra_option} \
                   -c "$COMP_CWORD" "${COMP_WORDS[@]}" \
