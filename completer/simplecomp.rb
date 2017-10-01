@@ -1,15 +1,11 @@
-. <( exec ruby -wx "${BASH_VERSION+${BASH_SOURCE[0]}}${ZSH_VERSION+${${(%):-%N}}}" "$@" )
-: <<'__END_RUBY_CODE__'
-#!ruby
-def __END_RUBY_CODE__; end
-
+#!/usr/bin/env ruby
 =begin
 
 Install a simple completion for a file,
 
 # How to install.
 
-. simplecomp.rb -e "$(cat <<'EOF'
+. <(simplecomp.rb -e "$(cat <<'EOF'
   -A, --show-all           : equivalent to -vET
   -b, --number-nonblank    : number nonempty output lines, overrides -n
   -e                       : equivalent to -vE
@@ -23,9 +19,9 @@ Install a simple completion for a file,
       --help               : display this help and exit
       --version            : output version information and exit
 EOF
-)"  cat
+)"  cat)
 
-. simplecomp.rb -e '
+. <(simplecomp.rb -e '
 #nofile  # This command does not take filenames
  -A, -e               : all processes
  -a                   : all with tty, except session leaders
@@ -35,7 +31,7 @@ EOF
   r                   : only running processes
   T                   : all processes on this terminal
   x                   : processes without controlling ttys
-' ps
+' ps)
 
 =end
 
@@ -62,5 +58,3 @@ Completer.define do
     end
   end
 end
-
-__END_RUBY_CODE__

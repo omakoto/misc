@@ -5,11 +5,12 @@ end
 
 module GetoptInner
 
-  def self.show_bashcomp(all_flags, take_files)
-    command = ["bashcomp"]
-    command.push "-F" if take_files
-    command.push "-c", $0.sub(/^.*\//, "")
-    command.push "-f", all_flags.join(" ")
+  def self.show_bashcomp(comp_all_flags, take_files)
+    command = ["simplecomp.rb"]
+    command.push "-e"
+    extras = (take_files ? "" : "#nofile\n") + comp_all_flags.join("\n")
+    command.push extras
+    command.push $0.sub(/^.*\//, "")
     exec *command
   end
 
@@ -36,7 +37,7 @@ def getopt(*in_spec, take_files: false, usage: nil, usage_proc: nil, exit_func: 
   getopt_spec = []
   flag_to_proc = {}
   flag_getopt_type = {}
-  all_flags = []
+  comp_all_flags = []
   help_spec = []
 
   exit_func = lambda { |code| exit code } unless exit_func
@@ -87,7 +88,7 @@ def getopt(*in_spec, take_files: false, usage: nil, usage_proc: nil, exit_func: 
         flag = "--" + flag
       end
 
-      all_flags.push(flag)
+      comp_all_flags.push(flag + " :" + in_desc)
       flag_to_proc[flag] = in_proc
       flag_getopt_type[flag] = getopt_type
 
@@ -122,7 +123,7 @@ def getopt(*in_spec, take_files: false, usage: nil, usage_proc: nil, exit_func: 
   end
 
   if bash_completion_detected
-    GetoptInner::show_bashcomp all_flags, take_files
+    GetoptInner::show_bashcomp comp_all_flags, take_files
     exit_func.call 0
     return false
   end

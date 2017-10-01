@@ -17,14 +17,9 @@ export COMPLETER_DEBUG=1
 
 TODO:
 
-- There seems to be a bash bug when completing the same command line twice
-in a row, the first one got no candidates, and the second one got one.
-This breaks FZF completion.
-Figure out a workaround.
-
 See:
 https://www.gnu.org/software/bash/manual/html_node/Programmable-Completion.html#Programmable-Completion
-https://www.gnu.org/software/bash/manual/html_node/Programmable-Completion.html#Programmable-Completion
+https://www.gnu.org/software/bash/manual/html_node/Programmable-Completion-Builtins.html#Programmable-Completion-Builtins
 
 - Test -e option
 - Zsh parameter description not working properly. -X seems to be a wrong option.

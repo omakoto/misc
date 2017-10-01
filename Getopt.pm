@@ -89,7 +89,7 @@ sub getopt {
   }
   if ($show_bash_completion) {
     # TODO If a flag ends with "!", add "--no-"
-    my @flags = map {s!([\=\!\+\:].*)!!r} map {split /\|/, $_->[0]} @spec;
+    my @flags = map {s!([\=\!\+\:].*)!!r} map {split /\|/, $_->[0]} @spec; #!
     system("bashcomp", "--command", ($0 =~ s!^.*/!!r), #!
         ($take_files ? ("--allow-files") : ()),
         "--flags", join(" ",
