@@ -35,9 +35,9 @@ IGNORE_CASE = (ENV['COMPLETER_IGNORE_CASE'] == "1")
 # Set "-1" to disable cache.
 CACHE_TIMEOUT = (ENV['COMPLETER_CACHE_TIMEOUT'] || 5).to_f
 
-# Note FZF doesn't seem to work well on zsh.
-
 # Whether always use FZF or not.
+# Note FZF doesn't seem to work well during zsh's completion, so
+# it's disabled for zsh.
 ALWAYS_FZF = (ENV['COMPLETER_ALWAYS_FZF'] == "1")
 
 # If a completion happens for the same command in a row within this many seconds,
@@ -49,7 +49,14 @@ AUTO_FZF_TIMEOUT = (ENV['COMPLETER_FZF_TIMEOUT'] || 1.5).to_f
 # Note this won't apply on zsh/FZF.
 MAX_CANDIDATES = (ENV['COMPLETER_MAX_CANDIDATES'] || 50).to_f
 
+# Don't execute the workaround "bind". See BashAgent.
 SKIP_BASH_BINDS = (ENV['COMPLETER_SKIP_BASH_BINDS'] == 1)
+
+# When set, this will be passed to fzf via the "--bind" parametr.
+FZF_EXTRA_BINDS = ENV['COMPLETER_FZF_BINDS'] # || "tab:accept"
+
+# Extra options to pass to fzf.
+FZF_OPTS = ENV['COMPLETER_FZF_OPTS'] # || "tab:accept"
 
 # Data files and debug log goes to this directory.
 APP_DIR = Dir.home + "/.completer/"
@@ -861,7 +868,10 @@ class FzfFilter
 
       dedupe_list = []
 
+      bind_opt = FZF_EXTRA_BINDS ? "--bind=#{shescape FZF_EXTRA_BINDS}" : ""
+
       Open3.popen2("fzf -d '#{sep}' #{query_opt} --no-multi" \
+          + " #{bind_opt} #{FZF_OPTS}" \
           + " --read0 --print0 -1 -0 --with-nth 2") do |i,o,t|
         wrote = {}
         index = 0
@@ -871,7 +881,7 @@ class FzfFilter
           wrote[c.value] = true
           dedupe_list << c
 
-          just_length = [((c.value.length / 10) + 1) * 10, 30].max
+          just_length = [((c.value.length / 10) + 1) * 10, 40].max
           i.print(index, sep, c.value.ljust(just_length), " ", c.help, "\0")
           index += 1
         end

@@ -150,7 +150,7 @@ Completer.define do
     end
 
     # Subcommands that take arguments that this script doesn't support yet.
-    maybe words(%(
+    maybe build_candidates(%(
         connect     # HOST[:PORT]
         disconnect  # [HOST[:PORT]]
         ppp         # TTY [PARAMETER...]
