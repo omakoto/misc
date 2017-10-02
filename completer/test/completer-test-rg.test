@@ -262,6 +262,19 @@ aaa/
 'file1 '
 EOF
 
+test_rg 2 rg --file ../ <<'EOF'
+'../.aa1 '
+'../aa1 '
+'../.aa2 '
+'../aa2 '
+'../.bb1 '
+'../bb1 '
+../.completer/
+../ddd1/
+../ddd2/
+'../zzz/ '
+EOF
+
 test_rg 3 rg --file /dev/null --c <<'EOF'
 '--case-sensitive '
 '--color '

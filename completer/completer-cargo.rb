@@ -87,6 +87,9 @@ Completer.define do
             -j N, --jobs N              : Number of parallel jobs, defaults to # of CPUs
             )), take_number
         option build_candidates(%(
+            --message-format FMT        : Error format: human, json [default: human]
+            )), %w(human json)
+        option build_candidates(%(
             -p SPEC, --package SPEC ... : Package to build
             --exclude SPEC ...          : Exclude packages from the build
             --bin NAME                  : Build only the specified binary
@@ -94,7 +97,6 @@ Completer.define do
             --test NAME                 : Build only the specified test target
             --bench NAME                : Build only the specified bench target
             --features FEATURES         : Space-separated list of features to also build
-            --message-format FMT        : Error format: human, json [default: human]
             )), [] # Not completable
       end
       finish

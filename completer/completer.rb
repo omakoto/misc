@@ -15,7 +15,6 @@ abort "#{$0.sub(/^.*\//, "")} requires ruby >= 2.4" if Gem::Version.new(RUBY_VER
 export COMPLETER_DEBUG=1
 
 TODO:
-
 See:
 https://www.gnu.org/software/bash/manual/html_node/Programmable-Completion.html#Programmable-Completion
 https://www.gnu.org/software/bash/manual/html_node/Programmable-Completion-Builtins.html#Programmable-Completion-Builtins
@@ -265,8 +264,8 @@ module CompleterRefinements
 
           # flags are separated by spaces or commas.
           if l != nil && l.length > 0
-            l.gsub(/^\b[A-Z_]\b/, " ") # Remove all-capital words.
-            l.gsub(/^\s\.\.\.+\s/, " ") # Remove "...".
+            l.gsub!(/\s[A-Z_]+\b/, " ") # Remove all-capital words.
+            l.gsub!(/\.{3.}/, " ") # Remove "...".
 
             l.split(/[\s\,]+/).each do |word|
               next if word.length == 0
@@ -444,18 +443,15 @@ module CompleterHelper
   end
 
   def take_file(wildcard="*", prefix:nil)
-    prefix ||= arg
-    lazy_list { get_matched_files prefix, wildcard }
+    lazy_list { get_matched_files (prefix || arg), wildcard }
   end
 
   def take_dir(prefix:nil)
-    prefix ||= arg
-    lazy_list { get_matched_dirs prefix }
+    lazy_list { get_matched_dirs (prefix || arg) }
   end
 
   def take_number(prefix:nil, allow_negative:false)
-    prefix ||= arg
-    lazy_list { get_matched_numbers arg, allow_negative:allow_negative}
+    lazy_list { get_matched_numbers (prefix || arg), allow_negative:allow_negative}
   end
 end
 
@@ -926,6 +922,7 @@ class CompletionEngine
   STORE_LAST_COMPLETE_TIME = "engine.last_complete_time"
   STORE_LAST_CURSOR_INDEX = "engine.last_cursor_index"
   STORE_LAST_ORIG_ARGS = "engine.last_cursor_args"
+  STORE_LAST_CWD = "engine.last_cwd"
 
   def initialize(shell, orig_args, index, extras)
     @shell = shell
@@ -1308,7 +1305,8 @@ class CompletionEngine
 
       if (cache_age > 0 and cache_age < CACHE_TIMEOUT) and
           (Store.instance.get(STORE_LAST_CURSOR_INDEX) == cursor_index) and
-          (Store.instance.get(STORE_LAST_ORIG_ARGS) == orig_args)
+          (Store.instance.get(STORE_LAST_ORIG_ARGS) == orig_args) and
+          (Store.instance.get(STORE_LAST_CWD) == Dir.pwd) and
         @candidates = CandidateCache.instance.load()
 
         debug "Loaded #{@candidates.length} candidate(s) from cache; age=#{cache_age}"
@@ -1324,6 +1322,7 @@ class CompletionEngine
 
         Store.instance.set STORE_LAST_CURSOR_INDEX, cursor_index
         Store.instance.set STORE_LAST_ORIG_ARGS, orig_args
+        Store.instance.set STORE_LAST_CWD, Dir.pwd
 
         debug "Saving candidates..."
         CandidateCache.instance.save(@candidates)
