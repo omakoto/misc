@@ -39,8 +39,7 @@ Completer.define do
   end
 
   def option_manifest_path
-    # TODO Is this a directory or a manifest file?
-    option "--manifest-path : Path to the manifest to the package to clean", take_file
+    option "--manifest-path \t Path to the manifest to the package to clean", take_file("*.toml")
   end
 
   def main()
@@ -53,7 +52,7 @@ Completer.define do
     end
 
     maybe "help \t Show help for a subcommand" do
-      next_arg_must %w(build check clean doc new init run test bench update search publish install)
+      must %w(build check clean doc new init run test bench update search publish install)
       finish
     end
 
@@ -70,6 +69,33 @@ Completer.define do
     maybe "build \t Compile the current project" do
       for_arg(/^-/) do
         option STANDARD_FLAGS
+        option_color
+        option_target
+        option_manifest_path
+        option build_candidates(%(
+            --all                       : Build all packages in the workspace
+            --lib                       : Build only this package's library
+            --bins                      : Build all binaries
+            --examples                  : Build all examples
+            --tests                     : Build all tests
+            --benches                   : Build all benches
+            --release                   : Build artifacts in release mode, with optimizations
+            --all-features              : Build all available features
+            --no-default-features       : Do not build the `default` feature
+            ))
+        option build_candidates(%(
+            -j N, --jobs N              : Number of parallel jobs, defaults to # of CPUs
+            )), take_number
+        option build_candidates(%(
+            -p SPEC, --package SPEC ... : Package to build
+            --exclude SPEC ...          : Exclude packages from the build
+            --bin NAME                  : Build only the specified binary
+            --example NAME              : Build only the specified example
+            --test NAME                 : Build only the specified test target
+            --bench NAME                : Build only the specified bench target
+            --features FEATURES         : Space-separated list of features to also build
+            --message-format FMT        : Error format: human, json [default: human]
+            )), [] # Not completable
       end
       finish
     end

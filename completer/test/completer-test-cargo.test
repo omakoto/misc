@@ -41,4 +41,53 @@ test_cargo 1 cargo <<'EOF'
 '-vv '
 EOF
 
+test_cargo 1 cargo -- <<'EOF'
+'--color '
+'--explain '
+'--frozen '
+'--help '
+'--list '
+'--locked '
+'--quiet '
+'--verbose '
+'--version '
+EOF
+
+test_cargo 2 cargo help <<'EOF'
+'bench '
+'build '
+'check '
+'clean '
+'doc '
+'init '
+'install '
+'new '
+'publish '
+'run '
+'search '
+'test '
+'update '
+EOF
+
+test_cargo 2 cargo clean <<'EOF'
+'--color '
+'--frozen '
+'-h '
+'--help '
+'--locked '
+'--manifest-path '
+'-q '
+'--quiet '
+'--target '
+'-v '
+'-V '
+'--verbose '
+'--version '
+'-vv '
+EOF
+
+test_cargo 3 cargo clean --target <<'EOF'
+'i686-unknown-linux-gnu '
+EOF
+
 done_testing

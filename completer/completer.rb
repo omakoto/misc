@@ -50,6 +50,8 @@ AUTO_FZF_TIMEOUT = (ENV['COMPLETER_FZF_TIMEOUT'] || 1.5).to_f
 # Note this won't apply on zsh/FZF.
 MAX_CANDIDATES = (ENV['COMPLETER_MAX_CANDIDATES'] || 50).to_f
 
+SKIP_BASH_BINDS = (ENV['COMPLETER_SKIP_BASH_BINDS'] == 1)
+
 # Data files and debug log goes to this directory.
 APP_DIR = Dir.home + "/.completer/"
 Dir.exist?(APP_DIR) or FileUtils.mkdir_p(APP_DIR)
@@ -263,6 +265,9 @@ module CompleterRefinements
 
           # flags are separated by spaces or commas.
           if l != nil && l.length > 0
+            l.gsub(/^\b[A-Z_]\b/, " ") # Remove all-capital words.
+            l.gsub(/^\s\.\.\.+\s/, " ") # Remove "...".
+
             l.split(/[\s\,]+/).each do |word|
               next if word.length == 0
               ret << word.as_candidate(help:help)
@@ -659,9 +664,11 @@ class BashAgent < BasicShellAgent
         # wouldn't be inserted into command line.
         #
         # The following keybindings fixes it.
-        bind '"\\ecp1": overwrite-mode'
-        bind '"\\ecp2": complete'
-        bind '"\\C-i": "\\ecp1\\ecp1\\ecp2"'
+        if (( ! #{(SKIP_BASH_BINDS ? "1" : "0")} )) ; then
+          bind '"\\ecp1": overwrite-mode'
+          bind '"\\ecp2": complete'
+          bind '"\\C-i": "\\ecp1\\ecp1\\ecp2"'
+        fi
 
         # This feeds information within shell (e.g. shell variables)
         # to completer.
@@ -1067,7 +1074,7 @@ class CompletionEngine
     debug {"match?: \"#{condition}\", #{shescape value}"}
 
     if condition.instance_of? String
-      return condition == value # For a full match, we're always case sensitive.
+      return condition.as_candidate().value == value # For a full match, we're always case sensitive.
 
     elsif condition.instance_of? Candidate
       return condition.value == value
