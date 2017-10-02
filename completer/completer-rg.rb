@@ -1,7 +1,5 @@
-. <( exec ruby -x "${BASH_VERSION+${BASH_SOURCE[0]}}${ZSH_VERSION+${${(%):-%N}}}" "$@" rg ~/cbin/rg-* )
-: <<'__END_RUBY_CODE__'
+//bin/true; exec ruby -x "${BASH_VERSION+${BASH_SOURCE[0]}}${ZSH_VERSION+${${(%):-%N}}}" "$@" rg ~/cbin/rg-*
 #!ruby
-def __END_RUBY_CODE__; end
 
 =begin
 
@@ -139,5 +137,3 @@ Completer.define do
     must take_file
   end
 end
-
-__END_RUBY_CODE__

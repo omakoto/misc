@@ -1,7 +1,5 @@
-. <( exec ruby -x "${BASH_VERSION+${BASH_SOURCE[0]}}${ZSH_VERSION+${${(%):-%N}}}" "$@" adb dumpsys acmd am pm settings )
-: <<'__END_RUBY_CODE__'
+//bin/true; exec ruby -x "${BASH_VERSION+${BASH_SOURCE[0]}}${ZSH_VERSION+${${(%):-%N}}}" "$@" adb dumpsys acmd am pm settings
 #!ruby
-def __END_RUBY_CODE__; end
 
 =begin
 
@@ -945,5 +943,3 @@ pm remove-user: remove the user with the given USER_IDENTIFIER,
 
 
 =end
-
-__END_RUBY_CODE__

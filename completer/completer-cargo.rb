@@ -1,7 +1,5 @@
-. <( exec ruby -x "${BASH_VERSION+${BASH_SOURCE[0]}}${ZSH_VERSION+${${(%):-%N}}}" "$@" cargo )
-: <<'__END_RUBY_CODE__'
+//bin/true; exec ruby -x "${BASH_VERSION+${BASH_SOURCE[0]}}${ZSH_VERSION+${${(%):-%N}}}" "$@" cargo
 #!ruby
-def __END_RUBY_CODE__; end
 
 =begin
 
@@ -349,5 +347,3 @@ Some common cargo commands are (see all commands with --list):
 See 'cargo help <command>' for more information on a specific command.
 =end
 
-
-__END_RUBY_CODE__

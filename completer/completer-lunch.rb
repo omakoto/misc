@@ -1,7 +1,5 @@
-. <( exec ruby -x "${BASH_VERSION+${BASH_SOURCE[0]}}${ZSH_VERSION+${${(%):-%N}}}" "$@" lunch a-lunch )
-: <<'__END_RUBY_CODE__'
+//bin/true; exec ruby -x "${BASH_VERSION+${BASH_SOURCE[0]}}${ZSH_VERSION+${${(%):-%N}}}" "$@" lunch a-lunch
 #!ruby
-def __END_RUBY_CODE__; end
 
 =begin
 
@@ -36,5 +34,3 @@ end
 Completer.define do
   must device_flavors
 end
-
-__END_RUBY_CODE__
