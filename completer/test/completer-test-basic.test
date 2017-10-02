@@ -275,6 +275,17 @@ assert_raw_comp -e 'require "completer"
 '--colors '
 EOF
 
+# option() can only be used in a loop or one_of.
+assert_error raw_comp -e 'require "completer"
+    Completer.define do
+      option %w(-a -b -c)
+      option "--colors", %w(always never auto)
+      must %w(aaa bbb), %w(xxx yyy)
+    end
+    ' -- -c 2 cat -a <<'EOF'
+option() used out of for_arg() or arg_one_of()
+EOF
+
 assert_raw_comp -e 'require "completer"
     Completer.define do
       for_arg do

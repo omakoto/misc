@@ -94,7 +94,6 @@ shescape() {
   ruby -e 'require "shellwords"; puts ARGV.map{|v| Shellwords.escape v}.join(" ")' "$@"
 }
 
-
 assert_comp() {
   if (( $verbose )) ; then
     echo -n "> "
@@ -110,9 +109,42 @@ run_ruby() {
   "$RUBY" $RUBYOPTS "$@"
 }
 
-assert_raw_comp() {
-  assert_comp run_ruby -I "$compdir" "$@"
+raw_comp() {
+  run_ruby -I "$compdir" "$@"
 }
+
+assert_raw_comp() {
+  assert_comp raw_comp "$@"
+}
+
+assert_error() {
+  if (( $verbose )) ; then
+    echo -n "> "
+    shescape "$@"
+  fi
+
+  expected_message="$(cat)"
+
+  out=$("$@" 2>&1)
+  rc=$?
+  if (( $rc == 0 )) ; then
+    fail "Command didn't fail unexpectedly."
+    return
+  fi
+
+  if [[ $out != *${expected_message}* ]] ; then
+    fail "Output didn't contain \"$expected_message\". Actual:"$'\n'"$out"
+  fi
+}
+
+# Test the above method.
+assert_error raw_comp -e 'require "completer"
+    Completer.define do
+      optionx "a"
+    end
+    ' -- -c 1 cat <<'EOF'
+undefined method
+EOF
 
 
 # Sort output before diff by default.

@@ -219,8 +219,6 @@ test_adb 3 adb uninstall -k <<EOF
 'com.android.systemui '
 EOF
 
-done_testing
-
 test_adb 2 adb install <<EOF
 '-a '
 '-d '
