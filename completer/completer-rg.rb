@@ -18,7 +18,7 @@ using CompleterRefinements
 
 def gen_type_list
   lazy_list do
-    %x(rg --type-list).split(/\n/).map do |x|
+    (ENV['MOCK_RG_TYPE_LIST'] || %x(rg --type-list)).split(/\n/).map do |x|
       type, desc = x.split(/\s* \: \s*/x, 2)
       type.as_candidate(help: desc)
     end
@@ -37,7 +37,7 @@ Completer.define do
   end
 
   for_arg(/^-/) do
-    maybe build_candidates %(
+    option build_candidates %(
     -s  --case-sensitive                    : Search case sensitively.
         --column                            : Show column numbers
     -c  --count                             : Only show count of matches for each file.
@@ -77,12 +77,12 @@ Completer.define do
     -w  --word-regexp                       : Only show matches surrounded by word boundaries.
       )
 
-    maybe build_candidates(%(
+    option build_candidates(%(
         --color                             : When to use color. [default: auto]
         )), %w(always never auto)
 
     # Flags that take no-completable arguments.
-    maybe build_candidates(%(
+    option build_candidates(%(
         --color                             : When to use color. [default: auto]
         --colors                            : Configure color settings and styles.
         --context-separator                 : Set the context separator string. [default: --]
@@ -94,7 +94,7 @@ Completer.define do
       )), []
 
     # Flags that takes a number.
-    maybe build_candidates(%(
+    option build_candidates(%(
     -A  --after-context                     : Show NUM lines after each match.
     -B  --before-context                    : Show NUM lines before each match.
     -C  --context                           : Show NUM lines before and after each match.
@@ -107,19 +107,19 @@ Completer.define do
 
     # Options that takes a size. Not supported yet; for now just take
     # a number.
-    maybe build_candidates(%(
+    option build_candidates(%(
         --dfa-size-limit            : The upper size limit of the generated dfa.
         --max-filesize              : Ignore files larger than NUM in size.
         --regex-size-limit          : The upper size limit of the compiled regex.
       )), take_number
 
     # TODO Add more encodings.
-    maybe build_candidates(%(
+    option build_candidates(%(
     -E  --encoding                          : Specify the text encoding of files to search.
       )), %w(utf-8)
 
     # Options that takes a type.
-    maybe build_candidates(%(
+    option build_candidates(%(
     -t  --type                    : Only search files matching TYPE.
         --type-add                : Add a new glob for a file type.
         --type-clear              : Clear globs for given file type.
@@ -127,19 +127,19 @@ Completer.define do
       )), gen_type_list
 
     # Options that take a file.
-    maybe build_candidates(%(
+    option build_candidates(%(
     -f  --file                       : Search for patterns from the given file.
         --ignore-file                : Specify additional ignore files.
       )), take_file
 
-    maybe "--" do
+    option "--" do
       for_break
     end
   end
 
   # The rest are files only.
   for_arg do
-    next_arg_must take_file
+    must take_file
   end
 end
 

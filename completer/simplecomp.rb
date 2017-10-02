@@ -39,22 +39,26 @@ require_relative "completer"
 using CompleterRefinements
 
 Completer.define do
+  # Initialize.
   flags = build_candidates extras
   take_files = !(extras =~ /^\#nofile/)
 
+  # As long as the argument start with "-", flags are always
+  # in the candidates.
   for_arg(/^-/) do
-    maybe flags
+    option flags
 
+    # If a command takes filenames, "--" will terminate the flag
+    # parsing.
     if take_files
-      maybe("--") do
-        for_break
-      end
+      option("--") {for_break}
     end
   end
 
+  # The rest of the arguments are all filenames.
   if take_files
     for_arg do
-      next_arg_must take_file
+      must take_file
     end
   end
 end

@@ -125,9 +125,9 @@ Completer.define do
     settings if command == "settings"
 
     for_arg(/^-/) do
-      maybe %w(-a -d -e -H -P)
-      maybe "-s", take_device_serial
-      maybe "-L", take_number # Listen port.
+      option %w(-a -d -e -H -P)
+      option "-s", take_device_serial
+      option "-L", take_number # Listen port.
       otherwise { for_break }
     end
 
@@ -216,26 +216,26 @@ Completer.define do
       for_arg(/^-/) do
         maybe %w(-a -d -e -H -P)
       end
-      next_arg_must take_file "*.apk"
+      must take_file "*.apk"
       finish
     end
 
     maybe "uninstall" do
       maybe %w(-k)
-      next_arg_must take_package
+      must take_package
       finish
     end
 
     maybe "push" do
       maybe "--sync"
-      next_arg_must take_file, take_device_file
+      must take_file, take_device_file
       finish
     end
 
     maybe "pull" do
       maybe "--pull"
-      next_arg_must take_device_file
-      next_arg_must take_file
+      must take_device_file
+      must take_file
       finish
     end
 
@@ -256,8 +256,8 @@ Completer.define do
 
     maybe "shell" do
       for_arg(/^-/) do
-        maybe %w(-n -T -t -x)
-        maybe "-e", ["none"]
+        option %w(-n -T -t -x)
+        option "-e", ["none"]
       end
       maybe("am") {am}
       maybe("pm") {pm}
@@ -280,12 +280,12 @@ Completer.define do
     maybe("dump", take_package) {finish}
     maybe "clear" do
       maybe "--user", take_user_id
-      next_arg_must take_package
+      must take_package
       finish
     end
     maybe %w(enable disable disable-user disable-until-used default-state hide unhide) do
       maybe "--user", take_user_id
-      next_arg_must take_package_or_component
+      must take_package_or_component
       finish
     end
     finish
@@ -319,17 +319,17 @@ Completer.define do
   def settings()
     maybe %w(get put reset) do
       maybe "--user", take_user_id
-      next_arg_must %w(global system secure)
+      must %w(global system secure)
     end
     maybe %w(delete list) do
-      next_arg_must %w(global system secure)
+      must %w(global system secure)
     end
     finish
   end
 
   def catch_all()
     for_arg do
-      maybe take_device_file
+      option take_device_file
     end
   end
 

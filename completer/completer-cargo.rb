@@ -22,26 +22,26 @@ Completer.define do
     lazy_list {%w(i686-unknown-linux-gnu) + read_file_lines("~/.cargo-targets")}
   end
 
-  def maybe_take_color
+  def option_color
     maybe "--color", %w(auto always never)
   end
 
-  def maybe_take_target
+  def option_target
     maybe "--target", take_target
   end
 
-  def maybe_take_manifest_path
+  def option_manifest_path
     maybe "--manifest-path", take_file # Directory??
   end
 
   def main()
     for_arg(/^-/) do
-      maybe STANDARD_FLAGS
-      maybe "--list"
-      maybe "--explain", [] do
+      option STANDARD_FLAGS
+      option "--list"
+      option "--explain", [] do
         finish
       end
-      maybe_take_color
+      option_color
     end
 
     maybe "help" do
@@ -51,10 +51,10 @@ Completer.define do
 
     maybe "clean" do
       for_arg(/^-/) do
-        maybe STANDARD_FLAGS
-        maybe_take_color
-        maybe_take_target
-        maybe_take_manifest_path
+        option STANDARD_FLAGS
+        option_color
+        option_target
+        option_manifest_path
       end
       finish
     end

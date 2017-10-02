@@ -34,7 +34,7 @@ def device_flavors
 end
 
 Completer.define do
-  next_arg_must device_flavors
+  must device_flavors
 end
 
 __END_RUBY_CODE__

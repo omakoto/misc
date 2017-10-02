@@ -1078,9 +1078,9 @@ class CompletionEngine
     end
   end
 
-  def any(match=nil, &block)
-    block or die "any() requires a block."
-    for_arg(match, once:true, method:"any", &block)
+  def arg_one_of(match=nil, &block)
+    block or die "arg_one_of() requires a block."
+    for_arg(match, once:true, method:"arg_one_of", &block)
     return RESULT_ANY
   end
 
@@ -1122,32 +1122,35 @@ class CompletionEngine
     return RESULT_FOR_ARG
   end
 
-  # Exits the inner most for_arg loop.
+  # Exits the inner most for_arg loop, or arg_one_of.
   def for_break(method:"for_break")
     debug "for_break()"
     begin
       throw FOR_ARG_LABEL
     rescue UncaughtThrowError
-      die "#{method}() used out of for_arg() or any()"
+      die "#{method}() used out of for_arg() or arg_one_of()"
     end
   end
 
-  # Jump back to the top the inner most for_arg loop and process the
-  # next argument.
+  # Jump back to the top the inner most for_arg loop, or arg_one_of.
   def for_next(method:"for_next")
     debug "for_next()"
     begin
       throw FOR_ARG_LABEL, FOR_AGAIN
     rescue UncaughtThrowError
-      die "#{method}() used out of for_arg() or any()"
+      die "#{method}() used out of for_arg() or arg_one_of()"
     end
   end
 
-  def maybe(*vals, &block)
-    vals.length == 0 and die "maybe() requires at least one argument."
+  def option(*vals, &block)
+    maybe(*vals, fallthrough:false, method:"option", &block)
+  end
+
+  def maybe(*vals, fallthrough:true, method:"maybe", &block)
+    vals.length == 0 and die "#{method}() requires at least one argument."
     _detect_invalid_params(vals)
 
-    debug {"[maybe](#{index}/#{cursor_index}): #{vals}#{block ? " (has block)" : ""}"}
+    debug {"[#{method}](#{index}/#{cursor_index}): #{vals}#{block ? " (has block)" : ""}"}
 
     debug_indent do
       # If we're at cursor, just add the candidates.
@@ -1162,12 +1165,12 @@ class CompletionEngine
 
       if match? vals[0], arg
         # Otherwise, eat words.
-        debug {"maybe: found a match."}
+        debug {"#{method}: found a match."}
         next_arg
 
         debug_indent do
           1.upto(vals.length - 1) do |i|
-            debug {"maybe(): processing arg ##{i} #{vals[i].inspect}"}
+            debug {"#{method}(): processing arg ##{i} #{vals[i].inspect}"}
             if at_cursor?
               candidates vals[i]
               finish
@@ -1182,7 +1185,7 @@ class CompletionEngine
           end
         end
 
-        for_next(method:"maybe")
+        fallthrough or for_next(method:method)
       end # match
     end
     return RESULT_MAYBE
