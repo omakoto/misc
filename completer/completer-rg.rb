@@ -133,7 +133,7 @@ Completer.define do
       )), take_file
 
     option "--" do
-      for_break
+      break_for
     end
   end
 

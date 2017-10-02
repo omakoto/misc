@@ -911,9 +911,9 @@ class CompletionEngine
   end
 
   RESULT_MAYBE = Sentinel.new("maybe")
-  RESULT_NEXT_ARG_MUST =  Sentinel.new("next_arg_must")
+  RESULT_NEXT_ARG_MUST =  Sentinel.new("must")
   RESULT_FOR_ARG =  Sentinel.new("for_arg")
-  RESULT_ANY =  Sentinel.new("any")
+  RESULT_SWITCH =  Sentinel.new("switch")
   RESULT_NEXT_ARG =  Sentinel.new("next_arg")
 
   STORE_LAST_COMPLETE_TIME = "engine.last_complete_time"
@@ -1085,10 +1085,10 @@ class CompletionEngine
     end
   end
 
-  def arg_one_of(&block)
-    block or die "arg_one_of() requires a block."
-    for_arg(nil, once:true, method:"arg_one_of", &block)
-    return RESULT_ANY
+  def switch(&block)
+    block or die "switch() requires a block."
+    for_arg(nil, once:true, method:"switch", &block)
+    return RESULT_SWITCH
   end
 
   def for_arg(match=nil, once:false, method:"for_arg", &block)
@@ -1129,23 +1129,23 @@ class CompletionEngine
     return RESULT_FOR_ARG
   end
 
-  # Exits the inner most for_arg loop, or arg_one_of.
-  def for_break(method:"for_break")
-    debug "for_break()"
+  # Exits the inner most for_arg loop, or switch.
+  def break_for(method:"break_for")
+    debug "break_for()"
     begin
       throw FOR_ARG_LABEL
     rescue UncaughtThrowError
-      die "#{method}() used out of for_arg() or arg_one_of()"
+      die "#{method}() used out of for_arg() or switch()"
     end
   end
 
-  # Jump back to the top the inner most for_arg loop, or arg_one_of.
-  def for_next(method:"for_next")
-    debug "for_next()"
+  # Jump back to the top the inner most for_arg loop, or switch.
+  def next_for(method:"next_for")
+    debug "next_for()"
     begin
       throw FOR_ARG_LABEL, FOR_AGAIN
     rescue UncaughtThrowError
-      die "#{method}() used out of for_arg() or arg_one_of()"
+      die "#{method}() used out of for_arg() or switch()"
     end
   end
 
@@ -1192,7 +1192,7 @@ class CompletionEngine
           end
         end
 
-        fallthrough or for_next(method:method)
+        fallthrough or next_for(method:method)
       end # match
     end
     return RESULT_MAYBE
@@ -1201,16 +1201,16 @@ class CompletionEngine
   def otherwise(&block)
     block or die "otherwise() requires a block."
 
-    return maybe(//) do
+    return maybe(//, method:"otherwise") do
       block.call
     end
   end
 
   def must(*vals, &block)
-    vals.length == 0 and die "next_arg_must() requires at least one argument."
+    vals.length == 0 and die "must() requires at least one argument."
     _detect_invalid_params(vals)
 
-    debug {"[next_arg_must](#{index}/#{cursor_index}): #{vals}#{block ? " (has block)" : ""}"}
+    debug {"[must](#{index}/#{cursor_index}): #{vals}#{block ? " (has block)" : ""}"}
 
     debug_indent do
       vals.length.times do |n|

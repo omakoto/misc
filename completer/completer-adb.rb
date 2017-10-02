@@ -128,7 +128,7 @@ Completer.define do
       option %w(-a -d -e -H -P)
       option "-s", take_device_serial
       option "-L", take_number # Listen port.
-      otherwise { for_break }
+      otherwise { break_for }
     end
 
     # Subcommands with no arguments

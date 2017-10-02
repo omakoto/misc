@@ -51,7 +51,7 @@ Completer.define do
     # If a command takes filenames, "--" will terminate the flag
     # parsing.
     if take_files
-      option("--") {for_break}
+      option("--") {break_for}
     end
   end
 

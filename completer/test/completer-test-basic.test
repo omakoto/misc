@@ -126,7 +126,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      arg_one_of do
+      switch do
         option %w(-a -b -c)
         option "--colors", %w(always never auto)
       end
@@ -143,7 +143,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      arg_one_of do
+      switch do
         option %w(-a -b -c)
         option "--colors", %w(always never auto)
       end
@@ -158,7 +158,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      arg_one_of do
+      switch do
         option %w(-a -b -c)
         option "--colors", %w(always never auto)
       end
@@ -170,7 +170,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      arg_one_of do
+      switch do
         option %w(-a -b -c)
         option "--colors", %w(always never auto)
       end
@@ -184,7 +184,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      arg_one_of do
+      switch do
         option %w(-a -b -c)
         option "--colors", %w(always never auto)
       end
@@ -196,7 +196,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      arg_one_of do
+      switch do
         option %w(-a -b -c)
         option "--colors", %w(always never auto)
       end
@@ -209,7 +209,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      arg_one_of do
+      switch do
         option %w(-a -b -c)
         option "--colors", %w(always never auto)
       end
@@ -220,7 +220,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      arg_one_of do
+      switch do
         option %w(-a -b -c)
         option "--colors", %w(always never auto)
       end
@@ -231,11 +231,11 @@ assert_raw_comp -e 'require "completer"
 'bbb '
 EOF
 
-# "option" in arg_one_of doesn't fall-through, so --colors won't be
+# "option" in switch doesn't fall-through, so --colors won't be
 # in the candidates. See the next test too.
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      arg_one_of do
+      switch do
         option %w(-a -b -c)
         option "--colors", %w(always never auto)
       end
@@ -250,7 +250,7 @@ EOF
 # because maybe falls-through.
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      arg_one_of do
+      switch do
         maybe %w(-a -b -c)
         maybe "--colors", %w(always never auto)
       end
@@ -283,7 +283,7 @@ assert_error raw_comp -e 'require "completer"
       must %w(aaa bbb), %w(xxx yyy)
     end
     ' -- -c 2 cat -a <<'EOF'
-option() used out of for_arg() or arg_one_of()
+option() used out of for_arg() or switch()
 EOF
 
 assert_raw_comp -e 'require "completer"
