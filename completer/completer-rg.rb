@@ -26,12 +26,11 @@ def gen_type_list
 end
 
 Completer.define do
-  maybe build_candidates("--type-list : Show all supported file types.") do
-    finish
-  end
-
+  # Solo options.
   maybe build_candidates(%(
+        --type-list                         : Show all supported file types.
     -h  --help                              : Prints help information. Use --help for more details.
+    -V  --version                           : Prints version information
       )) do
     finish
   end
@@ -71,7 +70,6 @@ Completer.define do
     -a  --text                              : Search binary files as if they were text.
 
     -u  --unrestricted                      : Reduce the level of "smart" searching.
-    -V  --version                           : Prints version information
         --vimgrep                           : Show results in vim compatible format.
     -H  --with-filename                     : Show file name for each match.
     -w  --word-regexp                       : Only show matches surrounded by word boundaries.
@@ -83,7 +81,6 @@ Completer.define do
 
     # Flags that take no-completable arguments.
     option build_candidates(%(
-        --color                             : When to use color. [default: auto]
         --colors                            : Configure color settings and styles.
         --context-separator                 : Set the context separator string. [default: --]
     -g  --glob                              : Include or exclude files/directories.
