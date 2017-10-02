@@ -423,7 +423,7 @@ module CompleterHelper
     ret = (File.exist? file) ? open(file, "r").read.split(/\n/) : []
 
     if ignore_comments
-      ret = ret.reject {|x| x =~/^\#/ }
+      ret = ret.reject {|x| x =~/^#/ }
     end
 
     return ret;

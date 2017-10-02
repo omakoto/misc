@@ -13,22 +13,14 @@ require_relative "completer"
 using CompleterRefinements
 
 def load_devices()
-  devices = %w(generic full bullhead angler marlin sailfish walleye taimen)
-  devices.push(* read_file_lines("~/.android-devices"))
-  devices.uniq!
-  return devices
+  lazy_list do
+    %w(generic full bullhead angler marlin sailfish walleye taimen) \
+        + read_file_lines("~/.android-devices").uniq
+  end
 end
 
 def device_flavors
-  lazy_list do
-    ret = []
-    load_devices.each {|d|
-      %w(eng userdebug).each {|f|
-        ret.push "#{d}-#{f}"
-      }
-    }
-    next ret
-  end
+  lazy_list { load_devices.to_a.product(%w(eng userdebug)).map {|a,b| "#{a}-#{b}" } }
 end
 
 Completer.define do
