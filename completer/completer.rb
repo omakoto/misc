@@ -263,6 +263,10 @@ module CompleterRefinements
     def build_candidates(*args)
       ret = []
       args.each do |arg|
+
+        # If a line starts with leading whitespace + "<", then concatenate it with the previous line.
+        arg.gsub!(/\s*\n\s*\</, " : ")
+
         arg.split(/\n/).each do |line|
           # Remove leading spaces and comments.
           l = line.sub(/^\s+/, "").sub(/\s* \# .*/x, "")
@@ -272,11 +276,17 @@ module CompleterRefinements
 
           # flags are separated by spaces or commas.
           if l != nil && l.length > 0
-            l.gsub!(/\s[A-Z_]+\b/, " ") # Remove all-capital words.
             l.gsub!(/\.{3,}/, " ") # Remove "...".
 
-            l.split(/[\s\,]+/).each do |word|
+            # If a line starts with a dash, this is a flag (or a flag list).
+            # Then we ignore all words that don't start with "-" in this line.
+            line_contains_flags = l =~ /^-/
+
+            # The following characters are typical "meta" characters, so ignore.
+            l.split(/[\s\,\<\>\[\]\=]+/).each do |word|
               next if word.length == 0
+              next if line_contains_flags && word !~ /^-/
+
               ret << word.as_candidate(help:help)
             end
           end
@@ -396,7 +406,7 @@ module CompleterHelper
     # Remove the last path component.
     dir = prefix.sub(%r([^\/]*$), "")
 
-    if dir != "" and !Dir.exists? dir
+    if dir != "" and !Dir.exist? dir
       return
     end
 
