@@ -1,0 +1,59 @@
+# Map [TAB] to "toggle overwrite-mode twice, then complete".
+# This will run a completion *after resetting the context*.
+# Normally, when the user does a completion twice in a row
+# on the same command line, readline switches to the
+# "show matched candidates, but don't insert to the command line"
+# mode. This wouldn't work well with FZF -- if the user cancels
+# on FZF first, then hit TAB again, readline would fall into
+# this mode, and the result from the second FZF invocation
+# wouldn't be inserted into command line.
+#
+# The following keybindings fixes it.
+if (( ! 0 )) ; then
+  bind '"\ecp1": overwrite-mode'
+  bind '"\ecp2": complete'
+  bind '"\C-i": "\ecp1\ecp1\ecp2"'
+fi
+
+# This feeds information within shell (e.g. shell variables)
+# to completer.
+function __completer_context_passer {
+    declare -p
+    echo -n "
+-*-*-*-COMPLETER-*-*-*-
+"
+    jobs
+}
+
+# Actual completion function.
+function _1_completion {
+  export COMP_POINT
+  export COMP_LINE
+  export COMP_TYPE
+  export COMP_WORDBREAKS
+  . <( __completer_context_passer |
+      ruby -wx "/usr/local/google/home/omakoto/cbin/misc/completer/simplecomp.rb" -e '
+-w	:Wait until the editor returns.
+--wait	:Wait until the editor returns.
+-n	:Don'\''t wait until the editor returns (default).
+--background	:Don'\''t wait until the editor returns (default).
+-e	:Disable smart file handling and force editor.
+--force-editor	:Disable smart file handling and force editor.
+-p	:Pretty-print for XML/Json.
+--pretty	:Pretty-print for XML/Json.
+-d	:No pretty-print.
+--no-pretty	:No pretty-print.
+-c	:Open copy instead.
+--copy	:Open copy instead.
+-N	:Open new timestamped doc.
+--newdoc	:Open new timestamped doc.
+-z	:Don'\''t use zenlog logfile to catch stdin input.
+--no-zenlog	:Don'\''t use zenlog logfile to catch stdin input.
+--pipe	:Read from stdin.
+--stdin	:Read from stdin.
+--makepath	:Make the directory.
+-h	:Show this help.
+--help	:Show this help.
+--bash-completion	:Print bash completion script.' -c --                   "$COMP_CWORD" "${COMP_WORDS[@]}" )
+}
+complete -o nospace -F _1_completion -- 1

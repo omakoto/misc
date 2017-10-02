@@ -1,0 +1,42 @@
+# Map [TAB] to "toggle overwrite-mode twice, then complete".
+# This will run a completion *after resetting the context*.
+# Normally, when the user does a completion twice in a row
+# on the same command line, readline switches to the
+# "show matched candidates, but don't insert to the command line"
+# mode. This wouldn't work well with FZF -- if the user cancels
+# on FZF first, then hit TAB again, readline would fall into
+# this mode, and the result from the second FZF invocation
+# wouldn't be inserted into command line.
+#
+# The following keybindings fixes it.
+if (( ! 0 )) ; then
+  bind '"\ecp1": overwrite-mode'
+  bind '"\ecp2": complete'
+  bind '"\C-i": "\ecp1\ecp1\ecp2"'
+fi
+
+# This feeds information within shell (e.g. shell variables)
+# to completer.
+function __completer_context_passer {
+    declare -p
+    echo -n "
+-*-*-*-COMPLETER-*-*-*-
+"
+    jobs
+}
+
+# Actual completion function.
+function _adb_completion {
+  export COMP_POINT
+  export COMP_LINE
+  export COMP_TYPE
+  export COMP_WORDBREAKS
+  . <( __completer_context_passer |
+      ruby -wx "/usr/local/google/home/omakoto/cbin/misc/completer/completer-adb.rb"  -c --                   "$COMP_CWORD" "${COMP_WORDS[@]}" )
+}
+complete -o nospace -F _adb_completion -- adb
+complete -o nospace -F _adb_completion -- dumpsys
+complete -o nospace -F _adb_completion -- acmd
+complete -o nospace -F _adb_completion -- am
+complete -o nospace -F _adb_completion -- pm
+complete -o nospace -F _adb_completion -- settings

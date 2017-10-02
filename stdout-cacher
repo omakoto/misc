@@ -1,0 +1,43 @@
+#!/bin/bash
+
+#
+# stdout-cacher: Run a command, with caching stdout.
+#
+# Usage: stdout-cacher [-d DEP-FILE] ... [-f CACHE-FILE] COMMAND ARGS
+#   If any of COMMAND or DEP-FILE is newer than the cached output,
+#   it'll purge the cache and execute the command.
+
+set -e
+
+. mutil.sh
+
+deps=()
+cache_file=""
+
+while getopts "d:f:" opt; do
+  case "$opt" in
+    d) deps+=("$OPTARG") ;;
+    f) cache_file="$OPTARG" ;;
+  esac
+done
+shift $(($OPTIND - 1))
+
+if [[ -z "$cache_file" ]] ;then
+  cache_file="$1".cached-stdout
+fi
+
+if [[ -f "$cache_file" ]] ;then
+  for d in "$0" "$1" "${deps[@]}"; do
+    if [[ "$d" -nt "$cache_file" ]] ; then
+      rm -f "$cache_file"
+      break
+    fi
+  done
+fi
+
+if [[ -f "$cache_file" ]] ;then
+  # Cache fresh.
+  cat "$cache_file"
+else
+  "$@" | tee "$cache_file"
+fi
