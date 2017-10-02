@@ -14,7 +14,15 @@ def __END_RUBY_CODE__; end
 require_relative "completer"
 using CompleterRefinements
 
-STANDARD_FLAGS = %w(-h --help -V --version -v --verbose -vv -q --quiet --frozen --locked)
+STANDARD_FLAGS = build_candidates(%(
+    -h, --help          : Display this message
+    -V, --version       : Print version info and exit
+    -v, --verbose       : Use verbose output
+    -vv                 : Use very verbose output
+    -q, --quiet         : No output printed to stdout
+    --frozen            : Require Cargo.lock and cache are up to date
+    --locked            : Require Cargo.lock is up to date
+  ))
 
 Completer.define do
 
@@ -23,38 +31,122 @@ Completer.define do
   end
 
   def option_color
-    maybe "--color", %w(auto always never)
+    option "--color \t Use colors", %w(auto always never)
   end
 
   def option_target
-    maybe "--target", take_target
+    option "--target \t Target triple", take_target
   end
 
   def option_manifest_path
-    maybe "--manifest-path", take_file # Directory??
+    # TODO Is this a directory or a manifest file?
+    option "--manifest-path : Path to the manifest to the package to clean", take_file
   end
 
   def main()
+    maybe("--list \t List installed commands") { finish }
+    maybe("--explain \t Run `rustc --explain CODE`") { finish }
+
     for_arg(/^-/) do
       option STANDARD_FLAGS
-      option "--list"
-      option "--explain", [] do
-        finish
-      end
       option_color
     end
 
-    maybe "help" do
+    maybe "help \t Show help for a subcommand" do
       next_arg_must %w(build check clean doc new init run test bench update search publish install)
       finish
     end
 
-    maybe "clean" do
+    maybe "clean \t Remove the target directory" do
       for_arg(/^-/) do
         option STANDARD_FLAGS
         option_color
         option_target
         option_manifest_path
+      end
+      finish
+    end
+
+    maybe "build \t Compile the current project" do
+      for_arg(/^-/) do
+        option STANDARD_FLAGS
+      end
+      finish
+    end
+
+    maybe "check \t Analyze the current project and report errors, but don't build object files" do
+      for_arg(/^-/) do
+        option STANDARD_FLAGS
+      end
+      finish
+    end
+
+    maybe "doc       \t Build this project's and its dependencies' documentation" do
+      for_arg(/^-/) do
+        option STANDARD_FLAGS
+      end
+      finish
+    end
+
+    maybe "new       \t Create a new cargo project" do
+      for_arg(/^-/) do
+        option STANDARD_FLAGS
+      end
+      finish
+    end
+
+    maybe "init      \t Create a new cargo project in an existing directory" do
+      for_arg(/^-/) do
+        option STANDARD_FLAGS
+      end
+      finish
+    end
+
+    maybe "run       \t Build and execute src/main.rs" do
+      for_arg(/^-/) do
+        option STANDARD_FLAGS
+      end
+      finish
+    end
+
+    maybe "test      \t Run the tests" do
+      for_arg(/^-/) do
+        option STANDARD_FLAGS
+      end
+      finish
+    end
+
+    maybe "bench     \t Run the benchmarks" do
+      for_arg(/^-/) do
+        option STANDARD_FLAGS
+      end
+      finish
+    end
+
+    maybe "update    \t Update dependencies listed in Cargo.lock" do
+      for_arg(/^-/) do
+        option STANDARD_FLAGS
+      end
+      finish
+    end
+
+    maybe "search    \t Search registry for crates" do
+      for_arg(/^-/) do
+        option STANDARD_FLAGS
+      end
+      finish
+    end
+
+    maybe "publish   \t Package and upload this project to the registry" do
+      for_arg(/^-/) do
+        option STANDARD_FLAGS
+      end
+      finish
+    end
+
+    maybe "install   \t Install a Rust binary" do
+      for_arg(/^-/) do
+        option STANDARD_FLAGS
       end
       finish
     end

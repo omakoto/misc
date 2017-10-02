@@ -223,7 +223,7 @@ module CompleterRefinements
         completed = s_completed if completed == nil
         help = s_help if help == nil
 
-        return Candidate.new(candidate, raw:raw, completed:completed, help:help)
+        return Candidate.new(candidate.strip, raw:raw, completed:completed, help:help&.strip)
       else
         return nil
       end
