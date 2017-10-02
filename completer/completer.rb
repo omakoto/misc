@@ -1,11 +1,11 @@
 #!/usr/bin/env ruby
+$VERBOSE = true
 
 require 'optparse'
 require 'fileutils'
 require 'pathname'
 require 'singleton'
 require 'json'
-require 'pp'
 
 require 'rubygems' # For version check on<1.9
 abort "#{$0.sub(/^.*\//, "")} requires ruby >= 2.4" if Gem::Version.new(RUBY_VERSION) < Gem::Version.new('2.4')
@@ -57,31 +57,35 @@ Dir.exist?(APP_DIR) or FileUtils.mkdir_p(APP_DIR)
 # Debug output goes to this file.
 DEBUG_FILE = APP_DIR + "/completer-debug.txt"
 
-$debug_indent_level = 0
-$_cached_shell = nil
-$debug_out= nil
-
 RAW_MARKER = "\e"
 HELP_MARKER = "\t"
 INCOMPLETE_MARKER = "\b"
 
 module CompleterRefinements
   refine Kernel do
+
+    def init_debug()
+      @@debug_indent_level = 0 unless defined? @@debug_indent_level
+      @@debug_out = nil unless defined? @@debug_out
+    end
+
     # Debug print.
     def debug(*args, &b)
       return false unless DEBUG
 
+      init_debug()
+
       if args.length > 0
-        msg = args.join("\n").gsub(/^/m, "  " * $debug_indent_level + "D:").chomp
+        msg = args.join("\n").gsub(/^/m, "  " * @@debug_indent_level + "D:").chomp
 
         # If stdout is TTY, assume the script is executed directly for
         # testing, and write log to stderr.
         if $stdout.tty?
           $stderr.puts msg
         else
-          $debug_out = ($debug_out or open(DEBUG_FILE, "w"))
-          $debug_out.puts msg
-          $debug_out.flush
+          @@debug_out = (@@debug_out or open(DEBUG_FILE, "w"))
+          @@debug_out.puts msg
+          @@debug_out.flush
         end
       end
       debug(b.call()) if b
@@ -89,19 +93,21 @@ module CompleterRefinements
     end
 
     def debug_indent(&block)
-      $debug_indent_level += 1
+      init_debug()
+
+      @@debug_indent_level += 1
 
       if block
         begin
           block.call()
         ensure
-          $debug_indent_level -= 1
+          @@debug_indent_level -= 1
         end
       end
     end
 
     def debug_unindent()
-      $debug_indent_level -= 1
+      @@debug_indent_level -= 1
     end
 
     def die(*msg)
@@ -178,9 +184,10 @@ module CompleterRefinements
     end
 
     def get_shell()
-      return $_cached_shell if $_cached_shell
+      @@_cached_shell = nil unless defined? @@_cached_shell
+      return @@_cached_shell if @@_cached_shell
 
-      $_cached_shell = (-> {
+      @@_cached_shell = (-> {
         shell_name = ENV["SHELL"].sub(/^.*\//, "")
         case shell_name
         when "bash"
@@ -1078,9 +1085,9 @@ class CompletionEngine
     end
   end
 
-  def arg_one_of(match=nil, &block)
+  def arg_one_of(&block)
     block or die "arg_one_of() requires a block."
-    for_arg(match, once:true, method:"arg_one_of", &block)
+    for_arg(nil, once:true, method:"arg_one_of", &block)
     return RESULT_ANY
   end
 

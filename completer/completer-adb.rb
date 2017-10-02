@@ -1,4 +1,4 @@
-. <( exec ruby -wx "${BASH_VERSION+${BASH_SOURCE[0]}}${ZSH_VERSION+${${(%):-%N}}}" "$@" adb dumpsys acmd am pm settings )
+. <( exec ruby -x "${BASH_VERSION+${BASH_SOURCE[0]}}${ZSH_VERSION+${${(%):-%N}}}" "$@" adb dumpsys acmd am pm settings )
 : <<'__END_RUBY_CODE__'
 #!ruby
 def __END_RUBY_CODE__; end
@@ -8,17 +8,17 @@ def __END_RUBY_CODE__; end
 # Install
 . ~/cbin/misc/completer-adb.rb
 
-ruby -wx completer-adb.rb -c 1 adb
-ruby -wx completer-adb.rb -c 2 adb -s
-ruby -wx completer-adb.rb -c 3 adb -s SE
-ruby -wx completer-adb.rb -c 4 adb -s serial --
+ruby -x completer-adb.rb -c 1 adb
+ruby -x completer-adb.rb -c 2 adb -s
+ruby -x completer-adb.rb -c 3 adb -s SE
+ruby -x completer-adb.rb -c 4 adb -s serial --
 
-ruby -wx completer-adb.rb -c 2 adb pull
+ruby -x completer-adb.rb -c 2 adb pull
 
-ruby -wx completer-adb.rb -c 2 adb install
+ruby -x completer-adb.rb -c 2 adb install
 
-ruby -wx completer-adb.rb -c 2 adb uninstall
-ruby -wx completer-adb.rb -c 3 adb uninstall -k
+ruby -x completer-adb.rb -c 2 adb uninstall
+ruby -x completer-adb.rb -c 3 adb uninstall -k
 
 __completer_context_passer | ruby -x completer-adb.rb -c  1 adb '$'
 
