@@ -83,7 +83,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      next_arg_must take_file
+      must take_file
     end
     ' -- -c 1 cat <<'EOF'
 aaa/
@@ -93,7 +93,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      next_arg_must %w(aaa bbb), %w(xxx yyy)
+      must %w(aaa bbb), %w(xxx yyy)
     end
     ' -- -c 1 cat <<'EOF'
 'aaa '
@@ -102,7 +102,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      next_arg_must %w(aaa bbb), %w(xxx yyy)
+      must %w(aaa bbb), %w(xxx yyy)
     end
     ' -- -c 1 cat a <<'EOF'
 'aaa '
@@ -110,7 +110,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      next_arg_must %w(aaa bbb), %w(xxx yyy)
+      must %w(aaa bbb), %w(xxx yyy)
     end
     ' -- -c 2 cat a <<'EOF'
 'xxx '
@@ -119,16 +119,18 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      next_arg_must %w(aaa bbb), %w(xxx yyy)
+      must %w(aaa bbb), %w(xxx yyy)
     end
     ' -- -c 3 cat a x <<'EOF'
 EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      maybe %w(-a -b -c)
-      maybe "--colors", %w(always never auto)
-      next_arg_must %w(aaa bbb), %w(xxx yyy)
+      any do
+        maybe %w(-a -b -c)
+        maybe "--colors", %w(always never auto)
+      end
+      must %w(aaa bbb), %w(xxx yyy)
     end
     ' -- -c 1 cat <<'EOF'
 '-a '
@@ -141,9 +143,11 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      maybe %w(-a -b -c)
-      maybe "--colors", %w(always never auto)
-      next_arg_must %w(aaa bbb), %w(xxx yyy)
+      any do
+        maybe %w(-a -b -c)
+        maybe "--colors", %w(always never auto)
+      end
+      must %w(aaa bbb), %w(xxx yyy)
     end
     ' -- -c 1 cat - <<'EOF'
 '-a '
@@ -154,9 +158,11 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      maybe %w(-a -b -c)
-      maybe "--colors", %w(always never auto)
-      next_arg_must %w(aaa bbb), %w(xxx yyy)
+      any do
+        maybe %w(-a -b -c)
+        maybe "--colors", %w(always never auto)
+      end
+      must %w(aaa bbb), %w(xxx yyy)
     end
     ' -- -c 1 cat -- <<'EOF'
 '--colors '
@@ -164,9 +170,11 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      maybe %w(-a -b -c)
-      maybe "--colors", %w(always never auto)
-      next_arg_must %w(aaa bbb), %w(xxx yyy)
+      any do
+        maybe %w(-a -b -c)
+        maybe "--colors", %w(always never auto)
+      end
+      must %w(aaa bbb), %w(xxx yyy)
     end
     ' -- -c 2 cat --colors <<'EOF'
 'auto '
@@ -176,9 +184,11 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      maybe %w(-a -b -c)
-      maybe "--colors", %w(always never auto)
-      next_arg_must %w(aaa bbb), %w(xxx yyy)
+      any do
+        maybe %w(-a -b -c)
+        maybe "--colors", %w(always never auto)
+      end
+      must %w(aaa bbb), %w(xxx yyy)
     end
     ' -- -c 3 cat --colors always <<'EOF'
 'aaa '
@@ -188,7 +198,7 @@ EOF
 assert_raw_comp -e 'require "completer"
     Completer.define do
       for_arg do
-        next_arg_must take_file
+        must take_file
       end
     end
     ' -- -c 1 cat <<'EOF'
@@ -200,7 +210,7 @@ EOF
 assert_raw_comp -e 'require "completer"
     Completer.define do
       for_arg do
-        next_arg_must take_file
+        must take_file
       end
     end
     ' -- -c 2 cat x <<'EOF'
@@ -212,7 +222,7 @@ EOF
 assert_raw_comp -e 'require "completer"
     Completer.define do
       for_arg do
-        next_arg_must take_file
+        must take_file
       end
     end
     ' -- -c 2 cat x aaa/ <<'EOF'
@@ -224,7 +234,7 @@ EOF
 assert_raw_comp -e 'require "completer"
     Completer.define do
       for_arg do
-        next_arg_must take_file
+        must take_file
       end
     end
     ' -- -c 1 cat nonexistent <<'EOF'
@@ -352,7 +362,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      next_arg_must take_number
+      must take_number
     end
     ' -- -c 1 cat <<'EOF'
 '0 '
@@ -369,7 +379,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      next_arg_must take_number
+      must take_number
     end
     ' -- -c 1 cat 2 <<'EOF'
 '20 '
@@ -386,7 +396,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      next_arg_must take_number allow_negative:true
+      must take_number allow_negative:true
     end
     ' -- -c 1 cat <<'EOF'
 '0 '
@@ -412,7 +422,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      next_arg_must take_number allow_negative:true
+      must take_number allow_negative:true
     end
     ' -- -c 1 cat 3 <<'EOF'
 '30 '
@@ -429,7 +439,7 @@ EOF
 
 assert_raw_comp -e 'require "completer"
     Completer.define do
-      next_arg_must take_number allow_negative:true
+      must take_number allow_negative:true
     end
     ' -- -c 1 cat -3 <<'EOF'
 '-30 '

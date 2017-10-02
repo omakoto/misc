@@ -906,9 +906,8 @@ class CompletionEngine
   RESULT_MAYBE = Sentinel.new("maybe")
   RESULT_NEXT_ARG_MUST =  Sentinel.new("next_arg_must")
   RESULT_FOR_ARG =  Sentinel.new("for_arg")
+  RESULT_ANY =  Sentinel.new("any")
   RESULT_NEXT_ARG =  Sentinel.new("next_arg")
-  RESULT_CONSUME =  Sentinel.new("consume")
-  RESULT_UNCONSUME =  Sentinel.new("unconsume")
 
   STORE_LAST_COMPLETE_TIME = "engine.last_complete_time"
   STORE_LAST_CURSOR_INDEX = "engine.last_cursor_index"
@@ -931,7 +930,6 @@ class CompletionEngine
     @extras = extras
 
     @index = 0
-    @current_consumed = false
     @candidates = []
   end
 
@@ -973,10 +971,6 @@ class CompletionEngine
 
   def before_cursor?()
     return index < cursor_index
-  end
-
-  def current_consumed?
-    return @current_consumed
   end
 
   # Whether a candidate(s) are already registered.
@@ -1050,37 +1044,16 @@ class CompletionEngine
     end
   end
 
-  def next_arg(force:false)
+  def next_arg()
     block_given? and die "next_arg() doesn't take a block."
 
-    if !force and !current_consumed?
-      debug {"[next_arg] -> still at #{index}, not consumed yet"}
-    else
-      if @index <= @cursor_index
-        @index += 1
-        @current_consumed = false
-      end
-      debug {"[next_arg] -> now at #{index}, \"#{arg}\""}
-
-      finish if after_cursor?
+    if @index <= @cursor_index
+      @index += 1
     end
+    debug {"[next_arg] -> now at #{index}, \"#{arg}\""}
+
+    finish if after_cursor?
     return RESULT_NEXT_ARG
-  end
-
-  def unconsume()
-    if @current_consumed
-      @current_consumed = false
-      debug {"arg at #{index} unconsumed."}
-    end
-    return RESULT_UNCONSUME
-  end
-
-  def consume()
-    if !@current_consumed
-      @current_consumed = true
-      debug {"arg at #{index} consumed."}
-    end
-    return RESULT_CONSUME
   end
 
   def match?(condition, value)
@@ -1105,19 +1078,25 @@ class CompletionEngine
     end
   end
 
-  def for_arg(match=nil, &block)
-    block or die "for_each_word() requires a block."
+  def any(match=nil, &block)
+    block or die "any() requires a block."
+    for_arg(match, once:true, method:"any", &block)
+    return RESULT_ANY
+  end
+
+  def for_arg(match=nil, once:false, method:"for_arg", &block)
+    block or die "#{method}() requires a block."
 
     last_start_index = -1
     begin
       res = catch FOR_ARG_LABEL do
         while !after_cursor?
-          force_next = last_start_index == @index and !current_consumed?
+          # If the index hasn't changed, force advance.
+          force_next = (last_start_index == @index)
           last_start_index = @index
+          next_arg if force_next
 
-          debug {"[for_arg](#{index}/#{cursor_index})"}
-
-          next_arg force:force_next
+          debug {"[#{method}](#{index}/#{cursor_index})"}
 
           start_index = @index
 
@@ -1135,36 +1114,39 @@ class CompletionEngine
           if start_index == @cursor_index
             throw FOR_ARG_LABEL
           end
+          break if once
         end
       end
-    end while res == FOR_AGAIN
+    end while (res == FOR_AGAIN) && !once
 
     return RESULT_FOR_ARG
   end
 
   # Exits the inner most for_arg loop.
-  def for_break()
+  def for_break(method:"for_break")
     debug "for_break()"
-    throw FOR_ARG_LABEL
+    begin
+      throw FOR_ARG_LABEL
+    rescue UncaughtThrowError
+      die "#{method}() used out of for_arg() or any()"
+    end
   end
 
   # Jump back to the top the inner most for_arg loop and process the
   # next argument.
-  def for_next()
+  def for_next(method:"for_next")
     debug "for_next()"
-    throw FOR_ARG_LABEL, FOR_AGAIN
+    begin
+      throw FOR_ARG_LABEL, FOR_AGAIN
+    rescue UncaughtThrowError
+      die "#{method}() used out of for_arg() or any()"
+    end
   end
 
   def maybe(*vals, &block)
-    _maybe_inner vals, &block
-    return RESULT_MAYBE
-  end
-
-  def _maybe_inner(vals, &block)
     vals.length == 0 and die "maybe() requires at least one argument."
     _detect_invalid_params(vals)
 
-    return if current_consumed?
     debug {"[maybe](#{index}/#{cursor_index}): #{vals}#{block ? " (has block)" : ""}"}
 
     debug_indent do
@@ -1172,36 +1154,38 @@ class CompletionEngine
       if at_cursor?
         debug {" at_cursor: adding candidate(s)."}
         candidates vals[0]
+
+        # Note in this case, we don't break the for, but fall-through,
+        # to execute the rest of the maybe's to collect all candidates.
         return
       end
 
-      if !match? vals[0], arg
-        return
-      end
+      if match? vals[0], arg
+        # Otherwise, eat words.
+        debug {"maybe: found a match."}
+        next_arg
 
-      # Otherwise, eat words.
-      debug {"maybe: found a match."}
-      consume
-
-      debug_indent do
-        1.upto(vals.length - 1) do |i|
-          debug {"maybe(): processing arg ##{i} #{vals[i].inspect}"}
-          next_arg
-          consume
-          if at_cursor?
-            candidates vals[i]
-            finish
+        debug_indent do
+          1.upto(vals.length - 1) do |i|
+            debug {"maybe(): processing arg ##{i} #{vals[i].inspect}"}
+            if at_cursor?
+              candidates vals[i]
+              finish
+            end
+            next_arg
           end
         end
-      end
 
-      if block
-        next_arg
-        debug_indent do
-          block.call
+        if block
+          debug_indent do
+            block.call
+          end
         end
-      end
+
+        for_next(method:"maybe")
+      end # match
     end
+    return RESULT_MAYBE
   end
 
   def otherwise(&block)
@@ -1212,22 +1196,18 @@ class CompletionEngine
     end
   end
 
-  def next_arg_must(*vals, &block)
+  def must(*vals, &block)
     vals.length == 0 and die "next_arg_must() requires at least one argument."
     _detect_invalid_params(vals)
 
     debug {"[next_arg_must](#{index}/#{cursor_index}): #{vals}#{block ? " (has block)" : ""}"}
 
     debug_indent do
-      next_arg
-      consume
-
-      (vals.length).times do |n|
+      vals.length.times do |n|
         if at_cursor?
           candidates vals[n]
           finish
         end
-        consume
         next_arg
       end
     end
@@ -1291,9 +1271,8 @@ class CompletionEngine
       catch FINISH_LABEL do
         debug "Starting the user block."
 
-        # Start from the first argument, unconsumed.
+        # Start from the first argument.
         @index = 1
-        unconsume
 
         instance_eval(&block)
       end
