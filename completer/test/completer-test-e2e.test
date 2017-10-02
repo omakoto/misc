@@ -19,7 +19,7 @@ EOF
 cat >$MOCK_HOME/.bashrc <<EOF
 alias lunch=echo
 PS1=""
-. $compdir/completer-lunch.rb
+. <($compdir/completer-lunch.rb)
 . <($compdir/test/catcomp.bash)
 stty -echo
 EOF
