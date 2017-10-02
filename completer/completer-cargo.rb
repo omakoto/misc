@@ -66,7 +66,10 @@ Completer.define do
       finish
     end
 
-    maybe "build \t Compile the current project" do
+    maybe [
+            "build \t Compile the current project",
+            "check \t Analyze the current project and report errors, but don't build object files"
+          ] do
       for_arg(/^-/) do
         option STANDARD_FLAGS
         option_color
@@ -98,13 +101,6 @@ Completer.define do
             --bench NAME                : Build only the specified bench target
             --features FEATURES         : Space-separated list of features to also build
             )), [] # Not completable
-      end
-      finish
-    end
-
-    maybe "check \t Analyze the current project and report errors, but don't build object files" do
-      for_arg(/^-/) do
-        option STANDARD_FLAGS
       end
       finish
     end
