@@ -8,6 +8,8 @@ def __END_RUBY_CODE__; end
 # Install
 . ~/cbin/misc/completer-adb.rb
 
+# For manual testing...
+
 ruby -x completer-adb.rb -c 1 adb
 ruby -x completer-adb.rb -c 2 adb -s
 ruby -x completer-adb.rb -c 3 adb -s SE
@@ -19,8 +21,6 @@ ruby -x completer-adb.rb -c 2 adb install
 
 ruby -x completer-adb.rb -c 2 adb uninstall
 ruby -x completer-adb.rb -c 3 adb uninstall -k
-
-__completer_context_passer | ruby -x completer-adb.rb -c  1 adb '$'
 
 =end
 
@@ -179,9 +179,9 @@ Completer.define do
       # This part is tricky because : is a default word break character
       # on bash. So for now, we just complete the prefixes.
       for_arg do
-        maybe PORTS
-        maybe take_number
-        maybe take_file
+        option PORTS
+        option take_number
+        option take_file
       end
       finish
     end
@@ -195,9 +195,9 @@ Completer.define do
       # This part is tricky because : is a default word break character
       # on bash. So for now, we just complete the prefixes.
       for_arg do
-        maybe PORTS
-        maybe take_number
-        maybe take_file
+        option PORTS
+        option take_number
+        option take_file
       end
       finish
     end
@@ -214,7 +214,7 @@ Completer.define do
 
     maybe %w(install install-multiple) do # Do implies next_arg.
       for_arg(/^-/) do
-        maybe %w(-a -d -e -H -P)
+        option %w(-a -d -e -H -P)
       end
       must take_file "*.apk"
       finish

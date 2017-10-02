@@ -272,7 +272,7 @@ module CompleterRefinements
           # flags are separated by spaces or commas.
           if l != nil && l.length > 0
             l.gsub!(/\s[A-Z_]+\b/, " ") # Remove all-capital words.
-            l.gsub!(/\.{3.}/, " ") # Remove "...".
+            l.gsub!(/\.{3,}/, " ") # Remove "...".
 
             l.split(/[\s\,]+/).each do |word|
               next if word.length == 0
