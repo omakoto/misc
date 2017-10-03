@@ -633,7 +633,7 @@ class BasicShellAgent
     die "add_candidate() must be overridden."
   end
 
-  def start_completion()
+  def start_completion(cursor_index, args)
   end
 
   def end_completion()
@@ -718,7 +718,7 @@ class BashAgent < BasicShellAgent
   end
 
   # Called when completion is about to start.
-  def start_completion()
+  def start_completion(cursor_index, args)
     # Parse output from __completer_context_passer and extract
     # variables and jobs.
     # If STDIN is tty, just skip it, which is handy when debugging.
@@ -820,7 +820,7 @@ class ZshAgent < BasicShellAgent
     end
   end
 
-  # def start_completion()
+  # def start_completion(cursor_index, args)
   #   puts <<~EOF
   #       COMPLETER_CANDIDATES_VAL=()
   #       COMPLETER_CANDIDATES_DISP=()
@@ -1329,7 +1329,7 @@ class CompletionEngine
 
   # Entry point.
   def run_completion(&block)
-    shell.start_completion
+    shell.start_completion(cursor_index, args)
     begin
       # Check the cached candidates.
       now = Time.now.to_f
