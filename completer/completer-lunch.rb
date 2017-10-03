@@ -1,4 +1,4 @@
-//bin/true; exec ruby -x "${BASH_VERSION+${BASH_SOURCE[0]}}${ZSH_VERSION+${${(%):-%N}}}" "$@" lunch a-lunch
+//bin/true; exec ruby -wx "${BASH_VERSION+${BASH_SOURCE[0]}}${ZSH_VERSION+${${(%):-%N}}}" "$@" lunch a-lunch
 #!ruby
 
 =begin

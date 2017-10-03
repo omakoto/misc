@@ -1,9 +1,5 @@
-#!/usr/bin/env ruby
-
 require 'rubygems' # For version check on<1.9
 abort "#{$0.sub(/^.*\//, "")} requires ruby >= 2.4" if Gem::Version.new(RUBY_VERSION) < Gem::Version.new('2.4')
-
-$VERBOSE = true
 
 require 'optparse'
 require 'fileutils'

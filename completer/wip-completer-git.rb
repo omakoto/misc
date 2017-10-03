@@ -1,4 +1,4 @@
-//bin/true; exec ruby -x "${BASH_VERSION+${BASH_SOURCE[0]}}${ZSH_VERSION+${${(%):-%N}}}" "$@" git
+//bin/true; exec ruby -wx "${BASH_VERSION+${BASH_SOURCE[0]}}${ZSH_VERSION+${${(%):-%N}}}" "$@" git
 #!ruby
 
 =begin
@@ -21,9 +21,46 @@ Completer.define do
     return "[COMMIT]"
   end
 
-  def main()
+  def take_commit_range()
+    return "[COMMIT-RANGE]"
+  end
 
-    maybe "help", build_candidates(%(
+  def option_nocomp(*args)
+    option(*args, [])
+  end
+
+  def option_dir(*args)
+    option(*args, take_dir)
+  end
+
+  def option_file(*args)
+    option(*args, take_file)
+  end
+
+  def option_repository(*args)
+    option(*args, take_repository)
+  end
+
+  def option_commit(*args)
+    option(*args, take_commit)
+  end
+
+  def option_commit_range(*args)
+    option(*args, take_commit_range)
+  end
+
+  # Concatenate lines that don't start with "-" with their previous
+  # lines.
+  def fold(str)
+    return str.gsub(/\s* \n \s* (?= [^\-] ) /x, " : ")
+  end
+
+  def main()
+    def maybe_finish(*arg)
+      maybe(*arg) {finish}
+    end
+
+    maybe_finish "help", build_candidates(%(
         clone      :Clone a repository into a new directory
         init       :Create an empty Git repository or reinitialize an existing one
         add        :Add file contents to the index
@@ -45,135 +82,130 @@ Completer.define do
         fetch      :Download objects and refs from another repository
         pull       :Fetch from and integrate with another repository or a local branch
         push       :Update remote refs along with associated objects
-        )) do
-      finish
-    end
+        ))
 
-    def maybe_finish(arg)
-      maybe(arg) {finish}
-    end
-
-    maybe_finish build_candidates(%(
+    maybe_finish build_candidates(fold %(
        --version
-           < Prints the Git suite version that the git program came from.
+           Prints the Git suite version that the git program came from.
 
        --help
-           < Prints the synopsis and a list of the most commonly used commands.
+           Prints the synopsis and a list of the most commonly used commands.
 
        --html-path
-           < Print the path, without trailing slash, where Git’s HTML documentation is installed and exit.
+           Print the path, without trailing slash, where Git’s HTML documentation is installed and exit.
 
        --man-path
-           < Print the manpath (see man(1)) for the man pages for this version of Git and exit.
+           Print the manpath (see man(1)) for the man pages for this version of Git and exit.
 
        --info-path
-           < Print the path where the Info files documenting this version of Git are installed and exit.
+           Print the path where the Info files documenting this version of Git are installed and exit.
         ))
 
     # Options to the "git" command self, from "man git".
     for_arg(/^-/) do
-      option build_candidates(%(
+      option build_candidates(fold %(
        -p, --paginate
-           < Pipe all output into less (or if set, $PAGER) if standard output is a terminal.
+           Pipe all output into less (or if set, $PAGER) if standard output is a terminal.
 
        --no-pager
-           < Do not pipe Git output into a pager.
+           Do not pipe Git output into a pager.
 
        --bare
-           < Treat the repository as a bare repository.
+           Treat the repository as a bare repository.
 
        --no-replace-objects
-           < Do not use replacement refs to replace Git objects.
+           Do not use replacement refs to replace Git objects.
 
        --literal-pathspecs
-           < Treat pathspecs literally (i.e. no globbing, no pathspec magic).
+           Treat pathspecs literally (i.e. no globbing, no pathspec magic).
 
        --glob-pathspecs
-           < Add "glob" magic to all pathspec.
+           Add "glob" magic to all pathspec.
 
        --noglob-pathspecs
-           < Add "literal" magic to all pathspec.
+           Add "literal" magic to all pathspec.
 
        --icase-pathspecs
-           < Add "icase" magic to all pathspec.
+           Add "icase" magic to all pathspec.
           ))
 
-      option build_candidates(%(
+      option_dir build_candidates(fold %(
        -C <path>
-           < Run as if git was started in <path> instead of the current working directory.
+           Run as if git was started in <path> instead of the current working directory.
 
        --exec-path[=<path>]
-           < Path to wherever your core Git programs are installed.
+           Path to wherever your core Git programs are installed.
 
        --git-dir=<path>
-           < Set the path to the repository.
+           Set the path to the repository.
 
        --work-tree=<path>
-           < Set the path to the working tree.
+           Set the path to the working tree.
 
        --namespace=<path>
-           < Set the Git namespace.
-          )), take_dir
+           Set the Git namespace.
+          ))
 
-      option build_candidates(%(
+      option_nocomp build_candidates(%(
        -c <name>=<value>
-           < Pass a configuration parameter to the command.
-          )), [] # no completion
+           Pass a configuration parameter to the command.
+          ))
     end
 
     maybe build_candidates("init       :Create an empty Git repository or reinitialize an existing one") do
       for_arg(/^-/) do
-        option build_candidates(%(
+        option build_candidates(fold %(
        --chroot-sessions
-              < Enable chroot session support.
+              Enable chroot session support.
 
        --no-dbus
-              < Do not connect to a D-Bus bus.
+              Do not connect to a D-Bus bus.
 
        --no-inherit-env
-              < Stop jobs from inheriting the initial environment.
+              Stop jobs from inheriting the initial environment.
 
        --no-log
-              < Disable logging of job output.
+              Disable logging of job output.
 
        --no-sessions
-              < Disable chroot sessions (default).
+              Disable chroot sessions (default).
 
        --no-startup-event
-              < Suppress emission of the initial startup event.
+              Suppress emission of the initial startup event.
 
        --session
-              < Connect to the D-Bus session bus. This should only be used for testing.
+              Connect to the D-Bus session bus. This should only be used for testing.
 
        --user
-              < Starts in user mode, as used for user sessions.
+              Starts in user mode, as used for user sessions.
 
        -q, --quiet
-              < Reduces output messages to errors only.
+              Reduces output messages to errors only.
 
        -v, --verbose
-              < Outputs verbose messages about job state changes and event emissions to the system console or log, useful for debugging boot.
+              Outputs verbose messages about job state changes and event emissions to the system console or log, useful for debugging boot.
 
        --version
-              < Outputs version information and exits.
+              Outputs version information and exits.
           ))
 
-        option build_candidates(%(
+        option_dir build_candidates(fold %(
        --confdir directory
-              < Read job configuration files from a directory other than the default (/etc/init for process ID 1).
+              Read job configuration files from a directory other than the default (/etc/init for process ID 1).
 
        --logdir directory
-              < Write job output log files to a directory other than /var/log/upstart (system mode) or $XDG_CACHE_HOME/upstart (user session mode).
-          )), take_dir
+              Write job output log files to a directory other than /var/log/upstart (system mode) or $XDG_CACHE_HOME/upstart (user session mode).
+          ))
 
-        option build_candidates(%(
+        option_nocomp build_candidates(fold %(
        --default-console value
-              < Default  value for jobs that do not specify a 'console' stanza.
+              Default  value for jobs that do not specify a 'console' stanza.
 
        --startup-event event
-              < Specify a different initial startup event from the standard startup(7).
-          )), []
+              Specify a different initial startup event from the standard startup(7).
+          ))
       end
+    end
 
     maybe build_candidates("commit     :Record changes to the repository") do
       for_arg(/^-/) do
@@ -191,95 +223,95 @@ Completer.define do
 # TODO Finish it.
     maybe build_candidates("clone      :Clone a repository into a new directory") do
       for_arg(/^-/) do
-        option build_candidates(%(
+        option build_candidates(fold %(
        --local, -l
-           < When the repository to clone from is on a local machine, this flag bypasses the normal "Git aware" transport mechanism and clones the repository by making a copy of HEAD and everything under objects and refs directories.
+           When the repository to clone from is on a local machine, this flag bypasses the normal "Git aware" transport mechanism and clones the repository by making a copy of HEAD and everything under objects and refs directories.
        --no-hardlinks
-           < Force the cloning process from a repository on a local filesystem to copy the files under the .git/objects directory instead of using hardlinks.
+           Force the cloning process from a repository on a local filesystem to copy the files under the .git/objects directory instead of using hardlinks.
 
        --shared, -s
-           < When the repository to clone is on the local machine, instead of using hard links, automatically setup .git/objects/info/alternates to share the objects with the source repository.ck in the cloned repository.
+           When the repository to clone is on the local machine, instead of using hard links, automatically setup .git/objects/info/alternates to share the objects with the source repository.ck in the cloned repository.
 
        --reference <repository>
-           < If the reference repository is on the local machine, automatically setup .git/objects/info/alternates to obtain objects from the reference repository.
+           If the reference repository is on the local machine, automatically setup .git/objects/info/alternates to obtain objects from the reference repository.
        --reference-if-able <repository>
-           < If the reference repository is on the local machine, automatically setup .git/objects/info/alternates to obtain objects from the reference repository.
+           If the reference repository is on the local machine, automatically setup .git/objects/info/alternates to obtain objects from the reference repository.
 
        --dissociate
-           < Borrow the objects from reference repositories specified with the --reference options only to reduce network transfer, and stop borrowing from them after a clone is made by making necessary local copies of borrowed objects.
+           Borrow the objects from reference repositories specified with the --reference options only to reduce network transfer, and stop borrowing from them after a clone is made by making necessary local copies of borrowed objects.
 
        --quiet, -q
-           < Operate quietly.
+           Operate quietly.
 
        --verbose, -v
-           < Run verbosely.
+           Run verbosely.
 
        --progress
-           < Progress status is reported on the standard error stream by default when it is attached to a terminal, unless -q is specified.
+           Progress status is reported on the standard error stream by default when it is attached to a terminal, unless -q is specified.
 
        --no-checkout, -n
-           < No checkout of HEAD is performed after the clone is complete.
+           No checkout of HEAD is performed after the clone is complete.
 
        --bare
-           < Make a bare Git repository.
+           Make a bare Git repository.
 
        --mirror
-           < Set up a mirror of the source repository.
+           Set up a mirror of the source repository.
 
        --origin <name>, -o <name>
-           < Instead of using the remote name origin to keep track of the upstream repository, use <name>.
+           Instead of using the remote name origin to keep track of the upstream repository, use <name>.
 
        --branch <name>, -b <name>
-           < Instead of pointing the newly created HEAD to the branch pointed to by the cloned repository’s HEAD, point to <name> branch instead. In a non-bare repository, this is the branch that will be checked out.
+           Instead of pointing the newly created HEAD to the branch pointed to by the cloned repository’s HEAD, point to <name> branch instead. In a non-bare repository, this is the branch that will be checked out.
 
        --upload-pack <upload-pack>, -u <upload-pack>
-           < When given, and the repository to clone from is accessed via ssh, this specifies a non-default path for the command run on the other end.
+           When given, and the repository to clone from is accessed via ssh, this specifies a non-default path for the command run on the other end.
 
        --template=<template_directory>
-           < Specify the directory from which templates will be used.
+           Specify the directory from which templates will be used.
 
        --config <key>=<value>, -c <key>=<value>
-           < Set a configuration variable in the newly-created repository.
+           Set a configuration variable in the newly-created repository.
 
        --depth <depth>
-           < Create a shallow clone with a history truncated to the specified number of commits.
+           Create a shallow clone with a history truncated to the specified number of commits.
 
        --shallow-since=<date>
-           < Create a shallow clone with a history after the specified time.
+           Create a shallow clone with a history after the specified time.
 
        --shallow-exclude=<revision>
-           < Create a shallow clone with a history, excluding commits reachable from a specified remote branch or tag.
+           Create a shallow clone with a history, excluding commits reachable from a specified remote branch or tag.
 
        --single-branch
-           < Clone only the history leading to the tip of a single branch, either specified by the --branch option or the primary branch remote’s HEAD points at.
+           Clone only the history leading to the tip of a single branch, either specified by the --branch option or the primary branch remote’s HEAD points at.
        --no-single-branch
-           < See --single-branch
+           See --single-branch
 
        --no-tags
-           < Don’t clone any tags, and set remote.<remote>.tagOpt=--no-tags in the config, ensuring that future git pull and git fetch operations won’t follow any tags.
+           Don’t clone any tags, and set remote.<remote>.tagOpt=--no-tags in the config, ensuring that future git pull and git fetch operations won’t follow any tags.
 
        --recurse-submodules[=<pathspec]
-           < After the clone is created, initialize and clone submodules within based on the provided pathspec.
+           After the clone is created, initialize and clone submodules within based on the provided pathspec.
 
        --shallow-submodules
-           < All submodules which are cloned will be shallow with a depth of 1.
+           All submodules which are cloned will be shallow with a depth of 1.
        --no-shallow-submodules
-           < See --shallow-submodules.
+           See --shallow-submodules.
 
        --separate-git-dir=<git dir>
-           < Instead of placing the cloned repository where it is supposed to be, place the cloned repository at the specified directory, then make a filesystem-agnostic Git symbolic link to there.
+           Instead of placing the cloned repository where it is supposed to be, place the cloned repository at the specified directory, then make a filesystem-agnostic Git symbolic link to there.
 
        -j <n>, --jobs <n>
-           < The number of submodules fetched at the same time.
-
-       <repository>
-           < The (possibly remote) repository to clone from.
-
-       <directory>
-           < The name of a new directory to clone into.
+           The number of submodules fetched at the same time.
 
           ))
       end
+       # <repository>
+       #     < The (possibly remote) repository to clone from.
+
+       # <directory>
+       #     < The name of a new directory to clone into.
+
     end
 
   end

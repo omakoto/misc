@@ -1,4 +1,4 @@
-//bin/true; exec ruby -x "${BASH_VERSION+${BASH_SOURCE[0]}}${ZSH_VERSION+${${(%):-%N}}}" "$@" adb dumpsys acmd am pm settings
+//bin/true; exec ruby -wx "${BASH_VERSION+${BASH_SOURCE[0]}}${ZSH_VERSION+${${(%):-%N}}}" "$@" adb dumpsys acmd am pm settings
 #!ruby
 
 =begin
