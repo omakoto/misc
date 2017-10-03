@@ -23,7 +23,9 @@ done
 shift $(($OPTIND - 1))
 
 if [[ -z "$cache_file" ]] ;then
-  cache_file="$1".cached-stdout
+  sname="${1##*/}"
+  sdir="${1%/*}"
+  cache_file="$sdir"/.${sname}.cached-stdout
 fi
 
 if [[ -f "$cache_file" ]] ;then
@@ -35,9 +37,12 @@ if [[ -f "$cache_file" ]] ;then
   done
 fi
 
+echo "Cache: $cache_file" 1>&2
+
 if [[ -f "$cache_file" ]] ;then
   # Cache fresh.
   cat "$cache_file"
 else
+  mkdir -p "${cache_file%/*}"
   "$@" | tee "$cache_file"
 fi
