@@ -1368,11 +1368,12 @@ class CompletionEngine
       last_age = now - last_time.to_f
       cache_age = now - cache_time.to_f
 
-      repeat_call = (Store.instance.get(STORE_LAST_CURSOR_INDEX) == cursor_index) and
-          (Store.instance.get(STORE_LAST_ORIG_ARGS) == orig_args) and
+      repeat_call = \
+          (Store.instance.get(STORE_LAST_CURSOR_INDEX) == cursor_index) &&
+          (Store.instance.get(STORE_LAST_ORIG_ARGS) == orig_args) &&
           (Store.instance.get(STORE_LAST_CWD) == Dir.pwd)
 
-      if (cache_age > 0 and cache_age < CACHE_TIMEOUT) && repeat_call
+      if (cache_age > 0) && (cache_age < CACHE_TIMEOUT) && repeat_call
         @candidates = CandidateCache.instance.load()
 
         debug "Loaded #{@candidates.length} candidate(s) from cache; age=#{cache_age}"
