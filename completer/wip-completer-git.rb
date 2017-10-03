@@ -49,10 +49,9 @@ Completer.define do
     option(*args, take_commit_range)
   end
 
-  # Concatenate lines that don't start with "-" with their previous
-  # lines.
+  # Concatenate lines that don't start with "-" with their previous lines.
   def fold(str)
-    return str.gsub(/\s* \n \s* (?= [^\-] ) /x, " : ")
+    return str.gsub(/\s* \n \s* (?= [^\-\s] ) /x, " : ")
   end
 
   def main()
@@ -220,98 +219,11 @@ Completer.define do
       end
     end
 
-# TODO Finish it.
     maybe build_candidates("clone      :Clone a repository into a new directory") do
       for_arg(/^-/) do
         option build_candidates(fold %(
-       --local, -l
-           When the repository to clone from is on a local machine, this flag bypasses the normal "Git aware" transport mechanism and clones the repository by making a copy of HEAD and everything under objects and refs directories.
-       --no-hardlinks
-           Force the cloning process from a repository on a local filesystem to copy the files under the .git/objects directory instead of using hardlinks.
-
-       --shared, -s
-           When the repository to clone is on the local machine, instead of using hard links, automatically setup .git/objects/info/alternates to share the objects with the source repository.ck in the cloned repository.
-
-       --reference <repository>
-           If the reference repository is on the local machine, automatically setup .git/objects/info/alternates to obtain objects from the reference repository.
-       --reference-if-able <repository>
-           If the reference repository is on the local machine, automatically setup .git/objects/info/alternates to obtain objects from the reference repository.
-
-       --dissociate
-           Borrow the objects from reference repositories specified with the --reference options only to reduce network transfer, and stop borrowing from them after a clone is made by making necessary local copies of borrowed objects.
-
-       --quiet, -q
-           Operate quietly.
-
-       --verbose, -v
-           Run verbosely.
-
-       --progress
-           Progress status is reported on the standard error stream by default when it is attached to a terminal, unless -q is specified.
-
-       --no-checkout, -n
-           No checkout of HEAD is performed after the clone is complete.
-
-       --bare
-           Make a bare Git repository.
-
-       --mirror
-           Set up a mirror of the source repository.
-
-       --origin <name>, -o <name>
-           Instead of using the remote name origin to keep track of the upstream repository, use <name>.
-
-       --branch <name>, -b <name>
-           Instead of pointing the newly created HEAD to the branch pointed to by the cloned repository’s HEAD, point to <name> branch instead. In a non-bare repository, this is the branch that will be checked out.
-
-       --upload-pack <upload-pack>, -u <upload-pack>
-           When given, and the repository to clone from is accessed via ssh, this specifies a non-default path for the command run on the other end.
-
-       --template=<template_directory>
-           Specify the directory from which templates will be used.
-
-       --config <key>=<value>, -c <key>=<value>
-           Set a configuration variable in the newly-created repository.
-
-       --depth <depth>
-           Create a shallow clone with a history truncated to the specified number of commits.
-
-       --shallow-since=<date>
-           Create a shallow clone with a history after the specified time.
-
-       --shallow-exclude=<revision>
-           Create a shallow clone with a history, excluding commits reachable from a specified remote branch or tag.
-
-       --single-branch
-           Clone only the history leading to the tip of a single branch, either specified by the --branch option or the primary branch remote’s HEAD points at.
-       --no-single-branch
-           See --single-branch
-
-       --no-tags
-           Don’t clone any tags, and set remote.<remote>.tagOpt=--no-tags in the config, ensuring that future git pull and git fetch operations won’t follow any tags.
-
-       --recurse-submodules[=<pathspec]
-           After the clone is created, initialize and clone submodules within based on the provided pathspec.
-
-       --shallow-submodules
-           All submodules which are cloned will be shallow with a depth of 1.
-       --no-shallow-submodules
-           See --shallow-submodules.
-
-       --separate-git-dir=<git dir>
-           Instead of placing the cloned repository where it is supposed to be, place the cloned repository at the specified directory, then make a filesystem-agnostic Git symbolic link to there.
-
-       -j <n>, --jobs <n>
-           The number of submodules fetched at the same time.
-
           ))
       end
-       # <repository>
-       #     < The (possibly remote) repository to clone from.
-
-       # <directory>
-       #     < The name of a new directory to clone into.
-
     end
 
   end
