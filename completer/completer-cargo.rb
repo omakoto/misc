@@ -18,10 +18,12 @@ Completer.define do
     lazy_list {%w(i686-unknown-linux-gnu) + read_file_lines("~/.cargo-targets")}
   end
 
+  # Parse the "cargo help" style help and build a list of "option"s.
   def build_options(list, &block)
     list.gsub!(/[^\S\n]* \n [^\S\n]* \: \s*/sx, " ") # Line concatenation.
 
     list.split(/\n/).each do |src_line|
+      # Remove leading spaces and comment lines.
       line = src_line.sub(/\s* #.*$/x, "").sub(/^\s+/, "")
       flags, help = line.split(/\s* \: \s*/x, 2)
       next unless flags
