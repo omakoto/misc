@@ -1368,10 +1368,11 @@ class CompletionEngine
       last_age = now - last_time.to_f
       cache_age = now - cache_time.to_f
 
-      if (cache_age > 0 and cache_age < CACHE_TIMEOUT) and
-          (Store.instance.get(STORE_LAST_CURSOR_INDEX) == cursor_index) and
+      repeat_call = (Store.instance.get(STORE_LAST_CURSOR_INDEX) == cursor_index) and
           (Store.instance.get(STORE_LAST_ORIG_ARGS) == orig_args) and
-          (Store.instance.get(STORE_LAST_CWD) == Dir.pwd) and
+          (Store.instance.get(STORE_LAST_CWD) == Dir.pwd)
+
+      if (cache_age > 0 and cache_age < CACHE_TIMEOUT) && repeat_call
         @candidates = CandidateCache.instance.load()
 
         debug "Loaded #{@candidates.length} candidate(s) from cache; age=#{cache_age}"
@@ -1395,7 +1396,7 @@ class CompletionEngine
 
       # Candidates collected, print them, maybe optionally passing
       # through FZF.
-      use_fzf = shell.supports_fzf? && (ALWAYS_FZF || (last_age < AUTO_FZF_TIMEOUT))
+      use_fzf = shell.supports_fzf? && (ALWAYS_FZF || (last_age < AUTO_FZF_TIMEOUT && repeat_call))
 
       filter = use_fzf ? FzfFilter.new : EmptyFilter.new
 

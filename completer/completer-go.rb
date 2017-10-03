@@ -42,7 +42,7 @@ Completer.define do
 
     out.split(/[ \t]*\n/).each do |line|
       # Remove leading spaces and comment lines.
-      next unless line =~ /^(\S+)\s+(\S+)?\s*\:\s*(.*)/
+      next unless line =~ /^(\S+)(?:\s+(\S+))?\s*\:\s*(.*)/
       flag, arg, help = $1, $2, $3
 
       comp_list = nil
