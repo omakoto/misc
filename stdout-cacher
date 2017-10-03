@@ -37,7 +37,7 @@ if [[ -f "$cache_file" ]] ;then
   done
 fi
 
-echo "Cache: $cache_file" 1>&2
+# echo "Cache: $cache_file" 1>&2
 
 if [[ -f "$cache_file" ]] ;then
   # Cache fresh.
