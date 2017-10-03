@@ -17,23 +17,37 @@ Completer.define do
 
   # Parse the "cargo help" style help and build a list of "option"s.
   def build_options(list, &block)
-    # Append : to all lines tha begins with "-"
-    list.gsub!(/^(\s* \- [^\n]+ ) \n/x, "\\1:\n")
-    list.gsub!(/[^\S\n]* \n [^\S\n]* (?= [^-\s])/sx, " ") # Line concatenation.
+    # First, "fold" all lines. Append all lines that don't start with "-" to the
+    # most recent line that start with "-".
+    out = ""
+    list.split(/[ \t]*\n[ \t]*/).each do |line|
+      # Remove "comment" lines.
+      line.sub!(/\s* #.*$/x, "")
+      next if line == ""
 
-    list.split(/\n/).each do |src_line|
+      if line =~ /^-/
+        out << "\n" if out.length > 0
+        flag, arg = line.split(/\s+/, 2)
+        out << flag
+        if arg
+          out << " "
+          out << arg.gsub(/\s+/, "-")
+        end
+        out << ":"
+      else
+        out << " "
+        out << line
+      end
+    end
+
+    out.split(/[ \t]*\n/).each do |line|
       # Remove leading spaces and comment lines.
-      line = src_line.sub(/\s* #.*$/x, "").sub(/^\s+/, "")
-      flag_arg, help = line.split(/\s* : \s*/x, 2)
-
-      next unless flag_arg
-
-      flag, arg = flag_arg.split(/\s+/, 2)
+      next unless line =~ /^(\S+)\s+(\S+)?\s*\:\s*(.*)/
+      flag, arg, help = $1, $2, $3
 
       comp_list = nil
       case
-      when arg == nil
-        # ok
+      when arg == nil, arg == ""
       when arg == "n"
         comp_list = take_number
       when arg == "dir"
@@ -45,8 +59,10 @@ Completer.define do
       when flag == "-compiler"
         comp_list = %w(gccgo gc)
 
-      when arg == "'arg list'",  arg == "'flag list'", arg == "'tag list'", \
-          arg == "'cmd args'"
+      when arg == "'arg-list'", \
+          arg == "'flag-list'", \
+          arg == "'tag-list'", \
+          arg == "'cmd-args'"
         comp_list = []
 
       when arg == "suffix"
@@ -89,7 +105,7 @@ Completer.define do
 
     maybe "build       \tcompile packages and dependencies" do
       for_arg(/^-/) do
-      build_options(<<~EOF)
+        build_options(<<~EOF)
   -a
     force rebuilding of packages that are already up-to-date.
   -n

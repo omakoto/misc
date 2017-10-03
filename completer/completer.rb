@@ -1148,7 +1148,7 @@ class CompletionEngine
       end
 
     else
-      die "Unsupported match type: condition"
+      die "Unsupported match type: #{condition == nil ? "nil" : condition.inspect}"
     end
   end
 
