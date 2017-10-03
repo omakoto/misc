@@ -41,7 +41,9 @@ local IFS
     declare -p "$n"
   done
 } >/tmp/compin.txt
+touch /tmp/compreply.txt
 EE_QUIET=1 1 /tmp/compin.txt
+EE_QUIET=1 1 /tmp/compreply.txt
 IFS=$'\n'
 COMPTYPE=33
 COMPREPLY=($(cat /tmp/compreply.txt 2>/dev/null))

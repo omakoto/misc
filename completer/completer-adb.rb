@@ -33,20 +33,6 @@ def run_command(command)
   return out || ''
 end
 
-=begin
-Ports for adb forward/reverse.
-
-Canonical port definition, which we don't fully support.
-       tcp:<port> (<local> may be "tcp:0" to pick any open port)
-       localabstract:<unix domain socket name>
-       localreserved:<unix domain socket name>
-       localfilesystem:<unix domain socket name>
-       dev:<character device name>
-       jdwp:<process pid> (remote only)
-=end
-PORTS = %w(tcp: localabstract: localreserved: localfilesystem: dev: jdwp:
-    ).map{|v| v.as_candidate completed:false}
-
 Completer.define do
   # Generates candidates for device serial numbers.
   def take_device_serial()
@@ -115,6 +101,28 @@ Completer.define do
     end
   end
 
+=begin
+Ports for adb forward/reverse.
+
+Canonical port definition, which we don't fully support.
+       tcp:<port> (<local> may be "tcp:0" to pick any open port)
+       localabstract:<unix domain socket name>
+       localreserved:<unix domain socket name>
+       localfilesystem:<unix domain socket name>
+       dev:<character device name>
+       jdwp:<process pid> (remote only)
+=end
+  def must_be_port
+    # Due to bash's BREAKWORDS behavior, we need to do the following.
+    switch do
+      option %w(tcp localabstract localreserved localfilesystem dev jdwp).map{|x| x + ":\b"}
+
+      # Note "\cf" is a prefix for "hidden" candidates.
+      option ["\cf tcp", "\cf jdwp"], ":", take_number
+      option ["\cf dev", "\cf localfilesystem", "\cf localabstract", "\cf localreserved"], ":", take_file
+    end
+  end
+
   def main()
     dumpsys if command == "dumpsys"
     am if command == "am"
@@ -174,13 +182,8 @@ Completer.define do
       maybe("--remove-all") { finish }
       maybe "--no-rebind"
 
-      # This part is tricky because : is a default word break character
-      # on bash. So for now, we just complete the prefixes.
-      for_arg do
-        option PORTS
-        option take_number
-        option take_file
-      end
+      must_be_port
+      must_be_port
       finish
     end
 
@@ -190,13 +193,8 @@ Completer.define do
       maybe("--remove-all") { finish }
       maybe "--no-rebind"
 
-      # This part is tricky because : is a default word break character
-      # on bash. So for now, we just complete the prefixes.
-      for_arg do
-        option PORTS
-        option take_number
-        option take_file
-      end
+      must_be_port
+      must_be_port
       finish
     end
 

@@ -453,9 +453,9 @@ module CompleterHelper
 
       if prefix == ""
         if allow_negative
-          next ["-1".."-9", "0".."9"]
+          next ("-1".."-9").to_a + ("0".."9").to_a
         else
-          next ["0".."9"]
+          next ("0".."9")
         end
       else
         next ("0".."9").map {|x| prefix + x }
@@ -472,7 +472,10 @@ module CompleterHelper
   end
 
   def take_number(prefix:nil, allow_negative:false)
-    lazy_list { get_matched_numbers (prefix || arg), allow_negative:allow_negative}
+    lazy_list do
+      get_matched_numbers((prefix || arg), allow_negative:allow_negative) \
+          .map{|v| v + "\b"}
+    end
   end
 end
 
@@ -629,6 +632,10 @@ class BasicShellAgent
     die "install() must be overridden."
   end
 
+  def fix_args(cursor_index, args)
+    return [cursor_index, args]
+  end
+
   def add_candidate(candidate)
     die "add_candidate() must be overridden."
   end
@@ -715,6 +722,26 @@ class BashAgent < BasicShellAgent
     commands.each do |c|
       puts "complete -o nospace -F #{func} -- #{c}"
     end
+  end
+
+  def fix_args(cursor_index, args)
+    # Due to weird handling of COMP_WORDBREAKS on bash, we need some workaround
+    # here.
+
+    # First, remove all args after the cursor. We won't need them anyway.
+    args = args[0, cursor_index + 1]
+
+# TODO Test this case.
+    wordbreaks = ENV['COMP_WORDBREAKS'].to_s
+    if wordbreaks != "" && args[cursor_index] =~ /^[#{ Regexp.quote(wordbreaks) }]+$/x
+      # If the cursor word only consists of COMP_WORDBREAKS chars, then we
+      # pretend we're at the arg after it.
+      cursor_index += 1
+      args << ""
+      debug "Fixed args. Now at #{cursor_index}"
+    end
+
+    return [cursor_index, args]
   end
 
   # Called when completion is about to start.
@@ -956,6 +983,8 @@ class CompletionEngine
 
   def initialize(shell, orig_args, index, extras)
     @shell = shell
+
+    index, orig_args = shell.fix_args(index, orig_args)
 
     @orig_args = orig_args
 
