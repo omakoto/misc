@@ -937,6 +937,7 @@ class CompletionEngine
   RESULT_NEXT_ARG =  Sentinel.new("next_arg")
 
   STORE_LAST_COMPLETE_TIME = "engine.last_complete_time"
+  STORE_LAST_CACHE_TIME = "engine.last_cache_time"
   STORE_LAST_CURSOR_INDEX = "engine.last_cursor_index"
   STORE_LAST_ORIG_ARGS = "engine.last_cursor_args"
   STORE_LAST_CWD = "engine.last_cwd"
@@ -1314,11 +1315,13 @@ class CompletionEngine
   def run_completion(&block)
     shell.start_completion
     begin
-      use_fzf = ALWAYS_FZF
-
       # Check the cached candidates.
+      now = Time.now.to_f
       last_time = Store.instance.get STORE_LAST_COMPLETE_TIME, 0
-      cache_age = Time.now.to_f - last_time.to_f
+      cache_time = Store.instance.get STORE_LAST_CACHE_TIME, 0
+
+      last_age = now - last_time.to_f
+      cache_age = now - cache_time.to_f
 
       if (cache_age > 0 and cache_age < CACHE_TIMEOUT) and
           (Store.instance.get(STORE_LAST_CURSOR_INDEX) == cursor_index) and
@@ -1327,8 +1330,6 @@ class CompletionEngine
         @candidates = CandidateCache.instance.load()
 
         debug "Loaded #{@candidates.length} candidate(s) from cache; age=#{cache_age}"
-
-        use_fzf = true if cache_age < AUTO_FZF_TIMEOUT
       end
 
       # If no candidates are read from the cache, run the user-defined method.
@@ -1337,6 +1338,7 @@ class CompletionEngine
         # that's where we read variables from bash.
         _collect_candidate(&block)
 
+        Store.instance.set STORE_LAST_CACHE_TIME, Time.now.to_f
         Store.instance.set STORE_LAST_CURSOR_INDEX, cursor_index
         Store.instance.set STORE_LAST_ORIG_ARGS, orig_args
         Store.instance.set STORE_LAST_CWD, Dir.pwd
@@ -1348,7 +1350,7 @@ class CompletionEngine
 
       # Candidates collected, print them, maybe optionally passing
       # through FZF.
-      use_fzf = false unless shell.supports_fzf?
+      use_fzf = shell.supports_fzf? && (ALWAYS_FZF || (last_age < AUTO_FZF_TIMEOUT))
 
       filter = use_fzf ? FzfFilter.new : EmptyFilter.new
 
