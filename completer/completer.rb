@@ -63,6 +63,7 @@ Dir.exist?(APP_DIR) or FileUtils.mkdir_p(APP_DIR)
 DEBUG_FILE = APP_DIR + "/completer-debug.txt"
 
 RAW_MARKER = "\e"
+HIDDEN_MARKER = "\cf" #ACK
 HELP_MARKER = "\t"
 INCOMPLETE_MARKER = "\b"
 
@@ -208,27 +209,33 @@ module CompleterRefinements
     end
 
     # Takes a String or a Candidate and return as a Candidate.
-    def as_candidate(value, raw:nil, completed: nil, help: nil)
+    def as_candidate(value, raw:nil, completed: nil, help: nil, hidden: nil)
       if value.instance_of? Candidate
         return value
       elsif value.instance_of? String
         # If a string contains a TAB, the following section is a
         # help string.
-        (candidate, s_help) = value.split(HELP_MARKER, 2)
+        (candidate, s_help) = value.split(/ *#{HELP_MARKER} */o, 2)
 
         # If a candidate starts with an ESC, it's a raw candidate.
-        s_raw = candidate.sub!(/^#{RAW_MARKER}/o, "") ? true : false
+        candidate.sub!(/^([#{RAW_MARKER}#{HIDDEN_MARKER}]*) \s*/xo, "")
+        prefix = $1
+
+        s_raw = prefix.index(RAW_MARKER) != nil
+        s_hidden = prefix.index(HIDDEN_MARKER) != nil
 
         # If a candidate ends with a BS, it's not a completed
         # candidate.
-        s_completed = candidate.sub!(/#{INCOMPLETE_MARKER}$/, "") ? false : true
+        s_completed = candidate.sub!(/\s* #{INCOMPLETE_MARKER}$/ox, "") ? false : true
 
         # If one is provided as an argument, use it.
         raw = s_raw if raw == nil
         completed = s_completed if completed == nil
         help = s_help if help == nil
+        hidden = s_hidden if hidden == nil
 
-        return Candidate.new(candidate.strip, raw:raw, completed:completed, help:help&.strip)
+        return Candidate.new(candidate.strip, raw:raw, completed:completed, help:help&.strip, \
+            hidden: hidden)
       else
         return nil
       end
@@ -311,8 +318,8 @@ module CompleterRefinements
     end
 
     # Build a candidate from a String.
-    def as_candidate(raw:nil, completed: nil, help: nil)
-      return Kernel.as_candidate(self, raw:raw, completed:completed, help:help)
+    def as_candidate(raw:nil, completed: nil, help: nil, hidden: nil)
+      return Kernel.as_candidate(self, raw:raw, completed:completed, help:help, hidden:hidden)
     end
 
     def no_space(help: nil)
@@ -506,13 +513,14 @@ end
 class Candidate
   using CompleterRefinements
 
-  def initialize(value, raw:false, completed: true, help: "")
+  def initialize(value, raw:false, completed: true, help: "", hidden: false)
     value or die "Empty candidate detected."
 
     @value = value.chomp
     @raw= raw
     @completed = completed
     @help = help == "" ? nil : help
+    @hidden = hidden
   end
 
   # The candidate text.
@@ -528,7 +536,11 @@ class Candidate
   # Help text, bash can't show it, but maybe zsh can.
   attr_reader :help
 
-  # Whether a candidate has a prefix or not.
+  # Help text, bash can't show it, but maybe zsh can.
+  attr_reader :hidden
+
+  # Whether a candidate is "hidden" or not. Hidden candidates won't be shown to
+  # the user, but they'll still be used to parse arguments.
   def has_prefix?(prefix)
     return @value.has_prefix?(prefix)
   end
@@ -1026,6 +1038,10 @@ class CompletionEngine
         debug {"candidate rejected."}
         return
       end
+      if cand.hidden
+        debug {"candidate hidden."}
+        return
+      end
 
       debug {"candidate added: #{cand}"}
 
@@ -1130,7 +1146,7 @@ class CompletionEngine
           start_index = @index
 
           if match == nil or at_cursor? or match? match, arg
-            debug {"Executing loop body."}
+            debug {"Executing #{method} body."}
             debug_indent do
               block.call()
             end
