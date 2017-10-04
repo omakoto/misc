@@ -710,9 +710,9 @@ class BashAgent < BasicShellAgent
         #
         # The following keybindings fixes it.
         if (( ! #{(SKIP_BASH_BINDS ? "1" : "0")} )) ; then
-          bind '"\\ecp1": overwrite-mode'
-          bind '"\\ecp2": complete'
-          bind '"\\C-i": "\\ecp1\\ecp1\\ecp2"'
+          bind '"\\e:1": overwrite-mode'
+          bind '"\\e:2": complete'
+          bind '"\\C-i": "\\e:1\\e:1\\e:2"'
         fi
 
         # This feeds information within shell (e.g. shell variables)
