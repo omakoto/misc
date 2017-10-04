@@ -18,7 +18,7 @@ def gen_type_list
   lazy_list do
     (ENV['MOCK_RG_TYPE_LIST'] || %x(rg --type-list)).split(/\n/).map do |x|
       type, desc = x.split(/\s* \: \s*/x, 2)
-      type.as_candidate(help: desc)
+      type.as_candidate(help: desc) if type
     end
   end
 end

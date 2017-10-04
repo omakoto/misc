@@ -8,17 +8,15 @@ require 'singleton'
 require 'json'
 
 =begin
-- To enable debug output, use:
-export COMPLETER_DEBUG=1
+
+Completer.rb: A ruby DSL to write shell completion.
 
 TODO:
-See:
-https://www.gnu.org/software/bash/manual/html_node/Programmable-Completion.html#Programmable-Completion
-https://www.gnu.org/software/bash/manual/html_node/Programmable-Completion-Builtins.html#Programmable-Completion-Builtins
-
-- Zsh parameter description not working properly. -X seems to be a wrong option.
 - Zsh doesn't split words with : by default. What's the common behavior?
 
+References:
+https://www.gnu.org/software/bash/manual/html_node/Programmable-Completion.html#Programmable-Completion
+https://www.gnu.org/software/bash/manual/html_node/Programmable-Completion-Builtins.html#Programmable-Completion-Builtins
 =end
 
 # Whether to enable debug or not.
@@ -32,28 +30,31 @@ IGNORE_CASE = (ENV['COMPLETER_IGNORE_CASE'] == "1")
 # Set "-1" to disable cache.
 CACHE_TIMEOUT = (ENV['COMPLETER_CACHE_TIMEOUT'] || 5).to_f
 
+# If a completion happen twice in a row for the same input within this amount of time,
+# we invoke FZF for menu-style completion, with flag descriptions.
+# Set "-1" to disable it.
+# Note FZF doesn't seem to work well during zsh's completion, so
+# it's disabled for zsh.
+AUTO_FZF_TIMEOUT = (ENV['COMPLETER_FZF_TIMEOUT'] || 1.5).to_f
+
 # Whether always use FZF or not.
 # Note FZF doesn't seem to work well during zsh's completion, so
 # it's disabled for zsh.
 ALWAYS_FZF = (ENV['COMPLETER_ALWAYS_FZF'] == "1")
 
-# If a completion happens for the same command in a row within this many seconds,
-# we reuse the last result, and use FZF.
-# Set "-1" to disable cache.
-AUTO_FZF_TIMEOUT = (ENV['COMPLETER_FZF_TIMEOUT'] || 1.5).to_f
-
 # Max number of candidates to show.
-# Note this won't apply on zsh/FZF.
+# Note this won't apply when they're shown on zsh/FZF.
 MAX_CANDIDATES = (ENV['COMPLETER_MAX_CANDIDATES'] || 50).to_f
 
 # Don't execute the workaround "bind". See BashAgent.
 SKIP_BASH_BINDS = (ENV['COMPLETER_SKIP_BASH_BINDS'] == 1)
 
-# When set, this will be passed to fzf via the "--bind" parametr.
-FZF_EXTRA_BINDS = ENV['COMPLETER_FZF_BINDS'] # || "tab:accept"
+# When set, this will be passed to FZF via the "--bind" parametr.
+# e.g. "tab:accept" to select a candidate with TAB.
+FZF_EXTRA_BINDS = ENV['COMPLETER_FZF_BINDS']
 
-# Extra options to pass to fzf.
-FZF_OPTS = ENV['COMPLETER_FZF_OPTS'] # || "tab:accept"
+# Extra options to pass to FZF.
+FZF_OPTS = ENV['COMPLETER_FZF_OPTS']
 
 # Data files and debug log goes to this directory.
 APP_DIR = Dir.home + "/.completer/"
@@ -116,6 +117,7 @@ module CompleterRefinements
       @@debug_indent_level -= 1
     end
 
+    # Abort execution with a message and a stack trace.
     def die(*msg)
       abort "#{__FILE__}: " + msg.join("") + "\n" + caller.map{|x|x.to_s}.join("\n")
     end
@@ -181,14 +183,20 @@ module CompleterRefinements
       return ret
     end
 
+    # Shell-escape.
+    # Note for now it's the same thing as bourne_shescape.
     def shescape(arg)
       get_shell.shescape(arg)
     end
 
+    # Shell-unescape.
+    # Note for now it's the same thing as bourne_unshescape.
     def unshescape(arg)
       get_shell.unshescape(arg)
     end
 
+    # Get an "agent" for the current shell.
+    # Only bash and zsh are supported for now.
     def get_shell()
       @@_cached_shell = nil unless defined? @@_cached_shell
       return @@_cached_shell if @@_cached_shell
@@ -206,39 +214,6 @@ module CompleterRefinements
           die "Unsupported shell '#{shell_name}'"
         end
       }).call
-    end
-
-    # Takes a String or a Candidate and return as a Candidate.
-    def as_candidate(value, raw:nil, completed: nil, help: nil, hidden: nil)
-      if value.instance_of? Candidate
-        return value
-      elsif value.instance_of? String
-        # If a string contains a TAB, the following section is a
-        # help string.
-        (candidate, s_help) = value.split(/ *#{HELP_MARKER} */o, 2)
-
-        # If a candidate starts with an ESC, it's a raw candidate.
-        candidate.sub!(/^([#{RAW_MARKER}#{HIDDEN_MARKER}]*) \s*/xo, "")
-        prefix = $1
-
-        s_raw = prefix.index(RAW_MARKER) != nil
-        s_hidden = prefix.index(HIDDEN_MARKER) != nil
-
-        # If a candidate ends with a BS, it's not a completed
-        # candidate.
-        s_completed = candidate.sub!(/\s* #{INCOMPLETE_MARKER}$/ox, "") ? false : true
-
-        # If one is provided as an argument, use it.
-        raw = s_raw if raw == nil
-        completed = s_completed if completed == nil
-        help = s_help if help == nil
-        hidden = s_hidden if hidden == nil
-
-        return Candidate.new(candidate.strip, raw:raw, completed:completed, help:help&.strip, \
-            hidden: hidden)
-      else
-        return nil
-      end
     end
 
     # Takes a block that generates a list. The block will be executed only when
@@ -319,11 +294,29 @@ module CompleterRefinements
 
     # Build a candidate from a String.
     def as_candidate(raw:nil, completed: nil, help: nil, hidden: nil)
-      return Kernel.as_candidate(self, raw:raw, completed:completed, help:help, hidden:hidden)
-    end
+      # If a string contains a TAB, the following section is a
+      # help string.
+      (candidate, s_help) = self.split(/ *#{HELP_MARKER} */o, 2)
 
-    def no_space(help: nil)
-      return as_candidate(completed:false, help:help)
+      # If a candidate starts with an ESC, it's a raw candidate.
+      candidate.sub!(/^([#{RAW_MARKER}#{HIDDEN_MARKER}]*) \s*/xo, "")
+      prefix = $1
+
+      s_raw = prefix.index(RAW_MARKER) != nil
+      s_hidden = prefix.index(HIDDEN_MARKER) != nil
+
+      # If a candidate ends with a BS, it's not a completed
+      # candidate.
+      s_completed = candidate.sub!(/\s* #{INCOMPLETE_MARKER}$/ox, "") ? false : true
+
+      # If one is provided as an argument, use it.
+      raw = s_raw if raw == nil
+      completed = s_completed if completed == nil
+      help = s_help if help == nil
+      hidden = s_hidden if hidden == nil
+
+      return Candidate.new(candidate.strip, raw:raw, completed:completed, help:help&.strip, \
+          hidden: hidden)
     end
   end # refine String
 end
@@ -1087,9 +1080,15 @@ class CompletionEngine
     debug_indent do
       return unless at_cursor?
 
-      vals.each {|val|
+      vals.each do |val|
         debug {"Possible candidate: val=#{val.inspect}"}
-        c = as_candidate(val)
+        c = nil
+        if val.instance_of? Candidate
+          c = val
+        elsif val.instance_of? String
+          c = val.as_candidate()
+        end
+
         if c
           _candidate_single c, always:always
         elsif val.respond_to? :each
@@ -1099,7 +1098,7 @@ class CompletionEngine
         else
           debug {"Ignoring unsupported candidate: #{val.inspect}"}
         end
-      }
+      end
       if block
         candidates(block.call(), always:always)
       end
