@@ -10,7 +10,6 @@
 =end
 
 require_relative "completer"
-using CompleterRefinements
 
 def load_devices()
   lazy_list do

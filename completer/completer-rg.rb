@@ -12,7 +12,6 @@ ruby -x completer-rg.rb -c 1 rg
 =end
 
 require_relative "completer"
-using CompleterRefinements
 
 def gen_type_list
   lazy_list do

@@ -243,4 +243,42 @@ test_adb 2 adb cat <<EOF
 /system/
 EOF
 
+test_adb 2 adb forward t <<EOF
+tcp:
+tcp:
+EOF
+
+test_adb 4 adb forward tcp : <<EOF
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+EOF
+
+# Note the cursor is at ":", but BashAgent adjust it to the cursor
+# is shifted to index 4.
+COMP_WORDBREAKS=':' test_adb 3 adb forward tcp : <<EOF
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+EOF
+
+# But this doesn't happen without WORDBREAKS set to :.
+COMP_WORDBREAKS='' test_adb 3 adb forward tcp : <<EOF
+': '
+EOF
+
 done_testing

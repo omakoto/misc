@@ -63,264 +63,270 @@ Dir.exist?(APP_DIR) or FileUtils.mkdir_p(APP_DIR)
 # Debug output goes to this file.
 DEBUG_FILE = APP_DIR + "/completer-debug.txt"
 
-RAW_MARKER = "\e"
-HIDDEN_MARKER = "\cf" #ACK
+RAW_MARKER = "\cr"
+FORCE_MARKER = "\cf"
+HIDDEN_MARKER = "\ch"
+CONTINUE_MARKER = "\cc"
 HELP_MARKER = "\t"
-INCOMPLETE_MARKER = "\b"
 
-module CompleterRefinements
-  refine Kernel do
+#===============================================================================
+# Global functions
+#===============================================================================
 
-    def init_debug()
-      @@debug_indent_level = 0 unless defined? @@debug_indent_level
-      @@debug_out = nil unless defined? @@debug_out
-    end
-
-    # Debug print.
-    def debug(*args, &b)
-      return false unless DEBUG
-
-      init_debug()
-
-      if args.length > 0
-        msg = args.join("\n").gsub(/^/m, "  " * @@debug_indent_level + "D:").chomp
-
-        # If stdout is TTY, assume the script is executed directly for
-        # testing, and write log to stderr.
-        if $stdout.tty?
-          $stderr.puts msg
-        else
-          @@debug_out = (@@debug_out or open(DEBUG_FILE, "w"))
-          @@debug_out.puts msg
-          @@debug_out.flush
-        end
-      end
-      debug(b.call()) if b
-      return true
-    end
-
-    def debug_indent(&block)
-      init_debug()
-
-      @@debug_indent_level += 1
-
-      if block
-        begin
-          block.call()
-        ensure
-          @@debug_indent_level -= 1
-        end
-      end
-    end
-
-    def debug_unindent()
-      @@debug_indent_level -= 1
-    end
-
-    # Abort execution with a message and a stack trace.
-    def die(*msg)
-      abort "#{__FILE__}: " + msg.join("") + "\n" + caller.map{|x|x.to_s}.join("\n")
-    end
-
-    # Shell-escape a single token; basic "bourne" version.
-    def bourne_shescape(arg)
-      if arg =~ /[^a-zA-Z0-9\-\.\_\/\:\+\@]/
-          return "'" + arg.gsub(/'/, "'\\\\''") + "'"
-      else
-          return arg;
-      end
-    end
-
-    # Shell-unescape a single token; basic "bourne" version.
-    def bourne_unshescape(arg)
-      if arg !~ /[\'\"\\]/
-        return arg
-      end
-
-      ret = ""
-      pos = 0
-      while pos < arg.length
-        ch = arg[pos]
-
-        case ch
-        when "'"
-          pos += 1
-          while pos < arg.length
-            ch = arg[pos]
-            pos += 1
-            if ch == "'"
-              break
-            end
-            ret += ch
-          end
-        when '"'
-          pos += 1
-          while pos < arg.length
-            ch = arg[pos]
-            pos += 1
-            if ch == '"'
-              break
-            elsif ch == '\\'
-              if pos < arg.length
-               ret += arg[pos]
-              end
-              pos += 1
-            end
-            ret += ch
-          end
-        when '\\'
-          pos += 1
-          if pos < arg.length
-            ret += arg[pos]
-            pos += 1
-          end
-        else
-          ret += ch
-          pos += 1
-        end
-      end
-
-      return ret
-    end
-
-    # Shell-escape.
-    # Note for now it's the same thing as bourne_shescape.
-    def shescape(arg)
-      get_shell.shescape(arg)
-    end
-
-    # Shell-unescape.
-    # Note for now it's the same thing as bourne_unshescape.
-    def unshescape(arg)
-      get_shell.unshescape(arg)
-    end
-
-    # Get an "agent" for the current shell.
-    # Only bash and zsh are supported for now.
-    def get_shell()
-      @@_cached_shell = nil unless defined? @@_cached_shell
-      return @@_cached_shell if @@_cached_shell
-
-      @@_cached_shell = (-> {
-        shell_name = ENV["SHELL"].sub(/^.*\//, "")
-        case shell_name
-        when "bash"
-          debug "Shell is bash."
-          return BashAgent.new
-        when "zsh"
-          debug "Shell is zsh."
-          return ZshAgent.new
-        else
-          die "Unsupported shell '#{shell_name}'"
-        end
-      }).call
-    end
-
-    # Takes a block that generates a list. The block will be executed only when
-    # needed.
-    def lazy_list(&block)
-      return LazyList.new(&block)
-    end
-
-    # This is basically same as %w(...), except it treats # as comments.
-    def words(*args)
-      ret = []
-      args.each do |arg|
-        arg.split(/\n/).each do |line|
-          l = line.sub(/^\s+/, "").sub(/\s*\#.*/, "")
-          if l.length > 0
-            l.split(/\s+/).each do |word|
-              ret << word
-            end
-          end
-        end
-      end
-      return ret
-    end
-
-    def build_candidates(*args)
-      ret = []
-      args.each do |arg|
-
-        # If a line starts with leading whitespace + "<", then concatenate it with the previous line.
-        arg.gsub!(/\s*\n\s*\</, " : ")
-
-        arg.split(/\n/).each do |line|
-          # Remove leading spaces and comments.
-          l = line.sub(/^\s+/, "").sub(/\s* \# .*/x, "")
-
-          # : will separate flags and helps
-          l, help = l.split(/\s* : \s*/x, 2)
-
-          # flags are separated by spaces or commas.
-          if l != nil && l.length > 0
-            l.gsub!(/\.{3,}/, " ") # Remove "...".
-
-            # If a line starts with a dash, this is a flag (or a flag list).
-            # Then we ignore all words that don't start with "-" in this line.
-            line_contains_flags = l =~ /^-/
-
-            # The following characters are typical "meta" characters, so ignore.
-            l.split(/[\s\,\<\>\[\]\=]+/).each do |word|
-              next if word.length == 0
-              next if line_contains_flags && word !~ /^-/
-
-              ret << word.as_candidate(help:help)
-            end
-          end
-        end
-      end
-      return ret
-    end
-  end # refine Kernel
-
-  refine String do
-    # When a string starts with "~/", then expand to the home directory.
-    # Doesn't support ~USERNAME/.
-    def expand_home()
-      return self.sub(/^~\//, "#{Dir.home}/")
-    end
-
-    # Same as self.start_with?(prefix), except it does case-insensitive
-    # comparison when needed.
-    def has_prefix?(prefix)
-      return true unless prefix
-      if IGNORE_CASE
-        return self.downcase.start_with? prefix.downcase
-      else
-        return self.start_with? prefix
-      end
-    end
-
-    # Build a candidate from a String.
-    def as_candidate(raw:nil, completed: nil, help: nil, hidden: nil)
-      # If a string contains a TAB, the following section is a
-      # help string.
-      (candidate, s_help) = self.split(/ *#{HELP_MARKER} */o, 2)
-
-      # If a candidate starts with an ESC, it's a raw candidate.
-      candidate.sub!(/^([#{RAW_MARKER}#{HIDDEN_MARKER}]*) \s*/xo, "")
-      prefix = $1
-
-      s_raw = prefix.index(RAW_MARKER) != nil
-      s_hidden = prefix.index(HIDDEN_MARKER) != nil
-
-      # If a candidate ends with a BS, it's not a completed
-      # candidate.
-      s_completed = candidate.sub!(/\s* #{INCOMPLETE_MARKER}$/ox, "") ? false : true
-
-      # If one is provided as an argument, use it.
-      raw = s_raw if raw == nil
-      completed = s_completed if completed == nil
-      help = s_help if help == nil
-      hidden = s_hidden if hidden == nil
-
-      return Candidate.new(candidate.strip, raw:raw, completed:completed, help:help&.strip, \
-          hidden: hidden)
-    end
-  end # refine String
+def init_debug()
+  $debug_indent_level = 0 unless defined? $debug_indent_level
+  $debug_out = nil unless defined? $debug_out
 end
 
+# Debug print.
+def debug(*args, &b)
+  return false unless DEBUG
+
+  init_debug()
+
+  if args.length > 0
+    msg = args.join("\n").gsub(/^/m, "  " * $debug_indent_level + "D:").chomp
+
+    # If stdout is TTY, assume the script is executed directly for
+    # testing, and write log to stderr.
+    if $stdout.tty?
+      $stderr.puts msg
+    else
+      $debug_out = ($debug_out or open(DEBUG_FILE, "w"))
+      $debug_out.puts msg
+      $debug_out.flush
+    end
+  end
+  debug(b.call()) if b
+  return true
+end
+
+def debug_indent(&block)
+  init_debug()
+
+  $debug_indent_level += 1
+
+  if block
+    begin
+      block.call()
+    ensure
+      $debug_indent_level -= 1
+    end
+  end
+end
+
+def debug_unindent()
+  $debug_indent_level -= 1
+end
+
+# Abort execution with a message and a stack trace.
+def die(*msg)
+  abort "#{__FILE__}: " + msg.join("") + "\n" + caller.map{|x|x.to_s}.join("\n")
+end
+
+# Shell-escape a single token; basic "bourne" version.
+def bourne_shescape(arg)
+  if arg =~ /[^a-zA-Z0-9\-\.\_\/\:\+\@]/
+      return "'" + arg.gsub(/'/, "'\\\\''") + "'"
+  else
+      return arg;
+  end
+end
+
+# Shell-unescape a single token; basic "bourne" version.
+def bourne_unshescape(arg)
+  if arg !~ /[\'\"\\]/
+    return arg
+  end
+
+  ret = ""
+  pos = 0
+  while pos < arg.length
+    ch = arg[pos]
+
+    case ch
+    when "'"
+      pos += 1
+      while pos < arg.length
+        ch = arg[pos]
+        pos += 1
+        if ch == "'"
+          break
+        end
+        ret += ch
+      end
+    when '"'
+      pos += 1
+      while pos < arg.length
+        ch = arg[pos]
+        pos += 1
+        if ch == '"'
+          break
+        elsif ch == '\\'
+          if pos < arg.length
+           ret += arg[pos]
+          end
+          pos += 1
+        end
+        ret += ch
+      end
+    when '\\'
+      pos += 1
+      if pos < arg.length
+        ret += arg[pos]
+        pos += 1
+      end
+    else
+      ret += ch
+      pos += 1
+    end
+  end
+
+  return ret
+end
+
+# Shell-escape.
+# Note for now it's the same thing as bourne_shescape.
+def shescape(arg)
+  get_shell.shescape(arg)
+end
+
+# Shell-unescape.
+# Note for now it's the same thing as bourne_unshescape.
+def unshescape(arg)
+  get_shell.unshescape(arg)
+end
+
+# Get an "agent" for the current shell.
+# Only bash and zsh are supported for now.
+def get_shell()
+  $cached_shell = nil unless defined? $cached_shell
+  return $cached_shell if $cached_shell
+
+  $cached_shell = (-> {
+    shell_name = ENV["SHELL"].sub(/^.*\//, "")
+    case shell_name
+    when "bash"
+      debug "Shell is bash."
+      return BashAgent.new
+    when "zsh"
+      debug "Shell is zsh."
+      return ZshAgent.new
+    else
+      die "Unsupported shell '#{shell_name}'"
+    end
+  }).call
+end
+
+# Takes a block that generates a list. The block will be executed only when
+# needed.
+def lazy_list(&block)
+  return LazyList.new(&block)
+end
+
+# This is basically same as %w(...), except it treats # as comments.
+def words(*args)
+  ret = []
+  args.each do |arg|
+    arg.split(/\n/).each do |line|
+      l = line.sub(/^\s+/, "").sub(/\s*\#.*/, "")
+      if l.length > 0
+        l.split(/\s+/).each do |word|
+          ret << word
+        end
+      end
+    end
+  end
+  return ret
+end
+
+def build_candidates(*args)
+  ret = []
+  args.each do |arg|
+
+    # If a line starts with leading whitespace + "<", then concatenate it with the previous line.
+    arg.gsub!(/\s*\n\s*\</, " : ")
+
+    arg.split(/\n/).each do |line|
+      # Remove leading spaces and comments.
+      l = line.sub(/^\s+/, "").sub(/\s* \# .*/x, "")
+
+      # : will separate flags and helps
+      l, help = l.split(/\s* : \s*/x, 2)
+
+      # flags are separated by spaces or commas.
+      if l != nil && l.length > 0
+        l.gsub!(/\.{3,}/, " ") # Remove "...".
+
+        # If a line starts with a dash, this is a flag (or a flag list).
+        # Then we ignore all words that don't start with "-" in this line.
+        line_contains_flags = l =~ /^-/
+
+        # The following characters are typical "meta" characters, so ignore.
+        l.split(/[\s\,\<\>\[\]\=]+/).each do |word|
+          next if word.length == 0
+          next if line_contains_flags && word !~ /^-/
+
+          ret << word.as_candidate(help:help)
+        end
+      end
+    end
+  end
+  return ret
+end
+
+#===============================================================================
+# Add functions to String
+#===============================================================================
+class String
+  # When a string starts with "~/", then expand to the home directory.
+  # Doesn't support ~USERNAME/.
+  def expand_home()
+    return self.sub(/^~\//, "#{Dir.home}/")
+  end
+
+  # Same as self.start_with?(prefix), except it does case-insensitive
+  # comparison when needed.
+  def has_prefix?(prefix)
+    return true unless prefix
+    if IGNORE_CASE
+      return self.downcase.start_with? prefix.downcase
+    else
+      return self.start_with? prefix
+    end
+  end
+
+  # Build a candidate from a String.
+  def as_candidate(raw:nil, continue: nil, help: nil, hidden: nil, force: nil)
+    # If a string contains a TAB, the following section is a
+    # help string.
+    (candidate, s_help) = self.split(/ *#{HELP_MARKER} */o, 2)
+
+    # If a candidate starts with an ESC, it's a raw candidate.
+    candidate.sub!(/^([#{FORCE_MARKER}#{RAW_MARKER}#{HIDDEN_MARKER}#{CONTINUE_MARKER}]*) \s*/xo, "")
+    prefix = $1
+
+    s_raw = prefix.index(RAW_MARKER) != nil
+    s_hidden = prefix.index(HIDDEN_MARKER) != nil
+    s_continue = prefix.index(CONTINUE_MARKER) != nil
+    s_force = prefix.index(FORCE_MARKER) != nil
+
+    # If one is provided as an argument, use it.
+    raw = s_raw if raw == nil
+    continue = s_continue if continue == nil
+    help = s_help if help == nil
+    hidden = s_hidden if hidden == nil
+    force = s_force if force == nil
+
+    return Candidate.new(candidate.strip, raw:raw, continue:continue, help:help&.strip, \
+        hidden: hidden, force: force)
+  end
+end
+
+#===============================================================================
+# LazyList wraps a block that generates Enumerator and only executes it when
+# someone asks for the values.
+#===============================================================================
 class LazyList
   include Enumerable
 
@@ -336,10 +342,88 @@ class LazyList
   end
 end
 
-using CompleterRefinements
+#===============================================================================
+# Candidate represents a single candidate.
+#===============================================================================
+class Candidate
+  def initialize(value, raw:false, continue:false, help: "", hidden:false, \
+      force:false)
+    value or die "Empty candidate detected."
+
+    @value = value.chomp
+    @raw= raw
+    @continue = continue
+    @help = help == "" ? nil : help
+    @hidden = hidden
+    @force = force
+  end
+
+  # The candidate text.
+  attr_reader :value
+
+  # Raw candidates will be appended to the command without escaping.
+  # Normally, when a candidate containing special characters is added to the
+  # command like, the value will be escaped. For example, $HOME will be added
+  # to the command line as '$HOME'.
+  # If a completion function wants to add $HOME as-is, make it a raw candidate.
+  def raw?()
+    return @raw
+  end
+
+  # When a candidate "continues", it's may be a prefix of another text.
+  # A non-continue candidate will be followed by a space when completed.
+  def continue?()
+    return @continue
+  end
+
+  # Help text, bash can't show it, but FZF and zsh can.
+  attr_reader :help
+
+  # Hidden candidates are now shown in the candidate list, but still understood
+  # by the logic.
+  def hidden?()
+    return @hidden
+  end
+
+  # "Force" candidates are not filtered out even if the cursor word is not
+  # a prefix of them.
+  def force?()
+    return @force
+  end
+
+  # Whether a candidate is "hidden" or not. Hidden candidates won't be shown to
+  # the user, but they'll still be used to parse arguments.
+  def has_prefix?(prefix)
+    return @value.has_prefix?(prefix)
+  end
+
+  def as_candidate()
+    return self
+  end
+
+  def to_s()
+    return "{Candidate:value=#{shescape value}#{raw? ? " [raw]" : ""}" +
+        "#{continue? ? " [continue]" : ""}" +
+        "#{force? ? " [force]" : ""}" +
+        "#{help ? " " + help : ""}}"
+  end
+
+  def to_parsable()
+    ret = ""
+    ret << RAW_MARKER if raw?
+    ret << CONTINUE_MARKER if continue?
+    ret << FORCE_MARKER if force?
+    ret << value
+    if help
+      ret << HELP_MARKER
+      ret << help
+    end
+    return ret
+  end
+end
 
 #===============================================================================
-# Helpers
+# Helpers used by completion functions.
 #===============================================================================
 module CompleterHelper
   # Return true if a given path is a directory and not empty.
@@ -380,9 +464,8 @@ module CompleterHelper
     begin
       Pathname.new(dir == "" ? "." : dir).children.each do |path|
         if path.directory?
-          cand = path.to_s
-          cand += "/"
-          cand += INCOMPLETE_MARKER if is_non_empty_dir(path)
+          cand = path.to_s + "/"
+          cand = cand.as_candidate(continue:is_non_empty_dir(path))
         else
           # If it's a file, only add when the basename matches wildcard.
           next unless File.fnmatch(wildcard, path.basename, flag)
@@ -467,13 +550,14 @@ module CompleterHelper
   def take_number(prefix:nil, allow_negative:false)
     lazy_list do
       get_matched_numbers((prefix || arg), allow_negative:allow_negative) \
-          .map{|v| v + "\b"}
+          .map{|v| v.as_candidate(continue:true)}
     end
   end
 end
 
 #===============================================================================
-# Class to store the information from the previous invocation.
+# Class to store the information from the previous invocation, which is used to
+# check if the cached candidates are still valid.
 #===============================================================================
 class Store
   include Singleton
@@ -501,69 +585,6 @@ class Store
   end
 end
 
-#===============================================================================
-# Candidate
-#===============================================================================
-
-# Represents a single candidate.
-class Candidate
-  using CompleterRefinements
-
-  def initialize(value, raw:false, completed: true, help: "", hidden: false)
-    value or die "Empty candidate detected."
-
-    @value = value.chomp
-    @raw= raw
-    @completed = completed
-    @help = help == "" ? nil : help
-    @hidden = hidden
-  end
-
-  # The candidate text.
-  attr_reader :value
-
-  # Raw candidates will not be escaped.
-  attr_reader :raw
-
-  # When a candidate is "completed", it's not a prefix of another text.
-  # A completed candidate will be followed by a space when expanded.
-  attr_reader :completed
-
-  # Help text, bash can't show it, but maybe zsh can.
-  attr_reader :help
-
-  # Help text, bash can't show it, but maybe zsh can.
-  attr_reader :hidden
-
-  # Whether a candidate is "hidden" or not. Hidden candidates won't be shown to
-  # the user, but they'll still be used to parse arguments.
-  def has_prefix?(prefix)
-    return @value.has_prefix?(prefix)
-  end
-
-  def as_candidate()
-    return self
-  end
-
-  def to_s()
-    return "{Candidate:value=#{shescape value}#{raw ? " [raw]" : ""}" +
-        "#{completed ? " [completed]" : ""}" +
-        "#{help ? " " + help : ""}}"
-  end
-
-  def to_parsable()
-    ret = ""
-    ret << RAW_MARKER if raw
-    ret << value
-    ret << INCOMPLETE_MARKER unless completed
-    if help
-      ret << HELP_MARKER
-      ret << help
-    end
-    return ret
-  end
-end
-
 class CandidateCache
   include Singleton
 
@@ -572,6 +593,7 @@ class CandidateCache
   def initialize
   end
 
+  # Save candidates in the cache.
   def save(candidates)
     open(STORE_FILE, "w") do |out|
       candidates.each do |c|
@@ -580,6 +602,7 @@ class CandidateCache
     end
   end
 
+  # Return the cached candidates.
   def load()
     return [] unless File.exist? STORE_FILE
 
@@ -640,7 +663,7 @@ class BasicShellAgent
   end
 
   def maybe_override_candidates(engine)
-    # Nothing to do
+    # Nothing to do by default.
   end
 
   def variable_completable?(arg)
@@ -654,7 +677,7 @@ class BasicShellAgent
   end
 end
 
-
+# Bash interface.
 class BashAgent < BasicShellAgent
   SECTION_SEPARATOR = "\n-*-*-*-COMPLETER-*-*-*-\n"
 
@@ -788,10 +811,10 @@ class BashAgent < BasicShellAgent
   # Note bash can't show a help string.
   def add_candidate(candidate)
     s = shescape(candidate.value)
-    s += " " if candidate.completed
+    s += " " unless candidate.continue?
 
     # Output will be eval'ed, so need double-escaping unless raw.
-    out = candidate.raw ? s : shescape(s)
+    out = candidate.raw? ? s : shescape(s)
     debug out
     puts out
   end
@@ -799,13 +822,15 @@ end
 
 =begin
 Interface for Zsh.
+
 See:
 http://www.csse.uwa.edu.au/programming/linux/zsh-doc/zsh_23.html
 https://linux.die.net/man/1/zshcompsys
 http://zsh.sourceforge.net/Guide/zshguide06.html
 https://linux.die.net/man/1/zshcompwid (for compadd command)
 
-Note zsh always seems to do variable expansions, so we don't have to do it.
+Note zsh always seems to do variable expansions, so we don't have to do it,
+unlike BashAgent.
 
 =end
 class ZshAgent < BasicShellAgent
@@ -840,16 +865,9 @@ class ZshAgent < BasicShellAgent
     end
   end
 
-  # def start_completion(cursor_index, args)
-  #   puts <<~EOF
-  #       COMPLETER_CANDIDATES_VAL=()
-  #       COMPLETER_CANDIDATES_DISP=()
-  #       EOF
-  # end
-
   def add_candidate(candidate)
     s = shescape(candidate.value)
-    s += " " if candidate.completed
+    s += " " unless candidate.continue?
 
     # -S '' tells zsh not to add a space afterward. (because we do it by ourselves.)
     # -Q prevents zsh from quoting metacharacters in the results, which we do too.
@@ -868,7 +886,7 @@ class ZshAgent < BasicShellAgent
 
     # Need -Q to make zsh preserve the last space.
     out = "COMPLETER_D=(#{shescape desc})\n" + \
-        "compadd -S '' -Q -U #{fileopt} -d COMPLETER_D -- #{(candidate.raw ? s : shescape(s))}"
+        "compadd -S '' -Q -U #{fileopt} -d COMPLETER_D -- #{(candidate.raw? ? s : shescape(s))}"
     debug out
     puts out
   end
@@ -879,7 +897,7 @@ class ZshAgent < BasicShellAgent
 end
 
 #===============================================================================
-# Filter
+# Filters
 #===============================================================================
 
 # Empty filter.
@@ -891,7 +909,7 @@ class EmptyFilter
   end
 end
 
-# Runs FZF to help completion.
+# Run FZF to help completion.
 class FzfFilter
   require 'open3'
 
@@ -943,10 +961,9 @@ class FzfFilter
 end
 
 #-----------------------------------------------------------
-# Engine
+# Core logic.
 #-----------------------------------------------------------
-class CompletionEngine
-  using CompleterRefinements
+class CompletionCore
   include CompleterHelper
 
   FINISH_LABEL = :FinishLabel
@@ -977,6 +994,7 @@ class CompletionEngine
   def initialize(shell, orig_args, index, extras)
     @shell = shell
 
+    # Shell specific preprocess on arguments.
     index, orig_args = shell.fix_args(index, orig_args)
 
     @orig_args = orig_args
@@ -1047,20 +1065,18 @@ class CompletionEngine
     @candidates = []
   end
 
-  # Add a single candidate.
-  # If always is true, candidates will be always added, even
-  # if the candidate doesn't start with the cursor arg.
-  def _candidate_single(cand, always:false)
+  # Add a single Candidate.
+  def _candidate_single(cand)
     debug_indent do
       return unless at_cursor?
       return unless cand
       die "#{cand.inspect} is not a Candidate" unless cand.instance_of? Candidate
       return if (cand.value == nil) or (cand.value.rstrip().length == 0)
-      if !always and !cand.has_prefix? cursor_arg
+      if !(cand.force? or cand.has_prefix? cursor_arg)
         debug {"candidate rejected."}
         return
       end
-      if cand.hidden
+      if cand.hidden?
         debug {"candidate hidden."}
         return
       end
@@ -1071,11 +1087,9 @@ class CompletionEngine
     end
   end
 
-  # Push candidates.
-  # "args" can be a string, an array of strings, or a proc.
-  # If always is true, candidates will be always added, even
-  # if they don't start with the cursor arg.
-  def candidates(*vals, always:false , &block)
+  # Directly add candidates.
+  # "args" can be a string/Candidate, an array of strings/Candidate, or a proc.
+  def candidates(*vals, &block)
     _detect_invalid_params(vals)
     debug_indent do
       return unless at_cursor?
@@ -1090,17 +1104,17 @@ class CompletionEngine
         end
 
         if c
-          _candidate_single c, always:always
+          _candidate_single c
         elsif val.respond_to? :each
-          val.each {|x| candidates x, always:always}
+          val.each {|x| candidates x}
         elsif val.respond_to? :call
-          candidates(val.call(), always:always)
+          candidates(val.call())
         else
           debug {"Ignoring unsupported candidate: #{val.inspect}"}
         end
       end
       if block
-        candidates(block.call(), always:always)
+        candidates(block.call())
       end
     end
   end
@@ -1309,7 +1323,7 @@ class CompletionEngine
       debug { "Maybe variable: #{var_name}" }
       env.keys.each do |k|
         if k.has_prefix?(var_name)
-          candidate(RAW_MARKER + "$" + k + INCOMPLETE_MARKER) # Raw candidate
+          candidate(("$" + k).as_candidate(raw:true, continue:true))
         end
       end
       return
@@ -1323,8 +1337,7 @@ class CompletionEngine
       value = env[var_name]
       if value and File.directory?(value)
         value += "/"
-        value += INCOMPLETE_MARKER if is_non_empty_dir(value)
-        candidate value, always:true
+        candidate value.as_candidate(force:true, continue:is_non_empty_dir(value))
       end
     end
   end
@@ -1426,9 +1439,8 @@ class CompletionEngine
   end
 end
 
-
 #-----------------------------------------------------------
-# Core class
+# Entry point class
 #-----------------------------------------------------------
 class Completer
 
@@ -1450,7 +1462,7 @@ class Completer
   def do_completion(cursor_pos, args, extras:nil, &b)
     b or die "do_completion() requires a block."
     shell = get_shell
-    engine = CompletionEngine.new shell, args, cursor_pos, extras
+    engine = CompletionCore.new shell, args, cursor_pos, extras
 
     debug <<~EOF
         OrigArgs: #{engine.orig_args.join ", "}

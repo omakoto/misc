@@ -23,7 +23,6 @@ ruby -x completer-adb.rb -c 3 adb uninstall -k
 =end
 
 require_relative "completer"
-using CompleterRefinements
 
 # Run a command, optionally allowing a "mocked output".
 def run_command(command)
@@ -76,7 +75,7 @@ Completer.define do
     lazy_list do
       w = arg
       w = "/" if w == ""
-      run_command(%(adb shell "ls -pd1 #{shescape w}* 2>/dev/null")).split(/\n/).map{|x| x.as_candidate completed:false}
+      run_command(%(adb shell "ls -pd1 #{shescape w}* 2>/dev/null")).split(/\n/).map{|x| x.as_candidate continue:true}
     end
   end
 
@@ -115,11 +114,12 @@ Canonical port definition, which we don't fully support.
   def must_be_port
     # Due to bash's BREAKWORDS behavior, we need to do the following.
     switch do
-      option %w(tcp localabstract localreserved localfilesystem dev jdwp).map{|x| x + ":\b"}
+      option %w(tcp localabstract localreserved localfilesystem dev jdwp) \
+          .map{|x| (x + ":").as_candidate(continue:true)}
 
-      # Note "\cf" is a prefix for "hidden" candidates.
-      option ["\cf tcp", "\cf jdwp"], ":", take_number
-      option ["\cf dev", "\cf localfilesystem", "\cf localabstract", "\cf localreserved"], ":", take_file
+      # Note "\ch" is a prefix for "hidden" candidates.
+      option ["\ch tcp", "\ch jdwp"], ":", take_number
+      option ["\ch dev", "\ch localfilesystem", "\ch localabstract", "\ch localreserved"], ":", take_file
     end
   end
 

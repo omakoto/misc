@@ -2,7 +2,6 @@
 #!ruby
 
 require_relative "completer"
-using CompleterRefinements
 
 Completer.define do
   def take_buildmode

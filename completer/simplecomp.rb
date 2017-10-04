@@ -36,7 +36,6 @@ EOF
 =end
 
 require_relative "completer"
-using CompleterRefinements
 
 Completer.define do
   # Initialize.
