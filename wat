@@ -17,7 +17,9 @@ eval "$(getopt.pl '
 ' "$@")"
 
 
-cmd="watch -n $interval bash -c $(shescape "$@")"
+cmd=()
+cmd+=("watch" "-n" "$interval" "bash" "-c")
+cmd+=("'$(shescape "$@")'")
 
 title="${title:-$@}"
 
@@ -27,7 +29,7 @@ if isx ; then
       --zoom=$zoom \
       --hide-menubar \
       -t "[$title]"\
-      -e "$cmd" >/dev/null 2>&1 &)
+      -e "$(shescape "${cmd[@]}")" >/dev/null 2>&1 &)
 else
-  ee $cmd
+  ee "${cmd[@]}"
 fi
