@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+$VERBOSE = true
+
 require_relative "./shellhelper"
 
 require "test/unit"
@@ -23,8 +25,13 @@ class TestUnshescape < Test::Unit::TestCase
 
     assert_equal(%q(a b b), unshescape(%q(a\ \b \b)))
 
-    # $'...' not supported yet.
-    # assert_equal(%q(abcdef), unshescape(%q($'abc'def)))
+    assert_equal(%q(abcdef), unshescape(%q($'abc'def)))
+    assert_equal("\"\'\\a\b\e\e\f\n\r\t\v\\q\ca\cbX", unshescape(%q($'\"\'\\\a\b\e\E\f\n\r\t\v\q\ca\cbX')))
+    assert_equal("\ca\\uz1~\u56fdX", unshescape(%q($'\u1\uz1\u7e\u56fdX')))
+    assert_equal("\ca\\Uz1~\u56fd\u{1F466}X", unshescape(%q($'\U1\Uz1\U7e\U56fd\U1F466X')))
+    assert_equal("\caa\\xz1b~X", unshescape(%q($'\x01a\xz1b\x7eX')))
+    assert_equal("\x01X", unshescape(%q($'\1X')))
+    assert_equal("\x01@0X", unshescape(%q($'\1\1000X')))
   end
 end
 

@@ -25,7 +25,7 @@ end
 # Shell-unescape a single token.
 #-----------------------------------------------------------
 def unshescape(arg)
-  if arg !~ / [ \' \" \\ ] /x
+  if arg !~ /[\'\"\\]/
     return arg
   end
 
@@ -66,22 +66,9 @@ def unshescape(arg)
         ret += arg[pos]
         pos += 1
       end
-
-    # TODO $'...' isn't supported yet.
-    # when ch == '$' and arg[pos+1] == "'"
-    #   pos += 1
-    #   while pos < arg.length
-    #     ch = arg[pos]
-    #     pos += 1
-    #     if ch == "'"
-    #       break
-    #     elsif ch == '\\'
-    #       case arg[pos+1]
-
-
-    #     end
-    #     ret += ch
-    #   end
+    when (ch == '$') && (arg[pos+1] == "'") # C-like string
+      pos += 2
+      ret, pos = _unescape_clike(arg, ret, pos)
     else
       ret += ch
       pos += 1
@@ -89,6 +76,61 @@ def unshescape(arg)
   end
 
   return ret
+end
+
+def _unescape_clike(arg, ret, pos)
+  while pos < arg.length
+    ch = arg[pos]
+    pos += 1
+    case ch
+    when "'"
+      break
+    when "\\"
+      ch = arg[pos]
+      pos += 1
+      case
+      when ch == '"';    ret += '"'
+      when ch == "'";    ret += "'"
+      when ch == '\\';   ret += '\\'
+      when ch == 'a';    ret += "\a"
+      when ch == 'b';    ret += "\b"
+      when ch == 'e';    ret += "\e"
+      when ch == 'E';    ret += "\e"
+      when ch == 'f';    ret += "\f"
+      when ch == 'n';    ret += "\n"
+      when ch == 'r';    ret += "\r"
+      when ch == 't';    ret += "\t"
+      when ch == 'v';    ret += "\v"
+      when ch == 'c'
+        ch2 = arg[pos]&.downcase&.ord
+        pos += 1
+        code = ch2 ? (ch2 - 'a'.ord + 1) : 0
+        ret << code.chr
+      when (ch == 'x') && /\G([0-9a-fA-F]{1,2})/.match(arg, pos)
+        code = $1
+        pos += $1.length
+        ret << code.to_i(16).chr("utf-8")
+      when (ch == 'u') && /\G([0-9a-fA-F]{1,4})/.match(arg, pos)
+        code = $1
+        pos += $1.length
+        ret << code.to_i(16).chr("utf-8")
+      when (ch == 'U') && /\G([0-9a-fA-F]{1,8})/.match(arg, pos)
+        code = $1
+        pos += $1.length
+        ret << code.to_i(16).chr("utf-8")
+      when /\G([0-7]{1,3})/.match(arg, pos - 1)
+        code = $1
+        pos += $1.length - 1
+        ret << code.to_i(8).chr("utf-8")
+      else
+        ret << "\\"
+        ret << ch
+      end
+    else
+      ret << ch
+    end
+  end
+  return [ret, pos]
 end
 
 #-----------------------------------------------------------
