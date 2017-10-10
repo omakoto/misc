@@ -133,6 +133,38 @@ def _unescape_clike(arg, ret, pos)
   return [ret, pos]
 end
 
+def shsplit(arg)
+  ret = []
+  current = ""
+#  $stderr.puts "in=#{arg}"
+  arg.scan(%r[
+      (?:
+      \s+                      # Whitespace
+      | \' [^\']* \'?          # Single quote
+      | \$\'(?:                # C-like string
+          \\[\"\'\\abeEfnrtv]      # Special character
+          | \\c.                   # Control character
+          | \\x[0-9a-fA-F]{0,2}
+          | \\u[0-9a-fA-F]{0,4}
+          | \\U[0-9a-fA-F]{0,8}
+          | [^\']
+          )* \'?
+      | \" (?: \\. | [^\"] )* \"? # Double-quote
+      | .
+      )
+      ]x).each do |token|
+#    $stderr.puts "token=#{token}"
+    if token =~ /^\s/
+      (ret << current) if current != ""
+      current = ""
+    else
+      current += token
+    end
+  end
+  (ret << current) if current != ""
+  return ret
+end
+
 #-----------------------------------------------------------
 class CommandLine
   def initialize(command_line, pos = -1)

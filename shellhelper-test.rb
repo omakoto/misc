@@ -1,6 +1,5 @@
-#!/usr/bin/env ruby
-
-$VERBOSE = true
+/bin/true; exec ruby -wSx "$0"
+#!ruby
 
 require_relative "./shellhelper"
 
@@ -32,6 +31,20 @@ class TestUnshescape < Test::Unit::TestCase
     assert_equal("\caa\\xz1b~X", unshescape(%q($'\x01a\xz1b\x7eX')))
     assert_equal("\x01X", unshescape(%q($'\1X')))
     assert_equal("\x01@0X", unshescape(%q($'\1\1000X')))
+  end
+end
+
+class TestShesplit < Test::Unit::TestCase
+  def test_simple
+    assert_equal([], shsplit(""))
+    assert_equal(%w(a), shsplit("a"))
+    assert_equal(%w(ab), shsplit("ab"))
+    assert_equal(%w(a bc def), shsplit("a bc   def"))
+    assert_equal([%(a), %(bc'a "')], shsplit(%(a bc'a "')))
+    assert_equal([%("x '  5")], shsplit(%("x '  5")))
+    assert_equal([%("x  '  \\"  5")], shsplit(%("x  '  \\"  5")))
+    assert_equal([%(a), %(bc'a "'), %("\\'\\"x '  5")], shsplit(%(a bc'a "'   "\\'\\"x '  5")))
+    assert_equal([%($'\\'\\"\\t\\v\\r\\n\ca')], shsplit(%(  $'\\'\\"\\t\\v\\r\\n\ca')))
   end
 end
 
