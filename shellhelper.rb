@@ -146,6 +146,10 @@ def shsplit(arg)
   return ret
 end
 
+def is_shell_op(arg)
+  return arg =~ /^[\;\<\>\|\&\!\(\)]+$/
+end
+
 #-----------------------------------------------------------
 class CommandLine
   def initialize(command_line, pos = -1)
@@ -197,7 +201,11 @@ class CommandLine
     return CommandLine.new(new_command, new_pos)
   end
 
-  SHELL_OPERATORS = %r!^ (?: [\|\&\<\>]+ | \; ) $!x
+  SHELL_OPERATORS = %r!^ (?:
+      \;      |
+      [\|\&\<\>]+   |
+      \(      |
+      \)      ) $!x
 
   private
   def tokenize()
