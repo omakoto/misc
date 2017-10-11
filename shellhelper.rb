@@ -3,8 +3,12 @@
 # $DEBUG = true
 
 =begin
-Basic shell escape/unescape helper. It doesn't support complicated
-cases like $'multi\nlines' and "$(echo "o  k")".
+Basic shell escape/unescape helper.
+
+It doesn't support complicated cases like "$(echo "o  k")".
+
+See also:
+http://pubs.opengroup.org/onlinepubs/009695399/utilities/xcu_chap02.html
 =end
 
 class InvalidCommandLineError < StandardError
@@ -135,33 +139,10 @@ end
 
 def shsplit(arg)
   ret = []
-  current = ""
-#  $stderr.puts "in=#{arg}"
-  arg.scan(%r[
-      (?:
-      \s+                      # Whitespace
-      | \' [^\']* \'?          # Single quote
-      | \$\'(?:                # C-like string
-          \\[\"\'\\abeEfnrtv]      # Special character
-          | \\c.                   # Control character
-          | \\x[0-9a-fA-F]{0,2}
-          | \\u[0-9a-fA-F]{0,4}
-          | \\U[0-9a-fA-F]{0,8}
-          | [^\']
-          )* \'?
-      | \" (?: \\. | [^\"] )* \"? # Double-quote
-      | .
-      )
-      ]x).each do |token|
-#    $stderr.puts "token=#{token}"
-    if token =~ /^\s/
-      (ret << current) if current != ""
-      current = ""
-    else
-      current += token
-    end
+  c = CommandLine.new(arg)
+  c.tokens.each do |token|
+    ret << token if token =~ /^\S/
   end
-  (ret << current) if current != ""
   return ret
 end
 
@@ -176,7 +157,7 @@ class CommandLine
 
     # Tokens, including whitespaces, as original strings.
     # (non-unescaped)
-    @tokens = nil # [] of [STRING (token or spaces)]
+    @tokens = nil # [] of STRING (token or spaces)
     tokenize
   end
 
@@ -216,45 +197,66 @@ class CommandLine
     return CommandLine.new(new_command, new_pos)
   end
 
+  SHELL_OPERATORS = %r!^ (?: [\|\&\<\>]+ | \; ) $!x
+
   private
   def tokenize()
     @tokens = []
-    raw_tokens = @command_line.scan(
-        %r{
-          (?: \s+ | # Whitespace
-              \' [^']* \'? | # Single quoted
-              \" (?: [^\"] | \\.) * \"? | # Double quoted
-              (?: [^\'\"\s] | \\.) + | # Bare characters
-          )
-        }x)
+    raw_tokens = @command_line.scan(%r[
+      (?:
+      \s+                      # Whitespace
+      | \' [^\']* \'?          # Single quote
+      | \" (?: \\. | [^\"] )* \"? # Double-quote
+      | \$\'(?:                # C-like string
+          \\[\"\'\\abeEfnrtv]      # Special character
+          | \\c.                   # Control character
+          | \\x[0-9a-fA-F]{0,2}
+          | \\u[0-9a-fA-F]{0,4}
+          | \\U[0-9a-fA-F]{0,8}
+          | [^\']
+          )* \'?
+      | .
+      )
+      ]x)
 
     # puts raw_tokens.inspect if $DEBUG
 
     pos = 0
     current = ""
-    in_token = false
 
-    push_token = lambda {
-      if in_token
+    push_token = lambda do
+      if current.length > 0
         @tokens.push current
         current = ""
-        in_token = false
       end
-    }
+    end
 
-    raw_tokens.each {|t|
-      len = t.length
+    raw_tokens.each do |token|
+      len = token.length
       break if len == 0
-      if t =~ /^\s/ # Whitespace?
-        push_token.call
-        @tokens.push t
 
-      else # Token?
-        in_token = true
-        current += t
+      if token =~ /^\s/ # Whitespace?
+        push_token.call
+        @tokens.push token
+      elsif current.length == 0 && token == "#" # Comment?
+        # Comment, eat up all the string.
+        @tokens.push @command_line[pos..-1]
+        break
+      elsif ((current.length == 0) && # Line head '!' is special.
+          (token == "!") &&
+          ((@tokens.length == 0) || (@tokens[0] =~ /^\s+$/)))
+        current += token
+        push_token.call
+      else
+        current_is_op = current =~ SHELL_OPERATORS
+        if ((current_is_op && (current + token) !~ SHELL_OPERATORS) ||
+            (!current_is_op && token =~ SHELL_OPERATORS))
+          push_token.call
+        end
+        current += token
       end
       pos += len
-    }
+    end
     push_token.call
   end
 end

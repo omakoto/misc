@@ -45,15 +45,26 @@ class TestShesplit < Test::Unit::TestCase
     assert_equal([%("x  '  \\"  5")], shsplit(%("x  '  \\"  5")))
     assert_equal([%(a), %(bc'a "'), %("\\'\\"x '  5")], shsplit(%(a bc'a "'   "\\'\\"x '  5")))
     assert_equal([%($'\\'\\"\\t\\v\\r\\n\ca')], shsplit(%(  $'\\'\\"\\t\\v\\r\\n\ca')))
+    assert_equal(%w(; ; &&| ab ;), shsplit(%(;;&&|ab;)))
   end
 end
 
 class TestCommandLine < Test::Unit::TestCase
   def test_tokenize
     assert_equal([], CommandLine.new("").tokens)
+    assert_equal(%w(a), CommandLine.new("a").tokens)
     assert_equal(
         ['abc', '  ', "\'\"\'ab\"dd\""],
         CommandLine.new("abc  \'\"\'ab\"dd\"").tokens)
+    assert_equal(
+        [';', ';', '&&|', 'ab', ';', '#', ' ', 'ab#def', '  ', '#a b cde"\'d '],
+        CommandLine.new(%(;;&&|ab;# ab#def  #a b cde"'d )).tokens)
+    assert_equal(
+        %w(! command!),
+        CommandLine.new(%(!command!)).tokens)
+    assert_equal(
+        ['  ', '!', 'command'],
+        CommandLine.new(%(  !command)).tokens)
   end
 
   def test_rebuild
