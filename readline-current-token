@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 require_relative "./getopt"
-require_relative "./shellhelper"
+require "shellhelper"
 
 partial_token = true
 expand_home = true

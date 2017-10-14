@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-require_relative "./shellhelper"
+require "shellhelper"
 
 command = ENV['READLINE_LINE']
 pos = ENV['READLINE_POINT'].to_i
