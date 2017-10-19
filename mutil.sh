@@ -475,36 +475,6 @@ function rust_backtrace {
   RUST_BACKTRACE=1 "$@"
 }
 
-function set-now() {
-  touch /tmp/$$.now
-}
-
-function has-changed() {
-  if [[ "$1" -nt "/tmp/$$.now" ]] ; then
-    return 0
-  fi
-  return 1
-}
-
-function adb-install-if-changed() {
-  if has-changed "$1" || (( $FORCE_INSTALL )) ; then
-    android-install "$1"
-  else
-    {
-      red "Not installing '$1' because it hasn't changed."
-      byellow "Use FORCE_INSTALL=1 to force install. (Or rerun the command with FI)"
-    } 1>&2
-  fi
-}
-
-function android-install-if-changed() {
-  adb-install-if-changed "$@"
-}
-
-function FI() {
-  FORCE_INSTALL=1 "$@"
-}
-
 function ll() {
   ls -l "$@"
 }
