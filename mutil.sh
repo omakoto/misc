@@ -400,8 +400,9 @@ function zenlog-nolog-out() {
   echo "$(zenlog outer-tty 2>/dev/null || tty)"
 }
 
+# Note this version is a bit slow. See also prompt.bash.
 title() {
-  echo -ne "\033]0;${*}\007" | zenlog write-to-outer
+  echo -n $'\e]0;'"${*}"$'\007' | zenlog write-to-outer
 }
 
 bash-enable-debug() {
