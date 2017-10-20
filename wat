@@ -18,8 +18,8 @@ eval "$(getopt.pl '
 
 
 cmd=()
-cmd+=("watch" "-n" "$interval" "bash" "-c")
-cmd+=("'$(shescape "$@")'")
+cmd+=("watch" "-n" "$interval" "-x" "-p")
+cmd+=("$@")
 
 title="${title:-$@}"
 
