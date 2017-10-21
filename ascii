@@ -133,14 +133,12 @@ show() {
 EOF
 }
 
-if (( $# > 0 )) ; then
-    show | grep -i "$@"
-else
-    show | {
-      if [[ -t 1 ]] ; then
-        less
-      else
-        cat
-      fi
-    }
-fi
+show | {
+  if (( $# > 0 )) ; then
+    grep -i "$*"
+  elif [[ -t 1 ]] ; then
+    less
+  else
+    cat
+  fi
+}
