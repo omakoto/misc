@@ -1,0 +1,5 @@
+#!/bin/bash
+
+setxkbmap us
+
+xmodmap ${HOME}/cbin/dot_Xmodmap.omakoto-glaptop
