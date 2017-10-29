@@ -24,12 +24,7 @@ cmd+=("$@")
 title="${title:-$@}"
 
 if isx ; then
-  (gnome-terminal \
-      --geometry=$geo \
-      --zoom=$zoom \
-      --hide-menubar \
-      -t "[$title]"\
-      -e "$(shescape "${cmd[@]}")" >/dev/null 2>&1 &)
+  start-terminal "${cmd[@]}"
 else
   ee "${cmd[@]}"
 fi
