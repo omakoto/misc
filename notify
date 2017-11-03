@@ -10,12 +10,13 @@ force=0
 mode=--info
 color=bcyan
 print_to_term=1
-
+wait=0
 
 eval "$(getopt.pl -Nxd 'Show a dialog box' '
 e|error|c|critical  mode=--error; color=bred  # Show as error.
 f|force             force=1                   # Show dialog even if stdin is not terminal.
 s|no-terminal       print_to_term=0           # Do not show the message on terminal.
+w|wait              wait=1                    # Wait until the dialog closes.
 ' "$@")"
 
 message="$*"
@@ -30,6 +31,14 @@ fi
 if [[ -t 0 ]] || (( "$force" )) ; then
   if isx ; then
     zenity $mode --text "$message" 2>/dev/null &
+    if (( $wait )) ; then
+      wait
+    fi
+  else
+    if (( $wait )) ; then
+      echo -n "Press enter to continue: "
+      read
+    fi
   fi
 fi
 exit 0

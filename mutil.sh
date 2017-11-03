@@ -524,20 +524,13 @@ function .e() {
   fi
 }
 
-function md() {
-  local dir="$1"
-  if [[ "$dir" == "" ]] ; then
-    dir=/tmp/work-$(date8)
-  fi
+function wd() {
+  dir="/tmp/work-$(date8)${1+-}$1"
 
   mkdir -p "$dir" && cd "$dir"
 
   echo "$dir"
-  if ! [[ -t 1 ]] ; then # If it was eaten, then print on stderr.
+  if ! [[ -t 1 ]] ; then # If it was eaten, then print on stderr too.
     echo "$dir" 1>&2
   fi
-}
-
-function wd() {
-  md "$@"
 }
