@@ -1,5 +1,5 @@
-_reloaded_time=/tmp/$$-reload.tmp
-_reload_needed=/tmp/reload-needed.tmp
+_reloaded_time=${RAMTMP:-/tmp}/$$-reload.tmp
+_reload_needed=${RAMTMP:-/tmp}/reload-needed.tmp
 
 trap 'rm -f "$_reloaded_time"' EXIT
 
