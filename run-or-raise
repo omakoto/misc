@@ -1,0 +1,14 @@
+#!/bin/bash
+#
+# Raise (activate) the window with name $1. If no such window, run the
+# command $2.
+#
+# Usage:
+#   run-or-raise {window-name} {command-to-run}
+#
+# Examples:
+#   run-or-raise google-chrome google-chrome
+#   run-or-raise lxterminal lxterminal
+#   run-or-raise jetbrains-idea /opt/intellij-ue-stable/bin/idea.sh
+
+wmctrl -x -a "$1" || $2
