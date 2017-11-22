@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Switch the keymap depending on the device and the connected keyboard.
+
+set -e
+. mutil.sh
+
+medir="${0%/*}"
+
+case "$(hostname -s)" in
+  omakoto-glaptop) # Dell laptop.
+    if lsusb | grep -q '0853:0111' ; then # Topre keyboard.
+      ee $medir/dell-keymap-reset
+    else
+      ee $medir/dell-keymap-custom
+    fi
+    ;;
+  *)
+    ee keymap-reset
+    ;;
+esac
+
+echo "Updated keymap."
