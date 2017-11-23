@@ -24,7 +24,7 @@ rc() {
         # Non-signal version.
         touch "$_reload_needed"
         reload_rc
-        for pid in $(pgrep '^lbash$') ; do
+        for pid in $(pgrep -f -U $(id -u) -- '(^-bash$|^bash -l$|/bash -l$)') ; do
             if [[ $pid == $$ ]] ; then
                 continue
             fi
