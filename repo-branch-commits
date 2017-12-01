@@ -1,0 +1,5 @@
+#!/bin/sh
+
+# Show the local commits on the current branch.
+
+git show $(repo-base)..HEAD --pretty=oneline -s
