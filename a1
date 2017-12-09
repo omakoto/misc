@@ -1,0 +1,4 @@
+#!/bin/bash
+
+name=$(basename "$0")
+exec awk '{print $'${name:1:1}'}'
