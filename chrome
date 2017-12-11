@@ -39,7 +39,7 @@ if [[ -f "$url" ]]; then
     if ! isbin "$url" && has-ansi "$url" ; then
       url2=$( tempfile )
       head="$(head -1 "$url" 2>/dev/null | ansi-remove | sed -e 's/^\$ *//')"
-      a2h -font-size 8pt -t "$head [a2h]" < "$url" > "$url2"
+      a2h -font-size 8pt -title "$head [a2h]" < "$url" > "$url2"
       url="$url2"
     fi
     ;;
