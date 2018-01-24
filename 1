@@ -74,7 +74,7 @@ if (( $pipe != 0 )) ; then
   if zenlog in-zenlog && (( ! $no_zenlog )) ; then
     byellow "Writing to current zenlog file..." | zenlog write-to-outer
     cat > "$(zenlog logger-pipe)"
-    log=$(zenlog history -n 0)
+    log=$(zenlog history -n 1)
   else
     log="$temp/pipe-$(date8)-$$.log"
     byellow -n "Logging to: "
