@@ -1,9 +1,72 @@
 #!/bin/bash
 
+# filter -- run a command and extract lines matching start/end patterns
+#
+# Usage: filter COMMAND [ARG1 ...] [ , START-PAT1 [END-PAT1 [START-PAT2] ...]]
+#
+# This executes a command and extract the lines matching any of the START-PATs
+# and after, but stops at lines matching any of the END-PATs.
+#
+# If a pattern is empty or -, then it'll be interpreted as "^\s*$"
+#
+# Example:
+# $ filter dumpsys-alarm , 'Forced App Standby Feature enabled' 'Temp whitelist appids' '^\s*Stats:$' -
+# Output:
+# -
+#   Forced App Standby Feature enabled: true
+#   Force all apps standby: false
+#   Small Battery Device: false
+#   Force all apps standby for small battery device: false
+#   Plugged In: true
+#   Foreground uids: [u0a6 u0a12 u0a14 u0a21 u0a40 u0a44 u0a90 u0a273]
+#   Whitelist appids: [1000, 1001, 2000, 10006, 10007, 10010, 10...
+# -
+#   Stats:
+#     UID_STATE_CHANGED: count=146, total=310.2ms, avg=2.124ms
+#     RUN_ANY_CHANGED: count=0, total=0.0ms, avg=0.000ms
+#     ALL_UNWHITELISTED: count=0, total=0.0ms, avg=0.000ms
+#     ALL_WHITELIST_CHANGED: count=0, total=0.0ms, avg=0.000ms
+#     TEMP_WHITELIST_CHANGED: count=34, total=41.2ms, avg=1.211ms
+#     EXEMPT_CHANGED: count=0, total=0.0ms, avg=0.000ms
+#     FORCE_ALL_CHANGED: count=2, total=24.1ms, avg=12.068ms
+#     FORCE_APP_STANDBY_FEATURE_FLAG_CHANGED: count=0, total=0.0ms, avg=0.000ms
+# -
+#
 set -e
 
 . mutil.sh
 
-perlopts=()
+args=("$@")
 
-"$@"
+# Find the first , in the argument list.
+comma_index=-1
+
+args=("$@")
+for (( i = 0; i < ${#args[@]}; i++ )) ; do
+  # echo "$i: ${args[i]}"
+  if [[ "${args[i]}" == , ]] ; then
+    comma_index=$i
+    break
+  fi
+done
+
+# command = arguments before ,
+# filter = arguments after ,
+if (( $comma_index < 0 )) ; then
+  command=("${args[@]}")
+  filter=()
+else
+  command=("${args[@]:0:$(($comma_index))}")
+  filter=("${args[@]:$(($comma_index+1))}")
+fi
+
+{
+  byellow -n "Command: "
+  bcyan "$(shescape "${command[@]}")"
+
+  byellow -n "Filter: "
+  bcyan "$(shescape "${filter[@]}")"
+} 1>&2
+
+# Execute the command and feed it to filter.rb
+"${command[@]}" | $0.rb "${filter[@]}"
