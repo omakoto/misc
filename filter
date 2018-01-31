@@ -2,10 +2,10 @@
 
 # filter -- run a command and extract lines matching start/end patterns
 #
-# Usage: filter COMMAND [ARG1 ...] [ , START-PAT1 [END-PAT1 [START-PAT2] ...]]
+# Usage: filter COMMAND [ARG1 ...] [ , START-PAT1 END-PAT1 ...]]
 #
 # This executes a command and extract the lines matching any of the START-PATs
-# and after, but stops at lines matching any of the END-PATs.
+# and after, but stops at lines matching the pair END-PAT.
 #
 # If a pattern is empty or -, then it'll be interpreted as "^\s*$"
 #
@@ -31,6 +31,8 @@
 #     FORCE_ALL_CHANGED: count=2, total=24.1ms, avg=12.068ms
 #     FORCE_APP_STANDBY_FEATURE_FLAG_CHANGED: count=0, total=0.0ms, avg=0.000ms
 # -
+#
+# Also if a pattern starts with an @, then only print the lines that match it.
 #
 set -e
 
