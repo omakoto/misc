@@ -24,8 +24,6 @@ cmd+=("watch" "--color" "-n" "$interval" "-x" "-p")
 cmd+=("$@")
 cmd+=(bash -c "$command")
 
-  echo "${cmd[@]}"
-
 title="${title:-$@}"
 
 if isx ; then
