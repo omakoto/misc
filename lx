@@ -6,38 +6,14 @@
 #
 # A command will be executed with the filter command, so the usual
 # filters can be specified.
-#
-# Options
-#  -p PATTERN: Highlight a pattern with the hl command.
-
-hl_opts=()
-
-while [[ "$1" =~ ^- ]] ; do
-  case "$1" in
-    -p)
-      hl_opts=("-p" "$2")
-      shift 2
-      ;;
-    *)
-      echo "$0: Invalid option '$1'" 1>&2
-      exit 1
-  esac
-done
 
 if (( $# == 0 )) ; then
   echo "$0: Missing command" 1>&2
   exit 1
 fi
 
-filter=cat
-if (( ${#hl_opts[@]} > 0 )) ; then
-  filter=(hl "${hl_opts[@]}")
-fi
-
-#shescape "${filter[@]}"; exit 0
-
 start-terminal bash -c "while true; do
 {
   date
   filter $(shescape "$@")
-} |& $(shescape "${filter[@]}") | less -R ; done"
+} |& less -R ; done"
