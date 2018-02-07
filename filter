@@ -34,31 +34,39 @@
 #
 # Also if a pattern starts with an @, then only print the lines that match it.
 #
-# Also it accepts multiple -p options to highlight output.
+# Also it accepts multiple -p options *within the filter spec* to highlight output.
 #  -p PATTERN: Highlight a pattern with the hl command.
 #
 set -e
 
 . mutil.sh
 
+# Find , to extract filters and '-p PATTERN's.
+
 args=("$@")
 
-# Find the first , in the argument list.
-comma_index=-1
+cmd=()  # Arguments before first ,
+filter=()   # Arguments after , excluding '-p PATTERN's.
+hl_opts=()  # -p PATTERN ...
 
-# Extract "-p pattern"s.
-hl_opts=()
+comma_found=0
 
-while [[ "$1" =~ ^- ]] ; do
-  case "$1" in
-    -p)
-      hl_opts=("-p" "$2")
-      shift 2
-      ;;
-    *)
-      echo "$0: Invalid option '$1'" 1>&2
-      exit 1
-  esac
+for (( i = 0; i < ${#args[@]}; i++ )) ; do
+  arg="${args[i]}"
+  # echo "$i: $arg"
+  if [[ "$arg" == , ]] ; then
+    comma_found=1
+    continue
+  fi
+  if (( !$comma_found )) ; then
+    cmd+=($arg)
+    continue
+  fi
+  if [[ "$arg" == "-p" ]] ;then
+    hl_opts+=(-p "${args[i+1]}")
+    continue
+  fi
+  filter+=("$arg")
 done
 
 hl=cat
@@ -66,39 +74,24 @@ if (( ${#hl_opts[@]} > 0 )) ; then
   hl=(hl "${hl_opts[@]}")
 fi
 
-# Find , to extract filters.
-
-args=("$@")
-for (( i = 0; i < ${#args[@]}; i++ )) ; do
-  # echo "$i: ${args[i]}"
-  if [[ "${args[i]}" == , ]] ; then
-    comma_index=$i
-    break
-  fi
-done
-
-# command = arguments before ,
-# filter = arguments after ,
-if (( $comma_index < 0 )) ; then
-  command=("${args[@]}")
-  filter=()
-else
-  command=("${args[@]:0:$(($comma_index))}")
-  filter=("${args[@]:$(($comma_index+1))}")
+if (( 0 )) ; then
+  echo "Command: $(shescape "${cmd[@]}")"
+  echo "Filter: $(shescape "${filter[@]}")"
+  echo "HL: $(shescape "${hl[@]}")"
 fi
 
-if (( ${#command[@]} == 0 )) ; then
+if (( ${#cmd[@]} == 0 )) ; then
   echo "$0: Missing command" 1>&2
   exit 1
 fi
 
 {
   byellow -n "Command: "
-  bcyan "$(shescape "${command[@]}")"
+  bcyan "$(shescape "${cmd[@]}")"
 
   byellow -n "Filter: "
   bcyan "$(shescape "${filter[@]}")"
 } 1>&2
 
 # Execute the command and feed it to filter.rb
-"${command[@]}" |& $0.rb "${filter[@]}" | "${hl[@]}"
+"${cmd[@]}" |& $0.rb "${filter[@]}" | "${hl[@]}"
