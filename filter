@@ -34,9 +34,9 @@
 #
 # Also if a pattern starts with an @, then only print the lines that match it.
 #
-# Also it accepts multiple -p options *within the filter spec* to highlight output.
-#  -p PATTERN: Highlight a pattern with the hl command.
-#
+# Also if a pattern starts with an =, it'll be passed to the hl command for
+# highlighting.
+
 set -e
 
 . mutil.sh
@@ -62,8 +62,8 @@ for (( i = 0; i < ${#args[@]}; i++ )) ; do
     cmd+=($arg)
     continue
   fi
-  if [[ "$arg" == "-p" ]] ;then
-    hl_opts+=(-p "${args[i+1]}")
+  if [[ "$arg" =~ ^= ]] ;then
+    hl_opts+=(-p "${arg:1}")
     continue
   fi
   filter+=("$arg")
