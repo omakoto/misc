@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# sudo apt-get install acpi
+
+ACPI=acpi
+MIN_PERCENT=${1:-20}
+
+if ! which $ACPI >&/dev/null ; then
+    echo "acpi not installed."
+    exit 10
+fi
+
+if $ACPI |& grep -q ' power_supply' ; then
+    exit 0
+fi
+
+if ! $ACPI | grep -q ' Charging' ; then
+    echo "Battery discharging."
+    exit 11
+fi
+
+percent="$(acpi | perl -ne  '/(\d+)%/ and print $1')"
+
+if (( "$percent" < "$MIN_PERCENT" )) ; then
+    echo "Battery level too low. ($percent < $MIN_PERCENT)"
+    exit 12
+fi
+
+exit 0

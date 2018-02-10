@@ -1,0 +1,21 @@
+#!/bin/bash
+
+SCRIPT="${0##*/}"
+SCRIPT_DIR="${0%/*}"
+
+log=/tmp/fstrim-"$(date '+%Y%m%d-%H%M%S')-$$".log
+
+{
+    echo "Log file: $log"
+    echo "Checking if we can start trimming $@ ..."
+    cd "$SCRIPT_DIR" || exit 1
+
+
+    ./battery_ok || exit 2
+    ./is_idle || exit 3
+
+    for disk in "$@"; do
+        echo "Trimming $disk ..."
+        /sbin/fstrim -v "$disk"
+    done
+} |& tee $log

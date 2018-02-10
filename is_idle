@@ -1,0 +1,12 @@
+#!/bin/bash
+
+MAX_LOAD=${1:-2}
+
+load1="$(cat /proc/loadavg | awk '{print $1}')"
+
+if perl -we "exit (($load1 >= $MAX_LOAD) ? 0 : 1)" ; then
+    echo "Load too high. ($load1 >= $MAX_LOAD)"
+    exit 1
+fi
+
+exit 0
