@@ -10,16 +10,18 @@ if ! which $ACPI >&/dev/null ; then
     exit 10
 fi
 
-if $ACPI |& grep -q ' power_supply' ; then
+acpi="$( $ACPI 2>&1)"
+
+if egrep -q ' (power_supply|Full)' <<<"$acpi" ; then
     exit 0
 fi
 
-if ! $ACPI | grep -q ' Charging' ; then
+if ! grep -q ' Charging' <<<"$acpi" ; then
     echo "Battery discharging."
     exit 11
 fi
 
-percent="$(acpi | perl -ne  '/(\d+)%/ and print $1')"
+percent="$(perl -ne  '/(\d+)%/ and print $1' <<<$"acpi")"
 
 if (( "$percent" < "$MIN_PERCENT" )) ; then
     echo "Battery level too low. ($percent < $MIN_PERCENT)"

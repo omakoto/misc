@@ -1,0 +1,16 @@
+#!/usr/bin/env ruby
+
+if ARGV.length != 1
+  $stderr.puts "Usage: #{$0} FILE"
+  exit 2
+end
+
+file = ARGV[0]
+
+begin
+  age_second = (Time.now -  File.mtime(file)).to_i
+  puts(age_second / 60)
+rescue StandardError => e
+  $stderr.puts "#{e}"
+  exit 1
+end
