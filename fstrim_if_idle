@@ -5,17 +5,25 @@ SCRIPT_DIR="${0%/*}"
 
 log=/tmp/fstrim-"$(date '+%Y%m%d-%H%M%S')-$$".log
 
-{
+function run() {
     echo "Log file: $log"
     echo "Checking if we can start trimming $@ ..."
-    cd "$SCRIPT_DIR" || exit 1
+    cd "$SCRIPT_DIR" || return 1
 
-
-    ./battery_ok || exit 2
-    ./is_idle || exit 3
+    ./battery_ok || return 2
+    ./is_idle || return 3
 
     for disk in "$@"; do
         echo "Trimming $disk ..."
         /sbin/fstrim -v "$disk"
     done
-} |& tee $log
+}
+
+run "$@" |& tee $log
+rc=${PIPESTATUS[0]}
+
+if (( $rc == 0 )) ; then
+  ln -fs $log /tmp/fstrim-last-success.log
+fi
+
+exit $rc
