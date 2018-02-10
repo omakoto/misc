@@ -39,7 +39,7 @@ end
 #p start
 #p stop
 
-showing = (start.size == 0)
+showing = false
 
 skipped_lines = 0
 start_index = -1

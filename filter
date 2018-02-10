@@ -80,6 +80,11 @@ for (( i = 0; i < ${#args[@]}; i++ )) ; do
   filter+=("$arg")
 done
 
+if (( ! $comma_found )) ; then
+  echo "$0: Comma not found." 1>&2
+  exit 1
+fi
+
 hl=cat
 if (( ${#hl_opts[@]} > 0 )) ; then
   hl=(hl "${hl_opts[@]}")
