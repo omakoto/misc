@@ -3,12 +3,20 @@
 SCRIPT="${0##*/}"
 SCRIPT_DIR="${0%/*}"
 
+success_file=/tmp/fstrim-last-success.log
 log=/tmp/fstrim-"$(date '+%Y%m%d-%H%M%S')-$$".log
+
+min_interval_days=1
 
 function run() {
     echo "Log file: $log"
-    echo "Checking if we can start trimming $@ ..."
+    echo "Checking if we should/can start trimming $@ ..."
     cd "$SCRIPT_DIR" || return 1
+
+    if ! ./is_file_older $success_file $min_interval_days ; then
+      echo "Last trim time too new; skipping."
+      exit 10
+    fi
 
     ./battery_ok || return 2
     ./is_idle || return 3
@@ -23,7 +31,7 @@ run "$@" |& tee $log
 rc=${PIPESTATUS[0]}
 
 if (( $rc == 0 )) ; then
-  ln -fs $log /tmp/fstrim-last-success.log
+  ln -fs $log $success_file
 fi
 
 exit $rc

@@ -1,0 +1,11 @@
+#!/usr/bin/env ruby
+
+if ARGV.length != 2
+  $stderr.puts "Usage: #{$0} FILE days"
+  exit 2
+end
+
+file = ARGV[0]
+seconds = ARGV[1].to_f * (24 * 60 * 60)
+
+exit((Time.now -  File.mtime(file)) >= seconds ? 0 : 1)
