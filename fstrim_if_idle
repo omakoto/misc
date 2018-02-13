@@ -3,7 +3,7 @@
 SCRIPT="${0##*/}"
 SCRIPT_DIR="${0%/*}"
 
-PATH="$SCRIPT_DIR:/bin:/sbin:$PATH"
+PATH="$SCRIPT_DIR:/bin:/usr/bin:/sbin:$PATH"
 
 success_file=/tmp/fstrim-last-success.log
 log=/tmp/fstrim-"$(date '+%Y%m%d-%H%M%S')-$$".log
