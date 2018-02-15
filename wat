@@ -22,7 +22,10 @@ eval "$(getopt.pl '
 cmd=()
 cmd+=("watch" "--color" "-n" "$interval" "-x" "-p")
 cmd+=("$@")
-cmd+=(bash -c "$command")
+
+if [[ "$command" != "" ]] ; then
+  cmd+=(bash -c "$command")
+fi
 
 title="${title:-$@}"
 
