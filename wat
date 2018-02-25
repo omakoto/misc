@@ -29,6 +29,8 @@ fi
 
 title="${title:-$@}"
 
+unset COLORTERM
+
 if isx ; then
   start-terminal "${cmd[@]}"
 else
