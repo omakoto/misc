@@ -30,7 +30,7 @@ fi
 title="${title:-$@}"
 
 unset COLORTERM
-#set TERM=vt100
+set TERM=vt100
 
 if isx ; then
   start-terminal "${cmd[@]}"
