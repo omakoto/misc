@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# Usage: cleanpath COMMAND [ARGS...]
+# Run a command with the "cleaned up" $PATH that doesn't have anything under $HOME or /usr/local/.
+
+
+command="$(which "$1")"
+shift
+
+cleanpath=""
+
+IFS=:
+for dir in ${PATH} ; do
+    if [[ "$dir" = "~"* ]] || [[ "$dir" = "$HOME"* ]] || [[ "$dir" = /usr/local/* ]] ;then
+        continue
+    fi
+    cleanpath="$cleanpath${cleanpath:+:}$dir"
+done
+
+PATH="$cleanpath" "$command" "$@"

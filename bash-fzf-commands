@@ -25,8 +25,6 @@ completed=$(
 
       # Filenames in recent logs
       zenlog-recent-files -d
-
-      list-commands-in-path
     } 2>/dev/null | prefix "${token}" |
     fzf-to-args -q "$token" -m --preview='preview-file {}'
     )
