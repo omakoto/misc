@@ -24,7 +24,7 @@ fi
 percent="$(perl -ne  '/(\d+)%/ and print $1' <<<$"acpi")"
 
 echo "Battery level is: $percent"
-if (( "$percent:-0" < "$MIN_PERCENT" )) ; then
+if (( "${percent:-0}" < "$MIN_PERCENT" )) ; then
     echo "Battery level too low. ($percent < $MIN_PERCENT)"
     exit 12
 fi
