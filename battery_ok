@@ -21,10 +21,11 @@ if ! grep -q ' Charging' <<<"$acpi" ; then
     exit 11
 fi
 
-percent="$(perl -ne  '/(\d+)%/ and print $1' <<<$"acpi")"
+percent="$(perl -ne  '/(\d+)%/ and print $1' <<<"$acpi")"
+percent=${percent:-0}
 
 echo "Battery level is: $percent"
-if (( "${percent:-0}" < "$MIN_PERCENT" )) ; then
+if (( $percent < "$MIN_PERCENT" )) ; then
     echo "Battery level too low. ($percent < $MIN_PERCENT)"
     exit 12
 fi
