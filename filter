@@ -1,5 +1,8 @@
 #!/bin/bash
 
+echo "Obsolete -- use hl2 instead"
+exit 3
+
 function usage() {
   cat <<'EOF'
 filter -- run a command and extract lines matching start/end patterns
