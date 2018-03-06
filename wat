@@ -20,7 +20,7 @@ eval "$(getopt.pl '
 
 
 cmd=()
-cmd+=("watch" "--color" "-n" "$interval" "-x" "-p")
+cmd+=("watch" "--color" "-n" "$interval" "-x")
 cmd+=("$@")
 
 if [[ "$command" != "" ]] ; then
