@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+
+. mutil.sh
+
+adb=0
+token="$(readline-current-token -f)"
+
+if [[ -e "$token" ]] ; then
+  readline-replace "$(abspath "$token")"
+fi
