@@ -1,0 +1,58 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+if (( $# == 0 )) || [[ "$1" == -h ]] ;then
+  cat <<EOF
+
+java-dump: Decompile a class or a jar file.
+
+Usage:
+  java-dump CLASS-FILE
+
+  java-dump JAR-FILE [ PARTIAL-CLASS-NAME ]
+
+Example:
+  java-dump abc.class       # Dump abc.class
+  java-dump abc.jar         # Dump abc.jar
+  java-dump abc.jar Main    # File classes whose name contains 'Main' from abc.jar and dump it.
+
+EOF
+  exit 1
+fi
+
+dump() {
+  echo
+  echo "DUMPING $*"
+  echo
+  javap -s -private -verbose "$@"
+}
+
+dumpjar() {
+  local jar=$(readlink -m "$1")
+  shift
+  local mask="$*"
+  local class
+  jar --list --file "$jar" | grep '\.class$' | while read class ; do
+    if [[ "$mask" != "" ]]; then
+      if [[ "$class" != *"$mask"* ]] ; then
+        continue
+      fi
+    fi
+    dump "jar:file://$jar!/$class"
+  done
+}
+
+file="$1"
+shift
+
+if [[ "$file" = *.class ]] ; then
+  dump "$file"
+  exit $?
+fi
+if [[ "$file" = *.jar ]] ; then
+  dumpjar "$file" "$@"
+  exit $?
+fi
+echo "Unknwon file type: $file" 1>&2
