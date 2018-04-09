@@ -34,7 +34,7 @@ dumpjar() {
   shift
   local mask="$*"
   local class
-  jar --list --file "$jar" | grep '\.class$' | while read class ; do
+  ee -2 jar tf "$jar" | grep '\.class$' | while read class ; do
     if [[ "$mask" != "" ]]; then
       if [[ "$class" != *"$mask"* ]] ; then
         continue
