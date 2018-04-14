@@ -1,0 +1,51 @@
+echo "not done"
+
+# #!/bin/bash
+
+# set -e
+# . mutil.sh
+
+# dir="$PWD"
+
+# verbose=0
+# function v() {
+#   (( $verbose ))
+# }
+
+# jars=()
+
+# eval "$(getopt.pl -d 'Build java app and run' '
+# v|verbose verbose=1     # Enable verbose output
+# j|jar   jars+=('%')     # Add a jar file to refer
+# ' "$@")"
+
+# dir="$1"
+# if [[ "$dir" == "" ]] ; then
+#   dir="$PWD"
+# fi
+
+# dir="$(abspath "$dir")"
+# build="$dir/build"
+
+
+
+
+# dir="$(abspath $dir)"
+# dirname="${dir##*/}"
+# jardir="$dir/bin"
+# jar="$jardir/$dirname.jar"
+# files=("$@")
+
+# if (( ${#files[@]} == 0 )) ; then
+#   files=($(find "$dir" -name '*.java' -o -name manifest.txt))
+# fi
+
+# if v ; then
+#   echo "dir=$dir"
+#   echo "dirname=$dirname"
+#   echo "jar=$jar"
+#   echo "files=${files[@]}"
+# fi
+
+# ee java -jar "$jar" "${files[@]}"
+
