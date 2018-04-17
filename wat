@@ -12,6 +12,8 @@ command=""
 
 watch=gaze
 
+opt_x=""
+
 eval "$(getopt.pl '
   g|geo|geometry=s geo=%            # Set window size. e.g. "80x25"
   z|zoom=s         zoom=%           # Set zoom scale. e.g. "0.5"
@@ -19,11 +21,12 @@ eval "$(getopt.pl '
   n|i|interval=i   interval=%       # Set refresh interval in seconds.
   c|command=s      command=%        # Run with bash -c
   w|use-watch      watch=watch      # Use watch instead of gaze.
+  x|use-exec       opt_x=-x         # Use exec() instead of system()
 ' "$@")"
 
 
 cmd=()
-cmd+=($watch "--color" "-n" "$interval" "-x")
+cmd+=($watch "--color" "-n" "$interval" $opt_x)
 cmd+=("$@")
 
 if [[ "$command" != "" ]] ; then
