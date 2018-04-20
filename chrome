@@ -25,10 +25,15 @@ shift $(($OPTIND - 1))
 
 url="$1"
 
+function temphtml() {
+    tempfile --suffix=.html
+}
+
+
 # If there's no argument, and STDIN is not terminal, #'
 # read from stdin.
 if [[ -z "$url" ]] && ! [[ -t 0 ]] ; then
-  url=$( tempfile )
+  url=$( temphtml )
   cat > "$url"
 fi
 
@@ -37,7 +42,7 @@ if [[ -f "$url" ]]; then
   *.gif|*.png|*.webp|*.jpeg|*.jpg|*.mp4|*.pdf) ;;
   *)
     if ! isbin "$url" && has-ansi "$url" ; then
-      url2=$( tempfile )
+      url2=$( temphtml )
       head="$(head -1 "$url" 2>/dev/null | ansi-remove | sed -e 's/^\$ *//')"
       a2h -font-size 8pt -title "$head [a2h]" < "$url" > "$url2"
       url="$url2"
