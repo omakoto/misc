@@ -534,3 +534,8 @@ function wd() {
     echo "$dir" 1>&2
   fi
 }
+
+function aroot() {
+  local top=${ANDROID_BUILD_TOP:?ANDROID_BUILD_TOP not set}
+  cd "$top" || exit 1
+}

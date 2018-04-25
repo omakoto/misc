@@ -92,12 +92,15 @@ for n in "${args[@]}" ; do
   else
     case "${n##*/}" in
       *bugreport*.zip|*bugreport*.txt|*.br)
-        f="$(bugreport-extract -b "$n")"
-        use_vim=1
+        is_bugreport=1
         ;;
       *.zip)
-        f=$temp/${n##*/}-$$-list.txt
-        ee -2 zcat "$n" > "$f"
+        if is-bugreport "$n" ; then
+          is_bugreport=1
+        else
+          f=$temp/${n##*/}-$$-list.txt
+          ee -2 zcat "$n" > "$f"
+        fi
         ;;
       *.tar|*.tar.gz|*.tgz|*.tar.bz2|*.tar.xz)
         f=$temp/${n##*/}-$$-list.txt
@@ -152,6 +155,10 @@ for n in "${args[@]}" ; do
         fi
         ;;
     esac
+    if (( $is_bugreport )) ; then
+      f="$(bugreport-extract -b "$n")"
+      use_vim=1
+    fi
   fi
   files+=("$f")
 done
