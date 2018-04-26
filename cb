@@ -28,6 +28,7 @@ no_cutlf=0
 dump=0
 target_opt=""
 flags=""
+flatten=0
 
 eval "$(getopt.pl -u usage '
   i|copy        copy=1                      # Copy from STDIN.  Default behavior if STDIN is not terminal
@@ -35,6 +36,7 @@ eval "$(getopt.pl -u usage '
   n|no-cut-lf   no_cutlf=1                  # Don'\''t drop the new line even if the input is a single line
   d|print       dump=1; flags="$flags -d"   # Dump copied content to STDOUT.
   t|target-type target_opt="-t %"           # Specify TARGET, such as TEXT, UTF8_STRING, or text/html
+  f|flatten     flatten=1                   # When pasting, collapse multiple lines into single line.
 ' "$@")"
 
 if (( $# > 0 )) ; then
@@ -70,4 +72,10 @@ if (( $copy )) || [[ ! -t 0 ]] ; then
   (( $quiet )) || echo "[Copied to clipboard]" 1>&2
   exit 0
 fi
-xclip -o -selection clipboard $target_opt
+xclip -o -selection clipboard $target_opt | {
+  if (( $flatten )) ; then
+    shescapes | tr '\n' ' '
+  else
+    cat
+  fi
+}
