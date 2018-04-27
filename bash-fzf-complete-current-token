@@ -19,7 +19,7 @@ completed=$(
       android-module-list -q
 
       # Filenames in recent logs
-      zenlog-recent-files -d
+      zenlog-recent-files -d | dir-slash
 
       # Executable files.
       list-commands-in-path
@@ -29,7 +29,7 @@ completed=$(
       if ! [[ -d "$dir" ]] ; then
         dir="$(dirname "$dir")"
       fi
-      find "${dir:-.}" -type f
+      find "${dir:-.}" | dir-slash
     } 2>/dev/null |
     fzf-to-args -q "$token" -m --preview='preview-file {}'
     )
