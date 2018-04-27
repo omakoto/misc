@@ -25,7 +25,10 @@ completed=$(
       list-commands-in-path
 
       # Local files files
-      dir="$(dirname "$token")"
+      dir="$token"
+      if ! [[ -d "$dir" ]] ; then
+        dir="$(dirname "$dir")"
+      fi
       find "${dir:-.}" -type f
     } 2>/dev/null |
     fzf-to-args -q "$token" -m --preview='preview-file {}'
