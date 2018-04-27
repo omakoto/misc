@@ -10,9 +10,17 @@ a|adb adb=1 # Complete with android device files.
 
 token="$(readline-current-token -f)"
 
+env_expansion=0
+shescapes=shescapes
+
+if [[ "$token" = \$* ]] ; then
+  env_expansion=1
+  shescapes=cat
+fi
+
 completed=$(
     {
-      if [[ "$token" = \$* ]] ; then
+      if (( $env_expansion )) ; then
         # Env names.
         env | sed -e 's!^!$!; s!=.*!!'
 
@@ -39,7 +47,7 @@ completed=$(
         done | dir-slash
       fi
     } 2>/dev/null |
-    fzf-to-args -q "$token" -m --preview='preview-file {}'
+    fzf -q "$token" -m --preview='preview-file {}' | $shescapes |  tr '\n' ' '
     )
 
 if [[ -n "$completed" ]] ; then
