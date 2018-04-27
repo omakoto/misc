@@ -18,17 +18,15 @@ completed=$(
       # Android modules
       android-module-list -q
 
-      # Local files
-      command ls -p -d "${token}"* 2>/dev/null
-
       # Filenames in recent logs
       zenlog-recent-files -d
 
       # Executable files.
       list-commands-in-path
 
-      # All files
-      find . -type f
+      # Local files files
+      dir="$(dirname "$token")"
+      find "${dir:-.}" -type f
     } 2>/dev/null |
     fzf-to-args -q "$token" -m --preview='preview-file {}'
     )
