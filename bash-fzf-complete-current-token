@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -e
-
 . mutil.sh
 
 adb=0
@@ -17,7 +15,7 @@ completed=$(
       # Android device files
       bash-fzf-complete-current-token-android-helper "${token}"
 
-      # # Android modules
+      # Android modules
       android-module-list -q
 
       # Local files
@@ -26,7 +24,11 @@ completed=$(
       # Filenames in recent logs
       zenlog-recent-files -d
 
+      # Executable files.
       list-commands-in-path
+
+      # All files
+      find . -type f
     } 2>/dev/null |
     fzf-to-args -q "$token" -m --preview='preview-file {}'
     )
