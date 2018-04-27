@@ -74,7 +74,7 @@ if (( $copy )) || [[ ! -t 0 ]] ; then
 fi
 xclip -o -selection clipboard $target_opt | {
   if (( $flatten )) ; then
-    shescapes | tr '\n' ' '
+    shescapes
   else
     cat
   fi

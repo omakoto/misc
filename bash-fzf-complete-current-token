@@ -17,7 +17,7 @@ completed=$(
       # Android device files
       bash-fzf-complete-current-token-android-helper "${token}"
 
-      # Android modules
+      # # Android modules
       android-module-list -q
 
       # Local files
@@ -27,7 +27,7 @@ completed=$(
       zenlog-recent-files -d
 
       list-commands-in-path
-    } 2>/dev/null | prefix "${token}" |
+    } 2>/dev/null |
     fzf-to-args -q "$token" -m --preview='preview-file {}'
     )
 
