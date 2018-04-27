@@ -12,30 +12,36 @@ token="$(readline-current-token -f)"
 
 completed=$(
     {
-      # Android device files
-      bash-fzf-complete-current-token-android-helper "${token}"
+      if [[ "$token" = \$* ]] ; then
+        # Env names.
+        env | sed -e 's!^!$!; s!=.*!!'
 
-      # Android modules
-      android-module-list -q
+      else
+        # Android device files
+        bash-fzf-complete-current-token-android-helper "${token}"
 
-      # Filenames in recent logs
-      zenlog-recent-files -d | dir-slash
+        # Android modules
+        android-module-list -q
 
-      # Executable files.
-      list-commands-in-path
+        # Filenames in recent logs
+        zenlog-recent-files -d | dir-slash
 
-      # Local files files
-      for tok in "$token"*; do
-        if [[ -f "$tok" ]] ; then
-          echo "$tok"
-        else
-          find "$tok"
-        fi
-      done | dir-slash
+        # Executable files.
+        list-commands-in-path
+
+        # Local files files
+        for tok in "$token"*; do
+          if [[ -f "$tok" ]] ; then
+            echo "$tok"
+          else
+            find "$tok"
+          fi
+        done | dir-slash
+      fi
     } 2>/dev/null |
     fzf-to-args -q "$token" -m --preview='preview-file {}'
     )
 
 if [[ -n "$completed" ]] ; then
-  readline-replace $completed
+  readline-replace "$completed"
 fi
