@@ -18,6 +18,7 @@ if [[ "$token" = \$* ]] ; then
   shescapes=cat
 fi
 
+
 completed=$(
     {
       if (( $env_expansion )) ; then
