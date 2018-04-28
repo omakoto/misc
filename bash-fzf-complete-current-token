@@ -26,7 +26,7 @@ completed=$(
         env | sed -e 's!^!$!; s!=.*!!'
 
       else
-        # Android device files
+        Android device files
         bash-fzf-complete-current-token-android-helper "${token}"
 
         # Android modules
