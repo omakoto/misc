@@ -30,7 +30,7 @@ completed=$(
         git branch | sed -n '/^..(/d; s/^. /[GIT-BRANCH] /p;'
 
         # Git changed files
-        rp -q | sed $'s/^A[ \t]*/[GIT-CHANGED-ADDED] /; s/^D[ \t]*/[GIT-CHANGED-DELETED] /; s/^M[ \t]*/[GIT-CHANGED-MODIFIED] /'
+        rp -q | sed $'s/^A[ \t]*/[GIT-CHANGED-ADDED] /; s/^D[ \t]*/[GIT-CHANGED-DELETED] /; s/^M[ \t]*/[GIT-CHANGED-MODIFIED] /' | sort
 
         # Filenames in recent logs
         zenlog-recent-files -d | dir-slash | sed 's/^/[RECENT-FILE] /'
@@ -63,7 +63,8 @@ completed=$(
         done | dir-slash | sed 's/^/[LOCAL-FILE] /'
       fi
     } 2>/dev/null |
-    fzf -q "$token" -m --preview='preview-file {}' | cut -d ' ' -f 2- | $shescapes |  tr '\n' ' '
+    fzf -q "$token" -m --preview='preview-file {}' | cut -d ' ' -f 2- | $shescapes |
+    add-backslash-except-for-last
     )
 
 if [[ -n "$completed" ]] ; then
