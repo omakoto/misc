@@ -11,5 +11,5 @@ if [[ -x ~/cbin/bin-linux64/lbash ]] ; then
 fi
 
 export ZENLOG_COMMAND_PREFIX='(builtin|time|ee|eet|wb|Test\:|Running\:?|forever|FI|sudo)'
-export ZENLOG_ALWAYS_184="(1|cd|vi|vim|man|nano|pico|less|watch|emacs|mhist|root|ssh|ssh-ce|ssh-com|zenlog.*|htop|nload)"
+export ZENLOG_ALWAYS_184="(1|cd|vi|vim|man|nano|pico|less|watch|emacs|mhist|root|ssh|ssh-ce|ssh-com|zenlog.*|htop|nload|rg-today-log)"
 export PATH="$PATH:~/cbin"
