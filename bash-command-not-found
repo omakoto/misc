@@ -1,0 +1,15 @@
+function command_not_found_handle() {
+    local command=$1
+
+    # Auto checkout.
+    for b in $(git branch 2>/dev/null | sed '1d;s!^..!!') ; do
+        if [[ "$command" == "$b" ]] ; then
+            echo "git checkout $command"
+            ee git checkout "$command"
+            return $?
+        fi
+    done
+
+    echo "bash: $command: command not found"
+    return 127
+}
