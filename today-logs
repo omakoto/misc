@@ -1,2 +1,33 @@
-#!/bin/sh
+#!/usr/bin/env ruby
 
+require 'find'
+require 'optparse'
+
+dir = File.join(ENV['ZENLOG_DIR'], "SAN")
+
+ndays = 1
+
+OptionParser.new do |opts|
+  opts.banner = "Usage: today-logs [ -n days ]"
+
+  opts.on("-nDAYS", "--days=DAYS", "Print zenlog logs in the last DAYS days") do |n|
+    ndays = n.to_i
+  end
+end.order!
+
+now = Time.now
+
+Find.find(dir) do |path|
+  if !File.directory?(path) || File.symlink?(path)
+    next
+  end
+  age = (now - File.mtime(path))
+  next if age >= 60 * 60 * 24 * ndays
+  Dir.entries(path).sort.each do |file|
+    f = File.join(path, file)
+    if !File.file? f
+      next
+    end
+    puts f
+  end
+end
