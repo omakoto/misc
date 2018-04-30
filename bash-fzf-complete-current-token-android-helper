@@ -7,7 +7,8 @@
 android-has-device || exit 0
 
 adbf shell "
-    ps -A -w -o NAME             | sed -ne '1d; /^[a-zA-Z0-9]/,s/^/[ANDROID-PROCESS] /p' ;
+    ps -A -w -o pid,name      | sed -e '1d; s/^\(.....\) /{{ \1 }} /; s/^/[ANDROID-PID] /'
+    ps -A -w -o name,pid      | sed -e '1d; s/^\([^ ]*\)/{{ \1 }}/ s/^/[ANDROID-PROCESS] /'
     cmd package list packages    | sed -e 's/^package:/[ANDROID-PACKAGE] /' ;
     ls -pd1 '${1:-/}'* | sed -e 's/^/[ANDROID-FILE] /'
     "

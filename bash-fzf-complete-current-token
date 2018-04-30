@@ -33,7 +33,7 @@ completed=$(
         rp -q | sed $'s/^A[ \t]*/[GIT-CHANGED-ADDED] /; s/^D[ \t]*/[GIT-CHANGED-DELETED] /; s/^M[ \t]*/[GIT-CHANGED-MODIFIED] /' | sort
 
         # Filenames in recent logs
-        zenlog-recent-files -d | dir-slash | sed 's/^/[RECENT-FILE] /'
+        zenlog-recent-files -d | global-unique | dir-slash | sed 's/^/[RECENT-FILE] /'
 
         # Recent words in zenlog
         zenlog-last-n-contents -R -n 10 | zenlog-recent-words.pl | global-unique | sed -e 's/^/[RECENT-WORD] /'
@@ -63,8 +63,10 @@ completed=$(
         done | dir-slash | sed 's/^/[LOCAL-FILE] /'
       fi
     } 2>/dev/null |
-    fzf -q "$token" -m --preview='preview-file {}' | cut -d ' ' -f 2- | $shescapes |
-    add-backslash-except-for-last
+    fzf -q "$token" -m --preview='preview-file {}' |
+      perl -pe 's!^\S+\s*!!; s!^.*\{\{\s*(.*?)\s*\}\}.*$!\1!' |
+      $shescapes |
+      add-backslash-except-for-last
     )
 
 if [[ -n "$completed" ]] ; then
