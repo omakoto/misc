@@ -18,6 +18,8 @@ if [[ "$token" = \$* ]] ; then
   shescapes=cat
 fi
 
+gitroot="$(git rev-parse --show-toplevel 2>/dev/null)"
+
 
 completed=$(
     {
@@ -26,16 +28,33 @@ completed=$(
         env | sed -e 's!^![ENV] $!; s!=.*!!'
 
       else
-        # Git branches
-        git branch | sed -n '/^..(/d; s/^. /[GIT-BRANCH] /p;'
+        if [[ -n "$gitroot" ]] ; then
+          # Git branches
+          git branch | sed -n '/^..(/d; s/^. /[GIT-BRANCH] /p;'
+        fi
 
         repo-active-dirs  | perl -pe 'print "[REPO-DIR] "'
 
-        # Git changed files
-        git status -s | perl -pe 's/^A\s*/[GIT-CHANGED-ADDED] /; s/^D\s*/[GIT-CHANGED-DELETED] /; s/^M\s*/[GIT-CHANGED-MODIFIED] /' | sort
+        if [[ -n "$gitroot" ]] ; then
+          (
+            cd "$gitroot"
+            # Git changed files
+            git status -s |
+                perl -pe "
+                s!^\s* A \s*![GIT-CHANGED-ADDED]    $gitroot/!ix;
+                s!^\s* D \s*![GIT-CHANGED-DELETED]  $gitroot/!ix;
+                s!^\s* M \s*![GIT-CHANGED-MODIFIED] $gitroot/!ix;
+                " | sort
 
-        # Repo changed files
-        rp -q | perl -pe 's/^A\s*/[REPO-CHANGED-ADDED] /; s/^D\s*/[REPO-CHANGED-DELETED] /; s/^M\s*/[REPO-CHANGED-MODIFIED] /' | sort
+            # Repo changed files
+            rp -q |
+                perl -pe "
+                s!^\s* A \s*![REPO-CHANGED-ADDED]    $gitroot/!ix;
+                s!^\s* D \s*![REPO-CHANGED-DELETED]  $gitroot/!ix;
+                s!^\s* M \s*![REPO-CHANGED-MODIFIED] $gitroot/!ix;
+                " | sort
+          )
+        fi
 
         # Filenames in recent logs
         zenlog-recent-files -d | global-unique | dir-slash | sed 's/^/[RECENT-FILE] /'

@@ -1,0 +1,18 @@
+#!/bin/bash
+
+arg="$1"
+
+if [[ -z "$arg" ]] ; then
+  echo "is-git-branch NAME" 1>&2
+  exit 2
+fi
+
+in-git || exit 2
+
+for b in $(git branch 2>/dev/null | sed '/(HEAD de/d;s!^..!!') ; do
+  if [[ "$arg" == "$b" ]] ; then
+    exit 0
+  fi
+done
+
+exit 1

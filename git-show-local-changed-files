@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+root=$(git root)
+cd "$root"
+
+branch="$1"
+base=$(git rev-parse --abbrev-ref --symbolic-full-name $branch@{u})
+merge_base=$(git merge-base $base ${branch:-HEAD})
+
+echo "Upstream: $base"
+git branch -vv --list --color=always "$branch"
+git diff --name-status $merge_base $branch
