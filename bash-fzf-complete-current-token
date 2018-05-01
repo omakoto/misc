@@ -32,7 +32,10 @@ completed=$(
         repo-active-dirs  | perl -pe 'print "[REPO-DIR] "'
 
         # Git changed files
-        rp -q | perl -pe 's/^A\s*/[GIT-CHANGED-ADDED] /; s/^D\s*/[GIT-CHANGED-DELETED] /; s/^M\s*/[GIT-CHANGED-MODIFIED] /' | sort
+        git status -s | perl -pe 's/^A\s*/[GIT-CHANGED-ADDED] /; s/^D\s*/[GIT-CHANGED-DELETED] /; s/^M\s*/[GIT-CHANGED-MODIFIED] /' | sort
+
+        # Repo changed files
+        rp -q | perl -pe 's/^A\s*/[REPO-CHANGED-ADDED] /; s/^D\s*/[REPO-CHANGED-DELETED] /; s/^M\s*/[REPO-CHANGED-MODIFIED] /' | sort
 
         # Filenames in recent logs
         zenlog-recent-files -d | global-unique | dir-slash | sed 's/^/[RECENT-FILE] /'
@@ -65,7 +68,7 @@ completed=$(
         done | dir-slash | perl -pe 'print "[LOCAL-FILE] "'
       fi
     } 2>/dev/null |
-    fzf -q "$token" -m --preview='preview-file {}' |
+    fzf -q "$token" -m --preview='preview-file {2..}' |
       perl -pe 's!^\S+\s*!!; s!^.*\{\{\s*(.*?)\s*\}\}.*$!\1!' |
       $shescapes |
       add-backslash-except-for-last
