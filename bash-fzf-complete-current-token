@@ -41,17 +41,17 @@ completed=$(
             # Git changed files
             git status -s |
                 perl -pe "
-                s!^\s* A \s*![GIT-CHANGED-ADDED]    $gitroot/!ix;
-                s!^\s* D \s*![GIT-CHANGED-DELETED]  $gitroot/!ix;
-                s!^\s* M \s*![GIT-CHANGED-MODIFIED] $gitroot/!ix;
+                s!^\s* A \s*![GIT-CHANGED-ADD] $gitroot/!ix;
+                s!^\s* D \s*![GIT-CHANGED-DEL] $gitroot/!ix;
+                s!^\s* M \s*![GIT-CHANGED-MOD] $gitroot/!ix;
                 " | sort
 
             # Repo changed files
             rp -q |
                 perl -pe "
-                s!^\s* A \s*![REPO-CHANGED-ADDED]    $gitroot/!ix;
-                s!^\s* D \s*![REPO-CHANGED-DELETED]  $gitroot/!ix;
-                s!^\s* M \s*![REPO-CHANGED-MODIFIED] $gitroot/!ix;
+                s!^\s* A \s*![REPO-CHANGED-ADD] $gitroot/!ix;
+                s!^\s* D \s*![REPO-CHANGED-DEL] $gitroot/!ix;
+                s!^\s* M \s*![REPO-CHANGED-MOD] $gitroot/!ix;
                 " | sort
           )
         fi
