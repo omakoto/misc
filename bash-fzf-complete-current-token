@@ -33,7 +33,7 @@ completed=$(
           git branch | sed -n '/^..(/d; s/^. /[GIT-BRANCH] /p;'
         fi
 
-        repo-active-dirs | sort | perl -pe 'print "[REPO-DIR] "'
+        repo-active-dirs | perl -pe 'print "[REPO-DIR] "'
 
         if [[ -n "$gitroot" ]] ; then
           (
