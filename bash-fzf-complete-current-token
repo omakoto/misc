@@ -29,29 +29,31 @@ completed=$(
         # Git branches
         git branch | sed -n '/^..(/d; s/^. /[GIT-BRANCH] /p;'
 
+        repo-active-dirs  | perl -pe 'print "[REPO-DIR] "'
+
         # Git changed files
-        rp -q | sed $'s/^A[ \t]*/[GIT-CHANGED-ADDED] /; s/^D[ \t]*/[GIT-CHANGED-DELETED] /; s/^M[ \t]*/[GIT-CHANGED-MODIFIED] /' | sort
+        rp -q | perl -pe 's/^A\s*/[GIT-CHANGED-ADDED] /; s/^D\s*/[GIT-CHANGED-DELETED] /; s/^M\s*/[GIT-CHANGED-MODIFIED] /' | sort
 
         # Filenames in recent logs
         zenlog-recent-files -d | global-unique | dir-slash | sed 's/^/[RECENT-FILE] /'
 
         # Recent words in zenlog
-        zenlog-last-n-contents -R -n 10 | zenlog-recent-words.pl | global-unique | sed -e 's/^/[RECENT-WORD] /'
+        zenlog-last-n-contents -R -n 10 | zenlog-recent-words.pl | global-unique | perl -pe 'print "[RECENT-WORD] "'
 
         # Android modules
-        android-module-list -q | sed 's/^/[AND-MODULE] /'
+        android-module-list -q | perl -pe 'print "[AND-MODULE] "'
 
         # Android device files
         bash-fzf-complete-current-token-android-helper "${token}"
 
         # Git tags
-        git tag | sed -e 's/^/[GIT-TAG] /'
+        git tag | perl -pe 'print "[GIT-TAG] "'
 
         # Recent directories
-        recent-dirs | sed 's/^/[RECENT-DIR] /; s!$!/!'
+        recent-dirs | perl -ne 'chomp; print "[RECENT-DIR] ", $_, "/\n"'
 
         # Executable files.
-        list-commands-in-path | sed 's/^/[EXE] /'
+        list-commands-in-path | perl -pe 'print "[EXE] "'
 
         # Local files files
         for tok in "$token"*; do
@@ -60,7 +62,7 @@ completed=$(
           else
             find "$tok"
           fi
-        done | dir-slash | sed 's/^/[LOCAL-FILE] /'
+        done | dir-slash | perl -pe 'print "[LOCAL-FILE] "'
       fi
     } 2>/dev/null |
     fzf -q "$token" -m --preview='preview-file {}' |
