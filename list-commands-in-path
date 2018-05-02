@@ -10,4 +10,4 @@ for dir in ${PATH} ; do
             echo "$file"
         fi
     done
-done
+done | global-unique
