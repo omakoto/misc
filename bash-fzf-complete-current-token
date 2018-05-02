@@ -47,11 +47,13 @@ completed=$(
                 " | sort
 
             # Repo changed files
-            rp -q |
+            rp -qR |
                 perl -pe "
-                s!^\s* A \s*![REPO-CHANGED-ADD] $gitroot/!ix;
-                s!^\s* D \s*![REPO-CHANGED-DEL] $gitroot/!ix;
-                s!^\s* M \s*![REPO-CHANGED-MOD] $gitroot/!ix;
+                s!^\s* A\S* \s*![REPO-CHANGED-ADD] $gitroot/!ix;
+                s!^\s* D\S* \s*![REPO-CHANGED-DEL] $gitroot/!ix;
+                s!^\s* M\S* \s*![REPO-CHANGED-MOD] $gitroot/!ix;
+                s!^\s* T\S* \s*![REPO-CHANGED-CHN] $gitroot/!ix;
+                s!^\s* C\S* \s*![REPO-CHANGED-CPY] $gitroot/!ix;
                 " | sort
           )
         fi
