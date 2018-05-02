@@ -11,6 +11,9 @@ out="/tmp/$basename"
 
 GOARCH=arm ee go build -o "$out" "$file"
 ls -l "$out"
+ee arm-none-eabi-strip "$out"
+ls -l "$out"
 
+android-root
 ee adb push "$out" "/data/local/tmp/$basename"
 ee adb shell chmod +x "/data/local/tmp/$basename"
