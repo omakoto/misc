@@ -28,20 +28,20 @@ completed=$(
         env | sed -e 's!^![ENV] $!; s!=.*!!'
 
       else
-        if [[ -n "$gitroot" ]] ; then
+        if in-git ; then
           # Git branches
           git branch | sed -n '/^..(/d; s/^. /[GIT-BRANCH] /p;'
         fi
 
-        repo-active-dirs | perl -pe 'print "[REPO-DIR] "'
+        in-repo && repo-active-dirs | perl -pe 'print "[REPO-DIR] "'
 
-        if [[ -n "$gitroot" ]] ; then
+        if in-git ; then
           (
             cd "$gitroot"
             # Git changed files
             git status -s |
                 perl -pe "
-                s!^\s* A \s*![GIT-CHANGED-ADD] $gitroot/!ix;
+                s!^\s* (A|\?\?) \s*![GIT-CHANGED-ADD] $gitroot/!ix;
                 s!^\s* D \s*![GIT-CHANGED-DEL] $gitroot/!ix;
                 s!^\s* M \s*![GIT-CHANGED-MOD] $gitroot/!ix;
                 " | sort
@@ -87,6 +87,7 @@ completed=$(
         done | dir-slash | perl -pe 'print "[LOCAL-FILE] "'
       fi
     } 2>/dev/null |
+    tee /tmp/fzf-in.txt |
     fzf -q "$token" -m --preview='preview-file {2..}' |
       perl -pe 's!^\S+\s*!!; s!^.*\{\{\s*(.*?)\s*\}\}.*$!\1!' |
       $shescapes |
