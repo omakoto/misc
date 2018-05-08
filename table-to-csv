@@ -1,0 +1,14 @@
+#!/usr/bin/env ruby
+
+# Convert space separated field list to comma separated list.
+# Ignore line-leading spaces, like awk.
+
+def esc(v)
+  return "'" + v.gsub(/\'/, "''") + "'"
+end
+
+$stdin.each do |line|
+  line.chomp
+  line.sub!(/^\s+/, "")
+  puts line.split(/\s+/).map{|v| esc v}.join(",")
+end
