@@ -9,6 +9,8 @@ android-has-device || exit 0
 adbf shell "
     ps -A -w -o pid,name      | sed -e '1d; s/^\(.....\) /{{ \1 }} /; s/^/[DEV-PID] /'
     ps -A -w -o name,pid      | sed -e '1d; s/^\([^ ]*\)/{{ \1 }}/ s/^/[DEV-PROCESS] /'
-    cmd package list packages    | sed -e 's/^package:/[DEV-PACKAGE] /' ;
+    cmd package list packages    | sed -e 's/^package:/[DEV-PACKAGE] /'
     ls -pd1 '${1:-/}'* | sed -e 's/^/[DEV-FILE] /'
+    find /data/data/ -name cache -prune -o -print 2>/dev/null | sed -e 's/^/[DEV-DATA-FILE] /'
+    find /system/  2>/dev/null | sed -e 's/^/[DEV-SYSTEM-FILE] /'
     "
