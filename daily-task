@@ -1,0 +1,16 @@
+#!/bin/bash
+
+taskname="${1?First argument must be task name}"
+ndays="${2:-1}"
+
+checkfile=/tmp/$taskname
+
+if [[ -f "$checkfile" ]] ; then
+    if (( $(fileage "$checkfile") < $ndays )) ; then
+        exit 1
+    fi
+fi
+
+touch "$checkfile"
+exit 0
+
