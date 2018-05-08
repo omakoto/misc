@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Print the age of a given file in days.
+
 set -e
 
 fdate=$(date +%s -r "${1?Missing argument}")
