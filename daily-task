@@ -3,7 +3,7 @@
 taskname="${1?First argument must be task name}"
 ndays="${2:-1}"
 
-checkfile=/tmp/$taskname
+checkfile=/tmp/task-timestamp-$taskname
 
 if [[ -f "$checkfile" ]] ; then
     if (( $(fileage "$checkfile") < $ndays )) ; then
