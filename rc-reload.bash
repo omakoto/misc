@@ -24,13 +24,16 @@ rc() {
         # Non-signal version.
         touch "$_reload_needed"
         reload_rc
+
+        # For each bash...
         for pid in $(pgrep -f -U $(id -u) -- '(^-bash$|^bash -l$|/bash -l$)') ; do
             if [[ $pid == $$ ]] ; then
                 continue
             fi
-            (test -t < /proc/$pid/fd/1 >&/dev/null) &&
+            # If stdout is a terminal, show this message.
+            (test -t 0 < /proc/$pid/fd/1) &&
                 byellow "Detected .bashrc update, press enter to reload." >/proc/$pid/fd/1
-        done
+        done 2>/dev/null
     else
         pkill -quit '^lbash$'
     fi
