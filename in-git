@@ -1,3 +1,11 @@
 #!/bin/bash
 
-git rev-parse --show-toplevel >&/dev/null || exit 1
+if git rev-parse --show-toplevel >&/dev/null ; then
+    exit 0
+fi
+
+if [[ "$1" == "-e" ]] ; then
+    echo "Not in git repository." 1>&2
+fi
+
+exit 1
