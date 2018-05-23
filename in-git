@@ -4,7 +4,7 @@ if git rev-parse --show-toplevel >&/dev/null ; then
     exit 0
 fi
 
-if [[ "$1" == "-e" ]] ; then
+if [[ "$1" == "-e" ]] || [[ "$1" == "-v" ]] ; then
     echo "Not in git repository." 1>&2
 fi
 
