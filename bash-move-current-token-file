@@ -9,7 +9,7 @@ set -e
 . mutil.sh
 
 # Current token.
-from="$(readline-current-token -f)"
+from="$(sh-get-current-token -f)"
 
 if [[ -z "$from" ]] ; then
   # No token.
@@ -49,4 +49,4 @@ mkdir -p "$(dirname "$to")"
 mv "$from" "$to"
 
 # Update the command line.
-readline-replace -e "$to"
+sh-replace-current-token -e "$to"

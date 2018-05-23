@@ -17,7 +17,7 @@ puts "Token(full): #{cmd.get_token(pos, false)}"
 puts "Escaped token      : #{unshescape(cmd.get_token(pos)[2])}"
 puts "Escaped token(full): #{unshescape(cmd.get_token(pos, false)[2])}"
 
-puts "readline-current-token: #{ %x(readline-current-token -f) }"
+# puts "readline-current-token: #{ %x(readline-current-token -f) }"
 
 puts "sh-get-current-token   : #{ %x(sh-get-current-token) }"
 puts "sh-get-current-token -f: #{ %x(sh-get-current-token -f) }"
