@@ -1,0 +1,9 @@
+#!/bin/bash
+
+exec repo-parallel '
+out="$(git -c color.status=always status -s)"
+if [[ -n "$out" ]] ; then
+    pwd
+    echo "$out"
+fi
+'

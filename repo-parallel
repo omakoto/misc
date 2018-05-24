@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+para=""
+while getopts "j:" opt 2>/dev/null; do
+  case "$opt" in
+    j) para="-j$OPTARG" ;;
+    *) break ;;
+  esac
+done
+shift $(($OPTIND - 1))
+
+repo forall -c pwd | parallel $para --progress "cd {} && ""$@"
