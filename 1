@@ -38,7 +38,7 @@ mkpath=0
 #   noargs=1
 # fi
 
-eval "$(bashgetopt -u usage '
+. <(bashgetopt -u usage '
   w|wait           bg=0            # Wait until the editor returns.
   n|background     bg=1            # Don'\''t wait until the editor returns (default).
   e|force-editor   force_editor=1  # Disable smart file handling and force editor.
@@ -50,7 +50,7 @@ eval "$(bashgetopt -u usage '
   pipe             pipe=1          # Read from stdin.
   stdin            pipe=1          # Read from stdin.
   makepath         mkpath=1        # Make the directory.
-' "$@")"
+' "$@")
 
 args=( "$@" )
 files=()
