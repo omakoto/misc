@@ -38,7 +38,7 @@ mkpath=0
 #   noargs=1
 # fi
 
-eval "$(getopt.pl -u usage '
+eval "$(bashgetopt -u usage '
   w|wait           bg=0            # Wait until the editor returns.
   n|background     bg=1            # Don'\''t wait until the editor returns (default).
   e|force-editor   force_editor=1  # Disable smart file handling and force editor.
@@ -47,8 +47,9 @@ eval "$(getopt.pl -u usage '
   c|copy           copy=1          # Open copy instead.
   N|newdoc         newdoc=1        # Open new timestamped doc.
   z|no-zenlog      no_zenlog=1     # Don'\''t use zenlog logfile to catch stdin input.
-  pipe|stdin       pipe=1          # Read from stdin.
-  makepath       mkpath=1        # Make the directory.
+  pipe             pipe=1          # Read from stdin.
+  stdin            pipe=1          # Read from stdin.
+  makepath         mkpath=1        # Make the directory.
 ' "$@")"
 
 args=( "$@" )
