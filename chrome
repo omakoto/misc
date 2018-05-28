@@ -53,10 +53,10 @@ fi
 
 # build the parameters.
 
-params=""
+params=()
 
 if [[ -n "$profdir" ]]; then
-  params="$params --user-data-dir=$profdir"
+  params+=("--user-data-dir=$profdir")
   echo "profile=$profdir"
   if ! [[ -d "$profdir/" ]] ; then
     mkdir -p "$profdir"
@@ -64,13 +64,13 @@ if [[ -n "$profdir" ]]; then
 fi
 
 if [[ -n "$CHROME_DPI" ]] ; then
-  params="$params --force-device-scale-factor=$CHROME_DPI"
+  params+=("--force-device-scale-factor=$CHROME_DPI")
 fi
 
 if (( $app )) ; then
-  params="$params --app=$url"
+  params+=("--app=$url")
 else
-  params="$params $url"
+  params+=("$url")
 fi
 
-( google-chrome $params &) >/dev/null 2>&1
+( google-chrome "${params[@]}" &) >/dev/null 2>&1
