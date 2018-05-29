@@ -87,7 +87,7 @@ completed=$(
           if [[ -f "$tok" ]] ; then
             echo "$tok"
           else
-            find "$tok"
+            ffind "$tok"
           fi
         done | dir-slash | perl -pe 'print "[LOCAL-FILE] "'
       fi
