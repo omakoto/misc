@@ -28,6 +28,21 @@ if ! interactive && (( $# == 1 )) ; then
   fi
 fi
 
+
+function prologue() {
+    SCRIPT="${0##*/}"
+    SCRIPT_DIR="${0%/*}"
+
+    local OPTIND
+    local OPTARG
+    while getopts "d" opt; do
+      case "$opt" in
+        d) cd "$SCRIPT_DIR" ;;
+      esac
+    done
+    shift $(($OPTIND - 1))
+}
+
 die() {
   echo "${0##*/}: $*" 1>&2
   exit 1
@@ -213,6 +228,7 @@ echo-and-exec() {
   local pwd=0
   local tty=0
   local quiet=0
+  local child_quiet=0
   eval "$(getopt.pl -d 'Echo and execute' '
       2 to=2         # Show message on stderr instead of stdout.
       tty tty=1      # Show message directly to TTY instead of stdout.
@@ -226,6 +242,7 @@ echo-and-exec() {
       r: raw_marker=%    # Set raw-marker.
       pwd pwd=1      # Show current directory too.
       q quiet=1      # Don'\''t echo back command line.
+      Q child_quiet=1 # Silence inner ee executions.
       ' "$@")"
 
   if (( $DRYRUN )) || (( $DRY )) || (( $EE_DRY )) ; then
@@ -265,11 +282,16 @@ echo-and-exec() {
   if (( $dry )) ; then
     return 0
   fi
-  if (( $notify )) ; then
-    nf $notify_opts "${@}"
-  else
-    "$@"
-  fi
+  (
+      if (( $child_quiet )) ; then
+        export EE_QUIET=1
+      fi
+      if (( $notify )) ; then
+        nf $notify_opts "${@}"
+      else
+        "$@"
+      fi
+  )
 }
 
 ee() {
