@@ -83,13 +83,19 @@ completed=$(
         list-commands-in-path | perl -pe 'print "[EXE] "'
 
         # Local files files
-        for tok in "$token"*; do
-          if [[ -f "$tok" ]] ; then
-            echo "$tok"
-          else
-            ffind "$tok"
-          fi
-        done | dir-slash | perl -pe 'print "[LOCAL-FILE] "'
+        {
+            if [[ -z "$token" ]]; then
+                ffind
+            else
+                for tok in "$token"*; do
+                  if [[ -f "$tok" ]] ; then
+                    echo "$tok"
+                  else
+                    ffind "$tok"
+                  fi
+                done
+            fi
+        } | dir-slash | perl -pe 'print "[LOCAL-FILE] "'
       fi
     } 2>/dev/null |
     tee /tmp/fzf-in.txt |
