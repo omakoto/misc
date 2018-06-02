@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Same as -FX
+exec less --no-init --quit-if-one-screen "$@"
