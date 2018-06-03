@@ -1,3 +1,9 @@
+if ! type -p iscon >&/dev/null ; then
+    function iscon() {
+        [[ -t ${1:-1} ]]
+    }
+fi
+
 _do_color() {
   local color="$1"
   shift
