@@ -1,28 +1,18 @@
-#!/usr/bin/env ruby
+#!/bin/bash
 
-require "shellhelper"
+cat <<EOF
+===============================================================================
+READLINE_LINE:  $READLINE_LINE
+READLINE_POINT: $READLINE_POINT / ${#READLINE_LINE}
 
-command = ENV['READLINE_LINE']
-pos = ENV['READLINE_POINT'].to_i
+sh-find-command:  $(sh-find-command)
 
-puts '--------'
+sh-get-current-token   : $(sh-get-current-token)
+sh-get-current-token -f: $(sh-get-current-token -f)
 
-puts "READLINE_LINE : #{command}"
-puts "READLINE_POINT: #{pos} / #{command.length}"
+[unescaped]
+sh-get-current-token   : $(unshescape "$(sh-get-current-token)")
+sh-get-current-token -f: $(unshescape "$(sh-get-current-token -f)")
 
-cmd = CommandLine.new(command, pos)
-
-puts "Token      : #{cmd.get_token(pos)}"
-puts "Token(full): #{cmd.get_token(pos, false)}"
-puts "Escaped token      : #{unshescape(cmd.get_token(pos)[2])}"
-puts "Escaped token(full): #{unshescape(cmd.get_token(pos, false)[2])}"
-
-# puts "readline-current-token: #{ %x(readline-current-token -f) }"
-
-puts "sh-find-command   : #{ %x(sh-find-command) }"
-puts "sh-get-current-token   : #{ %x(sh-get-current-token) }"
-puts "sh-get-current-token -f: #{ %x(sh-get-current-token -f) }"
-
-puts '--------'
-
-# system "readline-replace", "XXX"
+EOF
+exit 0
