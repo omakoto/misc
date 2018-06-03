@@ -250,6 +250,7 @@ echo-and-exec() {
   fi
   if (( $EE_QUIET )) ; then
     quiet=1
+    child_quiet=1
   fi
   if (( $tty )); then
     # Open the tty and assign FD 3.
