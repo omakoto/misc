@@ -119,3 +119,25 @@ bcyan() {
 bwhite() {
   _do_color 7 -b "$@"
 }
+
+function INFO() {
+    byellow -n "$1"
+    if [[ -n "$2" ]] ; then
+        bcyan -n " $2"
+    fi
+    if [[ -n "$3" ]] ; then
+        echo -n " $3"
+    fi
+    echo
+}
+
+function ERROR() {
+    bred -n "$1"
+    if [[ -n "$2" ]] ; then
+        byellow -n " $2"
+    fi
+    if [[ -n "$3" ]] ; then
+        echo -n " $3"
+    fi
+    echo
+}

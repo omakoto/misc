@@ -44,12 +44,18 @@ function prologue() {
 }
 
 die() {
-  echo "${0##*/}: $*" 1>&2
+  {
+    echo -n "${0##*/}: "
+    bred "$*"
+  } 1>&2
   exit 1
 }
 
 dief() {
-  echo "${FUNCNAME[1]}: $*" 1>&2
+  {
+    echo -n "${FUNCNAME[1]}: "
+    bred "$*"
+  } 1>&2
   return 0
 }
 
