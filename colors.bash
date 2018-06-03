@@ -122,22 +122,38 @@ bwhite() {
 
 function INFO() {
     byellow -n "$1"
-    if [[ -n "$2" ]] ; then
-        bcyan -n " $2"
+    shift
+    if [[ -n "$1" ]] ; then
+        bcyan -n " $1"
     fi
-    if [[ -n "$3" ]] ; then
-        echo -n " $3"
+    shift
+    local msg="$*"
+    if [[ -n "$msg" ]] ; then
+        echo -n " $msg"
     fi
     echo
 }
 
 function ERROR() {
+    echo -n "${0##*/}: error: "
     bred -n "$1"
+    shift
+    local msg="$*"
+    if [[ -n "$msg" ]] ; then
+        echo -n " $msg"
+    fi
+    echo
+}
+
+function WARN() {
+    echo -n "${0##*/}: warn: "
+    byellow -n "$1"
     if [[ -n "$2" ]] ; then
         byellow -n " $2"
     fi
-    if [[ -n "$3" ]] ; then
-        echo -n " $3"
+    local msg="$*"
+    if [[ -n "$msg" ]] ; then
+        echo -n " $msg"
     fi
     echo
 }
