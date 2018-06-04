@@ -14,5 +14,8 @@ sh-get-current-token -f: $(sh-get-current-token -f)
 sh-get-current-token   : $(unshescape "$(sh-get-current-token)")
 sh-get-current-token -f: $(unshescape "$(sh-get-current-token -f)")
 
+[tokens]
 EOF
+sh-split-words -i
+
 exit 0
