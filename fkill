@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+ps="ps -e -o pid,cmd"
+
+if (( "$1" == "-a" )) ; then
+  shift
+  android-has-device -v
+  ps="adb shell ps -A -w -o pid,name"
+fi
+
+
+pids=( $($ps | sed -e '1d; /]$/d' | fzf --tac -m -q "$*" | a1) )
+
+if (( ${#pids} > 0 )) ;then
+    ee adb shell kill "${pids[@]}"
+fi
