@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-MONITOR_INTERVAL = 10 # in seconds
+MONITOR_INTERVAL = 20 # in seconds
 MIN_BYTES        = 10 * 1024 # if the traffic increase is less than this in the interval, retry.
 RETRY_INTERVAL   = 5 # in seconds
 
@@ -16,7 +16,15 @@ def rx_bytes()
   return bytes
 end
 
-child_pid = 0
+$child_pid = 0
+
+def kill_child()
+  cid = $child_pid
+  if cid != 0 then
+    puts "\e[[2K\r\e[41mKilling...\e[0m\n"
+    Process.kill("INT", -cid)
+  end
+end
 
 
 t = Thread.new do
@@ -31,7 +39,7 @@ t = Thread.new do
     if (delta < MIN_BYTES) then
       puts "\e[[2K\r\e[41mTraffic too low! Killing...\e[0m\n"
       begin
-        Process.kill("INT", -child_pid)
+        kill_child
       rescue Exception => e
         puts e
       end
@@ -40,14 +48,19 @@ t = Thread.new do
   end
 end
 
+at_exit do
+  kill_child
+end
+
 while true do
   puts "[#{Time.now.strftime("%Y/%m/%d %H:%M:%S.%3N")}] Running #{ARGV.join ' '} ..."
-  child_pid = spawn(*ARGV, :pgroup=>true)
+  $child_pid = spawn(*ARGV, :pgroup=>true)
   # child_pid = fork do
   #   system *ARGV
   # end
 
-  Process.waitpid child_pid
+  Process.waitpid $child_pid
+  $child_pid = 0
   status = $?.exitstatus
   if status == 0 then
     exit 0
