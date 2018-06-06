@@ -3,8 +3,9 @@
 # Shows process names, package names and filenames (and etc) that starts with the token.
 
 . mutil.sh
+set -e
 
-android-has-device || exit 0
+android-has-device
 
 adbf shell "
     ps -A -w -o pid,name      | sed -e '1d; s/^\(.....\) /{{ \1 }} /; s/^/[DEV-PID] /'

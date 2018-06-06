@@ -3,6 +3,8 @@
 set -e
 . mutil.sh
 
+android-has-device -v
+
 pids=( $(adb shell ps -A -w -o pid,name | sed -e '1d; /]$/d' | fzf --tac -m -q "$*" | a1) )
 
 if (( ${#pids} > 0 )) ;then

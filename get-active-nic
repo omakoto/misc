@@ -1,3 +1,10 @@
+#!/bin/bash
+
+
+route | awk '(NR==3){print $8}'
+
+exit 0
+
 #!/usr/bin/env ruby
 
 # Print the network intferface that has the most traffic.

@@ -1,0 +1,39 @@
+#!/usr/bin/env ruby
+
+
+def rx_bytes()
+  bytes = 0
+  open("/proc/net/dev").each_line.drop(2).each do |line|
+    bytes += line.split(/\s+/)[1].to_i
+  end
+  return bytes
+end
+
+puts rx_bytes
+
+# child_pid = 0
+
+
+
+# t = Thread.new do
+#   while true do
+#     sleep 10
+
+#   end
+# end
+
+# while true do
+#   child_pid = fork do
+#     puts "[#{Time.now.strftime("%Y/%m/%d %H:%M:%S.%3N")}] Running #{ARGV.join ' '} ..."
+#     system *ARGV
+#     exit $?.exitstatus
+#   end
+
+#   Process.waitpid child_pid
+#   status = $?.exitstatus
+#   if status == 0 then
+#     exit 0
+#   end
+#   sleep 1
+# end
+
