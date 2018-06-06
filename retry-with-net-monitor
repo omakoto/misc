@@ -1,39 +1,57 @@
 #!/usr/bin/env ruby
 
+MONITOR_INTERVAL = 10 # in seconds
+MIN_BYTES        = 10 * 1024 # if the traffic increase is less than this in the interval, retry.
+RETRY_INTERVAL   = 5 # in seconds
+
 
 def rx_bytes()
   bytes = 0
   open("/proc/net/dev").each_line.drop(2).each do |line|
-    bytes += line.split(/\s+/)[1].to_i
+    line.sub!(/^\s+/, '')
+    vals = line.split(/\s+/)
+    next if vals[0] == "lo:"
+    bytes += vals[1].to_i
   end
   return bytes
 end
 
-puts rx_bytes
-
-# child_pid = 0
+child_pid = 0
 
 
+t = Thread.new do
+  last = rx_bytes
+  while true do
+    sleep MONITOR_INTERVAL
+    now = rx_bytes
+    delta = now - last
 
-# t = Thread.new do
-#   while true do
-#     sleep 10
+    printf("\e[[2K\r\e[42m[%.2f KB received]\e[0m\n", delta / 1024.0)
 
-#   end
-# end
+    if (delta < MIN_BYTES) then
+      puts "\e[[2K\r\e[41mTraffic too low! Killing...\e[0m\n"
+      begin
+        Process.kill("INT", -child_pid)
+      rescue Exception => e
+        puts e
+      end
+    end
+    last = now
+  end
+end
 
-# while true do
-#   child_pid = fork do
-#     puts "[#{Time.now.strftime("%Y/%m/%d %H:%M:%S.%3N")}] Running #{ARGV.join ' '} ..."
-#     system *ARGV
-#     exit $?.exitstatus
-#   end
+while true do
+  puts "[#{Time.now.strftime("%Y/%m/%d %H:%M:%S.%3N")}] Running #{ARGV.join ' '} ..."
+  child_pid = spawn(*ARGV, :pgroup=>true)
+  # child_pid = fork do
+  #   system *ARGV
+  # end
 
-#   Process.waitpid child_pid
-#   status = $?.exitstatus
-#   if status == 0 then
-#     exit 0
-#   end
-#   sleep 1
-# end
-
+  Process.waitpid child_pid
+  status = $?.exitstatus
+  if status == 0 then
+    exit 0
+  end
+  puts "Retrying in #{RETRY_INTERVAL} seconds..."
+  sleep RETRY_INTERVAL
+end
