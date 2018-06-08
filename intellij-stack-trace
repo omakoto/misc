@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+for pid in $(jps -mv | awk '($2=="Main"){print $1}'); do
+    ee jstack -l $pid
+done
