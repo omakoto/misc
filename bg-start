@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+log=/dev/null
+
+if (( $DEBUG )) ; then
+    ee "$@"
+else
+    ( "$@" >&"$log" & )
+fi
+
