@@ -1,7 +1,6 @@
 #!/bin/bash
-#Source this file on bash to install
-
 # Bash completion tester.
+# Install it with . <(comptest --install)
 
 set -e
 . mutil.sh
@@ -20,9 +19,7 @@ EOF
 fi
 
 # Otherwise, just print all arguments.
-#shescape "$@"
-Arguments=("$@")
-declare -p Arguments | perl -pe 's/^.*?(?=Arguments)//'
+echo "\$@="$(shescape "$@")
 
 exit 0
 
@@ -40,13 +37,16 @@ local IFS
       ; do
     declare -p "$n"
   done
-} >/tmp/compin.txt
+  echo "Self extracted words"
+  sh-split-words -ai -- "$COMP_LINE"
+} >/tmp/compin.txt 2>/dev/null
 touch /tmp/compreply.txt
 EE_QUIET=1 1 /tmp/compin.txt
 EE_QUIET=1 1 /tmp/compreply.txt
 IFS=$'\n'
 COMPTYPE=33
-COMPREPLY=($(cat /tmp/compreply.txt 2>/dev/null))
+COMPREPLY=($(sed -n -e '/^[^#]/p' /tmp/compreply.txt 2>/dev/null))
+sed -n -e 's/^#//p' /tmp/compreply.txt 1>&2
 # COMPREPLY=($(ls $HOME | fzf))
 
 # declare -- COMP_TYPE="33" -- first call
