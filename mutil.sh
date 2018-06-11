@@ -530,14 +530,7 @@ function qgit() {
 
 function install-bashcomp() {
   for c in "$@"; do
-    local f="$(type -p "$c")"
-    if [[ -z "$f" ]] ; then
-      echo "Installing completion for a script $f, which is slow." 1>&2
-      . <("$c" --bash-completion)
-    else
-      # echo "Installing completion for a command $f with cache." 1>&2
-      . <(stdout-cacher "$f" --bash-completion)
-    fi
+    . <("$c" --bash-completion)
   done
 }
 

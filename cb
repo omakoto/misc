@@ -30,7 +30,7 @@ target_opt=""
 flags=""
 flatten=0
 
-eval "$(getopt.pl -u usage '
+eval "$(bashgetopt -u usage '
   i|copy        copy=1                      # Copy from STDIN.  Default behavior if STDIN is not terminal
   q|quiet       quiet=1; flags="$flags -q"  # Quiet
   n|no-cut-lf   no_cutlf=1                  # Don'\''t drop the new line even if the input is a single line
