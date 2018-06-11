@@ -2,20 +2,13 @@ set show-all-if-ambiguous on
 set show-all-if-unmodified on
 set expand-tilde on
 set skip-completed-text on
-
 set bell-style none
-
 set colored-stats on
-
 set completion-ignore-case on
 set completion-map-case on
-
-#set completion-prefix-display-length 2
-
-
 set mark-symlinked-directories on
-
 set input-meta on
 set output-meta on
-
 set completion-query-items 300
+
+#  set completion-prefix-display-length 2
