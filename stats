@@ -1,0 +1,2 @@
+#!/bin/bash
+while true; do dstat -c -d --disk-tps  -m -n -p --noupdate 5 10 ; sleep 5 ; done
