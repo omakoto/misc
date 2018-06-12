@@ -4,9 +4,12 @@ set -e
 
 . mutil.sh
 
-adb=0
 token="$(sh-get-current-token -f)"
 
-if [[ -e "$token" ]] ; then
-  sh-replace-current-token "$(abspath "$token")"
+if [[ -n "$token" ]] ; then
+    path="$(abspath "$token")"
+
+    if [[ -e "$path" ]] ; then
+      sh-replace-current-token "$path"
+    fi
 fi
