@@ -144,8 +144,8 @@ addmanpath() {
 }
 
 con() {
-  LD_LIBRARY_PATH=${LD_LIBRARY_PATH}${LD_LIBRARY_PATH:+:}$HOME/cbin/so/32:$HOME/cbin/so/64 \
-      LD_PRELOAD=fake_isatty.so \
+#  LD_LIBRARY_PATH=${LD_LIBRARY_PATH}${LD_LIBRARY_PATH:+:}$HOME/cbin/so/32:$HOME/cbin/so/64 \
+#      LD_PRELOAD=fake_isatty.so \
       "$@"
 }
 
