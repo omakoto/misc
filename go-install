@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+for p in "$@" ; do
+    (
+        ee cd "$p"
+        ee go install ./
+    )
+done
+
