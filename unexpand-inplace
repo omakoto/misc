@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+tabs=8
+
+. <(bashgetopt '
+t|tab=i  tabs=% # Set TAB width
+' "$@")
+
+for n in "$@"; do
+    ee cp "$n" "$n.org"
+    ee -2 unexpand -t $tabs "$n.org" > "$n"
+    ee rm -f "$n.org"
+done
