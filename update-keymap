@@ -16,7 +16,7 @@ case "$(hostname -s)" in
   omakoto-glaptop) # Dell laptop.
     if lsusb | grep -q '0853:0111' ; then # Topre keyboard.
       ee $medir/dell-keymap-reset
-      chrome_dpi="1.2"
+      chrome_dpi="1.5"
     else
       ee $medir/dell-keymap-custom
       chrome_dpi="$CHROME_DPI"
