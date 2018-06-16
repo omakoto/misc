@@ -10,7 +10,7 @@ set -e
 medir="${0%/*}"
 
 
-chrome_dpi=1
+chrome_dpi=""
 
 case "$(hostname -s)" in
   omakoto-glaptop) # Dell laptop.
