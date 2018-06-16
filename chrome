@@ -35,6 +35,11 @@ function temphtml() {
 if [[ -z "$url" ]] && ! [[ -t 0 ]] ; then
   url=$( temphtml )
   cat > "$url"
+  if ! [[ -s "$url" ]] ; then
+    # File empty.
+    rm -f "$url"
+    url=""
+  fi
 fi
 
 if [[ -f "$url" ]]; then
@@ -63,8 +68,11 @@ if [[ -n "$profdir" ]]; then
   fi
 fi
 
-if [[ -n "$CHROME_DPI" ]] ; then
-  params+=("--force-device-scale-factor=$CHROME_DPI")
+# This file is written by pc-config-update
+dpi=$(cat ~/.chromedpi 2>/dev/null || true)
+
+if [[ -n "$dpi" ]] ; then
+  params+=("--force-device-scale-factor=$dpi")
 fi
 
 if (( $app )) ; then

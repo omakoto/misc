@@ -2,22 +2,31 @@
 
 # Switch the keymap depending on the device and the connected keyboard.
 
+# Also update ~/.chromedpi too.
+
 set -e
 . mutil.sh
 
 medir="${0%/*}"
 
+
+chrome_dpi=1
+
 case "$(hostname -s)" in
   omakoto-glaptop) # Dell laptop.
     if lsusb | grep -q '0853:0111' ; then # Topre keyboard.
       ee $medir/dell-keymap-reset
+      chrome_dpi="1.2"
     else
       ee $medir/dell-keymap-custom
+      chrome_dpi="$CHROME_DPI"
     fi
     ;;
   *)
     ee keymap-reset
     ;;
 esac
+
+echo "$chrome_dpi" > ~/.chromedpi
 
 echo "Updated keymap."
