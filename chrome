@@ -11,7 +11,7 @@ profdir=""
 wait=0
 
 eval "$(bashgetopt -d 'Run Chrome' '
-p|profile=s  profdir=$HOME/.chrome-profiles/%s  # specify profile directory name
+p|profile=s  profdir=$HOME/.chrome-profiles/%   # specify profile directory name
 a|app        app=1                              # start as app
 w|wait       wait=1                             # wait until all Chrome instances stop before starting
 ' "$@")"
