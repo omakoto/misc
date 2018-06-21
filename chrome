@@ -8,10 +8,12 @@ set -e
 
 app=0
 profdir=""
+wait=0
 
 eval "$(bashgetopt -d 'Run Chrome' '
-p|profile=s  profdir=$HOME/.chrome-profiles/%s           # specify profile directory name
-a|app        app=1                                       # start as app
+p|profile=s  profdir=$HOME/.chrome-profiles/%s  # specify profile directory name
+a|app        app=1                              # start as app
+w|wait       wait=1                             # wait until all Chrome instances stop before starting
 ' "$@")"
 
 # Parse the argument.
@@ -74,4 +76,15 @@ else
   params+=("$url")
 fi
 
-echo "( google-chrome "${params[@]}" &) >/dev/null 2>&1"
+if (( $wait )) ; then
+    while true; do
+        n=$(pgrep -U $(id -u) -x chrome | wc -l)
+        if (( $n == 0 )) ; then
+            break
+        fi
+        echo "Waiting until running Chrome instance(s) to finish... ($n running)"
+        sleep 1
+    done
+fi
+
+( google-chrome "${params[@]}" &) >/dev/null 2>&1
