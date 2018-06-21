@@ -8,18 +8,11 @@ set -e
 
 app=0
 profdir=""
-while getopts "ap:" opt; do
-  case "$opt" in
-    p)
-      profdir=$OPTARG
-      if ! grep -q '^/' <<<"$profdir" ; then
-        profdir=$HOME/.chrome-profiles/$OPTARG
-      fi
-      ;;
-    a) app=1 ;;
-  esac
-done
-shift $(($OPTIND - 1))
+
+eval "$(bashgetopt -d 'Run Chrome' '
+p|profile=s  profdir=$HOME/.chrome-profiles/%s           # specify profile directory name
+a|app        app=1                                       # start as app
+' "$@")"
 
 # Parse the argument.
 
@@ -81,4 +74,4 @@ else
   params+=("$url")
 fi
 
-( google-chrome "${params[@]}" &) >/dev/null 2>&1
+echo "( google-chrome "${params[@]}" &) >/dev/null 2>&1"
