@@ -29,6 +29,7 @@ no_zenlog=0
 newdoc=0
 noargs=0
 mkpath=0
+cbin=0
 
 #if ! is-interactive ; then
 #  no_zenlog=1
@@ -45,11 +46,12 @@ eval "$(bashgetopt -u usage '
   p|pretty         pretty=1        # Pretty-print for XML/Json.
   d|no-pretty      pretty=0        # No pretty-print.
   c|copy           copy=1          # Open copy instead.
-  N|newdoc         newdoc=1        # Open new timestamped doc.
+  N|newdoc         cbin=1;newdoc=1        # Open new timestamped doc.
   z|no-zenlog      no_zenlog=1     # Don'\''t use zenlog logfile to catch stdin input.
   pipe             pipe=1          # Read from stdin.
   stdin            pipe=1          # Read from stdin.
   makepath         mkpath=1        # Make the directory.
+  C|cbin             cbin=1          # Also open ~/cbin/
 ' "$@")"
 
 args=( "$@" )
@@ -59,8 +61,11 @@ if (( $newdoc )) ; then
   doc_dir=~/cbin/docs
   doc=$(datedir $doc_dir)/doc-$(date8).txt
   echo "$doc"
-  opts="$opts --add $HOME/cbin"
   files+=("$doc")
+fi
+
+if (( $cbin )) ; then
+  opts="$opts --add $HOME/cbin"
 fi
 
 if (( ${#args} == 0 && ${#files} == 0 )) ; then
