@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# "shescape" implementation in bash
+
+printf="printf"
+sep=""
+
+for a in "$@"; do
+    echo -n "$sep"
+    $printf "%q" "$a"
+    sep=" "
+done
+
+echo
