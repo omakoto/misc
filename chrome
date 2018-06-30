@@ -9,11 +9,13 @@ set -e
 app=0
 profdir=""
 wait=0
+no_ibus=0
 
 eval "$(bashgetopt -d 'Run Chrome' '
 p|profile=s  profdir=%      # specify profile directory name
 a|app        app=1          # start as app
 w|wait       wait=1         # wait until all Chrome instances stop before starting
+no-ibus      no_ibus=1      # Disable ibus
 ' "$@")"
 
 # Parse the argument.
@@ -85,6 +87,14 @@ if (( $wait )) ; then
         echo "Waiting until running Chrome instance(s) to finish... ($n running)"
         sleep 1
     done
+fi
+
+
+if (( $no_ibus != 0 )) ; then
+    ee unset XMODIFIERS
+    ee unset QT_IM_MODULE
+    ee unset XMODIFIERS
+    ee unset GTK_IM_MODULE
 fi
 
 ( google-chrome "${params[@]}" &) >/dev/null 2>&1
