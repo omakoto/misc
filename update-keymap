@@ -17,9 +17,11 @@ case "$(hostname -s)" in
     if lsusb | grep -q '0853:0111' ; then # Topre keyboard.
       ee $medir/dell-keymap-reset
       chrome_dpi="1.5"
+      gsettings set org.cinnamon.desktop.interface scaling-factor 1
     else
       ee $medir/dell-keymap-custom
       chrome_dpi="$CHROME_DPI"
+      gsettings set org.cinnamon.desktop.interface scaling-factor 2
     fi
     ;;
   *)
