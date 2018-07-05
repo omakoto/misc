@@ -1,21 +1,5 @@
 #!/bin/bash
 
+# Print the first default nic.
 
 route | awk '(NR==3){print $8}'
-
-exit 0
-
-#!/usr/bin/env ruby
-
-# Print the network intferface that has the most traffic.
-
-# cat /proc/net/dev | sed -e 's/^  *//; /^Inter/d; /^face/d; /^lo:/d' | sort -rn -k +1 | awk -F : 'NR == 1{print $1}'
-
-%x(ip a).each_line do |line|
-  next unless line =~ /^\d/
-  next unless line =~ /\sUP(\s|$)/
-
-  fields = line.split /[\s\:]+/
-  puts fields[1]
-  break
-end
