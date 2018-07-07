@@ -12,4 +12,4 @@ while getopts "j:" opt 2>/dev/null; do
 done
 shift $(($OPTIND - 1))
 
-repo-dirs | parallel $para --progress "cd {} && ""$@"
+repo-dirs | par $para --progress "cd {} && ""$@"
