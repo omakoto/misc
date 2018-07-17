@@ -20,7 +20,7 @@ case "$(hostname -s)" in
       gsettings set org.cinnamon.desktop.interface scaling-factor 1
     else
       ee $medir/dell-keymap-custom
-      chrome_dpi="$CHROME_DPI"
+      chrome_dpi="2.4"
       gsettings set org.cinnamon.desktop.interface scaling-factor 2
     fi
     dell-touchscreen-enable 0

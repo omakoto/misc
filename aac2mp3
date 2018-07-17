@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+for in in "$@"; do
+  echo "$in"
+  out="$(basename "$in" .aac)".mp3
+  echo "$in -> $out"
+  ee ffmpeg  -i "$in" -c:a libmp3lame -ac 2 -b:a 320k "$out"
+done
