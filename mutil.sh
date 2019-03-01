@@ -370,8 +370,8 @@ EOF
 }
 
 forever() {
-  local stop_on_failure=$(( ${opts[f]} + 0 ))
-  local stop_on_success=$(( ${opts[s]} + 0 ))
+  local stop_on_failure=0
+  local stop_on_success=0
 
   local interval=1
 
