@@ -18,6 +18,10 @@ case "$(hostname -s)" in
       ee $medir/dell-keymap-reset
       chrome_dpi="1.5"
       gsettings set org.cinnamon.desktop.interface scaling-factor 1
+    elif lsusb | grep -q '05e3:0610' ; then # UK rental display
+      ee $medir/dell-keymap-reset
+      chrome_dpi="1.5"
+      gsettings set org.cinnamon.desktop.interface scaling-factor 2
     else
       ee $medir/dell-keymap-custom
       chrome_dpi="2.6"
