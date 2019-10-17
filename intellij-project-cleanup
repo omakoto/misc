@@ -1,0 +1,11 @@
+#!/usr/bin/perl -w
+
+while (<>) {
+  if (m!file://\$MODULE_DIR\$/(.*?)\"!x ) {
+    if (-e $1) {
+      print
+    }
+  } else {
+    print
+  }
+}
