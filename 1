@@ -97,7 +97,7 @@ for n in "${args[@]}" ; do
     f="$n"
   else
     case "${n##*/}" in
-      *bugreport*.zip|*bugreport*.txt|*.br)
+      *bugreport*.zip|*bugreport*.txt|*.br|dumpState_*.log)
         is_bugreport=1
         ;;
       *.zip)
