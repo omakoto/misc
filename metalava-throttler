@@ -21,7 +21,8 @@ DEBUG() {
     return 1
 }
 
-DEBUG "Target: ${target@Q}
+DEBUG \
+"Target: ${target@Q}
 Max processes: $max_targets"
 
 while true; do
