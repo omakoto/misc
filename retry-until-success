@@ -2,4 +2,4 @@
 
 . mutil.sh
 
-retry-until-sucess "${@}"
+retry-until-success "${@}"

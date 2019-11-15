@@ -412,7 +412,7 @@ forever() {
   done
 }
 
-retry-until-sucess() {
+retry-until-success() {
   forever -s "${@}"
 }
 
