@@ -1,0 +1,10 @@
+#!/usr/bin/expect -f
+
+# TODO Figure out how to propagate all options..
+spawn repo upload  --cbr [lindex $argv 0]  .
+
+expect {
+  -regexp "to .* (y/N)?" { send -- "y\r" }
+}
+
+expect eof
