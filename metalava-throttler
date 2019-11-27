@@ -21,22 +21,27 @@ DEBUG() {
     return 1
 }
 
-DEBUG \
-"Target: ${target@Q}
-Max processes: $max_targets"
+DEBUG "Target: ${target@Q}"
+DEBUG "Max processes: $max_targets"
+
+function is_leaf() {
+    local pid=$1
+    ! pgrep -P $pid -f "$target" >/dev/null
+}
 
 while true; do
     DEBUG "Checking..."
     i=0
     for pid in $(pgrep -f "$target" | sort -n) ; do
         sig=STOP
-        if [[ $i -lt $max_targets ]] ; then
-            sig=COND
+        if [[ $i -lt $max_targets ]] && is_leaf $pid ; then
+            sig=CONT
+            i=$(( $i + 1 ))
         fi
 
         DEBUG kill -$sig $pid
+        kill -$sig $pid
 
-        i=$(( $i + 1 ))
     done
     sleep $interval
 done
