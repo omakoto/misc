@@ -492,10 +492,6 @@ function withalt() {
   fi
 }
 
-adb() {
-  ~/cbin/adb "$@"
-}
-
 function rust_backtrace {
   RUST_BACKTRACE=1 "$@"
 }
