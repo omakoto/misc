@@ -1,5 +1,7 @@
 #!/bin/bash
 
-setxkbmap us
+. mutil.sh
 
-xmodmap ${HOME}/cbin/dot_Xmodmap.omakoto-glaptop
+ee setxkbmap us
+
+ee xmodmap ${HOME}/cbin/dot_Xmodmap.omakoto-glaptop
