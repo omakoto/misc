@@ -3,4 +3,4 @@
 set -e
 . mutil.sh
 
-setxkbmap -layout us
+ee setxkbmap -layout us
