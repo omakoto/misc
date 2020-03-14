@@ -1,5 +1,8 @@
-#/usr/bin/perl
+#!/usr/bin/perl -w
 
-while (<>) {
-
+while(<>) {
+    chomp;
+    for my $v (split) {
+        print $v, "\n";
+    }
 }
