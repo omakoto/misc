@@ -146,6 +146,10 @@ for n in "${args[@]}" ; do
         sqliteman "$n" &
         continue
         ;;
+      *.log)
+        f="$n"
+        force_editor=1
+        ;;
       *)
         if [[ ! -e "$n" ]] ; then
           f="$n"
