@@ -33,7 +33,7 @@ while (1) {
   # Prefer PWD to getcwd because it doesn't have resolve symlinks resolved.
   $cwd = $ENV{PWD} or getcwd;
   $cwd =~ m!/$! or $cwd .= "/"; # Make sure it ends with /.
-  print "CWD=$cwd\n";
+  # print STDERR "CWD=$cwd\n";
 
   clear_file_cache;
 
