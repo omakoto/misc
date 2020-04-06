@@ -552,3 +552,11 @@ function aroot() {
   local top=${ANDROID_BUILD_TOP:?ANDROID_BUILD_TOP not set}
   cd "$top" || exit 1
 }
+
+curdir() {
+    if [[ "$PWD" != null ]]; then
+        echo "$PWD"
+        return 0
+    fi
+    pwd
+}
