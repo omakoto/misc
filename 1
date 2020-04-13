@@ -30,6 +30,7 @@ newdoc=0
 noargs=0
 mkpath=0
 cbin=0
+quiet=0
 
 #if ! is-interactive ; then
 #  no_zenlog=1
@@ -52,10 +53,16 @@ eval "$(bashgetopt -u usage '
   stdin            pipe=1          # Read from stdin.
   makepath         mkpath=1        # Make the directory.
   C|cbin             cbin=1          # Also open ~/cbin/
+  q|quiet          quiet=1           # Set EE_QUIET=1
 ' "$@")"
 
 args=( "$@" )
 files=()
+
+
+if (( $quiet )) ; then
+    export EE_QUIET=1
+fi
 
 if (( $newdoc )) ; then
   doc_dir=~/cbin/docs
