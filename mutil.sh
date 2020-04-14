@@ -548,9 +548,14 @@ function wd() {
   fi
 }
 
+function atop() {
+    echo ${ANDROID_X_BUILD_TOP:-${ANDROID_BUILD_TOP:?ANDROID_BUILD_TOP not set}}
+}
+
 function aroot() {
-  local top=${ANDROID_BUILD_TOP:?ANDROID_BUILD_TOP not set}
-  cd "$top" || exit 1
+  local top=$(atop)
+  [[ -d "$top" ]] || return 1
+  cd "$top" || return 1
 }
 
 curdir() {
