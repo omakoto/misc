@@ -235,6 +235,7 @@ echo-and-exec() {
   local tty=0
   local quiet=0
   local child_quiet=0
+  local show_result=0
   eval "$(bashgetopt -d 'Echo and execute' '
       2 to=2         # Show message on stderr instead of stdout.
       tty tty=1      # Show message directly to TTY instead of stdout.
@@ -249,6 +250,7 @@ echo-and-exec() {
       pwd pwd=1      # Show current directory too.
       q quiet=1;child_quiet=1      # Don'\''t echo back command line.
       Q child_quiet=1 # Silence inner ee executions.
+      R show_result=1 # Show result code
       ' "$@")"
 
   if (( $DRYRUN )) || (( $DRY )) || (( $EE_DRY )) ; then
@@ -289,11 +291,26 @@ echo-and-exec() {
   if (( $dry )) ; then
     return 0
   fi
+  local rc=0
   if (( $notify )) ; then
     EE_QUIET="$child_quiet" nf $notify_opts "${@}"
+    rc=$?
   else
     EE_QUIET="$child_quiet" "$@"
+    rc=$?
   fi
+  if (( $show_result )) ; then
+    {
+      byellow -n "Status: "
+      if (( $rc == 0 )) ; then
+        bcyan -nc
+      else
+        bred -nc
+      fi
+      echo "$rc"
+    } 1>&$to
+  fi
+  return $rc
 }
 
 ee() {
