@@ -8,7 +8,7 @@ echo "Work file: $out"
 strace -f -X verbose -e 'open,creat,openat' -o$out "$@"
 rc=$?
 
-echo "Files acceesed:"
+echo "Files accessed:"
 perl -ne 'while (m!"(.*?)"!g) { print "$1\n";} ' $out | sort -u
 
 exit $rc

@@ -1,0 +1,33 @@
+#!/bin/bash
+
+set -e
+
+. mutil.sh
+
+# Take the current word, let the user copy it to the new name using EDITOR, and replace the word.
+
+token="$(sh-get-current-token -f)"
+
+echo $token 1>&2
+
+[[ -r "$token" ]] || exit 0
+
+orig=="$(abspath "$token")"
+tmp="/tmp/$$-rename.txt"
+echo "$tmp" 1>&2
+cat >"$tmp" <<EOF
+# Specify new file name. We copy it and rewrite the command line.
+# Origianl: $orig
+$orig
+EOF
+
+EE_QUIET=1 1w "$tmp"
+
+
+
+# if [[ -n "$token" ]] ; then
+
+#     if [[ -e "$path" ]] ; then
+#       sh-replace-current-token "$path"
+#     fi
+# fi

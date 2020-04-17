@@ -3,10 +3,16 @@
 # Used with bind -x as eval "$(bash-move-current-token-file)"
 # Take the current token as a filename, let rename it and update
 # the command line.
+# if -c is passed, it'll copy the file instead
 
 set -e
 
 . mutil.sh
+
+copy=0
+if [[ "$1" == -c ]] ; then
+    copy=1
+fi
 
 # Current token.
 from="$(sh-get-current-token -f)"
@@ -15,6 +21,8 @@ if [[ -z "$from" ]] ; then
   # No token.
   exit 0
 fi
+
+echo "$from" 1>&2
 
 if [[ ! -e "$from" ]]; then
   echo "$from doesn't exist." 1>&2
@@ -25,13 +33,20 @@ fi
 temp=$(tempfile)
 trap "rm -f $temp" EXIT
 
-echo "$from" > $temp
+{
+    if (( $copy )) ; then
+      echo "# Copying $from"
+    else
+      echo "# Renaming $from"
+    fi
+    echo "$from"
+} > $temp
 
 # Let the user edit it.
 1 -w $temp >/dev/null
 
 # Get the updated name. TODO It doesn't handle spaces properly.
-to=$(cat "$temp")
+to=$(grep -v '^#' "$temp")
 
 # Has it changed?
 if [[ -z "$to" ]] || [[ "$to" = "$from" ]]; then
@@ -44,9 +59,13 @@ if [[ -e "$to" ]]; then
   exit 1
 fi
 
-# Rename.
+# Rename or copy
 mkdir -p "$(dirname "$to")"
-mv "$from" "$to"
+if (( $copy )) ; then
+    ee -2 cp "$from" "$to"
+else
+    ee -2 mtv "$from" "$to"
+fi
 
 # Update the command line.
 sh-replace-current-token -e "$to"
