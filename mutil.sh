@@ -308,6 +308,7 @@ echo-and-exec() {
         bred -nc
       fi
       echo "$rc"
+      white "" # reset the color
     } 1>&$to
   fi
   return $rc
