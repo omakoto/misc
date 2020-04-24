@@ -21,6 +21,7 @@ no-ibus      no_ibus=1      # Disable ibus
 # Parse the argument.
 
 url="$1"
+shift
 
 function temphtml() {
     tempfile --suffix=.html
@@ -97,4 +98,4 @@ if (( $no_ibus != 0 )) ; then
     ee unset GTK_IM_MODULE
 fi
 
-( google-chrome "${params[@]}" &) >/dev/null 2>&1
+( google-chrome "${params[@]}" "$@" &) >/dev/null 2>&1
