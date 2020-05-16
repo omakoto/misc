@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+DIFF=meld
+
+file1="$1"
+file2="$2"
+
+if [[ -r "$file1" ]] && [[ -r "$file2" ]] ; then
+    : # okay
+else
+    echo "Usage: $0 JAR-1 JAR-2" 1>&2
+    exit 1
+fi
+
+
+ee $DIFF $(jd-jar "$1") $(jd-jar "$1")

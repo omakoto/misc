@@ -1,0 +1,4 @@
+#!/bin/bash
+
+export EE_QUIET=1
+fullpathifier "$(zenlog current-log)"  | 1 --no-zenlog

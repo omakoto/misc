@@ -3,3 +3,5 @@
 {
     diff -u "$@"
 } | delta
+
+exit ${PIPESTATUS[0]}
