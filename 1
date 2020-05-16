@@ -157,6 +157,9 @@ for n in "${args[@]}" ; do
         f="$n"
         force_editor=1
         ;;
+      *.jar)
+        f="$(jd-jar "$n")"
+        ;;
       *)
         if [[ ! -e "$n" ]] ; then
           f="$n"

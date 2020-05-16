@@ -3,7 +3,7 @@
 set -e
 . mutil.sh
 
-DIFF=meld
+DIFF=${JAR_DIFF:-meld}
 
 file1="$1"
 file2="$2"
@@ -16,4 +16,4 @@ else
 fi
 
 
-ee $DIFF $(jd-jar "$1") $(jd-jar "$1")
+ee $DIFF $(jd-jar "$file1") $(jd-jar "$file2")
