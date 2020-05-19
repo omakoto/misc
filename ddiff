@@ -2,6 +2,6 @@
 
 {
     diff -ur "$@"
-} | delta
+} | delta --paging never
 
 exit ${PIPESTATUS[0]}
