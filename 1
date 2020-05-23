@@ -231,5 +231,19 @@ if (( ${#files[@]} > 0 )) ; then
       fi
     done
   fi
+  # Bring the sublime window to top
+  (
+    set +e
+    file0="${files[0]}"
+    for n in 1 2 3 4 5 6 7 8 9 0; do
+      # Find the full title.
+      title="$( window-title-list | fgrep "$file0" | grep 'Sublime Text$' )"
+      if [[ -n "$title" ]] ; then
+        wmctrl -F -a "$title"
+        break
+      fi
+      sleep 0.1
+    done
+  ) &
   run ee $command $opts "${files[@]}" #| zenlog write-to-outer
 fi

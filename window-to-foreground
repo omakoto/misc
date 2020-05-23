@@ -1,0 +1,11 @@
+#!/bin/bash
+
+title_re="$*"
+
+fullname=$(wmctrl -l | perl -pe 's!^\S+ \s+ \S+ \s+ \S+ \s+ !!x' | grep "$title_re")
+if [[ -z "$fullname" ]] ; then
+  exit 1
+fi
+wmctrl -a "$fullname" -F
+
+exit 0
