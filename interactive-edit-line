@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# Eat from stdin and show it on editor, and let the user edit lines with the editor.
+# Print the edited line.
+
+set -e
+. mutil.sh
+
+SCRIPT="${0##*/}"
+
+eval "$(getopt.pl '
+i|instruction=s     instruction=%    # Print
+' "$@")"
+
+
+temp=/tmp/$$.tmp
+orig=$temp.orig
+
+stdin="$(cat)"
+if [[ -z $stdin ]] ; then
+  echo "$SCRIPT: No input." 1>&2
+  exit 1
+fi
+
+# Read stdin and write temp with #
+{
+  echo "# ${instruction:-Edit it}"
+  echo "$stdin"
+} > $orig
+cp $orig $temp
+
+1w $temp
+
+if diff -q $temp $orig >&/dev/null ; then
+  echo "$SCRIPT: No changes." 1>&2
+  exit 2
+fi
+
+sed -e '1d' $temp
+exit 0

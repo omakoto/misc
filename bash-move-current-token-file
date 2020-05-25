@@ -30,28 +30,12 @@ if [[ ! -e "$from" ]]; then
 fi
 
 # Temp file to store the filename.
-temp=$(tempfile)
-trap "rm -f $temp" EXIT
 
-{
-    if (( $copy )) ; then
-      echo "# Copying $from"
-    else
-      echo "# Renaming $from"
-    fi
-    echo "$from"
-} > $temp
-
-# Let the user edit it.
-1 -w $temp >/dev/null
-
-# Get the updated name. TODO It doesn't handle spaces properly.
-to=$(grep -v '^#' "$temp")
-
-# Has it changed?
-if [[ -z "$to" ]] || [[ "$to" = "$from" ]]; then
-  exit 0
+inst="Renaming $from"
+if (( $copy )) ; then
+  inst="Copying $from"
 fi
+to="$(echo "$from" | interactive-edit-line -i "$inst")"
 
 # Error check
 if [[ -e "$to" ]]; then
@@ -64,7 +48,7 @@ mkdir -p "$(dirname "$to")"
 if (( $copy )) ; then
     ee -2 cp "$from" "$to"
 else
-    ee -2 mtv "$from" "$to"
+    ee -2 mv "$from" "$to"
 fi
 
 # Update the command line.

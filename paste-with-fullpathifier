@@ -1,24 +1,29 @@
 #!/bin/bash
 
 # Read from the clipboard, and try to fullpathify tokens
-# using "recent-dirs", and use pick-lines to select correct ones
+# using "recent-dirs", and use interactive-pick-lines to select correct ones
 
 set -e
 . mutil.sh
 
 files=$(cb)
 
-recent-dirs | head -10 | while read -r dir ; do
-  for file in $files; do
-    # echo "$dir - $file"
-    if [[ $file = /* ]] ; then
-      # fullpath, just print
-      echo $file
-      continue
-    fi
-    full="$dir$file"
-    if [[ -e "$full" ]] ; then
-      echo "$full"
-    fi
+{
+  # for file in $files; do
+  #   echo $file
+  # done
+  recent-dirs | head -10 | while read -r dir ; do
+    for file in $files; do
+      # echo "$dir - $file"
+      if [[ $file = /* ]] ; then
+        # fullpath, just print
+        echo $file
+        continue
+      fi
+      full="$dir$file"
+      if [[ -e "$full" ]] ; then
+        echo "$full"
+      fi
+    done
   done
-done | global-unique | pick-lines | shescapes
+} | global-unique | interactive-pick-lines | shescapes
