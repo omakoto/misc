@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Read from the clipboard, and try to fullpathify tokens
-# using "recent-dirs", and use interactive-pick-lines to select correct ones
+# using "recent-dirs", and use fzf to pick one(s)
 
 set -e
 . mutil.sh
@@ -26,4 +26,4 @@ files=$(cb)
       fi
     done
   done
-} | global-unique | interactive-pick-lines | shescapes
+} | global-unique | fzf -m | shescapes
