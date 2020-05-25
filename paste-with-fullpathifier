@@ -22,4 +22,4 @@ files=$(cb | tr -s ' \t' '\n')
       fi
     done
   done
-} | global-unique | fzf -m | shescapes
+} | global-unique | fzf -m -0 -1 | shescapes
