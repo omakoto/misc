@@ -112,7 +112,8 @@ for n in "${args[@]}" ; do
           is_bugreport=1
         else
           f=$temp/${n##*/}-$$-list.txt
-          ee -2 zcat "$n" > "$f"
+          out="$(unzip-to-each-dir "$n")"
+          f="$out"
         fi
         ;;
       *.tar|*.tar.gz|*.tgz|*.tar.bz2|*.tar.xz)
