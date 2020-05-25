@@ -1,0 +1,10 @@
+#!/usr/bin/perl
+use strict;
+
+my %lines = ();
+
+while (<>) {
+    next if exists $lines{$_};
+    print;
+    $lines{$_} = 1;
+}

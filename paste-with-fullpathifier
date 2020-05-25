@@ -6,18 +6,14 @@
 set -e
 . mutil.sh
 
-files=$(cb)
+files=$(cb | tr -s ' \t' '\n')
 
 {
-  # for file in $files; do
-  #   echo $file
-  # done
-  recent-dirs | head -10 | while read -r dir ; do
-    for file in $files; do
-      # echo "$dir - $file"
-      if [[ $file = /* ]] ; then
+  recent-dirs | head -50 | while read -r dir ; do
+    echo "$files" | while read -r file; do
+      if [[ "$file" = /* ]] ; then
         # fullpath, just print
-        echo $file
+        echo "$file"
         continue
       fi
       full="$dir$file"
