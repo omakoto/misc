@@ -245,6 +245,6 @@ if (( ${#files[@]} > 0 )) ; then
       fi
       sleep 0.1
     done
-  ) &
+  ) >&/dev/null &
   run ee $command $opts "${files[@]}" #| zenlog write-to-outer
 fi
