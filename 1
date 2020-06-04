@@ -181,11 +181,14 @@ for n in "${args[@]}" ; do
       use_vim=1
     fi
   fi
+  f="$(wsltohost "$f")"
   files+=("$f")
 done
 
+sublime_win="$HOME/cbin/sublime-win"
+
 command=""
-if [[ -n "$DISPLAY" ]] ; then
+if [[ -n "$DISPLAY" ]] || iswsl  ; then
   if (( $use_vim )) ; then
     command=gvim
     opts=""
@@ -194,7 +197,8 @@ if [[ -n "$DISPLAY" ]] ; then
     command=$(firstbin \
         /opt/sublime_text/sublime_text \
         /usr/local/makoto/sublime_text_3/sublime_text \
-        /usr/local/sublime/sublime_text
+        /usr/local/sublime/sublime_text \
+        "$sublime_win"
         )
     if ! (( $bg )) ; then
       opts="$opts -n -w"
@@ -233,7 +237,7 @@ if (( ${#files[@]} > 0 )) ; then
     done
   fi
   # Bring the sublime window to top
-  (
+  which wmctrl >&/dev/null && (
     set +e
     file0="${files[0]}"
     for n in 1 2 3 4 5 6 7 8 9 0; do

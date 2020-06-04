@@ -9,12 +9,21 @@ if [[ "$-" == *i* ]] ; then
   _interactive=1
 fi
 
+_is_wsl=0
+if uname -a | grep -q microsoft ; then
+  _is_wsl=1
+fi
+
 #. <( ~/cbin/zenlog -s )
 . ~/cbin/misc/colors.bash
 . ~/cbin/getopts.bash # Legacy one
 
 interactive() {
   (( $_interactive ))
+}
+
+iswsl() {
+  (( $_is_wsl ))
 }
 
 if ! interactive && (( $# == 1 )) ; then
@@ -582,4 +591,13 @@ curdir() {
         return 0
     fi
     pwd
+}
+
+wsltohost() {
+    local f="$1"
+    if iswsl ; then
+        wslpath -aw "$f"
+    else
+        echo "$f"
+    fi
 }
