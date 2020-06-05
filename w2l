@@ -5,9 +5,9 @@ set -e
 
 if ! iswsl ; then
   echo "$@"
+  exit 0
 fi
 
 for f in "$@" ; do
-  echo '\\wsl$\Debian'"$(abspath "$PWD" | tr '/' '\\')"
+  echo /mnt/"$(sed -e 's!\\!/!g ; s!:!!g' <<< "$f")"
 done
-
