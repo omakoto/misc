@@ -9,6 +9,7 @@ set -e
 
 if ! iswsl ; then
   echo "$@"
+  exit 0
 fi
 
 for f in "$@" ; do
