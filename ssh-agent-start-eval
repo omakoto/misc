@@ -1,0 +1,15 @@
+#!/bin/bash
+
+if [[ -n "$SSH_AGENT_PID" ]] ; then
+	exit 0
+fi
+
+saved=$HOME/tmp/ssh-agent-vars
+
+if [[ -f $saved ]] ; then
+	cat $saved
+	exit 0
+fi
+
+ssh-agent -s | tee $saved
+exit 0
