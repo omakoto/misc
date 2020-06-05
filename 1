@@ -181,7 +181,7 @@ for n in "${args[@]}" ; do
       use_vim=1
     fi
   fi
-  f="$(wsltohost "$f")"
+  f="$(l2w "$f")" # for wsl, convert to the window path
   files+=("$f")
 done
 

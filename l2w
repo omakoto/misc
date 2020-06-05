@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+# If running on WSL, convert given paths to the window paths.
+# This doesn't use wslpath, which wouldn't convert nonexistent
+# paths.
+
+if ! iswsl ; then
+  echo "$@"
+fi
+
+for f in "$@" ; do
+  echo "\\\\wsl\$\\${WSL_DISTRO_NAME?}$(abspath "$PWD" | tr '/' '\\')"
+done
+

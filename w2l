@@ -1,0 +1,13 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+if ! iswsl ; then
+  echo "$@"
+fi
+
+for f in "$@" ; do
+  echo '\\wsl$\Debian'"$(abspath "$PWD" | tr '/' '\\')"
+done
+

@@ -592,12 +592,3 @@ curdir() {
     fi
     pwd
 }
-
-wsltohost() {
-    local f="$1"
-    if iswsl ; then
-        wslpath -aw "$f"
-    else
-        echo "$f"
-    fi
-}
