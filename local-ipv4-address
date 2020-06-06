@@ -1,0 +1,4 @@
+#!/bin/bash
+
+ip -j a | jq .[].addr_info[].local | sed -e 's/"//g' |  grep -v -P '^(127|:|fe)'
+
