@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -e
+
+SCRIPT_DIR="${0%/*}"
+
+PATH="$PATH:$SCRIPT_DIR"
+
+if [[ -z "$WSL_DISTRO_NAME" ]] ; then
+    echo "Not on WSL" 1>&2
+    exit 1
+fi
+
+hosts=$(w2l 'c:\windows\system32\drivers\etc\hosts')
+temp=/tmp/hosts-temp-$$.txt
+
+tag="#WSL:${WSL_DISTRO_NAME?}"
+
+sed -e "/${tag}/d" "$hosts" > "$temp"
+echo "$(local-ipv4-address) ${WSL_DISTRO_NAME?}.wsl $tag" >> "$temp"
+cp "$temp" "$hosts"
+
+rm "$temp"

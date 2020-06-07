@@ -9,6 +9,10 @@ set -e
 
 medir="${0%/*}"
 
+if iswsl ; then
+  echo "WSL detected. Not updating keymap." 1>&2
+  exit 0
+fi
 
 chrome_dpi="1.5"
 rdt_dpi=1.0

@@ -65,14 +65,26 @@ if (( $copy )) || [[ ! -t 0 ]] ; then
   fi
   (
     (
-      cat "$f" | xclip -silent -i -selection clipboard $target_opt
+      cat "$f" | {
+        if ! iswsl ; then
+          xclip -silent -i -selection clipboard $target_opt
+        else
+          clip.exe # for wsl
+        fi
+      }
       rm "$f"
     ) &
   ) # <&- 1>&- 2>&- # what's this???
   (( $quiet )) || echo "[Copied to clipboard]" 1>&2
   exit 0
 fi
-xclip -o -selection clipboard $target_opt | {
+{
+  if ! iswsl ; then
+    xclip -o -selection clipboard $target_opt
+  else
+    powershell.exe -command "Get-Clipboard" # for wsl
+  fi
+} | {
   if (( $flatten )) ; then
     shescapes
   else

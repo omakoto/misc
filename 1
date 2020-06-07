@@ -188,18 +188,23 @@ done
 sublime_win="$HOME/cbin/sublime-win"
 
 command=""
+
 if [[ -n "$DISPLAY" ]] || iswsl  ; then
   if (( $use_vim )) ; then
     command=gvim
     opts=""
     bg=1
   else
-    command=$(firstbin \
-        /opt/sublime_text/sublime_text \
-        /usr/local/makoto/sublime_text_3/sublime_text \
-        /usr/local/sublime/sublime_text \
-        "$sublime_win"
-        )
+    if iswsl ; then
+      command="$sublime_win"
+    else
+      command=$(firstbin \
+          /opt/sublime_text/sublime_text \
+          /usr/local/makoto/sublime_text_3/sublime_text \
+          /usr/local/sublime/sublime_text \
+          "$sublime_win"
+          )
+    fi
     if ! (( $bg )) ; then
       opts="$opts -n -w"
     fi

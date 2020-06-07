@@ -13,6 +13,6 @@ if ! iswsl ; then
 fi
 
 for f in "$@" ; do
-  echo "\\\\wsl\$\\${WSL_DISTRO_NAME?}$(abspath "$PWD" | tr '/' '\\')"
+  echo "\\\\wsl\$\\$(wsl-distro-name)$(abspath "$f" | tr '/' '\\')"
 done
 

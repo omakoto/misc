@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# Prints the WSL distro name.
+# Which is basically $WSL_DISTRO_NAME, except it's not set
+# when accessed via ssh, so it also uses ~/wsl-distro-name
+
+set -e
+
+if ! ( uname -a | grep -q microsoft ) ; then
+  exit 2
+fi
+
+if [[ -n "$WSL_DISTRO_NAME" ]] ; then
+  echo "$WSL_DISTRO_NAME"
+  exit 0
+fi
+
+if [[ -f $HOME/wsl-distro-name ]] ; then
+  # This file is created by wsl-startup.cmd
+  cat $HOME/wsl-distro-name
+  exit 0
+fi
+
+echo "Unable to obtain the WSL distro name." 1>&2
+exit 1

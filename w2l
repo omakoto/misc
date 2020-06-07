@@ -9,5 +9,5 @@ if ! iswsl ; then
 fi
 
 for f in "$@" ; do
-  echo /mnt/"$(sed -e 's!\\!/!g ; s!:!!g' <<< "$f")"
+  echo /mnt/"$(perl -pe 's!\\!/!g ; s!:!!g; $_ = lc ' <<< "$f")"
 done

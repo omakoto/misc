@@ -10,11 +10,13 @@ app=0
 profdir=""
 wait=0
 no_ibus=0
+verbose=1
 
 eval "$(bashgetopt -d 'Run Chrome' '
 p|profile=s  profdir=%      # specify profile directory name
 a|app        app=1          # start as app
 w|wait       wait=1         # wait until all Chrome instances stop before starting
+v|verbose    verbose=1      # make verbose
 no-ibus      no_ibus=1      # Disable ibus
 ' "$@")"
 
@@ -52,6 +54,8 @@ if [[ -f "$url" ]]; then
     fi
     ;;
   esac
+
+  url="$(l2w "$url")"
 fi
 
 # build the parameters.
@@ -98,4 +102,14 @@ if (( $no_ibus != 0 )) ; then
     ee unset GTK_IM_MODULE
 fi
 
-( google-chrome "${params[@]}" "$@" &) >/dev/null 2>&1
+chrome=google-chrome
+
+if iswsl ; then
+  chrome="$(w2l 'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe')"
+fi
+
+if (( $verbose )) ; then
+  INFO 'Running' "$chrome" "${params[@]}" "$@"
+fi
+
+( "$chrome" "${params[@]}" "$@" &) >/dev/null 2>&1

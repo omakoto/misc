@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -e
+
+SCRIPT_DIR="${0%/*}"
+
+run() {
+    echo "Running: $@"
+    "$@"
+}
+
+run sudo /etc/rc2.d/S01ssh start
+run $SCRIPT_DIR/wsl-update-hosts
+
+if [[ -n "WSL_DISTRO_NAME" ]] ; then
+    run bash -c "echo $WSL_DISTRO_NAME > $HOME/wsl-distro-name"
+fi
