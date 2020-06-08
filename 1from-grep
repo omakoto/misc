@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+# Assume stdin is from "rg --no-header --line-number --color=always".
+# Pick a line FZF and open the selected line with 1.
+
+selected="$(fzf --ansi --select-1 | ansi-remove)"
+
+if [[ -z "$selected" ]] ; then
+  exit 1
+fi
+
+IFS=: read -r file line rest <<<"$selected"
+
+echo "Selected: file $file line $line"
+1 -l $line "$file"
