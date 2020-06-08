@@ -11,13 +11,17 @@ if [[ -z "$WSL_DISTRO_NAME" ]] ; then
     exit 1
 fi
 
-hosts=$(w2l 'c:\windows\system32\drivers\etc\hosts')
+hosts_win='c:\windows\system32\drivers\etc\hosts'
+hosts=$(w2l "$hosts_win")
 temp=/tmp/hosts-temp-$$.txt
 
 tag="#WSL:${WSL_DISTRO_NAME?}"
 
 sed -e "/${tag}/d" "$hosts" > "$temp"
 echo "$(local-ipv4-address) ${WSL_DISTRO_NAME?}.wsl $tag" >> "$temp"
-cp "$temp" "$hosts"
+if ! cp "$temp" "$hosts" ; then
+  echo "Give 'full control' to users!"
+  explorer.exe "${hosts_win%\\*}\\"
+fi
 
-rm "$temp"
+rm -f "$temp"
