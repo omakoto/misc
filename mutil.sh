@@ -576,7 +576,7 @@ function wd() {
 }
 
 function atop() {
-    echo ${ANDROID_X_BUILD_TOP:-${ANDROID_BUILD_TOP:?ANDROID_BUILD_TOP not set}}
+    echo ${ANDROID_X_BUILD_TOP:-${ANDROID_BUILD_TOP:?ANDROID_BUILD_TOP not set}}/
 }
 
 function aroot() {
