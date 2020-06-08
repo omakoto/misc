@@ -31,6 +31,7 @@ noargs=0
 mkpath=0
 cbin=0
 quiet=0
+line=0
 
 #if ! is-interactive ; then
 #  no_zenlog=1
@@ -52,8 +53,9 @@ eval "$(bashgetopt -u usage '
   pipe             pipe=1          # Read from stdin.
   stdin            pipe=1          # Read from stdin.
   makepath         mkpath=1        # Make the directory.
-  C|cbin             cbin=1          # Also open ~/cbin/
-  q|quiet          quiet=1           # Set EE_QUIET=1
+  C|cbin           cbin=1          # Also open ~/cbin/
+  q|quiet          quiet=1         # Set EE_QUIET=1
+  l|line=i         line=%          # Open at a given line
 ' "$@")"
 
 args=( "$@" )
@@ -99,7 +101,6 @@ if (( $pipe != 0 )) ; then
 fi
 
 for n in "${args[@]}" ; do
-  f=""
   if (( $force_editor )) || [[ -d "$n" ]] ; then
     f="$n"
   else
@@ -185,18 +186,24 @@ for n in "${args[@]}" ; do
   files+=("$f")
 done
 
+file0="${files[0]}"
+
 sublime_win="$HOME/cbin/sublime-win"
 
 command=""
+is_vi=0
+is_sublime=0
 
 if [[ -n "$DISPLAY" ]] || iswsl  ; then
   if (( $use_vim )) ; then
     command=gvim
     opts=""
     bg=1
+    is_vi=1
   else
     if iswsl ; then
       command="$sublime_win"
+      is_sublime=1
     else
       command=$(firstbin \
           /opt/sublime_text/sublime_text \
@@ -204,6 +211,9 @@ if [[ -n "$DISPLAY" ]] || iswsl  ; then
           /usr/local/sublime/sublime_text \
           "$sublime_win"
           )
+      if [[ -n "$command" ]] ; then
+        is_sublime=1
+      fi
     fi
     if ! (( $bg )) ; then
       opts="$opts -n -w"
@@ -214,6 +224,19 @@ if [[ -z "$command" ]] ; then
   command=vi
   opts=""
   bg=0
+  is_vi=1
+fi
+
+if (( $is_sublime )) ; then
+  if (( $line > 0 )) && [[ -f "$file0" ]] ; then
+    files[0]="$file0":$line
+  fi
+fi
+
+if (( $is_vi )) ; then
+  if (( $line > 0 )) ; then
+    opts="+$line"
+  fi
 fi
 
 if (( $copy )) ; then
@@ -244,7 +267,6 @@ if (( ${#files[@]} > 0 )) ; then
   # Bring the sublime window to top
   which wmctrl >&/dev/null && (
     set +e
-    file0="${files[0]}"
     for n in 1 2 3 4 5 6 7 8 9 0; do
       # Find the full title.
       title="$( window-title-list | fgrep "$file0" | grep 'Sublime Text$' )"

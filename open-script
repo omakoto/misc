@@ -1,0 +1,39 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+# arg1: command name
+# arg2: command type from `type -t`
+
+command="$1"
+type="$2"
+
+echo "Command: $command" 1>&2
+
+if [[ -z "$command" ]] ; then
+    exit 1
+fi
+
+case "$type" in
+  "")
+    echo "Command not found: $command" 1>&2
+    exit 0
+    ;;
+  alias)
+    alias "$command" | less-if-long
+    rg "^alias +$command=" $HOME/cbin/
+    exit 0
+    ;;
+  function)
+    type "$command" | less-if-long
+    rg "^(function +)?$command\(\)" $HOME/cbin/
+    exit 0
+    ;;
+  *)
+    ;;
+esac
+
+EE_QUIET=1 1script "$command"
+
+
