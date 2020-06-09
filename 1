@@ -229,7 +229,7 @@ if [[ -z "$command" ]] ; then
 fi
 
 if (( $is_sublime )) ; then
-  if (( $line > 0 )) && [[ -f "$file0" ]] ; then
+  if (( $line > 0 )) ; then
     files[0]="$file0":$line
   fi
 fi
