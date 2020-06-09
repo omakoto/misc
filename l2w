@@ -13,16 +13,22 @@ if ! iswsl ; then
 fi
 
 exist_only=0
+null_terminate=0
 
-eval "$(bashgetopt -u usage '
+eval "$(bashgetopt '
   e     exist_only=1            # Convert only when the file exists.
+  0     null_terminate=1        # Separate results with \0.
 ' "$@")"
-
 
 for f in "$@" ; do
   if (( $exist_only )) && ! [[ -e "$f" ]] ; then
-    echo "$f"
+    echo -n "$f"
   else
-    echo "\\\\wsl\$\\$(wsl-distro-name)$(abspath "$f" | tr '/' '\\')"
+    echo -n "\\\\wsl\$\\$(wsl-distro-name)$(abspath "$f" | tr '/' '\\')"
+  fi
+  if (( $null_terminate )) ; then
+    perl -e 'print "\0"'
+  else
+    echo
   fi
 done

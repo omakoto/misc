@@ -1,11 +1,3 @@
 #!/bin/bash
 
-set -e
-. mutil.sh
-
-args=()
-for a in "$@"; do
-  args+=("$(l2w -e "$a")")
-done
-
-(ee "/mnt/c/Program Files (x86)/Meld/Meld.exe" "${args[@]}" &)
+(l2w -0e -- "$@" | xargs -0 "/mnt/c/Program Files (x86)/Meld/Meld.exe" &)
