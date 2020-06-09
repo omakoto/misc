@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+args=()
+for a in "$@"; do
+  if [[ -e "$a" ]] ; then
+    args+=("$(l2w "$a")")
+  else
+    args+=("$a")
+  fi
+done
+
+(ee "/mnt/c/Program Files (x86)/Meld/Meld.exe" "${args[@]}" &)
