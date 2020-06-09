@@ -29,6 +29,7 @@ dump=0
 target_opt=""
 flags=""
 flatten=0
+description=""
 
 eval "$(bashgetopt -u usage '
   i|copy        copy=1                      # Copy from STDIN.  Default behavior if STDIN is not terminal
@@ -37,6 +38,7 @@ eval "$(bashgetopt -u usage '
   d|print       dump=1; flags="$flags -d"   # Dump copied content to STDOUT.
   t|target-type target_opt="-t %"           # Specify TARGET, such as TEXT, UTF8_STRING, or text/html
   f|flatten     flatten=1                   # When pasting, collapse multiple lines into single line.
+  D|description=s description=%             # Set what to show on console.
 ' "$@")"
 
 if (( $# > 0 )) ; then
@@ -75,7 +77,7 @@ if (( $copy )) || [[ ! -t 0 ]] ; then
       rm "$f"
     ) &
   ) # <&- 1>&- 2>&- # what's this???
-  (( $quiet )) || echo "[Copied to clipboard]" 1>&2
+  (( $quiet )) || echo "${description:-[Copied to clipboard]}" 1>&2
   exit 0
 fi
 {
