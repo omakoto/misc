@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+
+command=nautilus
+if iswsl; then
+  command=explorer.exe
+fi
+
+args=("$@")
+if (( ${#args[@]}  == 0 )) ; then
+  args=("$PWD")
+fi
+
+( l2w "${args[@]}" | xargs $command &)
