@@ -1,3 +1,19 @@
-#!/bin/sh
+#!/bin/bash
 
-git rev-parse --show-toplevel 2>/dev/null || exit 1
+# This is the canonical way, but this also resolves symlinks, which I don't want.
+# git rev-parse --show-toplevel 2>/dev/null || exit 1
+
+set -e
+. mutil.sh
+
+dir="$PWD"
+while ! [[ -e "$dir/.git" ]] ; do
+  dir="${dir%/*}"
+  if [[ "$dir" == "" ]] ; then
+    echo "Not in git repository." 1>&2
+    exit 1
+  fi
+done
+
+echo $dir
+exit 0
