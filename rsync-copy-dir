@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+from="$1"
+to="$2"
+
+if ! [[ -d "$from" ]] || [[ -e "$to" ]] ;then
+  echo "Usage: $0 FROM-DIR TO-DIR" 1>&2
+  exit 1
+fi
+
+#         -A, --acls                  preserve ACLs (implies -p)
+#         -X, --xattrs                preserve extended attributes
+
+ee time rsync ${DRY_RUN+--dry-run} -a --progress "$from" "$to"
