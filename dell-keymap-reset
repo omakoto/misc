@@ -3,4 +3,6 @@
 set -e
 . mutil.sh
 
+isx || exit 0
+
 ee setxkbmap -layout us

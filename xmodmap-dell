@@ -2,6 +2,8 @@
 
 . mutil.sh
 
+isx || exit 0
+
 ee setxkbmap us
 
 ee xmodmap ${HOME}/cbin/dot_Xmodmap.omakoto-glaptop
