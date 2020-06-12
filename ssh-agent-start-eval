@@ -4,6 +4,7 @@ if [[ -n "$SSH_AGENT_PID" ]] ; then
 	exit 0
 fi
 
+# $HOME/tmp/ is on ramdisk
 saved=$HOME/tmp/ssh-agent-vars
 
 if [[ -f $saved ]] ; then
