@@ -592,3 +592,61 @@ curdir() {
     fi
     pwd
 }
+
+export _prompt_pid=
+function set-prompt-pid() {
+  export _prompt_pid=$$
+}
+
+source-setup() {
+  local dir="$PWD"
+
+  while [[ "$dir" != "/" ]] ; do
+    local script="$(readlink -f "$dir")/.auto-dir-setup"
+    if [[ -f "$script" ]] ; then
+      if [[ "$last_auto_sourced_script" != "$script" ]]; then
+        INFO "Automatically running:" "$script"
+        last_auto_sourced_script="$script"
+        EE_QUIET=1 . "$script"
+      fi
+      return 0
+    fi
+    dir="$(readlink -f "$dir/..")"
+  done
+  return 0
+}
+
+function _schedule_cd_file() {
+  echo "/tmp/schedule-cd-${_prompt_pid:?}.txt"
+}
+
+# Use this command to 'cd' to a directory, *when the next prompt shows up*.
+# See also cd-to-scheduled-dir
+function schedule-cd() {
+  local dir="$1"
+  local file=$(_schedule_cd_file)
+  if [[ -d "$dir" ]] ; then
+    echo "$dir" > $file
+    INFO "Scheduled to CD to:" "$dir"
+    return 0
+  else
+    echo "schedule-to: Directory '$dir' doesn't exist." 1>&2
+    return 1
+  fi
+}
+
+# This is executed from PROMPT_COMMAND
+function cd-to-scheduled-dir() {
+  # Change to the directory set by schedule-cd()
+  local file=$(_schedule_cd_file)
+  if [[ -f $file ]] ; then
+    local next_dir=$(cat $file 2>/dev/null)
+    rm -f $file
+    if [[ -d "$next_dir" ]] ; then
+      if cd "$next_dir" ; then
+        INFO "Current directory:" "$PWD"
+        source-setup
+      fi
+    fi
+  fi
+}
