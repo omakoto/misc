@@ -6,7 +6,7 @@ set -e
 
 command=nautilus
 if iswsl; then
-  command=explorer.exe
+  command=explorer
 fi
 
 args=("$@")
@@ -14,4 +14,4 @@ if (( ${#args[@]}  == 0 )) ; then
   args=("$PWD")
 fi
 
-( l2w "${args[@]}" | xargs $command &)
+( l2w -0 "${args[@]}" | xargs -0 $command &)

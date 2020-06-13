@@ -24,7 +24,15 @@ for f in "$@" ; do
   if (( $exist_only )) && ! [[ -e "$f" ]] ; then
     echo -n "$f"
   else
-    echo -n "\\\\wsl\$\\$(wsl-distro-name)$(abspath "$f" | tr '/' '\\')"
+    path="$(readlink -m "$f" | tr '/' '\\')"
+    if [[ "$path" =~ ^\\mnt\\[a-zA-Z]\\ ]] ; then
+      # If it's a windows drive, convert to the actual windows path.
+      # Remove the /mnt/ prefix, and inject a : after the drive letter.
+      path="${path:5:1}:${path:6}"
+      echo -n "$path"
+    else
+      echo -n "\\\\wsl\$\\$(wsl-distro-name)$path"
+    fi
   fi
   if (( $null_terminate )) ; then
     perl -e 'print "\0"'
