@@ -10,10 +10,11 @@ run() {
 }
 
 cat <<'EOF'
-If the following command requires the root password, add the
-following line to /etc/sudoers:
+If the following command requires the root password, run the following
+command:
 ```
-%sudo ALL=NOPASSWD: /etc/rc2.d/S01ssh
+(echo '%sudo ALL=NOPASSWD: /etc/rc2.d/S01ssh' |
+  sudo tee /etc/sudoers.d/sshd) && sudo chmod 0440 /etc/sudoers.d/sshd
 ```
 EOF
 run sudo /etc/rc2.d/S01ssh start
