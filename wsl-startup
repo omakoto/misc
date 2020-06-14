@@ -9,6 +9,13 @@ run() {
     "$@"
 }
 
+cat <<'EOF'
+If the following command requires the root password, add the
+following line to /etc/sudoers:
+```
+%sudo ALL=NOPASSWD: /etc/rc2.d/S01ssh
+```
+EOF
 run sudo /etc/rc2.d/S01ssh start
 run $SCRIPT_DIR/wsl-update-hosts
 
