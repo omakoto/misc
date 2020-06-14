@@ -239,6 +239,7 @@ dry-run() {
 echo-and-exec() {
   local to=1
   local dry=0
+  local dry_opts=""
   local notify_opts=""
   local bg_opts=""
   local with_time=1
@@ -269,6 +270,7 @@ echo-and-exec() {
 
   if (( $DRYRUN )) || (( $DRY )) || (( $EE_DRY )) ; then
     dry=1
+    dry_opts=dry-run
   fi
   if (( $EE_QUIET )) ; then
     quiet=1
@@ -302,12 +304,8 @@ echo-and-exec() {
       nocolor ""
     } 1>&$to
   fi
-  if (( $dry )) ; then
-    return 0
-  fi
   local rc=0
-
-  EE_QUIET="${EE_QUIET:-child_quiet}" $bg_opts $notify_opts "${@}"
+  EE_QUIET="${EE_QUIET:-child_quiet}" $dry_opts $bg_opts $notify_opts "${@}"
   rc=$?
 
   if (( $show_result )) ; then
