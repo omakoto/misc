@@ -1,0 +1,32 @@
+#!/usr/bin/perl -w
+
+use strict;
+
+sub usage() {
+  print <<'EOF';
+tailb: similar to tail, but finds the position by byte.
+
+  usage: tailb -NUM_BYTES FILE
+
+EOF
+  exit 1;
+}
+
+usage unless @ARGV eq 2;
+$ARGV[0] =~ s/^\-(\d+)// or usage;
+
+my ($bytes, $file) = ($1, $ARGV[1]);
+
+#my $size = -s $file or usage;
+open(IN, "<", $file) or die "$0: Cannot open file: $file";
+seek(IN, -$bytes, 2) or die "$0: Cannot seek file: $file";
+
+exit 0 if eof IN;
+scalar(<IN>) or die; # Drop the first line
+
+for (;;) {
+  exit 0 if eof IN;
+  my $buf;
+  read(IN, $buf, 1024 * 32) or die;
+  print $buf;
+}
