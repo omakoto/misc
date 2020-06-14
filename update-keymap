@@ -31,7 +31,7 @@ case "$(hostname -s)" in
       rdt_dpi=1.5
       gsettings set org.cinnamon.desktop.interface scaling-factor 2
     fi
-    dell-touchscreen-enable 0
+    dell-touchscreen-enable 1
     ;;
   *)
     ee keymap-reset
