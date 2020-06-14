@@ -3,4 +3,4 @@
 set -e
 . mutil.sh
 
-( nohup "$@" >&/dev/null  & )
+bg-start "$@"

@@ -263,7 +263,7 @@ echo-and-exec() {
       r: raw_marker=%                     # Set raw-marker.
       pwd pwd=1                           # Show current directory too.
       q|quiet          quiet=1;child_quiet=1  # Don'\''t echo back command line.
-      Q child_quiet=1                     # Silence inner ee executions.
+      Q|child-quiet    child_quiet=1      # Silence inner ee executions.
       R|show-result    show_result=1      # Show result code
       ' "$@")"
 
@@ -447,6 +447,10 @@ retry-until-success() {
 
 retry-until-failure() {
   forever -f "${@}"
+}
+
+bg-start() {
+  ( nohup "$@" </dev/null >&/dev/null & )
 }
 
 function zenlog-nolog-out() {
