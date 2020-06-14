@@ -1,0 +1,35 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+title=Message
+opts=0
+
+eval "$(bashgetopt -u usage '
+t:         title=%  # Set title
+e|error    opts=16  # Error
+' "$@")"
+
+if (( $opts == 0 )) ; then
+  opts=64 # Info
+fi
+
+# 0 vbOKOnly Displays OK button only.
+# 1 vbOKCancel Displays OK and Cancel buttons.
+# 2 vbAbortRetryIgnore Displays Abort, Retry, and Ignore buttons.
+# 3 vbYesNoCancel Displays Yes, No, and Cancel buttons.
+# 4 vbYesNo Displays Yes and No buttons.
+# 5 vbRetryCancel Displays Retry and Cancel buttons.
+# 16 vbCritical Displays Critical Message icon.
+# 32 vbQuestion Displays Warning Query icon.
+# 48 vbExclamation Displays Warning Message icon.
+# 64 vbInformation Displays Information Message icon.
+# 0 vbDefaultButton1 First button is default.
+# 256 vbDefaultButton2 Second button is default.
+# 512 vbDefaultButton3 Third button is default.
+# 768 vbDefaultButton4 Fourth button is default.
+# 0 vbApplicationModal Application modal. The current application will not work until the user responds to the message box.
+# 4096 vbSystemModal System modal. All applications will not work until the user responds to the message box.
+
+cscript.exe //nologo "$(l2w "${0%/*}"/msgbox.vbs)" "$*" "$opts" "$title"

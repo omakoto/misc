@@ -4,16 +4,15 @@ set -e
 
 . mutil.sh
 
-# Show only if stdin is terminal, or -f is given.
-
 force=0
 mode=--info
 color=bcyan
 print_to_term=1
 wait=0
+msgbox_opts=""
 
 eval "$(getopt.pl -Nxd 'Show a dialog box' '
-e|error|c|critical  mode=--error; color=bred  # Show as error.
+e|error|c|critical  mode=--error; color=bred; msgbox_opts=-e  # Show as error.
 f|force             force=1                   # Show dialog even if stdin is not terminal.
 s|no-terminal       print_to_term=0           # Do not show the message on terminal.
 w|wait              wait=1                    # Wait until the dialog closes.
@@ -34,6 +33,8 @@ if [[ -t 0 ]] || (( "$force" )) ; then
     if (( $wait )) ; then
       wait
     fi
+  elif iswsl ; then
+    msgbox $msgbox_opts "$message"
   else
     if (( $wait )) ; then
       echo -n "Press enter to continue: "
