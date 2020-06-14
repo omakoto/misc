@@ -1,0 +1,26 @@
+#!/usr/bin/perl
+
+sub usage() {
+  print <<'EOF';
+
+  print LF or NULL
+
+  usage:
+    print-if     # Print LF (i.e. \n)
+    print-if -0  # Print NULL (i.e. \0)
+
+EOF
+  exit 1;
+}
+
+my $eol = "\n";
+
+if (@ARGV > 0) {
+  if ($ARGV[0] == "-0") {
+    $eol = "\0";
+  } else {
+    usage;
+  }
+}
+
+print $eol;

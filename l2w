@@ -13,11 +13,11 @@ if ! iswsl ; then
 fi
 
 exist_only=0
-null_terminate=0
+eol_opts=""
 
 eval "$(bashgetopt '
-  e     exist_only=1            # Convert only when the file exists.
-  0     null_terminate=1        # Separate results with \0.
+  e     exist_only=1       # Convert only when the file exists.
+  0     eol_opts=-0        # Separate results with \0.
 ' "$@")"
 
 for f in "$@" ; do
@@ -34,9 +34,5 @@ for f in "$@" ; do
       echo -n "\\\\wsl\$\\$(wsl-distro-name)$path"
     fi
   fi
-  if (( $null_terminate )) ; then
-    perl -e 'print "\0"'
-  else
-    echo
-  fi
+  print-eol $eol_opts
 done

@@ -13,4 +13,4 @@ if (( ${#args[@]}  == 0 )) ; then
   args=("$PWD")
 fi
 
-l2w -0 "${args[@]}" | xargs -0 ee -b $command
+l2w -0 "${args[@]}" | xargs -0 -n 1 ee -b $command

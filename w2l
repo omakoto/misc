@@ -8,6 +8,14 @@ if ! iswsl ; then
   exit 0
 fi
 
+eol_opts=""
+
+eval "$(bashgetopt '
+  0     eol_opts=-0        # Separate results with \0.
+' "$@")"
+
+
 for f in "$@" ; do
   echo /mnt/"$(perl -pe 's!\\!/!g ; s!:!!g; $_ = lc ' <<< "$f")"
+  print-eol $eol_opts
 done
