@@ -307,7 +307,7 @@ echo-and-exec() {
   fi
   local rc=0
 
-  EE_QUIET="$child_quiet" $bg_opts $notify_opts "${@}"
+  EE_QUIET="${EE_QUIET:-child_quiet}" $bg_opts $notify_opts "${@}"
   rc=$?
 
   if (( $show_result )) ; then
