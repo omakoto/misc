@@ -232,11 +232,15 @@ logt() {
   log timestamp "${@}"
 }
 
+dry-run() {
+  return 0
+}
+
 echo-and-exec() {
   local to=1
-  local notify=0
   local dry=0
   local notify_opts=""
+  local bg_opts=""
   local with_time=1
   local raw_marker=""
   local marker="Running"
@@ -246,20 +250,21 @@ echo-and-exec() {
   local child_quiet=0
   local show_result=0
   eval "$(bashgetopt -d 'Echo and execute' '
-      2 to=2         # Show message on stderr instead of stdout.
-      tty tty=1      # Show message directly to TTY instead of stdout.
-      f notify=1     # Notify when command fails.
-      s notify=0     # Don'\''t notify (default).
-      d dry=1        # Dry run.
-      v notify=1 ; notify_opts="-v" # Verbose: Notify the result.
-      t with_time=1; # Display timestamp too.
-      n with_time=0; # Don'\''t display timestamp.
-      m: marker=%    # Set marker.
-      r: raw_marker=%    # Set raw-marker.
-      pwd pwd=1      # Show current directory too.
-      q quiet=1;child_quiet=1      # Don'\''t echo back command line.
-      Q child_quiet=1 # Silence inner ee executions.
-      R show_result=1 # Show result code
+      2|stderr         to=2               # Show message on stderr instead of stdout.
+      tty tty=1                           # Show message directly to TTY instead of stdout.
+      f|notify-failure notify_opts=nf     # Notify when command fails.
+      s                notify_opts=""     # Don'\''t notify (default).
+      b|bg             bg_opts="bg-start" # Start in the background.
+      d|dry-run        dry=1              # Dry run.
+      v|notify         notify_opts="nf -v" # Verbose: Notify the result.
+      t|timestamp      with_time=1        # Display timestamp too.
+      n|no-timestamp   with_time=0        # Don'\''t display timestamp.
+      m: marker=%                         # Set marker.
+      r: raw_marker=%                     # Set raw-marker.
+      pwd pwd=1                           # Show current directory too.
+      q|quiet          quiet=1;child_quiet=1  # Don'\''t echo back command line.
+      Q child_quiet=1                     # Silence inner ee executions.
+      R|show-result    show_result=1      # Show result code
       ' "$@")"
 
   if (( $DRYRUN )) || (( $DRY )) || (( $EE_DRY )) ; then
@@ -301,13 +306,10 @@ echo-and-exec() {
     return 0
   fi
   local rc=0
-  if (( $notify )) ; then
-    EE_QUIET="$child_quiet" nf $notify_opts "${@}"
-    rc=$?
-  else
-    EE_QUIET="$child_quiet" "$@"
-    rc=$?
-  fi
+
+  EE_QUIET="$child_quiet" $bg_opts $notify_opts "${@}"
+  rc=$?
+
   if (( $show_result )) ; then
     {
       byellow -n "Status: "

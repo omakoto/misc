@@ -3,7 +3,6 @@
 set -e
 . mutil.sh
 
-
 command=nautilus
 if iswsl; then
   command=explorer
@@ -14,4 +13,4 @@ if (( ${#args[@]}  == 0 )) ; then
   args=("$PWD")
 fi
 
-( l2w -0 "${args[@]}" | xargs -0 $command &)
+l2w -0 "${args[@]}" | xargs -0 ee -b $command
