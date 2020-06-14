@@ -17,12 +17,14 @@ $ARGV[0] =~ s/^\-(\d+)// or usage;
 
 my ($bytes, $file) = ($1, $ARGV[1]);
 
-#my $size = -s $file or usage;
+my $size = -s $file or usage;
 open(IN, "<", $file) or die "$0: Cannot open file: $file";
-seek(IN, -$bytes, 2) or die "$0: Cannot seek file: $file";
 
-exit 0 if eof IN;
-scalar(<IN>) or die; # Drop the first line
+if ($bytes < $size) {
+  seek(IN, -$bytes, 2) or die "$0: Cannot seek file: $file";
+  exit 0 if eof IN;
+  scalar(<IN>) or die; # Drop the first, probably partial line.
+}
 
 for (;;) {
   exit 0 if eof IN;
