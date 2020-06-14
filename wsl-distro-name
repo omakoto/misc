@@ -15,9 +15,9 @@ if [[ -n "$WSL_DISTRO_NAME" ]] ; then
   exit 0
 fi
 
-if [[ -f $HOME/wsl-distro-name ]] ; then
+if [[ -f $HOME/.wsl-distro-name ]] ; then
   # This file is created by wsl-startup.cmd
-  cat $HOME/wsl-distro-name
+  cat $HOME/.wsl-distro-name
   exit 0
 fi
 

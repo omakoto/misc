@@ -1,0 +1,5 @@
+#!/usr/bin/perl -w
+
+use Time::HiRes qw(time);
+
+print(int(time * 1000), "\n");

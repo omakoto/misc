@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Add an entry to this WSL machine to the windows side hosts file.
+# The host name will be "${WSL_DISTRO_NAME}.wsl"
+
 set -e
 
 SCRIPT_DIR="${0%/*}"
@@ -17,11 +20,14 @@ temp=/tmp/hosts-temp-$$.txt
 
 tag="#WSL:${WSL_DISTRO_NAME?}"
 
-sed -e "/${tag}/d" "$hosts" > "$temp"
-echo "$(local-ipv4-address) ${WSL_DISTRO_NAME?}.wsl $tag" >> "$temp"
+{
+  sed -e "/${tag}/d" "$hosts"
+  echo "$(local-ipv4-address) ${WSL_DISTRO_NAME?}.wsl $tag"
+} > "$temp"
 if ! cp "$temp" "$hosts" ; then
   echo "Give 'full control' to users!"
-  explorer.exe "${hosts_win%\\*}\\"
+  explorer "${hosts_win%\\*}\\"
 fi
 
 rm -f "$temp"
+echo "Updated: $hosts"

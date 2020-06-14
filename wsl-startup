@@ -13,5 +13,5 @@ run sudo /etc/rc2.d/S01ssh start
 run $SCRIPT_DIR/wsl-update-hosts
 
 if [[ -n "WSL_DISTRO_NAME" ]] ; then
-    run bash -c "echo $WSL_DISTRO_NAME > $HOME/wsl-distro-name"
+    run bash -c "echo $WSL_DISTRO_NAME > $HOME/.wsl-distro-name"
 fi
