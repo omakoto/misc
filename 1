@@ -113,14 +113,11 @@ for n in "${args[@]}" ; do
         if is-bugreport "$n" ; then
           is_bugreport=1
         else
-          f=$temp/${n##*/}-$$-list.txt
-          out="$(unzip-to-each-dir "$n")"
-          f="$out"
+          f="$(unzip-to-each-dir "$n")"
         fi
         ;;
-      *.tar|*.tar.gz|*.tgz|*.tar.bz2|*.tar.xz)
-        f=$temp/${n##*/}-$$-list.txt
-        ee -2 tar tvf "$n" > "$f"
+      *.tar|*.tar.gz|*.tgz|*.tar.bz2|*.tar.xz|*.7z)
+        f="$(unzip-to-each-dir "$n")"
         ;;
       *.deb)
         f=$temp/${n##*/}-$$-list.txt
