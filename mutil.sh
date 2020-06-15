@@ -597,7 +597,7 @@ curdir() {
     pwd
 }
 
-export _prompt_pid=
+export _prompt_pid
 function set-prompt-pid() {
   export _prompt_pid=$$
 }
