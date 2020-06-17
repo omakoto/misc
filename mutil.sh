@@ -590,7 +590,7 @@ function aroot() {
 }
 
 curdir() {
-    if [[ "$PWD" != null ]]; then
+    if [[ "$PWD" != "" ]]; then
         echo "$PWD"
         return 0
     fi
