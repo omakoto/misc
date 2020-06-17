@@ -7,11 +7,6 @@ set -e
 # This doesn't use wslpath, which wouldn't convert nonexistent
 # paths.
 
-if ! iswsl ; then
-  echo "$@"
-  exit 0
-fi
-
 exist_only=0
 eol_opts=""
 
@@ -21,7 +16,9 @@ eval "$(bashgetopt '
 ' "$@")"
 
 for f in "$@" ; do
-  if (( $exist_only )) && ! [[ -e "$f" ]] ; then
+  if ! iswsl; then
+    echo -n "$f"
+  elif (( $exist_only )) && ! [[ -e "$f" ]] ; then
     echo -n "$f"
   else
     path="$(readlink -m "$f" | tr '/' '\\')"

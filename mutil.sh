@@ -654,3 +654,20 @@ function cd-to-scheduled-dir() {
     fi
   fi
 }
+
+# Wrap a multi-line shell command and remove all the tokens "//" and the following tokens.
+function remove-comments-helper() {
+  local args=()
+  local skip=0
+  for arg in "$@"; do
+    if [[ "$arg" = "//" ]] ; then
+      skip=1
+      continue
+    fi
+    if ! (( $skip )) ; then
+      args+=("$arg")
+    fi
+    skip=0
+  done
+  "${args[@]}"
+}

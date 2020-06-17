@@ -3,11 +3,6 @@
 set -e
 . mutil.sh
 
-if ! iswsl ; then
-  echo "$@"
-  exit 0
-fi
-
 eol_opts=""
 
 eval "$(bashgetopt '
