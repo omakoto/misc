@@ -627,7 +627,7 @@ function _schedule_cd_file() {
 # Use this command to 'cd' to a directory, *when the next prompt shows up*.
 # See also cd-to-scheduled-dir
 function schedule-cd() {
-  local dir="$1"
+  local dir="$(abspath "$1")"
   local file=$(_schedule_cd_file)
   if [[ -d "$dir" ]] ; then
     echo "$dir" > $file
