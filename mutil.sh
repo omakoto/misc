@@ -685,3 +685,8 @@ function pee() {
   cat $log
   rm -f $log
 }
+
+# withterm runs a command on a pseudo terminal.
+withterm() {
+  script -q -c "$(shescape-multi "$@")"
+}

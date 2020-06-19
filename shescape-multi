@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+sep=""
+command=""
+for arg in "$@"; do
+  command="$command$sep"
+  command="$command${arg@Q}"
+  sep=" "
+done
+
+echo "$command"
