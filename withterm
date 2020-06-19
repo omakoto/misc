@@ -5,4 +5,4 @@
 set -e
 . mutil.sh
 
-script -q -c "$(shescape-multi "$@")"
+script -q -c "$(shescape-multi "$@")" /dev/null
