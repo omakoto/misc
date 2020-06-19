@@ -671,3 +671,18 @@ function remove-comments-helper() {
   done
   "${args[@]}"
 }
+
+# Usage:
+#   $ yee ls -l /etc | grep rc
+#   This prints all the output from the ls, and then the output from the grep.
+
+function yee() {
+  local log=/tmp/yee-$(date8)-$$.log
+  {
+    "$@" |& tee $log
+    local rc=${PIPESTATUS[0]}
+    byellow "* Command finished with status $rc"
+  } 1>&2
+  cat $log
+  return $rc
+}
