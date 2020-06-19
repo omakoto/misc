@@ -672,17 +672,16 @@ function remove-comments-helper() {
   "${args[@]}"
 }
 
+# pee -- tee to pipe
 # Usage:
-#   $ yee ls -l /etc | grep rc
+#   $ ls -l /etc | pee | grep rc
 #   This prints all the output from the ls, and then the output from the grep.
-
-function yee() {
-  local log=/tmp/yee-$(date8)-$$.log
+function pee() {
+  local log=/tmp/pee-$(date8)-$$.log
   {
-    "$@" |& tee $log
-    local rc=${PIPESTATUS[0]}
-    byellow "* Command finished with status $rc"
+    tee $log
+    byellow "*** Command finished ***"
   } 1>&2
   cat $log
-  return $rc
+  rm -f $log
 }

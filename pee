@@ -3,4 +3,4 @@
 set -e
 . mutil.sh
 
-yee "$@"
+pee "$@"
