@@ -1,6 +1,8 @@
 #!/bin/bash
 
+# withterm runs a command on a pseudo terminal.
+
 set -e
 . mutil.sh
 
-withterm "$@"
+script -q -c "$(shescape-multi "$@")"

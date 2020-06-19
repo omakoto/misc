@@ -674,7 +674,7 @@ function remove-comments-helper() {
 
 # pee -- tee to pipe
 # Usage:
-#   $ ls -l /etc | pee | grep rc
+#   $ ls -l /etc |& pee | grep rc
 #   This prints all the output from the ls, and then the output from the grep.
 function pee() {
   local log=/tmp/pee-$(date8)-$$.log
@@ -686,7 +686,3 @@ function pee() {
   rm -f $log
 }
 
-# withterm runs a command on a pseudo terminal.
-withterm() {
-  script -q -c "$(shescape-multi "$@")"
-}
