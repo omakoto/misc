@@ -1,0 +1,5 @@
+#!/bin/bash
+
+echo "(Ignoring the $ prefix...)" 1>&2
+
+exec "$@"
