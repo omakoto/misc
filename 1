@@ -33,6 +33,7 @@ cbin=0
 quiet=0
 line=0
 column=0
+tee=0
 
 #if ! is-interactive ; then
 #  no_zenlog=1
@@ -53,6 +54,7 @@ eval "$(bashgetopt -u usage '
   z|no-zenlog      no_zenlog=1     # Don'\''t use zenlog logfile to catch stdin input.
   pipe             pipe=1          # Read from stdin.
   stdin            pipe=1          # Read from stdin.
+  t|tee            tee=1;pipe=1    # Read from stdin and also print on stdout.
   makepath         mkpath=1        # Make the directory.
   C|cbin           cbin=1          # Also open ~/cbin/
   q|quiet          quiet=1         # Set EE_QUIET=1
@@ -86,16 +88,26 @@ if (( ${#args} == 0 && ${#files} == 0 )) ; then
   fi
 fi
 
+eat_stdin() {
+  local out="$1"
+  if (( $tee  )) ; then
+    tee "$out"
+  else
+    cat >"$out"
+  fi
+}
+
+
 if (( $pipe != 0 )) ; then
   if zenlog in-zenlog && (( ! $no_zenlog )) ; then
     byellow "Writing to current zenlog file..." | zenlog write-to-outer
-    cat > "$(zenlog logger-pipe)"
+    eat_stdin "$(zenlog logger-pipe)"
     log=$(zenlog history -n 1)
   else
     log="$temp/pipe-$(date8)-$$.log"
     byellow -n "Logging to: "
     echo $log
-    cat > $log
+    eat_stdin $log
   fi
 
   args+=($log)

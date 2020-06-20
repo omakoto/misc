@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+log="$(zenlog current-log)"
+temp=/tmp/$$.tmp
+
+cp "$log" "$temp"
+
+echo "==================================="
+cat "$temp"
