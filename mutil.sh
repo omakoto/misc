@@ -687,7 +687,18 @@ function remove-comments-helper() {
 # Usage:
 #   $ ls -l /etc |& pee | grep rc
 #   This prints all the output from the ls, and then the output from the grep.
+# Or,
+#   $ pee ls --color=auto -l /etc | grep rc
+
 function pee() {
+  if (( $# == 0 )) ; then
+    pee_inner
+  else
+    withterm "$@" |& pee_inner
+  fi
+}
+
+function pee_inner() {
   local log=/tmp/pee-$(date8)-$$.log
   {
     tee $log
