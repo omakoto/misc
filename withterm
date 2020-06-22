@@ -5,4 +5,14 @@
 set -e
 . mutil.sh
 
+if (( $# == 0 )) ; then
+  cat <<'EOF'
+  withterm/wt: run command on a pseudo terminal
+
+  usage: wt COMMAND [ARGS...]
+
+EOF
+  exit 1
+fi
+
 script -q -c "$(shescape-multi "$@")" /dev/null
