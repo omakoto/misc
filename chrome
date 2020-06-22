@@ -10,13 +10,11 @@ app=0
 profdir=""
 wait=0
 no_ibus=0
-verbose=1
 
 eval "$(bashgetopt -d 'Run Chrome' '
 p|profile=s  profdir=%      # specify profile directory name
 a|app        app=1          # start as app
 w|wait       wait=1         # wait until all Chrome instances stop before starting
-v|verbose    verbose=1      # make verbose
 no-ibus      no_ibus=1      # Disable ibus
 ' "$@")"
 
@@ -112,4 +110,4 @@ if (( $verbose )) ; then
   INFO 'Running' "$chrome" "${params[@]}" "$@"
 fi
 
-( "$chrome" "${params[@]}" "$@" &) >/dev/null 2>&1
+ee -b "$chrome" "${params[@]}" "$@"

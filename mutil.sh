@@ -242,7 +242,7 @@ echo-and-exec() {
   local dry_opts=""
   local notify_opts=""
   local bg_opts=""
-  local with_time=1
+  local with_time=0
   local raw_marker=""
   local marker="Running"
   local pwd=0
