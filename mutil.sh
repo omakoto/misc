@@ -23,7 +23,13 @@ interactive() {
 }
 
 iswsl() {
-  (( $_is_wsl ))
+  if (( $_is_wsl )) ; then
+    [[ -n "$1" ]] && echo "$1"
+    return 0
+  else
+    [[ -n "$2" ]] && echo "$2"
+    return 1
+  fi
 }
 
 if ! interactive && (( $# == 1 )) ; then
