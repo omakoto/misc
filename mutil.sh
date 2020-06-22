@@ -457,7 +457,9 @@ retry-until-failure() {
 }
 
 bg-start() {
-  ( nohup "$@" </dev/null >&/dev/null & )
+  local BG_OUT=${BG_OUT:-/dev/null}
+  echo "Starting: $*" >>"$BG_OUT"
+  ( nohup "$@" </dev/null >>"$BG_OUT" 2>&1 & )
 }
 
 function zenlog-nolog-out() {
