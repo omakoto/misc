@@ -707,3 +707,11 @@ function pee_inner() {
   cat $log
   rm -f $log
 }
+
+function neg() {
+  if "$@" ; then
+    return 1
+  else
+    return 0
+  fi
+}
