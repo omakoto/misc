@@ -8,8 +8,7 @@ if [[ -z "$command" ]] ; then
   exit 1
 fi
 
-# Note $HOME/tmp/ is a ramdisk
-checkfile=$HOME/tmp/runonce_"${command##*/}_$(sha1sum <<<"$*" | awk '{print $1}')"
+checkfile=${RAMTMP:-/tmp}/runonce_"${command##*/}_$(sha1sum <<<"$*" | awk '{print $1}')"
 
 if [[ -f "$checkfile" ]] ; then
   exit 0
