@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+watch grep \"cpu MHz\" /proc/cpuinfo
+
+# cpupower frequency-set -g performance
