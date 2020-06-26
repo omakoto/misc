@@ -1,10 +1,12 @@
 #!/bin/bash
 
+. mutil.sh
+
 if [[ -n "$SSH_AGENT_PID" ]] ; then
 	exit 0
 fi
 
-saved=${RAMTMP:-/tmp}/tmp/ssh-agent-vars
+saved=$(ramtmp)/ssh-agent-vars
 
 if [[ -f $saved ]] ; then
 	cat $saved

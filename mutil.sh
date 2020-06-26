@@ -715,3 +715,14 @@ function neg() {
     return 0
   fi
 }
+
+function ramtmp() {
+  local path=/dev/shm/$USER/tmp/
+  if mkdir -p $path ; then
+    echo $path
+    return 0
+  else
+    echo '/dev/shm/ does not exist?' 1>&2
+    return 1
+  fi
+}
