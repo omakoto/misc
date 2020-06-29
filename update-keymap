@@ -14,30 +14,30 @@ if iswsl ; then
   exit 0
 fi
 
+sf=1
 chrome_dpi="1.5"
 rdt_dpi=1.0
 
 case "$(hostname -s)" in
   omakoto-glaptop2) # Dell laptop.
-    if lsusb | grep -q '0853:0111' ; then # Topre keyboard.
-      ee $medir/dell-keymap-reset
-      gsettings set org.cinnamon.desktop.interface scaling-factor 1
-    elif lsusb | grep -q '05e3:0610' ; then # UK rental display
-      ee $medir/dell-keymap-reset
-      gsettings set org.cinnamon.desktop.interface scaling-factor 2
-    else
-      ee $medir/dell-keymap-custom
-      chrome_dpi="2.6"
-      rdt_dpi=1.5
-      gsettings set org.cinnamon.desktop.interface scaling-factor 2
-    fi
+    ee $medir/dell-keymap-custom
     dell-touchscreen-enable 1
+    chrome_dpi="2.6"
+    rdt_dpi=1.5
+    sf=2
     ;;
-  *)
-    ee keymap-reset
+  x1c5deb) # X1 carbon gen5
+    chrome_dpi="2"
+    sf=2
     ;;
 esac
 
+if lsusb | grep -q '0853:0111' ; then # Topre keyboard.
+  $medir/dell-keymap-reset
+  sf=1
+fi
+
+ee gsettings set org.cinnamon.desktop.interface scaling-factor $sf
 echo "$chrome_dpi" > ~/.chromedpi
 echo "$rdt_dpi" > ~/.remote-desktop-dpi
 
