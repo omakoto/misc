@@ -1,0 +1,27 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+target="$1"
+patch=/tmp/$$.patch
+
+if ! [[ -d "$target" ]] ; then
+  cat <<'EOF'
+
+ git-apply-from: Apply a patch generated from a given directory
+
+ usage: git-apply-from FROM-DIRECTORY
+
+EOF
+  exit 1
+fi
+
+(
+  ee cd "$target"
+  ee git diff HEAD@{u} > $patch
+)
+
+ee git apply -3 $patch
+
+rm -f $patch
