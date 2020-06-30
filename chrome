@@ -61,11 +61,13 @@ fi
 params=()
 
 if [[ -n "$profdir" ]]; then
-  params+=("--user-data-dir=$profdir")
+  profdir="$(l2w "$profdir")"
+  params+=("--user-data-dir=${profdir}")
   echo "profile=$profdir"
   if ! [[ -d "$profdir/" ]] ; then
     mkdir -p "$profdir"
   fi
+  params+=("--profile-directory=Default")
 fi
 
 # This file is written by pc-config-update
