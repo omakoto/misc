@@ -10,7 +10,7 @@ distro=$(lsb_release -is | tr 'A-Z' 'a-z')
 echo "Distro=${distro:?Unknown distribution}"
 
 curl -fsSL https://download.docker.com/linux/$distro/gpg | sudo apt-key add -
-echo sudo add-apt-repository \
+sudo add-apt-repository \
    "deb [arch=amd64] https://download.docker.com/linux/$distro $(lsb_release -cs) stable"
 
 sudo apt update
