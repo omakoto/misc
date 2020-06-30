@@ -5,13 +5,9 @@ set -e
 
 # sudo apt install sublime-text
 
-distro=debian
+distro=$(lsb_release -is | tr 'A-Z' 'a-z')
 
-if uname -a | grep -qi ubuntu ; then
-  distro=ubuntu
-fi
-
-echo "Distro=$distro"
+echo "Distro=${distro:?Unknown distribution}"
 
 curl -fsSL https://download.docker.com/linux/$distro/gpg | sudo apt-key add -
 echo sudo add-apt-repository \
