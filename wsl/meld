@@ -1,3 +1,10 @@
 #!/bin/bash
 
-l2w -0e -- "$@" | xargs -0 ee -b "/mnt/c/Program Files (x86)/Meld/Meld.exe"
+runx /usr/bin/meld "$@"
+
+# if [[ "$DISPLAY" != "" ]] ; then
+#   ee -b /usr/bin/meld "$@"
+#   exit 0
+# fi
+
+# l2w -0e -- "$@" | xargs -0 ee -b "/mnt/c/Program Files (x86)/Meld/Meld.exe"

@@ -1,0 +1,10 @@
+#!/bin/bash
+
+ip="$(awk '/^nameserver/{print $2}' /etc/resolv.conf)"
+
+if [[ "$ip" == "" ]] ; then
+  echo "Unable to detect the host IP address" 1>&2
+  exit 1
+fi
+
+echo $ip

@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+if ! iswsl ; then
+    : ${DISPLAY?}
+else
+  if [[ "$DISPLAY" == "" ]] ; then
+    DISPLAY=$(hostip):0.0
+  fi
+
+  # Assume high DPI -- TODO Fix it
+  export GDK_SCALE=0.5
+  export GDK_DPI_SCALE=2
+fi
+
+export DISPLAY
+ee -b "$@"
+exit 0
