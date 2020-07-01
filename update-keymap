@@ -27,7 +27,7 @@ case "$(hostname -s)" in
     sf=2
     ;;
   x1c7ubu|debian) # X1 carbon gen7 / vmware
-    chrome_dpi="1.5"
+    chrome_dpi="2.5"
     sf=2
     ;;
   x1c5deb) # X1 carbon gen5
@@ -38,6 +38,7 @@ esac
 
 if lsusb | grep -q '0853:0111' ; then # Topre keyboard.
   $medir/dell-keymap-reset
+  chrome_dpi="1.5"
   sf=1
 fi
 
