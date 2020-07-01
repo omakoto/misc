@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+base=$HOME/sshfs/
+
+mkdir -p $base/{pi1,pi3,pi0}
+
+function mount() {
+  local server="$1"
+  local mp="$2"
+  if df -t fuse.sshfs "$mp" >&/dev/null; then
+    return 0 # already mounted
+  fi
+  ee sshfs "$server" "$mp"
+}
+
+mount pi@192.168.86.101:/ $base/pi1
+mount pi@192.168.86.130:/ $base/pi3
+mount pi@192.168.86.120:/ $base/pi0
