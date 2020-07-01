@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# nsc: create a new script
+
+set -e
+. mutil.sh
+
+if (( $# == 0 )) ; then
+  echo "Usage: nsc FILENAME # create a new script" 1>&2
+  exit 1
+fi
+
+file="$1"
+
+if ! fgrep -q / <<< "$file" ; then
+  file="$HOME/cbin/misc/$file"
+fi
+
+if ! [[ -f "$file" ]]; then
+  cat > "$file" <<'EOF'
+#!/bin/bash
+
+set -e
+. mutil.sh
+EOF
+
+fi
+
+chmod +x "$file"
+
+INFO "Opening:" "$file"
+EE_QUIET=1 1 "$file"
