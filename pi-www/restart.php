@@ -17,7 +17,7 @@ if ($_POST["mode"] == "reboot") {
   echo "Rebooting...";
   exec('sudo /sbin/reboot');
 }
-if ($_POST["mode"] == "reboot") {
+if ($_POST["mode"] == "shutdown") {
   echo "Shutting down...";
   exec('sudo /sbin/shutdown -h now');
 }
