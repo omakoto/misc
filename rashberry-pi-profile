@@ -3,4 +3,5 @@ export PATH=$PATH:~/cbin:~/cbin/misc:~/local-makoto/go/bin/:~/go/bin
 runonce ssh-add
 ssh-add -l # List the keys
 
-
+alias ll='ls -l'
+alias la='ls -la'
