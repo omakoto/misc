@@ -1,0 +1,6 @@
+export PATH=$PATH:~/cbin:~/cbin/misc:~/local-makoto/go/bin/:~/go/bin
+. <(ssh-agent-start-eval)
+runonce ssh-add
+ssh-add -l # List the keys
+
+
