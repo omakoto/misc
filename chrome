@@ -15,6 +15,8 @@ eval "$(bashgetopt -d 'Run Chrome' '
 p|profile=s  profdir=%      # specify profile directory name
 a|app        app=1          # start as app
 w|wait       wait=1         # wait until all Chrome instances stop before starting
+c|corp       profdir=chrome-corp         # use the "corp" profile
+n|personal   profdir=chrome-personal     # use the "personal" profile
 no-ibus      no_ibus=1      # Disable ibus
 ' "$@")"
 
@@ -61,12 +63,21 @@ fi
 params=()
 
 if [[ -n "$profdir" ]]; then
+  if ! [[ "$profdir" =~ / ]] ; then
+    profdir="$HOME/.config/$profdir"
+  fi
+  profdir="$(readlink -e "$profdir")"
   profdir="$(l2w "$profdir")"
+  if ! [[ -d "$profdir" ]] ;then
+    echo "Profile directory \"$profdir\" doesn't exist" 1>&2
+    exit 1
+  fi
+
   params+=("--user-data-dir=${profdir}")
   echo "profile=$profdir"
-  if ! [[ -d "$profdir/" ]] ; then
-    mkdir -p "$profdir"
-  fi
+  # if ! [[ -d "$profdir/" ]] ; then
+  #   mkdir -p "$profdir"
+  # fi
   params+=("--profile-directory=Default")
 fi
 
