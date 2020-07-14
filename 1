@@ -113,7 +113,35 @@ if (( $pipe != 0 )) ; then
   args+=($log)
 fi
 
+# If the file doesn't exist, but it's a relative path and any (grand) parent has this file,
+# then suggest opening it instead.
+function resolve_file() {
+  local n="$1"
+  if [[ -e "$n" ]] || [[ "$n" =~ ^/ ]]  ; then
+    echo "$n"
+    return 0
+  fi
+  {
+    echo "[NEW FILE] $PWD/$n"
+    for path in $(paths-to-root "$PWD") ; do
+      f="$path$n"
+      if [[ -e "$f" ]] ; then
+        # echo -n "Open '$f' instead? (y/n)" 1>&2
+        # read a
+        # if [[ "$a" = "y" ]] ;then
+        #   echo "$f"
+        #   return 0
+        # fi
+        # break
+        echo "[EXISTENT] $f"
+      fi
+    done
+  } | fzf | sed -e 's/^.*] //'
+  return 0
+}
+
 for n in "${args[@]}" ; do
+  n="$(resolve_file "$n")"
   if (( $force_editor )) || [[ -d "$n" ]] ; then
     f="$n"
   else

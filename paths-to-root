@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# Given a path, print all parent paths up to root.
+# e.g.
+# $ paths-to-root /android/master/frameworks/base/
+# /android/master/frameworks/base/
+# /android/master/frameworks/
+# /android/master/
+# /android/
+# /
+
+
+set -e
+. mutil.sh
+
+path="$1"
+
+if [[ "$path" == "" ]] ; then
+  echo "Usage: ${0##*/} PATH" 1>&2
+  exit 1
+fi
+
+while true; do
+  echo "$path/"
+  if [[ "$path" == "" ]] ; then
+    break
+  fi
+  path="${path%/*}"
+done
