@@ -20,6 +20,13 @@ if [[ "$path" == "" ]] ; then
   exit 1
 fi
 
+path="$(abspath "$path")"
+
+if [[ "$path" == "/" ]] ; then
+  echo "$path"
+  exit 0
+fi
+
 while true; do
   echo "$path/"
   if [[ "$path" == "" ]] ; then
