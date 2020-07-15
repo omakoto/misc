@@ -122,8 +122,8 @@ function resolve_file() {
     return 0
   fi
   {
-    echo "[NEW FILE] $PWD/$n"
-    for path in $(paths-to-root "$PWD") ; do
+    echo "[NEW]   $PWD/$n"
+    for path in $(paths-to-root "$PWD") $(recent-dirs | head -20) ; do
       f="$path$n"
       if [[ -e "$f" ]] ; then
         # echo -n "Open '$f' instead? (y/n)" 1>&2
@@ -133,10 +133,10 @@ function resolve_file() {
         #   return 0
         # fi
         # break
-        echo "[EXISTENT] $f"
+        echo "[EXIST] $f"
       fi
     done
-  } | fzf | sed -e 's/^.*] //'
+  } | fzf -1 | sed -e 's/^[^ ]*  *//'
   return 0
 }
 
