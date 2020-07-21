@@ -1,0 +1,26 @@
+#!/bin/bash
+
+exec 1>/tmp/idler.log 2>&1
+
+check_interval=60
+idle_millis=300000
+
+if [[ "$1" == "-d" ]] ;then
+  check_interval=1
+  idle_millis=5000
+fi
+
+wait_for_idle=1
+
+while true; do
+  idle=$(xprintidle)
+  # echo "$idle"
+  if (( $idle < $idle_millis )) ; then
+    wait_for_idle=1
+  elif (( $wait_for_idle )) ; then
+    echo "Running the idle command..."
+    wait_for_idle=0
+    "$0".commands
+  fi
+  sleep $check_interval
+done

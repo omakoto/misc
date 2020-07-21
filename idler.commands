@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# script executed by ideler.
+
+history-sync.sh

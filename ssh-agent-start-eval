@@ -3,6 +3,7 @@
 . mutil.sh
 
 if [[ -n "$SSH_AGENT_PID" ]] ; then
+  echo "SSH_AGENT_PID already set." 1>&2
 	exit 0
 fi
 
