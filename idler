@@ -4,25 +4,31 @@ exec 1>/tmp/idler.log 2>&1
 
 set -e
 
-check_interval=60
-idle_millis=300000
+check_interval=120
+idle_secs=300
 
 if [[ "$1" == "-d" ]] ;then
   check_interval=1
-  idle_millis=5000
+  idle_secs=5
 fi
 
 wait_for_idle=1
 
+idle_millis=$(( $idle_secs * 1000 ))
+
 while true; do
   idle=$(xprintidle)
+  if [[ "$idle" == "" ]] ; then
+    echo "xprintidle didn't work" 1>&2
+    exit 1
+  fi
   # echo "$idle"
   if (( $idle < $idle_millis )) ; then
     wait_for_idle=1
   elif (( $wait_for_idle )) ; then
     echo "Running the idle command..."
     wait_for_idle=0
-    "$0".commands
+    "$0".commands || true
   fi
   sleep $check_interval
 done
