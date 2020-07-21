@@ -2,6 +2,8 @@
 
 exec 1>/tmp/idler.log 2>&1
 
+set -e
+
 check_interval=60
 idle_millis=300000
 
