@@ -280,13 +280,10 @@ if (( $copy )) ; then
 fi
 
 
-run() {
-  if (( $bg )); then
-    ( "${@}" &)
-  else
-    "${@}"
-  fi
-}
+bg_opt=""
+if (( $bg )); then
+  bg_opt=-b
+fi
 
 if [[ -d "$file0" ]] ; then
   opts+=("-n")
@@ -318,5 +315,5 @@ if (( ${#files[@]} > 0 )) ; then
   ) >&/dev/null &
 
   cd $HOME
-  run ee $command $opts "${files[@]}" #| zenlog write-to-outer
+  ee $bg_opt $command $opts "${files[@]}" #| zenlog write-to-outer
 fi
