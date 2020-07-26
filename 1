@@ -135,6 +135,9 @@ function resolve_file() {
 
 for n in "${args[@]}" ; do
   n="$(resolve_file "$n")"
+  if ! [[ "$n" =~ ^/ ]] ; then
+    n="$PWD/$n"
+  fi
   if (( $force_editor )) || [[ -d "$n" ]] ; then
     f="$n"
   else
@@ -313,5 +316,7 @@ if (( ${#files[@]} > 0 )) ; then
       sleep 0.1
     done
   ) >&/dev/null &
+
+  cd $HOME
   run ee $command $opts "${files[@]}" #| zenlog write-to-outer
 fi

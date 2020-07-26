@@ -54,9 +54,15 @@ if [[ -f "$url" ]]; then
     fi
     ;;
   esac
+fi
 
+if [[ -e "$url" ]]; then
+  if ! [[ "$url" =~ ^/ ]] ; then
+    url="$PWD/$url"
+  fi
   url="$(l2w "$url")"
 fi
+
 
 # build the parameters.
 
@@ -123,4 +129,5 @@ if (( $verbose )) ; then
   INFO 'Running' "$chrome" "${params[@]}" "$@"
 fi
 
+cd $HME
 ee -b "$chrome" "${params[@]}" "$@"
