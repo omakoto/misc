@@ -1,0 +1,8 @@
+#!/bin/bash
+
+. mutil.sh
+
+for n in "$@"; do
+    echo "# $n"
+    sox "$n" -n stat 2>&1
+done
