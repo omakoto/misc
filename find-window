@@ -1,0 +1,13 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+found="$(window-title-list | grep -P "$*")"
+
+if [[ "$found" == "" ]] ; then
+  exit 1
+fi
+
+wmctrl -F -a "$found"
+exit 0
