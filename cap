@@ -11,9 +11,25 @@ fi
 
 out=$HOME/Downloads/screenshot-$(date8)${label}.png
 
-echo "Clip a window or drag a region to capture:"
-import "$out"
+echo "Select a region and press CTRL+C to capture:"
 
-INFO 'Captured into:' $out
+# import "$out" # Using imagemagick # With imagemagic
+# xclip -selection clipboard -t image/png -i $out
 
-xclip -selection clipboard -t image/png -i $out
+
+# With flameshot
+
+echo -n '' | xclip -i  -selection clipboard # Empty clipboard
+
+flameshot gui
+
+xclip -o -selection clipboard -t image/png #> $out
+#INFO 'Captured into:' $out
+
+
+# Shutter supports screenshotting and annotation, but not in the default repo.
+# # install shutter
+# sudo add-apt-repository -y ppa:linuxuprising/shutter
+# sudo apt update
+# sudo apt install -y shutter
+
