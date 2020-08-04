@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+label=""
+
+if (( $# > 0 )) ; then
+  label="_$(perl -pe 'chomp; s!\s+!_!g' <<< "$*")"
+fi
+
+out=$HOME/Downloads/screenshot-$(date8)${label}.png
+
+echo "Clip a window or drag a region to capture:"
+import "$out"
+
+INFO 'Captured into:' $out
+
+xclip -selection clipboard -t image/png -i $out
