@@ -1,4 +1,6 @@
 import sys
+import math
+
 
 from matplotlib import pyplot as plt
 import numpy as np
@@ -8,3 +10,4 @@ from keras.datasets import mnist
 from keras.utils import np_utils, to_categorical
 from keras import models
 from keras import layers
+
