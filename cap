@@ -15,7 +15,8 @@ echo "Select a region and press CTRL+C to capture:"
 
 import "$out" # Using imagemagick # With imagemagic
 xclip -selection clipboard -t image/png -i $out
-ee -b gimp $out
+INFO 'Captured into:' $out
+ee -qb gimp $out
 
 # With flameshot -> Doesn't work well
 # - It doesn't set a status code.
@@ -33,7 +34,6 @@ ee -b gimp $out
 #   sleep 1
 # done
 
-INFO 'Captured into:' $out
 
 
 # Shutter supports screenshotting and annotation, but not in the default repo.

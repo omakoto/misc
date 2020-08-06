@@ -30,8 +30,12 @@ case "$(hostname -s)" in
     chrome_dpi="2.5"
     sf=2
     ;;
-  x1c5deb|x1g5|x1eu) # X1 carbon gen5
+  x1c5deb|x1g5) # X1 carbon gen5
     chrome_dpi="2"
+    sf=2
+    ;;
+  x1eu) # X1 extreme
+    chrome_dpi="2.5"
     sf=2
     ;;
 esac
