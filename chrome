@@ -72,7 +72,7 @@ if [[ -n "$profdir" ]]; then
   if ! [[ "$profdir" =~ / ]] ; then
     profdir="$HOME/.config/$profdir"
   fi
-  profdir="$(readlink -e "$profdir")"
+  profdir="$(readlink -m "$profdir")"
   profdir="$(l2w "$profdir")"
   if ! [[ -d "$profdir" ]] ;then
     echo "Profile directory \"$profdir\" doesn't exist" 1>&2
