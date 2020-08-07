@@ -34,7 +34,7 @@ case "$(hostname -s)" in
     chrome_dpi="2"
     sf=2
     ;;
-  x1eu|omakoto3) # X1 extreme
+  x1eu|omakoto3) # X1 extreme / P1 gen 2
     chrome_dpi="2.5"
     sf=2
     ;;
