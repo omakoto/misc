@@ -190,7 +190,7 @@ log() {
       cat
     fi
   } | {
-    log="${TEMP:-/tmp}"/log-$(date8)-$(tr ' /|' '_-_' <<<"$*").log
+    log="${LOGDIR:-/tmp}"/log-$(date8)-$(tr ' /|' '_-_' <<<"$*").log
     _log_print_filename() {
       {
         byellow -n "Log filename: "
@@ -246,7 +246,7 @@ dry-run() {
 }
 
 eem() {
-  echo-and-exec -lUMRT --pwd "$@"
+  echo-and-exec --log --show-result --mobile --log --unbuffer --time --pwd "$@"
 }
 
 echo-and-exec() {
@@ -285,8 +285,8 @@ echo-and-exec() {
       R|show-result    show_result=1      # Show result code.
       M|mobile         mobile=1           # Send mobile notification upon finish.
       l|log            log=1              # Use tee to log the output
-      U|unbuffer       unbuffer=1         # Force line buffering.
-      T|time           time=1             # Run with /usr/bin/time -v
+      U|unbuffer       unbuffer=1         # Force line buffering. (command always runs as a child)
+      T|time           time=1             # Run with /usr/bin/time -v. (command always runs as a child)
       ' "$@")"
 
   if (( $DRYRUN )) || (( $DRY )) || (( $EE_DRY )) ; then

@@ -50,4 +50,4 @@ ee gsettings set org.cinnamon.desktop.interface scaling-factor $sf
 echo "$chrome_dpi" > ~/.chromedpi
 echo "$rdt_dpi" > ~/.remote-desktop-dpi
 
-echo "Updated keymap."
+echo "Updated DPI settings (and keymap on the dell 5520)."

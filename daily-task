@@ -1,5 +1,8 @@
 #!/bin/bash
 
+set -e
+. mutil.sh
+
 taskname="${1?First argument must be task name}"
 ndays="${2:-1}"
 
@@ -7,12 +10,12 @@ checkfile=/tmp/task-timestamp-$taskname
 
 if [[ -f "$checkfile" ]] ; then
     if (( $(fileage "$checkfile") < $ndays )) ; then
-        echo "Skipping task: $taskname"
+        INFO "Skipping task:" "$taskname"
         exit 1
     fi
 fi
 
-echo "Running task: $taskname"
+INFO "Running task:" "$taskname"
 touch "$checkfile"
 exit 0
 
