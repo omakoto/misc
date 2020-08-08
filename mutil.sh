@@ -245,6 +245,10 @@ dry-run() {
   return 0
 }
 
+eem() {
+  echo-and-exec -lUMRT --pwd "$@"
+}
+
 echo-and-exec() {
   local to=1
   local dry=0
@@ -259,6 +263,10 @@ echo-and-exec() {
   local quiet=0
   local child_quiet=0
   local show_result=0
+  local mobile=0
+  local log=0
+  local unbuffer=0
+  local time=0
   eval "$(bashgetopt -d 'Echo and execute' '
       2|stderr         to=2               # Show message on stderr instead of stdout.
       tty tty=1                           # Show message directly to TTY instead of stdout.
@@ -274,7 +282,11 @@ echo-and-exec() {
       pwd pwd=1                           # Show current directory too.
       q|quiet          quiet=1;child_quiet=1  # Don'\''t echo back command line.
       Q|child-quiet    child_quiet=1      # Silence inner ee executions.
-      R|show-result    show_result=1      # Show result code
+      R|show-result    show_result=1      # Show result code.
+      M|mobile         mobile=1           # Send mobile notification upon finish.
+      l|log            log=1              # Use tee to log the output
+      U|unbuffer       unbuffer=1         # Force line buffering.
+      T|time           time=1             # Run with /usr/bin/time -v
       ' "$@")"
 
   if (( $DRYRUN )) || (( $DRY )) || (( $EE_DRY )) ; then
@@ -313,9 +325,25 @@ echo-and-exec() {
       nocolor ""
     } 1>&$to
   fi
+  unbuffer_opts=""
+  if (( $unbuffer )) ; then
+    unbuffer_opts="stdbuf -oL -eL"
+  fi
+  log_opts=""
+  if (( $log )) ; then
+    log_opts="log"
+  fi
+  time_opts=""
+  if (( $time )) ; then
+    time_opts="/usr/bin/time -v"
+  fi
   local rc=0
-  EE_QUIET="${EE_QUIET:-$child_quiet}" $dry_opts $bg_opts $notify_opts "${@}"
+  EE_QUIET="${EE_QUIET:-$child_quiet}" $dry_opts $bg_opts $notify_opts $log_opts $unbuffer_opts $time_opts "${@}"
   rc=$?
+
+  if (( $mobile )) ;then
+    notify-mobile "Command finished with code $rc"$'\n'"Command: $*"
+  fi
 
   if (( $show_result )) ; then
     {
