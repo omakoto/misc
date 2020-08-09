@@ -1,0 +1,29 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+if (( $# == 0 )) ; then
+  cat <<'EOF'
+
+  Usage: focus-window PREDICATE-COMMAND [args...] # $TITLE, $EXE and $PID are passed to this command too
+
+  e.g.
+    $ focus-window perl -e 'exit ($ARGV[1] =~ /sublime_text/i ? 0 : 1)'
+
+EOF
+  exit 1
+fi
+
+COMMAND=("$@")
+
+while read -r id x pid host title; do
+  # echo "$pid $title"
+  exe="$(readlink -e /proc/$pid/exe)"
+  if "${COMMAND[@]}" "$title" "$exe" "$pid" ; then
+    wmctrl -F -a "$title"
+    exit 0
+  fi
+done < <(wmctrl -l -p)
+
+exit 1
