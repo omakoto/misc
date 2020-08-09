@@ -23,7 +23,7 @@ while read -r id x pid host title; do
   if "${COMMAND[@]}" "$title" "$exe" "$pid" ; then
     wmctrl -F -a "$title"
     exit 0
-  fi1
+  fi
 done < <(wmctrl -l -p)
 
 exit 1
