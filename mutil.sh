@@ -246,7 +246,7 @@ dry-run() {
 }
 
 eem() {
-  echo-and-exec --log --show-result --mobile --log --unbuffer --time --pwd "$@"
+  echo-and-exec --timestamp --log --show-result --mobile --log --unbuffer --time --pwd "$@"
 }
 
 echo-and-exec() {
