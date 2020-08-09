@@ -1,7 +1,7 @@
 function command_not_found_handle() {
     local command=$1
 
-    # Auto checkout.
+    # Auto git checkout.
     if is-git-branch "$command" ; then
         echo "git checkout $command"
         ee git checkout "$command"

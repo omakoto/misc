@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Echo the arguments and ask 'y/n'
+
+set -e
+. mutil.sh
+
+echo -n "$* (y/N)? " 1>&2
+read -n1 n </dev/tty
+echo
+
+if [[ "$n" == "y" ]] ; then
+  exit 0
+else
+  exit 1
+fi
