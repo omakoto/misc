@@ -5,6 +5,8 @@ import re
 
 from matplotlib import pyplot as plt
 import numpy as np
+import pandas as pd
+from pandas import Series, DataFrame
 
 from IPython.display import display as d
 
