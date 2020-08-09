@@ -301,13 +301,10 @@ if (( ${#files[@]} > 0 )) ; then
     done
   fi
   # Bring the sublime window to top
-  which wmctrl >&/dev/null && (
+  (
     set +e
-    for n in 1 2 3 4 5 6 7 8 9 0; do
-      # Find the full title.
-      title="$( window-title-list | fgrep "$file0" | grep 'Sublime Text$' )"
-      if [[ -n "$title" ]] ; then
-        wmctrl -F -a "$title"
+    for n in {1..10}; do
+      if focus-window perl -e 'exit(($ARGV[1] =~ m!/sublime_text$! and $ARGV[0] =~ m!^\Q'"$file0"'\E\s.*Sublime Text$!) ? 0 : 1)' ; then
         break
       fi
       sleep 0.1
