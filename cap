@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export PATH="$PATH:$HOME/cbin:$HOME/cbin/misc"
+
 set -e
 . mutil.sh
 
@@ -14,31 +16,7 @@ out=$HOME/Downloads/screenshot-$(date8)${label}.png
 echo "Select a region and press CTRL+C to capture:"
 
 import "$out" # Using imagemagick # With imagemagic
-xclip -selection clipboard -t image/png -i $out
+#xclip -selection clipboard -t image/png -i $out
+echo "$out" | xclip -r -selection clipboard -t text/plain
 INFO 'Captured into:' $out
 ee -qb gimp $out
-
-# With flameshot -> Doesn't work well
-# - It doesn't set a status code.
-# - It doesn't take an exact save path. (takes a directory only.)
-# - It copies to the clipboard with some delay.
-
-# echo -n '' | xclip -i  -selection clipboard # Empty clipboard
-
-# flameshot gui
-
-# while true ; do
-#   ps -ef | grep flameshot
-#   xclip -o -selection clipboard -t image/png > $out
-#   ls -l $out
-#   sleep 1
-# done
-
-
-
-# Shutter supports screenshotting and annotation, but not in the default repo.
-# # install shutter
-# sudo add-apt-repository -y ppa:linuxuprising/shutter
-# sudo apt update
-# sudo apt install -y shutter
-
