@@ -1,0 +1,11 @@
+#!/usr/bin/python3
+
+import sys
+from itertools import chain
+
+for i in chain(range(0x20, 0x80), range(0xa0, 0xD7FF), range(0xE0000, 0xFFFF)):
+    if i & 0x1f == 0x00:
+        sys.stdout.write('0x%04x: ' % i)
+    sys.stdout.write('%c' % i)
+    if i & 0x1f == 0x1f:
+        sys.stdout.write('\n')
