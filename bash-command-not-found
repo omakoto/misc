@@ -8,6 +8,11 @@ function command_not_found_handle() {
         return $?
     fi
 
+    # Try to add +x, but it doesn't work because this hook isn't called.
+    if x "$command" ; then
+        return 0
+    fi
+
     echo "bash: $command: command not found"
     return 127
 }
