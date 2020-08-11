@@ -135,6 +135,9 @@ function resolve_file() {
 
 for n in "${args[@]}" ; do
   n="$(resolve_file "$n")"
+  if [[ "$n" == "" ]] ; then # resolve failed
+    exit 1
+  fi
   if ! [[ "$n" =~ ^/ ]] ; then
     n="$PWD/$n"
   fi
