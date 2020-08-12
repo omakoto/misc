@@ -19,4 +19,4 @@ import "$out" # Using imagemagick # With imagemagic
 #xclip -selection clipboard -t image/png -i $out
 echo "$out" | xclip -r -selection clipboard -t text/plain
 INFO 'Captured into:' $out
-ee -qb gimp $out
+ee -qb krita $out
