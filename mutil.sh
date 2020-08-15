@@ -179,17 +179,13 @@ likely-command() {
 }
 
 log() {
-  if (( $# == 0)) && [[ -t 0 ]] ; then
-    zenlog_open_last_log
-    return $?
-  fi
   {
     if (( $# > 0 )) ; then
-      "$@" 2>&1
+      "$@"
     else
       cat
     fi
-  } | {
+  } |& {
     log="${LOGDIR:-/tmp}"/log-$(date8)-$(tr ' /|' '_-_' <<<"$*").log
     _log_print_filename() {
       {
@@ -198,7 +194,7 @@ log() {
       } 1>&2
     }
 
-    trap _log_print_filename EXIT SIGHUP
+    trap _log_print_filename EXIT
 
     _log_print_filename
 
@@ -214,26 +210,7 @@ timestamp() {
     else
       cat
     fi
-  } 2>&1 | {
-    perl -e '
-      use Time::HiRes qw(time);
-      use POSIX qw(strftime);
-
-      $| = 1;
-
-      my $start = time;
-      my $last = $start;
-      while (defined(my $l = <>)) {
-        my $t = time;
-        print(strftime("%Y/%m/%d %H:%M:%S", localtime ($t)),
-            sprintf(".%03d %8.3f %6.3f",
-                ($t-int($t))*1000, $t - $start, $t - $last),
-            $p, "  ", $l);
-
-        $last = $t;
-      }
-      '
-  }
+  } |& ts '%F %T'
   return ${PIPESTATUS[0]}
 }
 
@@ -246,7 +223,11 @@ dry-run() {
 }
 
 eem() {
-  echo-and-exec --timestamp --log --show-result --mobile --log --unbuffer --time --pwd "$@"
+  echo-and-exec --timestamp --show-result --mobile --log --unbuffer --time --pwd "$@"
+}
+
+t() {
+  eem "$@"
 }
 
 echo-and-exec() {
