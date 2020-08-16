@@ -323,10 +323,12 @@ echo-and-exec() {
     time_opts="/usr/bin/time -v"
   fi
   local rc=0
+  local start=$SECONDS
   EE_QUIET="${EE_QUIET:-$child_quiet}" $dry_opts $bg_opts $notify_opts $log_opts $timestamp_opts $unbuffer_opts $time_opts "${@}"
   rc=$?
+  local duration=$(( $SECONDS - $start ))
 
-  if (( $mobile )) ;then
+  if (( $mobile && ( $duration > 2 ) )) ;then
     notify -m "Command finished with code $rc"$'\n'"Command: $*"
   fi
 
