@@ -210,7 +210,7 @@ timestamp() {
     else
       cat
     fi
-  } |& ts '%F %T'
+  } |& ts '%T'
   return ${PIPESTATUS[0]}
 }
 
@@ -256,7 +256,7 @@ echo-and-exec() {
       b|bg             bg_opts="bg-start" # Start in the background.
       d|dry-run        dry=1              # Dry run.
       v|notify         notify_opts="nf -v" # Verbose: Notify the result.
-      t|timestamp      with_time=1        # Display timestamp too.
+      t|timestamp      with_time=1        # Display start timestamp too.
       n|no-timestamp   with_time=0        # Don'\''t display timestamp.
       m: marker=%                         # Set marker.
       r: raw_marker=%                     # Set raw-marker.
@@ -283,6 +283,16 @@ echo-and-exec() {
     to=3
     exec 3>/dev/tty
   fi
+
+  local timestamp_opts=""
+  local _marker="${marker}: "
+  if [[ -n "$raw_marker" ]] ; then
+    _marker="${raw_marker}"
+  elif (( $with_time )) ; then
+    _marker="${marker} [$(date +%Y/%m/%d-%H:%M:%S)]: "
+    timestamp_opts=timestamp
+  fi
+
   if ! (( $quiet )) ; then
     {
       if (( $pwd )) ; then
@@ -294,36 +304,30 @@ echo-and-exec() {
       fi
       byellow -nc
       (( $dry )) && echo -n "(DRY) "
-      if [[ -n "$raw_marker" ]] ; then
-        echo -n "${raw_marker}"
-      elif (( $with_time )) ; then
-        echo -n "${marker} [$(date +%Y/%m/%d-%H:%M:%S)]: "
-      else
-        echo -n "${marker}: "
-      fi
+      echo -n "${_marker}"
       bcyan -nc
       shescapen "$@"
       nocolor ""
     } 1>&$to
   fi
-  unbuffer_opts=""
+  local unbuffer_opts=""
   if (( $unbuffer )) ; then
     unbuffer_opts="stdbuf -oL -eL"
   fi
-  log_opts=""
+  local log_opts=""
   if (( $log )) ; then
     log_opts="log"
   fi
-  time_opts=""
+  local time_opts=""
   if (( $time )) ; then
     time_opts="/usr/bin/time -v"
   fi
   local rc=0
-  EE_QUIET="${EE_QUIET:-$child_quiet}" $dry_opts $bg_opts $notify_opts $log_opts $unbuffer_opts $time_opts "${@}"
+  EE_QUIET="${EE_QUIET:-$child_quiet}" $dry_opts $bg_opts $notify_opts $log_opts $timestamp_opts $unbuffer_opts $time_opts "${@}"
   rc=$?
 
   if (( $mobile )) ;then
-    notify-mobile "Command finished with code $rc"$'\n'"Command: $*"
+    notify -m "Command finished with code $rc"$'\n'"Command: $*"
   fi
 
   if (( $show_result )) ; then

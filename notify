@@ -24,7 +24,7 @@ message="$*"
 if (( $print_to_term )); then
   {
     echo
-    $color "    *** $message ***"
+    $color -ui "$message"
     echo
   } 1>&2
 fi
