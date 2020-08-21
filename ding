@@ -6,4 +6,4 @@ set -e
 message="$*"
 message="${message:-Ding!}"
 
-notify -m "$message"
+notify -vm "$message"

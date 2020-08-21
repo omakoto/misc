@@ -11,16 +11,27 @@ print_to_term=1
 wait=0
 msgbox_opts=""
 mobile=0
+invocation_details=0
 
 eval "$(getopt.pl -Nxd 'Show a dialog box' '
 e|error|c|critical  mode=--error; color=bred; msgbox_opts=-e  # Show as error.
-f|force             force=1                   # Show dialog even if stdin is not terminal.
+f|force             force=1                   # Obsolete option.
 s|no-terminal       print_to_term=0           # Do not show the message on terminal.
 w|wait              wait=1                    # Wait until the dialog closes.
 m|mobile            mobile=1                  # Send mobile notification via pushover.
+v|verbose           invocation_details=1      # Add invocation details.
 ' "$@")"
 
 message="$*"
+
+if (( $invocation_details )) ; then
+  message="$message
+
+Command: $(head -1 $(zenlog current-log))
+Dir: ${PWD:-$(pwd)}
+Host: $(hostname -f)"
+fi
+
 if (( $print_to_term )); then
   {
     echo
@@ -33,20 +44,15 @@ if (( $mobile )) ; then
   notify-mobile "$message"
 fi
 
-
-if [[ -t 0 ]] || (( "$force" )) ; then
-  if isx ; then
-    zenity $mode --text "$message" 2>/dev/null &
-    if (( $wait )) ; then
-      wait
-    fi
-  elif iswsl ; then
-    msgbox $msgbox_opts "$message"
-  else
-    if (( $wait )) ; then
-      echo -n "Press enter to continue: "
-      read
-    fi
-  fi
+if isx ; then
+  notify-send "[Message]" $'\n'"$message"
+elif iswsl ; then
+  msgbox $msgbox_opts "$message"
 fi
+
+if (( $wait )) ; then
+  echo -n "Press enter to continue: "
+  read
+fi
+
 exit 0

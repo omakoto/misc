@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+_last_command_duration="$1"
+
+if (( $_last_command_duration < 60 )) ; then
+  exit 0
+fi
+
+if (( $(xprintidle) / 1000 < ( 5 * 60) )) ; then
+  exit 0
+fi
+
+notify -v "Command finished"
