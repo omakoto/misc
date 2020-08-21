@@ -13,4 +13,4 @@ if (( $(xprintidle) / 1000 < ( 5 * 60) )) ; then
   exit 0
 fi
 
-notify -v "Command finished"
+notify -mv "Command finished"
