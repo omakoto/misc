@@ -5,6 +5,11 @@ export PATH="$PATH:$HOME/cbin:$HOME/cbin/misc"
 set -e
 . mutil.sh
 
+delay=0
+eval "$(bashgetopt '
+  d|delay          delay=3          # Delay 3 seconds
+' "$@")"
+
 label=""
 
 if (( $# > 0 )) ; then
@@ -12,6 +17,8 @@ if (( $# > 0 )) ; then
 fi
 
 out=$HOME/Downloads/screenshot-$(date8)${label}.png
+
+sleep $delay
 
 echo "Select a region and press CTRL+C to capture:"
 
