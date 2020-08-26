@@ -1,20 +1,28 @@
 #!/bin/bash
 
-# repo forall -j 100 -c 'pwd; git status -s'
+cd ${ANDROID_BUILD_TOP?}
 
+dirs=$(repo list | awk '{print $1}')
 
-repo forall -j 100 -c '
-out="$(git -c color.status=always status -s)"
-if [[ -n "$out" ]] ; then
-    pwd
+do_status() {
+  cd "$ANDROID_BUILD_TOP/$1" || return 1
+  local out="$(git -c color.status=always status -s 2>&1)"
+  if [[ -n "$out" ]] ; then
+    echo
+    echo $'\e[36;1m'"$(pwd)"$'\e[0m'
     echo "$out"
-fi
-'
+  fi
+  return 0
+}
+export -f do_status
 
-# exec repo-parallel '
-# out="$(git -c color.status=always status -s)"
+parallel --progress --eta -j 200% do_status ::: $dirs
+
+
+# repo forall -j 100 -c '
+# out="$(git -c color.status=always status -s 2>&1)"
 # if [[ -n "$out" ]] ; then
-#     pwd
+#     echo -e "\e[36;1m$(pwd)\e[0m"
 #     echo "$out"
 # fi
 # '
