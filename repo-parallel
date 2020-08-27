@@ -3,6 +3,9 @@
 set -e
 . mutil.sh
 
+cd ${ANDROID_BUILD_TOP?}
+
+
 para=""
 while getopts "j:" opt 2>/dev/null; do
   case "$opt" in
@@ -12,4 +15,19 @@ while getopts "j:" opt 2>/dev/null; do
 done
 shift $(($OPTIND - 1))
 
-repo-dirs | par $para --progress "cd {} && ""$@"
+command=("$@")
+
+run_command() {
+  cd "$ANDROID_BUILD_TOP/$1" || return 1
+  shift
+
+  local out="$("$@" 2>&1)"
+  if [[ -n "$out" ]] ;then
+    echo
+    echo "$out"
+  fi
+  return 0
+}
+export -f run_command
+
+repo-dirs | parallel $para --progress run_command {} "${command[@]}"

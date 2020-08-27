@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+cd ${ANDROID_BUILD_TOP?}
+
+for d in $(repo-dirs); do
+  if grep -q "^\[branch " "$ANDROID_BUILD_TOP/$d/.git/config"; then
+    echo "$ANDROID_BUILD_TOP/$d"
+  fi
+done

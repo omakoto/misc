@@ -17,12 +17,3 @@ do_status() {
 export -f do_status
 
 parallel --progress --eta -j 200% do_status ::: $dirs
-
-
-# repo forall -j 100 -c '
-# out="$(git -c color.status=always status -s 2>&1)"
-# if [[ -n "$out" ]] ; then
-#     echo -e "\e[36;1m$(pwd)\e[0m"
-#     echo "$out"
-# fi
-# '
