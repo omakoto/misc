@@ -1,0 +1,3 @@
+#!/bin/bash
+
+FFIN=1 ffo "$@"

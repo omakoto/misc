@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+eval "$(bashgetopt '
+' "$@")"
+
+name="$1"
+shift
+
+fifo=$(ramtmp)/$name
+INFO "FIFO": "$fifo" 1>&2
+
+if ! [[ -e "$fifo" ]] ; then
+  mkfifo "$fifo"
+fi
+
+if (( $FFIN )); then
+  cat >"$fifo"
+else
+  cat "$fifo"
+fi
