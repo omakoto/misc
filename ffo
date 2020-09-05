@@ -1,5 +1,16 @@
 #!/bin/bash
 
+usage() {
+  cat 2>&1 <<'EOF'
+ffi / ffo: Write to and read from a FIFO
+
+Usage:
+  echo 'Write!' | ffi FIFO-NAME
+  ffo FIFO-NAME | ssh....
+
+EOF
+}
+
 set -e
 . mutil.sh
 
@@ -7,7 +18,13 @@ eval "$(bashgetopt '
 ' "$@")"
 
 name="$1"
-shift
+
+if [[ "$name" == "" ]] ; then
+  echo "Missing FIFO name." 1>&2
+  echo 1>&2
+  usage
+  exit 1
+fi
 
 fifo=$(ramtmp)/$name
 INFO "FIFO": "$fifo" 1>&2
@@ -16,8 +33,14 @@ if ! [[ -e "$fifo" ]] ; then
   mkfifo "$fifo"
 fi
 
-if (( $FFIN )); then
+if [[ "$0" =~ ffi$ ]]; then
   cat >"$fifo"
 else
+  # Create a writer to the FIFO to prevent the reader from getting EOF
+  (
+    while true; do
+      sleep 86400
+    done
+  ) > "$fifo" &
   cat "$fifo"
 fi
