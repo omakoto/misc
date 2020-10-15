@@ -3,6 +3,7 @@
 set -e
 . mutil.sh
 
+addr=192.168.86.45
 port=8080
 
 function provide_content() {
@@ -16,10 +17,10 @@ function provide_content() {
 }
 
 function do_server() {
-  provide_content | nc -l $port
+  provide_content | nc -l $addr $port
 }
 
 while true; do
-  echo "Listening on http://127.0.0.1:$port/ ..."
+  echo "Listening on http://$addr:$port/ ..."
   do_server
 done
