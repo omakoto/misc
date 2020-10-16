@@ -36,5 +36,5 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     now = datetime.now()
                     conn.sendall(bytes(now.strftime("%Y-%m-%d %H:%M:%S\n"), 'utf-8'))
                     time.sleep(1)
-            except BrokenPipeError:
+            except ConnectionError:
                 print('Client gone')
