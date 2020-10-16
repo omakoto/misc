@@ -3,7 +3,7 @@
 set -e
 . mutil.sh
 
-addr=192.168.86.45
+addr=$(hostname -I | a1)
 port=8080
 
 function provide_content() {
