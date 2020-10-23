@@ -26,7 +26,7 @@ case "$(hostname -s)" in
     rdt_dpi=1.5
     sf=2
     ;;
-  x1c7ubu|debian) # X1 carbon gen7 / vmware
+  x1c7u|debian) # X1 carbon gen7 / vmware
     chrome_dpi="2.5"
     sf=2
     ;;
