@@ -8,6 +8,7 @@
 #   doc: https://python-evdev.readthedocs.io/en/latest/
 
 import sys
+import math
 import evdev
 import asyncio
 import argparse
@@ -28,6 +29,7 @@ def main(args):
     parser.add_argument('--device-name', metavar='D', default=DEFAULT_DEVICE_NAME, help='Device name shown by evtest(1)')
     parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
     parser.add_argument('-s', '--jog-multiplier', type=float, default=1, help='Multipler for cursor speed for jog')
+    # parser.add_argument('-f', '--jog-frequency', type=float, default=30, help='Jog keyevent freqency')
 
     args = parser.parse_args()
 
@@ -58,17 +60,21 @@ def main(args):
     volume_keys = [e.KEY_VOLUMEDOWN, e.KEY_VOLUMEUP, 'VolUp/Down']
     key_modes = [arrow_keys, volume_keys]
 
+    button1_pressed = False
     jog_mode = 0
     dial_mode = 1
 
     def print_help():
-        print('[Toggle Jog] [Toggle Dial] [KEY_SPACE] [KEY_F11] [KEY_MUTE]')
+        key4 = 'KEY_F' if button1_pressed else 'KEY_F11'
+        key2 = 'Toggle Dial' if button1_pressed else 'Toggle Jog'
+        print(f'[ALT] [{key2}] [KEY_SPACE] [{key4}] [KEY_MUTE]')
         print(f'  Jog mode : {key_modes[jog_mode][2]}')
         print(f'  Dial mode: {key_modes[dial_mode][2]}')
 
     print_help()
 
     async def read_loop():
+        nonlocal button1_pressed
         nonlocal jog_mode
         nonlocal dial_mode
 
@@ -81,23 +87,30 @@ def main(args):
                 value = 0
 
                 # Remap the buttons.
-                if ev.code == e.BTN_4 and ev.value == 1: # toggle jog mode
-                    jog_mode = 1 - jog_mode
+                if ev.code == e.BTN_4: # button 1 pressed
+                    button1_pressed = ev.value == 1
                     print_help()
-                elif ev.code == e.BTN_5 and ev.value == 1: # toggle dial mode
-                    dial_mode = 1 - dial_mode
+                if ev.code == e.BTN_5 and ev.value == 0: # toggle jog/dial mode
+                    if button1_pressed:
+                        dial_mode = 1 - dial_mode
+                    else:
+                        jog_mode = 1 - jog_mode
                     print_help()
-                elif ev.code == e.BTN_6: # button 2 -> space
+                elif ev.code == e.BTN_6 and ev.value == 0: # button 2 -> space
                     key = e.KEY_SPACE
                     value = ev.value
-                elif ev.code == e.BTN_7: # button 4 -> F11
-                    key = e.KEY_F11
+                elif ev.code == e.BTN_7 and ev.value == 0: # button 4 -> F11
+                    if button1_pressed:
+                        key = e.KEY_F
+                    else:
+                        key = e.KEY_F11
                     value = ev.value
-                elif ev.code == e.BTN_8: # button 5 -> mute
+                elif ev.code == e.BTN_8 and ev.value == 0: # button 5 -> mute
                     key = e.KEY_MUTE
                     value = ev.value
                 if key:
-                    ui.write(e.EV_KEY, key, value)
+                    ui.write(e.EV_KEY, key, 1)
+                    ui.write(e.EV_KEY, key, 0)
                     ui.syn()
                 continue
 
@@ -124,10 +137,13 @@ def main(args):
     # Monitor the jog dial (reported as a wheel), and as long as the jog is rotated,
     # send the left or right keys repeatedly. The rotation angle decides the repeat frequency.
     async def periodic():
+        sleep_duration = 0.1
         while True:
             nonlocal current_wheel
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(sleep_duration)
+            sleep_duration = 0.1
 
+            # -7 <= current_wheel <= 7 is the range.
             if -1 <= current_wheel <= 1:
                 continue
 
@@ -142,12 +158,19 @@ def main(args):
                 key = key_modes[jog_mode][1]
                 count = current_wheel
 
-            count = int(jog_multiplier * (count - 1))
+            # Special case the small angles. Always make a single key event, and
+            # don't repeat too fast.
+            if count <= 2:
+                sleep_duration = 0.5
+            else:
+                # range will be [1 - 5] * multiplier
+                speed = count - 2 # range: 1 - 5
+                speed = math.pow(speed, 1.8)
+                sleep_duration = 0.3 / (jog_multiplier * speed)
 
-            for n in range(count):
-                ui.write(e.EV_KEY, key, 1)
-                ui.write(e.EV_KEY, key, 0)
-                ui.syn()
+            ui.write(e.EV_KEY, key, 1)
+            ui.write(e.EV_KEY, key, 0)
+            ui.syn()
 
 
     asyncio.ensure_future(read_loop())
