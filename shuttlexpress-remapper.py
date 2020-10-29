@@ -66,7 +66,7 @@ def main(args):
     dial_mode = 1
 
     def print_help():
-        print('[Toggle Jog] [Toggle Dial] [KEY_SPACE]')
+        print('[Toggle Jog] [Toggle Dial] [KEY_SPACE] [not assigned] [KEY_MUTE]')
         print(f'  Jog mode : {key_modes[jog_mode][2]}')
         print(f'  Dial mode: {key_modes[dial_mode][2]}')
 
@@ -94,11 +94,8 @@ def main(args):
                 elif ev.code == e.BTN_6: # button 2 -> space
                     key = e.KEY_SPACE
                     value = ev.value
-                elif ev.code == e.BTN_7: # button 4 -> voldown
-                    key = e.KEY_VOLUMEDOWN
-                    value = ev.value
-                elif ev.code == e.BTN_8: # button 5 -> volup
-                    key = e.KEY_VOLUMEUP
+                elif ev.code == e.BTN_8: # button 5 -> mote
+                    key = e.KEY_MUTE
                     value = ev.value
                 if key:
                     ui.write(e.EV_KEY, key, value)
