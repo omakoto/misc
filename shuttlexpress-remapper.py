@@ -114,6 +114,7 @@ def main(args):
                     ui.syn()
                 continue
 
+            # Handle the dial
             if ev.type == e.EV_REL and ev.code == e.REL_DIAL:
                 now_dial = ev.value
                 delta = now_dial - last_dial
@@ -130,6 +131,7 @@ def main(args):
                     ui.write(e.EV_KEY, key, 0)
                     ui.syn()
 
+            # Handle the jog
             if ev.type == e.EV_REL and ev.code == e.REL_WHEEL:
                 nonlocal current_wheel
                 current_wheel = ev.value
@@ -140,6 +142,8 @@ def main(args):
         sleep_duration = 0.1
         while True:
             nonlocal current_wheel
+            nonlocal jog_mode
+
             await asyncio.sleep(sleep_duration)
             sleep_duration = 0.1
 
@@ -167,7 +171,6 @@ def main(args):
                 speed = count - 2 # range: 1 - 5
                 speed = math.pow(speed, 1.8)
                 sleep_duration = 0.3 / (jog_multiplier * speed)
-
             ui.write(e.EV_KEY, key, 1)
             ui.write(e.EV_KEY, key, 0)
             ui.syn()
