@@ -1,10 +1,6 @@
 #!/usr/bin/python3
 
 # Remaps the "ShuttleXpress" device for media consumption:
-#  Button 1, 2 -> toggle jog / dial modes
-#  Jog dial -> left, right.
-#  Button 4, 5 -> vol down, up.
-#  Dial -> vol down, up.
 
 # Install python-evdev:
 #   python-evdev: git@github.com:gvalkov/python-evdev.git
@@ -66,7 +62,7 @@ def main(args):
     dial_mode = 1
 
     def print_help():
-        print('[Toggle Jog] [Toggle Dial] [KEY_SPACE] [not assigned] [KEY_MUTE]')
+        print('[Toggle Jog] [Toggle Dial] [KEY_SPACE] [KEY_F11] [KEY_MUTE]')
         print(f'  Jog mode : {key_modes[jog_mode][2]}')
         print(f'  Dial mode: {key_modes[dial_mode][2]}')
 
@@ -94,7 +90,10 @@ def main(args):
                 elif ev.code == e.BTN_6: # button 2 -> space
                     key = e.KEY_SPACE
                     value = ev.value
-                elif ev.code == e.BTN_8: # button 5 -> mote
+                elif ev.code == e.BTN_7: # button 4 -> F11
+                    key = e.KEY_F11
+                    value = ev.value
+                elif ev.code == e.BTN_8: # button 5 -> mute
                     key = e.KEY_MUTE
                     value = ev.value
                 if key:
