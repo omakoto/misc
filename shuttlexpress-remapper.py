@@ -7,6 +7,7 @@
 
 import sys
 import evdev
+import asyncio
 import argparse
 from evdev import UInput, ecodes as e
 
@@ -47,53 +48,86 @@ def main(args):
 
     device.grab()
 
-    last_dial = 0
     current_wheel = 0
-    for ev in device.read_loop():
-        if debug: print(f'Input: {ev}')
 
-        if ev.type == e.EV_KEY:
-            key = None
-            value = 0
+    async def read_loop():
+        last_dial = 0
+        async for ev in device.async_read_loop():
+            if debug: print(f'Input: {ev}')
 
-            # Remap the buttons.
-            if ev.code == e.BTN_4: # button 1 -> left
-                key = e.KEY_LEFT
-                value = ev.value
-            elif ev.code == e.BTN_5: # button 2 -> right
-                key = e.KEY_RIGHT
-                value = ev.value
-            elif ev.code == e.BTN_7: # button 4 -> voldown
-                key = e.KEY_VOLUMEDOWN
-                value = ev.value
-            elif ev.code == e.BTN_8: # button 5 -> volup
-                key = e.KEY_VOLUMEUP
-                value = ev.value
-            if key:
-                ui.write(e.EV_KEY, key, value)
-                ui.syn()
-            continue
+            if ev.type == e.EV_KEY:
+                key = None
+                value = 0
 
-        if ev.type == e.EV_REL and ev.code == e.REL_DIAL:
-            now_dial = ev.value
-            delta = now_dial - last_dial
-            last_dial = now_dial
+                # Remap the buttons.
+                if ev.code == e.BTN_4: # button 1 -> left
+                    key = e.KEY_LEFT
+                    value = ev.value
+                elif ev.code == e.BTN_5: # button 2 -> right
+                    key = e.KEY_RIGHT
+                    value = ev.value
+                elif ev.code == e.BTN_7: # button 4 -> voldown
+                    key = e.KEY_VOLUMEDOWN
+                    value = ev.value
+                elif ev.code == e.BTN_8: # button 5 -> volup
+                    key = e.KEY_VOLUMEUP
+                    value = ev.value
+                if key:
+                    ui.write(e.EV_KEY, key, value)
+                    ui.syn()
+                continue
 
-            if delta < 0:
-                ui.write(e.EV_KEY, e.KEY_VOLUMEDOWN, 1)
-                ui.write(e.EV_KEY, e.KEY_VOLUMEDOWN, 0)
-                ui.syn()
-            if delta > 0:
-                ui.write(e.EV_KEY, e.KEY_VOLUMEUP, 1)
-                ui.write(e.EV_KEY, e.KEY_VOLUMEUP, 0)
-                ui.syn()
+            if ev.type == e.EV_REL and ev.code == e.REL_DIAL:
+                now_dial = ev.value
+                delta = now_dial - last_dial
+                last_dial = now_dial
 
-        if ev.type == e.EV_REL and ev.code == e.REL_WHEEL:
-            current_wheel = ev.value
+                if delta < 0:
+                    ui.write(e.EV_KEY, e.KEY_VOLUMEDOWN, 1)
+                    ui.write(e.EV_KEY, e.KEY_VOLUMEDOWN, 0)
+                    ui.syn()
+                if delta > 0:
+                    ui.write(e.EV_KEY, e.KEY_VOLUMEUP, 1)
+                    ui.write(e.EV_KEY, e.KEY_VOLUMEUP, 0)
+                    ui.syn()
+
+            if ev.type == e.EV_REL and ev.code == e.REL_WHEEL:
+                nonlocal current_wheel
+                current_wheel = ev.value
+
+    # Monitor the jog dial (reported as a wheel), and as long as the jog is rotated,
+    # send the left or right keys repeatedly. The rotation angle decides the repeat frequency.
+    async def periodic():
+        while True:
+            nonlocal current_wheel
+            await asyncio.sleep(0.1)
+
+            if -1 <= current_wheel <= 1:
+                continue
+
             if debug: print(f'Wheel={current_wheel}')
 
+            key = 0
+            count = 0
+            if current_wheel < 0:
+                key = e.KEY_LEFT
+                count = -current_wheel
+            elif current_wheel > 0:
+                key = e.KEY_RIGHT
+                count = current_wheel
+
+            count = count - 1
+
+            for n in range(count):
+                ui.write(e.EV_KEY, key, 1)
+                ui.write(e.EV_KEY, key, 0)
+                ui.syn()
 
 
+    asyncio.ensure_future(read_loop())
+    asyncio.ensure_future(periodic())
+    loop = asyncio.get_event_loop()
+    loop.run_forever()
 
 if __name__ == '__main__':
     main(sys.argv[1:])
