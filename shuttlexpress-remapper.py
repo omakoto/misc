@@ -74,6 +74,9 @@ def main(args):
                 elif ev.code == e.BTN_5: # button 2 -> right
                     key = e.KEY_RIGHT
                     value = ev.value
+                elif ev.code == e.BTN_6: # button 2 -> space
+                    key = e.KEY_SPACE
+                    value = ev.value
                 elif ev.code == e.BTN_7: # button 4 -> voldown
                     key = e.KEY_VOLUMEDOWN
                     value = ev.value
