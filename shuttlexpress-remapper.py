@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 # Remaps the "ShuttleXpress" device for media consumption:
-#  Button 1, 2 -> left, right.
+#  Button 1, 2 -> toggle jog / dial modes
 #  Jog dial -> left, right.
 #  Button 4, 5 -> vol down, up.
 #  Dial -> vol down, up.
@@ -58,7 +58,24 @@ def main(args):
 
     current_wheel = 0
 
+    arrow_keys = [e.KEY_LEFT, e.KEY_RIGHT, 'Left/Right']
+    volume_keys = [e.KEY_VOLUMEDOWN, e.KEY_VOLUMEUP, 'VolUp/Down']
+    key_modes = [arrow_keys, volume_keys]
+
+    jog_mode = 0
+    dial_mode = 1
+
+    def print_help():
+        print('[Toggle Jog] [Toggle Dial] [KEY_SPACE]')
+        print(f'  Jog mode : {key_modes[jog_mode][2]}')
+        print(f'  Dial mode: {key_modes[dial_mode][2]}')
+
+    print_help()
+
     async def read_loop():
+        nonlocal jog_mode
+        nonlocal dial_mode
+
         last_dial = 0
         async for ev in device.async_read_loop():
             if debug: print(f'Input: {ev}')
@@ -68,12 +85,12 @@ def main(args):
                 value = 0
 
                 # Remap the buttons.
-                if ev.code == e.BTN_4: # button 1 -> left
-                    key = e.KEY_LEFT
-                    value = ev.value
-                elif ev.code == e.BTN_5: # button 2 -> right
-                    key = e.KEY_RIGHT
-                    value = ev.value
+                if ev.code == e.BTN_4 and ev.value == 1: # toggle jog mode
+                    jog_mode = 1 - jog_mode
+                    print_help()
+                elif ev.code == e.BTN_5 and ev.value == 1: # toggle dial mode
+                    dial_mode = 1 - dial_mode
+                    print_help()
                 elif ev.code == e.BTN_6: # button 2 -> space
                     key = e.KEY_SPACE
                     value = ev.value
@@ -93,13 +110,15 @@ def main(args):
                 delta = now_dial - last_dial
                 last_dial = now_dial
 
+                key = 0
                 if delta < 0:
-                    ui.write(e.EV_KEY, e.KEY_VOLUMEDOWN, 1)
-                    ui.write(e.EV_KEY, e.KEY_VOLUMEDOWN, 0)
-                    ui.syn()
+                    key = key_modes[dial_mode][0]
                 if delta > 0:
-                    ui.write(e.EV_KEY, e.KEY_VOLUMEUP, 1)
-                    ui.write(e.EV_KEY, e.KEY_VOLUMEUP, 0)
+                    key = key_modes[dial_mode][1]
+
+                if key != 0:
+                    ui.write(e.EV_KEY, key, 1)
+                    ui.write(e.EV_KEY, key, 0)
                     ui.syn()
 
             if ev.type == e.EV_REL and ev.code == e.REL_WHEEL:
@@ -121,10 +140,10 @@ def main(args):
             key = 0
             count = 0
             if current_wheel < 0:
-                key = e.KEY_LEFT
+                key = key_modes[jog_mode][0]
                 count = -current_wheel
             elif current_wheel > 0:
-                key = e.KEY_RIGHT
+                key = key_modes[jog_mode][1]
                 count = current_wheel
 
             count = int(jog_multiplier * (count - 1))
