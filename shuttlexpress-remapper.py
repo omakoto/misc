@@ -1,5 +1,11 @@
 #!/usr/bin/python3
 
+# Remaps the "ShuttleXpress" device for media consumption:
+#  Button 1, 2 -> left, right.
+#  Jog dial -> left, right.
+#  Button 4, 5 -> vol down, up.
+#  Dial -> vol down, up.
+
 # Install python-evdev:
 #   python-evdev: git@github.com:gvalkov/python-evdev.git
 #   pip3 install --user evdev
@@ -25,6 +31,7 @@ def main(args):
     parser = argparse.ArgumentParser(description='FFT example with sox + numpy')
     parser.add_argument('--device-name', metavar='D', default=DEFAULT_DEVICE_NAME, help='Device name shown by evtest(1)')
     parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
+    parser.add_argument('-s', '--jog-multiplier', type=float, default=1, help='Multipler for cursor speed for jog')
 
     args = parser.parse_args()
 
@@ -32,6 +39,7 @@ def main(args):
     debug = args.debug
 
     device_name = args.device_name
+    jog_multiplier = args.jog_multiplier
 
     # Open the input device.
     device = None
@@ -116,7 +124,7 @@ def main(args):
                 key = e.KEY_RIGHT
                 count = current_wheel
 
-            count = count - 1
+            count = int(jog_multiplier * (count - 1))
 
             for n in range(count):
                 ui.write(e.EV_KEY, key, 1)
