@@ -164,13 +164,13 @@ def main(args):
 
             # Special case the small angles. Always make a single key event, and
             # don't repeat too fast.
-            if count <= 2:
-                sleep_duration = 0.5
-            else:
-                # range will be [1 - 5] * multiplier
-                speed = count - 2 # range: 1 - 5
-                speed = math.pow(speed, 1.8)
-                sleep_duration = 0.3 / (jog_multiplier * speed)
+
+            # range will be [1 - 7] * multiplier
+            count = count - 1
+            speed = math.pow(count, 1.5) + 1 # range 2 -
+            sleep_duration = 1.0 / (jog_multiplier * speed)
+            # print(f'{count}, {sleep_duration}')
+
             ui.write(e.EV_KEY, key, 1)
             ui.write(e.EV_KEY, key, 0)
             ui.syn()
