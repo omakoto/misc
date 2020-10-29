@@ -3,6 +3,7 @@
 # Install python-evdev:
 #   python-evdev: git@github.com:gvalkov/python-evdev.git
 #   pip3 install --user evdev
+#   doc: https://python-evdev.readthedocs.io/en/latest/
 
 import sys
 import evdev
@@ -47,11 +48,14 @@ def main(args):
     device.grab()
 
     last_dial = 0
+    current_wheel = 0
     for ev in device.read_loop():
         if debug: print(f'Input: {ev}')
 
         if ev.type == e.EV_KEY:
             key = None
+            value = 0
+
             # Remap the buttons.
             if ev.code == e.BTN_4: # button 1 -> left
                 key = e.KEY_LEFT
@@ -83,6 +87,10 @@ def main(args):
                 ui.write(e.EV_KEY, e.KEY_VOLUMEUP, 1)
                 ui.write(e.EV_KEY, e.KEY_VOLUMEUP, 0)
                 ui.syn()
+
+        if ev.type == e.EV_REL and ev.code == e.REL_WHEEL:
+            current_wheel = ev.value
+            if debug: print(f'Wheel={current_wheel}')
 
 
 
