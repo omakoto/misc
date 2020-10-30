@@ -12,12 +12,16 @@
 #  shuttlexpress-remapper.py start # run as a daemon
 #  shuttlexpress-remapper.py stop  # stop the daemon
 
+# Device
+# Bus 001 Device 049: ID 0b33:0020 Contour Design, Inc. ShuttleXpress
+
 import sys
 import os
 import math
 import evdev
 import asyncio
 import argparse
+import time
 from evdev import UInput, ecodes as e
 import sys, os, time, psutil, signal
 
@@ -34,10 +38,17 @@ def fatal(message):
 def run_remap(device_name, jog_multiplier):
     # Open the input device.
     device = None
-    for d in [evdev.InputDevice(path) for path in evdev.list_devices()]:
-        if d.name == device_name:
-            device = d
+
+    for n in range(10):
+        for d in [evdev.InputDevice(path) for path in evdev.list_devices()]:
+            if d.name == device_name:
+                device = d
+                break
+        if device:
             break
+        else:
+            print(f"Device '{device_name}' not found, retrying...")
+            time.sleep(1)
 
     # Open /dev/uinput.
     ui = UInput()
@@ -395,6 +406,7 @@ def main(args):
 
     class MyDaemon(Daemon):
         def run(self):
+            time.sleep(5)
             run()
 
     if command == "start":
