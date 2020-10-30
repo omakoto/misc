@@ -13,6 +13,7 @@
 #  shuttlexpress-remapper.py stop  # stop the daemon
 
 import sys
+import os
 import math
 import evdev
 import asyncio
@@ -132,6 +133,7 @@ def run_remap(device_name, jog_multiplier):
     # send the left or right keys repeatedly. The rotation angle decides the repeat frequency.
     async def periodic():
         sleep_duration = 0.1
+
         while True:
             nonlocal current_wheel
             nonlocal jog_mode
@@ -168,9 +170,18 @@ def run_remap(device_name, jog_multiplier):
             ui.syn()
 
 
+    def exception_handler(loop, context):
+        print(f'Exception detected: {context}')
+        if context['exception'].__class__ == OSError:
+            print('Device disconnected.')
+            os._exit(4)
+        else:
+            os._exit(1)
+
     asyncio.ensure_future(read_loop())
     asyncio.ensure_future(periodic())
     loop = asyncio.get_event_loop()
+    loop.set_exception_handler(exception_handler)
     loop.run_forever()
 
 # Howto make daemon in Python 3
