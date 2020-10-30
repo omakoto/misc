@@ -11,7 +11,7 @@ import time
 import evdev
 from evdev import UInput, ecodes as e
 
-debug = False
+debug = True
 
 
 def fatal(message):
