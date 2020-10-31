@@ -1,14 +1,26 @@
 #!/usr/bin/python3
 
 # python-evdev: git@github.com:gvalkov/python-evdev.git
-# pip3 install --user evdev
+# pyudev: https://pyudev.readthedocs.io/en/latest/
+# pip3 install evdev pyudev
 
 # Event codes
 # https://github.com/torvalds/linux/blob/master/include/uapi/linux/input-event-codes.h
 
 import sys
+import pyudev
 import evdev
 from evdev import UInput, ecodes as e
+
+# udev device action monitoring test
+
+if True:
+    context = pyudev.Context()
+    monitor = pyudev.Monitor.from_netlink(context)
+    monitor.filter_by(subsystem='input')
+    for action, device in monitor:
+        print('{0}: {1}'.format(action, device))
+
 
 
 # Event read test
