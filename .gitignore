@@ -1,3 +1,4 @@
 *.tmp
 *.bashcomp
 *.cached-stdout
+*.pyc

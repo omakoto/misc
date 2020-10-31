@@ -1,5 +1,10 @@
 #!/usr/bin/python3
 
+# Library for a script to do "AHK"-ish key remapping.
+# For now, only keyboards are supported, not mouse buttons.
+#
+# See makoto-key-remap.py for how to use it.
+
 # Requires:
 #   sudo pip3 install evdev pyudev
 import argparse
@@ -143,8 +148,8 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper):
                 pass # Ignore any exception
 
 
-def main(args, remapper):
-    parser = argparse.ArgumentParser(description='ShuttleXPress key remapper')
+def main(args, remapper, description="key remapper"):
+    parser = argparse.ArgumentParser(description=description)
     parser.add_argument('-m', '--match-device-name', metavar='D', default='', help='Only use devices matching this regex')
     parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
 
