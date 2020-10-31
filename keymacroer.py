@@ -18,9 +18,9 @@ debug = True
 
 UINPUT_DEVICE_NAME = "key-macro-uinput"
 
-def do_remap(ui, device, ev):
-    # ui.write(e.EV_KEY, ev.code, ev.value)
-    # ui.syn()
+
+def null_remapper(ui, device, event):
+    pass
     return False
 
 
@@ -50,23 +50,29 @@ def start_device_monitor(new_device_detector_w):
 
 
 # Main loop.
-def read_loop(ui, device_name_matcher, new_device_detector_r):
+def read_loop(ui, device_name_matcher, new_device_detector_r, remapper):
     # Find all the keyboard devices. Ignore all the devices that support non-keyboard events.
     devices = []
     capabilities = []
 
     try:
+        # Find the keyboard devices, except for the one that we created with /dev/uinput.
         for d in [evdev.InputDevice(path) for path in sorted(evdev.list_devices())]:
-            if d.name == UINPUT_DEVICE_NAME:
+            if d.name == UINPUT_DEVICE_NAME: # This is our own /dev/uinput device.
                 continue
+
             if debug:
                 print(f'Device: {d}')
                 print(f'  Capabilities: {d.capabilities(verbose=True)}')
 
+            # Reject the ones that don't match the name filter.
             if not device_name_matcher.search(d.name):
                 if debug: print(f'  Skipping {d.name}')
                 continue
 
+            # Make sure the device only supports key events -- i.e. ignore mice, trackpads, etc.
+            # this is only for the sake of simplicity. It's possible to support these devices, but
+            # intercepting only the interesting events and pass-throughing the rest would be hard.
             add = False
             caps = d.capabilities()
             for c in caps.keys():
@@ -85,7 +91,9 @@ def read_loop(ui, device_name_matcher, new_device_detector_r):
 
         do_grab_devices = True
 
+        # Start the main loop.
         try:
+            # Prepare the selector, and also grab the devices.
             selector = selectors.DefaultSelector()
             selector.register(new_device_detector_r, selectors.EVENT_READ)
 
@@ -98,15 +106,18 @@ def read_loop(ui, device_name_matcher, new_device_detector_r):
             while new_device_detector_r.readline():
                 pass
 
+            # Start the loop.
             stop = False
             while not stop:
                 for key, mask in selector.select():
                     device = key.fileobj
+
+                    # See if a new device hsa been detected.
                     if device == new_device_detector_r:
-                        print('Device changed.')
+                        print('A new device has been detected.')
                         time.sleep(1) # Wait a bit because udev sends multiple add events in a row.
                         stop = True
-                        break # A new device may be connected.
+                        break
 
                     for ev in device.read():
                         if ev.type != e.EV_KEY:
@@ -114,7 +125,7 @@ def read_loop(ui, device_name_matcher, new_device_detector_r):
                         if debug: print(f'Device: {device}  event: {ev}')
 
                         if ev.type in (e.EV_KEY, e.EV_REP): # Only intercept key events.
-                            if do_remap(ui, device, ev):
+                            if remapper(ui, device, ev):
                                 continue
 
                         ui.write_event(ev)
@@ -132,7 +143,7 @@ def read_loop(ui, device_name_matcher, new_device_detector_r):
                 pass # Ignore any exception
 
 
-def main(args):
+def main(args, remapper):
     parser = argparse.ArgumentParser(description='ShuttleXPress key remapper')
     parser.add_argument('-m', '--match-device-name', metavar='D', default='', help='Only use devices matching this regex')
     parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
@@ -144,9 +155,10 @@ def main(args):
 
     device_name_matcher = re.compile(args.match_device_name)
 
-    # /dev/uinput
+    # Create our /dev/uinput device.
     ui = UInput(name=UINPUT_DEVICE_NAME)
 
+    # Create a worker thread that detects new devices.
     pipe_r, pipe_w = os.pipe()
 
     os.set_blocking(pipe_r, False)
@@ -155,15 +167,16 @@ def main(args):
 
     start_device_monitor(new_device_detector_w)
 
-    # read_loop(ui, device_name_matcher, new_device_detector_r)
+    if not remapper:
+        remapper = null_remapper
 
     while True:
         try:
-            read_loop(ui, device_name_matcher, new_device_detector_r)
+            read_loop(ui, device_name_matcher, new_device_detector_r, remapper)
         except BaseException as ex:
             print(f'Unhandled exception (retrying in 1 second): {ex}', file=sys.stderr)
             time.sleep(1)
 
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    main(sys.argv[1:], None)
