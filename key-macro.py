@@ -8,6 +8,7 @@ import re
 import selectors
 import sys
 import time
+import threading
 
 import evdev
 import pyudev
@@ -15,6 +16,7 @@ from evdev import UInput, ecodes as e
 
 debug = True
 
+UINPUT_DEVICE_NAME = "key-macro-uinput"
 
 def do_remap(ui, device, ev):
     # ui.write(e.EV_KEY, ev.code, ev.value)
@@ -22,79 +24,112 @@ def do_remap(ui, device, ev):
     return False
 
 
-# Wait for new input devices to be added.
-def wait_for_new_device():
-    print('Waiting for new devices...')
-    context = pyudev.Context()
-    monitor = pyudev.Monitor.from_netlink(context)
-    monitor.filter_by(subsystem='input')
-    for action, device in monitor:
-        if debug: print('{0}: {1}'.format(action, device))
-        if action == "add":
-            break
-    time.sleep(2)
+class deviceMonitor(threading.Thread):
+    def __init__(self, new_device_detector_w):
+        threading.Thread.__init__(self)
+        self.w = new_device_detector_w
+
+    def run(self):
+        context = pyudev.Context()
+        monitor = pyudev.Monitor.from_netlink(context)
+        monitor.filter_by(subsystem='input')
+
+        if debug: print('Device monitor started.')
+
+        for action, device in monitor:
+            if debug: print(f'udev: action={action} {device}')
+            if action == "add":
+                self.w.write(".\n")
+                self.w.flush()
+
+
+def start_device_monitor(new_device_detector_w):
+    th = deviceMonitor(new_device_detector_w)
+    th.setDaemon(True)
+    th.start()
 
 
 # Main loop.
-def read_loop(device_name_matcher):
+def read_loop(ui, device_name_matcher, new_device_detector_r):
     # Find all the keyboard devices. Ignore all the devices that support non-keyboard events.
     devices = []
     capabilities = []
-    for d in [evdev.InputDevice(path) for path in sorted(evdev.list_devices())]:
-        if debug:
-            print(f'Device: {d}')
-            print(f'  Capabilities: {d.capabilities(verbose=True)}')
-
-        if not device_name_matcher.search(d.name):
-            if debug: print(f'  Skipping {d.name}')
-            continue
-
-        add = False
-        caps = d.capabilities()
-        for c in caps.keys():
-            if c not in (e.EV_SYN, e.EV_KEY, e.EV_MSC, e.EV_LED, e.EV_REP):
-                add = False
-                break
-            if c == e.EV_KEY:
-                add = True
-
-        if add:
-            devices.append(d)
-            capabilities.append(caps)
-
-    if not devices:
-        print("No keyboard devices found.")
-        return False
-
-    do_grab_devices = True
 
     try:
-        ui = UInput()
+        for d in [evdev.InputDevice(path) for path in sorted(evdev.list_devices())]:
+            if d.name == UINPUT_DEVICE_NAME:
+                continue
+            if debug:
+                print(f'Device: {d}')
+                print(f'  Capabilities: {d.capabilities(verbose=True)}')
 
-        selector = selectors.DefaultSelector()
-        for d in devices:
-            print(f"Using device: {d}")
-            if do_grab_devices: d.grab()
-            selector.register(d, selectors.EVENT_READ)
+            if not device_name_matcher.search(d.name):
+                if debug: print(f'  Skipping {d.name}')
+                continue
 
-        while True:
-            for key, mask in selector.select():
-                device = key.fileobj
-                for ev in device.read():
-                    if ev.type != e.EV_KEY:
-                        continue
-                    if debug: print(f'Device: {device}  event: {ev}')
+            add = False
+            caps = d.capabilities()
+            for c in caps.keys():
+                if c not in (e.EV_SYN, e.EV_KEY, e.EV_MSC, e.EV_LED, e.EV_REP):
+                    add = False
+                    break
+                if c == e.EV_KEY:
+                    add = True
 
-                    if ev.type in (e.EV_KEY, e.EV_REP): # Only intercept key events.
-                        if do_remap(ui, device, ev):
+            if add:
+                devices.append(d)
+                capabilities.append(caps)
+
+        if not devices:
+            print("No keyboard devices found.")
+
+        do_grab_devices = True
+
+        try:
+            selector = selectors.DefaultSelector()
+            selector.register(new_device_detector_r, selectors.EVENT_READ)
+
+            for d in devices:
+                print(f"Using device: {d}")
+                if do_grab_devices: d.grab()
+                selector.register(d, selectors.EVENT_READ)
+
+            # Before starting, drain the all the data new_device_detector_r.
+            while new_device_detector_r.readline():
+                pass
+
+            stop = False
+            while not stop:
+                for key, mask in selector.select():
+                    device = key.fileobj
+                    if device == new_device_detector_r:
+                        print('Device changed.')
+                        time.sleep(1) # Wait a bit because udev sends multiple add events in a row.
+                        stop = True
+                        break # A new device may be connected.
+
+                    for ev in device.read():
+                        if ev.type != e.EV_KEY:
                             continue
+                        if debug: print(f'Device: {device}  event: {ev}')
 
-                    ui.write_event(ev)
-                    ui.syn()
+                        if ev.type in (e.EV_KEY, e.EV_REP): # Only intercept key events.
+                            if do_remap(ui, device, ev):
+                                continue
 
-    except OSError as ex:
-        print(f'Device lost: {ex}')
-        return False
+                        ui.write_event(ev)
+                        ui.syn()
+
+        except OSError as ex:
+            print(f'Device lost: {ex}')
+            return False
+    finally:
+        for d in devices:
+            print(f"Releasing device: {d}")
+            try:
+                if do_grab_devices: d.ungrab()
+            except:
+                pass # Ignore any exception
 
 
 def main(args):
@@ -109,10 +144,22 @@ def main(args):
 
     device_name_matcher = re.compile(args.match_device_name)
 
+    # /dev/uinput
+    ui = UInput(name=UINPUT_DEVICE_NAME)
+
+    pipe_r, pipe_w = os.pipe()
+
+    os.set_blocking(pipe_r, False)
+    new_device_detector_r = os.fdopen(pipe_r)
+    new_device_detector_w = os.fdopen(pipe_w, 'w')
+
+    start_device_monitor(new_device_detector_w)
+
+    # read_loop(ui, device_name_matcher, new_device_detector_r)
+
     while True:
         try:
-            read_loop(device_name_matcher)
-            wait_for_new_device()
+            read_loop(ui, device_name_matcher, new_device_detector_r)
         except BaseException as ex:
             print(f'Unhandled exception (retrying in 1 second): {ex}', file=sys.stderr)
             time.sleep(1)
