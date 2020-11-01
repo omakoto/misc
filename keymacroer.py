@@ -24,7 +24,8 @@ from evdev import UInput, ecodes as e
 
 debug = True
 
-UINPUT_DEVICE_NAME = "key-macro-uinput-" + str(random.randint(0, 100000000))
+UINPUT_DEVICE_NAME_PREFIX = 'key-macro-uinput-'
+UINPUT_DEVICE_NAME = f"{UINPUT_DEVICE_NAME_PREFIX}{int(time.time()*1000) :020}"
 
 
 def null_remapper(
@@ -69,7 +70,8 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper):
     try:
         # Find the keyboard devices, except for the one that w  e created with /dev/uinput.
         for d in [evdev.InputDevice(path) for path in sorted(evdev.list_devices())]:
-            if d.name == UINPUT_DEVICE_NAME: # This is our own /dev/uinput device.
+            # Ignore our own device, and any older devices.
+            if d.name.startswith(UINPUT_DEVICE_NAME_PREFIX) and d.name <= UINPUT_DEVICE_NAME:
                 continue
 
             if debug:
@@ -217,6 +219,7 @@ def main(args, remapper=null_remapper, description="key remapper"):
 
     # Create our /dev/uinput device.
     ui = UInput(name=UINPUT_DEVICE_NAME)
+    if debug: print(f'Synthesized device name: {UINPUT_DEVICE_NAME}')
 
     # Create a worker thread that detects new devices.
     pipe_r, pipe_w = os.pipe()
