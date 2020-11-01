@@ -8,6 +8,7 @@
 # Requires:
 #   sudo pip3 install evdev pyudev
 import argparse
+import collections
 import os
 import re
 import selectors
@@ -17,6 +18,7 @@ import threading
 
 import evdev
 import pyudev
+import typing
 from evdev import UInput, ecodes as e
 
 debug = True
@@ -24,10 +26,10 @@ debug = True
 UINPUT_DEVICE_NAME = "key-macro-uinput"
 
 
-def null_remapper(ui, device, event):
-    pass
-    return False
-
+def null_remapper(
+        device: evdev.InputDevice,
+        events: typing.List[evdev.InputEvent]) -> typing.List[evdev.InputEvent]:
+    return events
 
 class deviceMonitor(threading.Thread):
     def __init__(self, new_device_detector_w):
@@ -54,6 +56,9 @@ def start_device_monitor(new_device_detector_w):
     th.start()
 
 
+def is_syn(ev: evdev.InputEvent) -> bool:
+    return ev and ev.type == e.EV_SYN and ev.code == e.SYN_REPORT and ev.value == 0
+
 # Main loop.
 def read_loop(ui, device_name_matcher, new_device_detector_r, remapper):
     # Find all the keyboard devices. Ignore all the devices that support non-keyboard events.
@@ -61,7 +66,7 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper):
     capabilities = []
 
     try:
-        # Find the keyboard devices, except for the one that we created with /dev/uinput.
+        # Find the keyboard devices, except for the one that w  e created with /dev/uinput.
         for d in [evdev.InputDevice(path) for path in sorted(evdev.list_devices())]:
             if d.name == UINPUT_DEVICE_NAME: # This is our own /dev/uinput device.
                 continue
@@ -76,8 +81,9 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper):
                 continue
 
             # Make sure the device only supports key events -- i.e. ignore mice, trackpads, etc.
-            # this is only for the sake of simplicity. It's possible to support these devices, but
-            # intercepting only the interesting events and pass-throughing the rest would be hard.
+            # this is only for the sake of simplicity. It's possible to support these devices,
+            # we need to propagete the right capabilities.
+            # By default, python-uidev only make the device support key events.
             add = False
             caps = d.capabilities()
             for c in caps.keys():
@@ -94,7 +100,9 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper):
         if not devices:
             print("No keyboard devices found.")
 
-        do_grab_devices = True
+        do_grab_devices = True # Only for debugging.
+
+        key_states: typing.Dict[int, int] = collections.defaultdict(int) # Current state of each key
 
         # Start the main loop.
         try:
@@ -124,16 +132,46 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper):
                         stop = True
                         break
 
+                    # Read all the queued events.
+                    events = []
                     for ev in device.read():
-                        if ev.type != e.EV_KEY:
+                        events.append(ev)
+                    if debug:
+                        for ev in events:
+                            if debug: print(f'-> Event: {ev}')
+
+                    # Send all of them to remapper.
+                    events = remapper(device, events)
+
+                    last_event = None
+                    for ev in events:
+                        if is_syn(ev) and is_syn(last_event):
+                            # Don't send syn twice in a row.
+                            # (Not sure if it matters but just in case.)
                             continue
-                        if debug: print(f'Device: {device}  event: {ev}')
 
-                        if ev.type in (e.EV_KEY, e.EV_REP): # Only intercept key events.
-                            if remapper(ui, device, ev):
-                                continue
+                        # When sending a KEY event, only send what'd make sense given the current
+                        # key state.
+                        if ev.type == e.EV_KEY:
+                            old_state = key_states[ev.code]
+                            if ev.value == 0:
+                                if old_state == 0: # Don't send if already released.
+                                    continue
+                            elif ev.value == 1:
+                                if old_state > 0: # Don't send if already pressed.
+                                    continue
+                            elif ev.value == 2:
+                                if old_state == 0: # Don't send if not pressed.
+                                    continue
 
+                            key_states[ev.code] = ev.value
+
+                        if debug: print(f'Event -> : {ev}')
                         ui.write_event(ev)
+                        last_event = ev
+
+                    # If the last event isn't a syn, send one.
+                    if not is_syn(last_event):
                         ui.syn()
 
         except OSError as ex:
@@ -148,7 +186,7 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper):
                 pass # Ignore any exception
 
 
-def main(args, remapper, description="key remapper"):
+def main(args, remapper=null_remapper, description="key remapper"):
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('-m', '--match-device-name', metavar='D', default='', help='Only use devices matching this regex')
     parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
@@ -172,16 +210,13 @@ def main(args, remapper, description="key remapper"):
 
     start_device_monitor(new_device_detector_w)
 
-    if not remapper:
-        remapper = null_remapper
-
     while True:
-        try:
+        # try:
             read_loop(ui, device_name_matcher, new_device_detector_r, remapper)
-        except BaseException as ex:
-            print(f'Unhandled exception (retrying in 1 second): {ex}', file=sys.stderr)
-            time.sleep(1)
+        # except BaseException as ex:
+        #     print(f'Unhandled exception (retrying in 1 second): {ex}', file=sys.stderr)
+        #     time.sleep(1)
 
 
 if __name__ == '__main__':
-    main(sys.argv[1:], None)
+    main(sys.argv[1:])
