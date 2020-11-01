@@ -1,0 +1,23 @@
+#!/bin/bash
+
+SCRIPT="${0##*/}"
+
+# Make sure there's only one instance running.
+if pidof -o %PPID -x $0 >/dev/null; then
+  echo "$SCRIPT already started."
+  exit 1
+fi
+
+echo "$0 started..."
+
+while true; do
+  # First, try starting the remapper. If the device is not found, or the device is found and later
+  # disconnected, this one finishes.
+  shuttlexpress-remapper.py -q
+
+  # Wait for a udev add event from the input subsystem
+  echo 'Waiting for an input device to be plugged in...'
+  udevadm monitor -s input | grep --line-buffered -w add | perl -e 'scalar(<>)'
+
+  echo 'An input device has been connected. Starting the remapper...'
+done
