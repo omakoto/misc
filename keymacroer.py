@@ -10,6 +10,7 @@
 import argparse
 import collections
 import os
+import random
 import re
 import selectors
 import sys
@@ -23,7 +24,7 @@ from evdev import UInput, ecodes as e
 
 debug = True
 
-UINPUT_DEVICE_NAME = "key-macro-uinput"
+UINPUT_DEVICE_NAME = "key-macro-uinput-" + str(random.randint(0, 100000000))
 
 
 def null_remapper(
@@ -112,7 +113,12 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper):
 
             for d in devices:
                 print(f"Using device: {d}")
-                if do_grab_devices: d.grab()
+                if do_grab_devices:
+                    try:
+                        d.grab()
+                    except:
+                        print(f"  Unable to grab, skipping")
+                        continue
                 selector.register(d, selectors.EVENT_READ)
 
             # Before starting, drain the all the data new_device_detector_r.
@@ -128,7 +134,8 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper):
                     # See if a new device hsa been detected.
                     if device == new_device_detector_r:
                         print('A new device has been detected.')
-                        time.sleep(1) # Wait a bit because udev sends multiple add events in a row.
+                        # Wait a bit because udev sends multiple add events in a row.
+                        time.sleep(random.uniform(1, 2))
                         stop = True
                         break
 
@@ -177,7 +184,17 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper):
         except OSError as ex:
             print(f'Device lost: {ex}')
             return False
+        finally:
+            # Release all pressed keys.
+            try:
+                for key in key_states.keys():
+                    if key_states[key] > 0:
+                        ui.write(e.EV_KEY, key, 0)
+                        ui.syn()
+            except:
+                pass # ignore any exception
     finally:
+
         for d in devices:
             print(f"Releasing device: {d}")
             try:
