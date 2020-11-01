@@ -70,8 +70,8 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper):
     try:
         # Find the keyboard devices, except for the one that w  e created with /dev/uinput.
         for d in [evdev.InputDevice(path) for path in sorted(evdev.list_devices())]:
-            # Ignore our own device, and any older devices.
-            if d.name.startswith(UINPUT_DEVICE_NAME_PREFIX) and d.name <= UINPUT_DEVICE_NAME:
+            # Ignore our own device, and "any younger" devices.
+            if d.name.startswith(UINPUT_DEVICE_NAME_PREFIX) and d.name >= UINPUT_DEVICE_NAME:
                 continue
 
             if debug:
