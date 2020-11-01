@@ -35,7 +35,7 @@ def fatal(message):
     sys.exit(1)
 
 
-def run_remap(device_name, jog_multiplier, quiet=False):
+def run_remap(ui, device_name, jog_multiplier, quiet=False):
     # Open the input device.
     device = None
 
@@ -49,9 +49,6 @@ def run_remap(device_name, jog_multiplier, quiet=False):
         else:
             print(f"Device '{device_name}' not found, retrying...")
             time.sleep(1)
-
-    # Open /dev/uinput.
-    ui = UInput(name='ShuttleXPress-remapper')
 
     if not device:
         fatal(f"Device '{device_name}' not found.")
@@ -103,13 +100,11 @@ def run_remap(device_name, jog_multiplier, quiet=False):
                     print_help()
                 elif ev.code == e.BTN_6 and ev.value == 0: # button 2 -> space
                     key = e.KEY_SPACE
-                    value = ev.value
                 elif ev.code == e.BTN_7 and ev.value == 0: # button 4 -> F11
                     if button1_pressed:
                         key = e.KEY_F
                     else:
                         key = e.KEY_F11
-                    value = ev.value
                 elif ev.code == e.BTN_8 and ev.value == 0: # button 5 -> mute
                     key = e.KEY_MUTE
                     value = ev.value
@@ -173,7 +168,7 @@ def run_remap(device_name, jog_multiplier, quiet=False):
 
             # range will be [1 - 7] * multiplier
             count = count - 1
-            speed = math.pow(count, 1.5) + 1 # range 2 -
+            speed = math.pow(count, 1.8) + 1 # range 2 -
             sleep_duration = 1.0 / (jog_multiplier * speed)
             # print(f'{count}, {sleep_duration}')
 
@@ -190,11 +185,18 @@ def run_remap(device_name, jog_multiplier, quiet=False):
         else:
             os._exit(1)
 
-    asyncio.ensure_future(read_loop())
-    asyncio.ensure_future(periodic())
-    loop = asyncio.get_event_loop()
-    loop.set_exception_handler(exception_handler)
-    loop.run_forever()
+    try:
+        asyncio.ensure_future(read_loop())
+        asyncio.ensure_future(periodic())
+        loop = asyncio.get_event_loop()
+        loop.set_exception_handler(exception_handler)
+        loop.run_forever()
+    finally:
+        if device:
+            try:
+                device.ungrab()
+            except:
+                pass # Ignore exceptions.
 
 def main(args):
     parser = argparse.ArgumentParser(description='ShuttleXPress key remapper')
@@ -208,7 +210,10 @@ def main(args):
     global debug
     debug = args.debug
 
-    run_remap(args.device_name, args.jog_multiplier, args.quiet)
+    # Open /dev/uinput.
+    ui = UInput(name='ShuttleXPress-remapper')
+
+    run_remap(ui, args.device_name, args.jog_multiplier, args.quiet)
 
 
 if __name__ == '__main__':
