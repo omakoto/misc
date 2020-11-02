@@ -56,9 +56,10 @@ def run_remap(ui, device_name, jog_multiplier, quiet=False):
     device.grab()
     current_wheel = 0
 
-    arrow_keys = [e.KEY_LEFT, e.KEY_RIGHT, 'Left/Right']
+    left_right_keys = [e.KEY_LEFT, e.KEY_RIGHT, 'Left/Right']
     volume_keys = [e.KEY_VOLUMEDOWN, e.KEY_VOLUMEUP, 'VolUp/Down']
-    key_modes = [arrow_keys, volume_keys]
+    up_down_keys = [e.KEY_UP, e.KEY_DOWN, 'Up/Down']
+    key_modes = [left_right_keys, up_down_keys, volume_keys]
 
     button1_pressed = False
     jog_mode = 0
@@ -94,9 +95,9 @@ def run_remap(ui, device_name, jog_multiplier, quiet=False):
                     print_help()
                 if ev.code == e.BTN_5 and ev.value == 0: # toggle jog/dial mode
                     if button1_pressed:
-                        dial_mode = 1 - dial_mode
+                        dial_mode = (dial_mode + 1) % len(key_modes)
                     else:
-                        jog_mode = 1 - jog_mode
+                        jog_mode = (jog_mode + 1) % len(key_modes)
                     print_help()
                 elif ev.code == e.BTN_6 and ev.value == 0: # button 2 -> space
                     key = e.KEY_SPACE
@@ -108,8 +109,8 @@ def run_remap(ui, device_name, jog_multiplier, quiet=False):
                 elif ev.code == e.BTN_8 and ev.value == 0: # button 5 -> mute
                     key = e.KEY_MUTE
                     value = ev.value
-                if key:
                     ui.write(e.EV_KEY, key, 1)
+                if key:
                     ui.write(e.EV_KEY, key, 0)
                     ui.syn()
                 continue
@@ -168,8 +169,8 @@ def run_remap(ui, device_name, jog_multiplier, quiet=False):
 
             # range will be [1 - 7] * multiplier
             count = count - 1
-            speed = math.pow(count, 1.8) + 1 # range 2 -
-            sleep_duration = 1.0 / (jog_multiplier * speed)
+            speed = math.pow(count, 2) + 1 # range 2 -
+            sleep_duration = 0.8 / (jog_multiplier * speed)
             # print(f'{count}, {sleep_duration}')
 
             ui.write(e.EV_KEY, key, 1)
