@@ -15,15 +15,15 @@
 # Device
 # Bus 001 Device 049: ID 0b33:0020 Contour Design, Inc. ShuttleXpress
 
-import sys
-import os
-import math
-import evdev
-import asyncio
 import argparse
+import asyncio
+import math
+import os
+import sys
 import time
+
+import evdev
 from evdev import UInput, ecodes as e
-import sys, os, time, psutil, signal
 
 DEFAULT_DEVICE_NAME = "Contour Design ShuttleXpress"
 
@@ -212,7 +212,7 @@ def main(args):
     debug = args.debug
 
     # Open /dev/uinput.
-    ui = UInput(name='ShuttleXPress-remapper')
+    ui = UInput(name='ShuttleXPress-remapper-uinput')
 
     run_remap(ui, args.device_name, args.jog_multiplier, args.quiet)
 
