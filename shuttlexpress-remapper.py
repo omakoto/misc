@@ -108,9 +108,8 @@ def run_remap(ui, device_name, jog_multiplier, quiet=False):
                         key = e.KEY_F11
                 elif ev.code == e.BTN_8 and ev.value == 0: # button 5 -> mute
                     key = e.KEY_MUTE
-                    value = ev.value
-                    ui.write(e.EV_KEY, key, 1)
                 if key:
+                    ui.write(e.EV_KEY, key, 1)
                     ui.write(e.EV_KEY, key, 0)
                     ui.syn()
                 continue
