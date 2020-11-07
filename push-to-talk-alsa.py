@@ -12,99 +12,108 @@ import notify2
 default_mic_muted = True
 button_pressed = False
 
-default_mixer_name = 'Capture'
-in_mixer = None
-channel = alsaaudio.MIXER_CHANNEL_ALL
-
-last_notification = None
-notification_summary = "Push-to-talk"
-last_volume = 100
-
+DEFAULT_MIXER_NAME = 'Capture'
 USE_MUTE = False
 
-def do_mute(mute):
-    global last_volume
-    if mute:
+
+class Muter(object):
+    def __init__(self, mixer_name):
+        try:
+            self.__rec_mixer = alsaaudio.Mixer(mixer_name)
+        except alsaaudio.ALSAAudioError:
+            print(f'No such mixer: {mixer_name}', file=sys.stderr)
+            sys.exit(1)
+
+        self.__notification_summary = "Push-to-talk"
+        self.__last_notification = None
+        self.__last_volume = self.__get_volume()
+        self.__channel = alsaaudio.MIXER_CHANNEL_ALL
+
+        self.__default_mute = True
+        self.__pushed = False
+
+        self.update_mute()
+
+    def __get_volume(self):
+        return self.__rec_mixer.getvolume(alsaaudio.PCM_CAPTURE)[0]
+
+    def __set_volume(self, value):
+        self.__rec_mixer.setvolume(value)
+
+    def __do_mute(self, mute):
         if USE_MUTE:
-            in_mixer.setrec(0, channel)
+            if mute:
+                self.__rec_mixer.setrec(0, self.__channel)
+            else:
+                self.__rec_mixer.setrec(1, self.__channel)
+            return
+
+        if mute:
+            self.__last_volume = self.__get_volume()
+            self.__set_volume(0)
+        elif self.__last_volume >= 0:
+            self.__rec_mixer.setvolume(self.__last_volume)
+
+    def toggle_default_mute(self):
+        self.__default_mute = not self.__default_mute
+        self.update_mute()
+
+    def set_pushed(self, value):
+        self.__pushed = value
+        self.update_mute()
+
+    def update_mute(self, mute=None):
+        if mute is None:
+            mute = self.__default_mute != self.__pushed
+
+        self.__do_mute(mute)
+
+        message = "Mic Muted" if mute else "Mic Unmuted"
+
+        if self.__last_notification:
+            n = self.__last_notification
+            n.update(self.__notification_summary, message)
         else:
-            last_volume = in_mixer.getvolume(alsaaudio.PCM_CAPTURE)[0]
-            # print(f'Last volume={last_volume}')
-            in_mixer.setvolume(0)
-    else:
-        if USE_MUTE:
-            in_mixer.setrec(1, channel)
-        elif last_volume >= 0:
-            in_mixer.setvolume(last_volume)
+            n = notify2.Notification(self.__notification_summary, message)
 
+        n.set_urgency(notify2.URGENCY_NORMAL)
+        n.set_timeout(1000)
 
-def update(mute=None):
-    global last_notification
+        n.show()
 
-    if mute is None:
-        mute = button_pressed != default_mic_muted
-
-    do_mute(mute)
-
-    message = ""
-    if mute:
-        message = "Mic Muted"
-    else:
-        message = "Mic Unmuted"
-
-    global last_notification
-    if last_notification:
-        n = last_notification
-        n.update(notification_summary, message)
-    else:
-        n = notify2.Notification(notification_summary, message)
-
-    n.set_urgency(notify2.URGENCY_NORMAL)
-    n.set_timeout(1000)
-
-    n.show()
-
-    last_notification = n
-
-def remapper(
-        device: evdev.InputDevice,
-        events: typing.List[evdev.InputEvent]) -> typing.List[evdev.InputEvent]:
-    for ev in events:
-        global button_pressed, default_mic_muted
-        if ev.type == e.EV_KEY and ev.code == e.BTN_LEFT:
-            button_pressed = ev.value == 1
-            update()
-        elif (ev.type == e.EV_KEY and
-              ev.code in (e.KEY_ESC, e.KEY_LEFT, e.BTN_RIGHT) and
-              ev.value == 1):
-            default_mic_muted = not default_mic_muted
-            update()
-    return [] # eat all events
+        self.__last_notification = n
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='push-to-talk with alsa')
-    parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
-    parser.add_argument('-c', '--in-mixer', default=default_mixer_name, help='Input mixer name')
-
-    args = parser.parse_args()
-
-    mixer_name = args.in_mixer
-
     notify2.init("Push-to-talk")
 
-    try:
-        in_mixer = alsaaudio.Mixer(mixer_name)
-    except alsaaudio.ALSAAudioError:
-        print(f'No such mixer: {mixer_name}', file=sys.stderr)
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description='push-to-talk with alsa')
+    parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
+    parser.add_argument('-m', '--mixer-name', default=DEFAULT_MIXER_NAME, help='Capture mixer name')
+    parser.add_argument('--device', help='Regex for the device name')
+    parser.add_argument('--key-toggle', type=int, help='Key code for toggle mute')
+    parser.add_argument('--key-ppt', type=int, help='Key code for push-to-talk')
 
-    update(True)
+    args = parser.parse_args()
+    muter = Muter(args.mixer_name)
+
+    def remapper(
+            device: evdev.InputDevice,
+            events: typing.List[evdev.InputEvent]) -> typing.List[evdev.InputEvent]:
+        for ev in events:
+            if ev.type == e.EV_KEY and ev.code == e.BTN_LEFT:
+                muter.set_pushed(ev.value == 1)
+            elif (ev.type == e.EV_KEY and
+                  ev.code in (e.KEY_ESC, e.KEY_LEFT, e.BTN_RIGHT) and
+                  ev.value == 1):
+                muter.toggle_default_mute()
+        return [] # eat all events
+
     try:
         keymacroer.run('^Smart Smart dongle', remapper,
                        force_debug=args.debug, match_all_devices=True, no_output=True)
     finally:
-        update(False)
+        muter.update_mute(False)
 
 # /dev/input/event17:	Smart Smart dongle
 # /dev/input/event18:	Smart Smart dongle
