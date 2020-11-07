@@ -247,11 +247,11 @@ def run(match_device_name, remapper, match_all_devices=False, no_output = False,
     start_device_monitor(new_device_detector_w)
 
     while True:
-        try:
+        # try:
             read_loop(ui, device_name_matcher, new_device_detector_r, remapper, match_all_devices)
-        except BaseException as ex:
-            print(f'Unhandled exception (retrying in 1 second): {ex}', file=sys.stderr)
-            time.sleep(1)
+        # except BaseException as ex:
+        #     print(f'Unhandled exception (retrying in 1 second): {ex}', file=sys.stderr)
+        #     time.sleep(1)
 
 
 def main(args, remapper=null_remapper, description="key remapper"):

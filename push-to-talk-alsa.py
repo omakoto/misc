@@ -10,7 +10,7 @@ import alsaaudio
 import notify2
 
 default_mic_muted = True
-mic_muted = True
+button_pressed = False
 
 default_mixer_name = 'Capture'
 in_mixer = None
@@ -18,16 +18,38 @@ channel = alsaaudio.MIXER_CHANNEL_ALL
 
 last_notification = None
 notification_summary = "Push-to-talk"
+last_volume = 100
 
-def update():
+USE_MUTE = False
+
+def do_mute(mute):
+    global last_volume
+    if mute:
+        if USE_MUTE:
+            in_mixer.setrec(0, channel)
+        else:
+            last_volume = in_mixer.getvolume(alsaaudio.PCM_CAPTURE)[0]
+            print(f'Last volume={last_volume}')
+            in_mixer.setvolume(0)
+    else:
+        if USE_MUTE:
+            in_mixer.setrec(1, channel)
+        elif last_volume >= 0:
+            in_mixer.setvolume(last_volume)
+
+
+def update(mute=None):
     global last_notification
 
+    if mute is None:
+        mute = button_pressed != default_mic_muted
+
+    do_mute(mute)
+
     message = ""
-    if mic_muted == default_mic_muted:
-        in_mixer.setrec(0, channel)
+    if mute:
         message = "Mic Muted"
     else:
-        in_mixer.setrec(1, channel)
         message = "Mic Unmuted"
 
     global last_notification
@@ -48,9 +70,9 @@ def remapper(
         device: evdev.InputDevice,
         events: typing.List[evdev.InputEvent]) -> typing.List[evdev.InputEvent]:
     for ev in events:
-        global  mic_muted, default_mic_muted
+        global button_pressed, default_mic_muted
         if ev.type == e.EV_KEY and ev.code == e.BTN_LEFT:
-            mic_muted = ev.value == 0
+            button_pressed = ev.value == 1
             update()
         elif (ev.type == e.EV_KEY and
               ev.code in (e.KEY_ESC, e.KEY_LEFT, e.BTN_RIGHT) and
@@ -77,9 +99,12 @@ if __name__ == '__main__':
         print(f'No such mixer: {mixer_name}', file=sys.stderr)
         sys.exit(1)
 
-    update()
-    keymacroer.run('^Smart Smart dongle', remapper, force_debug=args.debug, match_all_devices=True,
-                   no_output=True)
+    update(True)
+    try:
+        keymacroer.run('^Smart Smart dongle', remapper,
+                       force_debug=args.debug, match_all_devices=True, no_output=True)
+    finally:
+        update(False)
 
 # /dev/input/event17:	Smart Smart dongle
 # /dev/input/event18:	Smart Smart dongle
