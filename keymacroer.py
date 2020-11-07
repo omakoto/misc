@@ -9,6 +9,7 @@
 #   sudo pip3 install evdev pyudev
 import argparse
 import collections
+import fcntl
 import os
 import random
 import re
@@ -212,9 +213,22 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper, match_al
                 pass # Ignore any exception
 
 
-def run(match_device_name, remapper, match_all_devices=False, no_output = False, force_debug=False):
+def run(match_device_name, remapper, match_all_devices=False, no_output = False, force_debug=False,
+        lock_global_name=os.path.basename(sys.argv[0])):
     global debug
     debug = force_debug
+
+    # Prevent multiple instances.
+    lockfile = f'/tmp/{lock_global_name}.lock'
+    if debug:
+        print(f'Lockfile: {lockfile}')
+    try:
+        os.umask(0o000)
+        lock = open(lockfile, 'w')
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except IOError as err:
+        raise SystemExit(f'Unable to obtain file lock {lockfile}')
+
 
     device_name_matcher = re.compile(match_device_name)
 
