@@ -73,8 +73,6 @@ def run_remap(ui, device_name, jog_multiplier):
     dial_mode = 1
 
     def print_help():
-        if quiet:
-            return
         global last_notification
         key4 = 'KEY_F' if button1_pressed else 'KEY_F11'
         key2 = 'Toggle Dial' if button1_pressed else 'Toggle Jog'
@@ -83,14 +81,16 @@ def run_remap(ui, device_name, jog_multiplier):
             f'  Jog mode : {key_modes[jog_mode][2]}\n' +
             f'  Dial mode: {key_modes[dial_mode][2]}')
 
+        global  quiet
+        if not quiet:
+            print(help)
+
         if last_notification:
             n = last_notification
             n.update(notification_summary, help)
         else:
             n = notify2.Notification(notification_summary, help)
             last_notification = n
-
-        print(help)
 
         n.set_urgency(notify2.URGENCY_NORMAL)
         n.set_timeout(1000)
