@@ -229,7 +229,6 @@ def run(match_device_name, remapper, match_all_devices=False, no_output = False,
     except IOError as err:
         raise SystemExit(f'Unable to obtain file lock {lockfile}')
 
-
     device_name_matcher = re.compile(match_device_name)
 
     ui = None
@@ -248,11 +247,11 @@ def run(match_device_name, remapper, match_all_devices=False, no_output = False,
     start_device_monitor(new_device_detector_w)
 
     while True:
-    # try:
-        read_loop(ui, device_name_matcher, new_device_detector_r, remapper, match_all_devices)
-    # except BaseException as ex:
-    #     print(f'Unhandled exception (retrying in 1 second): {ex}', file=sys.stderr)
-    #     time.sleep(1)
+        try:
+            read_loop(ui, device_name_matcher, new_device_detector_r, remapper, match_all_devices)
+        except BaseException as ex:
+            print(f'Unhandled exception (retrying in 1 second): {ex}', file=sys.stderr)
+            time.sleep(1)
 
 
 def main(args, remapper=null_remapper, description="key remapper"):
