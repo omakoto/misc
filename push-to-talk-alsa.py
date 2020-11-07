@@ -7,6 +7,7 @@ import sys
 import evdev
 from evdev import ecodes as e
 import alsaaudio
+import notify2
 
 default_mic_muted = True
 mic_muted = True
@@ -15,13 +16,32 @@ default_mixer_name = 'Capture'
 in_mixer = None
 channel = alsaaudio.MIXER_CHANNEL_ALL
 
+last_notification = None
 
 def update():
+    global last_notification
+    if last_notification:
+        last_notification.close()
+
+    message = ""
     if mic_muted == default_mic_muted:
         in_mixer.setrec(0, channel)
+        message = "Mic Muted"
     else:
         in_mixer.setrec(1, channel)
+        message = "Mic Unmuted"
 
+    n = notify2.Notification(message)
+
+    # Set the urgency level
+    n.set_urgency(notify2.URGENCY_NORMAL)
+
+    # Set the timeout
+    n.set_timeout(1000)
+
+    n.show()
+
+    last_notification = n
 
 def remapper(
         device: evdev.InputDevice,
@@ -31,7 +51,9 @@ def remapper(
         if ev.type == e.EV_KEY and ev.code == e.BTN_LEFT:
             mic_muted = ev.value == 0
             update()
-        elif ev.type == e.EV_KEY and ev.code == e.KEY_ESC and ev.value == 1:
+        elif (ev.type == e.EV_KEY and
+              ev.code in (e.KEY_ESC, e.KEY_LEFT, e.BTN_RIGHT) and
+              ev.value == 1):
             default_mic_muted = not default_mic_muted
             update()
     return [] # eat all events
@@ -45,6 +67,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     mixer_name = args.in_mixer
+
+    notify2.init("Push-to-talk")
 
     try:
         in_mixer = alsaaudio.Mixer(mixer_name)
