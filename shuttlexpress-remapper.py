@@ -23,11 +23,18 @@ import sys
 import time
 
 import evdev
+import notify2
 from evdev import UInput, ecodes as e
+
+last_notification = None
+notification_summary = "ShuttleXPress"
 
 DEFAULT_DEVICE_NAME = "Contour Design ShuttleXpress"
 
 debug = False
+quiet = False
+
+notify2.init(notification_summary)
 
 
 def fatal(message):
@@ -35,7 +42,7 @@ def fatal(message):
     sys.exit(1)
 
 
-def run_remap(ui, device_name, jog_multiplier, quiet=False):
+def run_remap(ui, device_name, jog_multiplier):
     # Open the input device.
     device = None
 
@@ -68,11 +75,26 @@ def run_remap(ui, device_name, jog_multiplier, quiet=False):
     def print_help():
         if quiet:
             return
+        global last_notification
         key4 = 'KEY_F' if button1_pressed else 'KEY_F11'
         key2 = 'Toggle Dial' if button1_pressed else 'Toggle Jog'
-        print(f'[ALT] [{key2}] [KEY_SPACE] [{key4}] [KEY_MUTE]')
-        print(f'  Jog mode : {key_modes[jog_mode][2]}')
-        print(f'  Dial mode: {key_modes[dial_mode][2]}')
+
+        help = (f'[ALT] [{key2}] [KEY_SPACE] [{key4}] [KEY_MUTE]\n' +
+            f'  Jog mode : {key_modes[jog_mode][2]}\n' +
+            f'  Dial mode: {key_modes[dial_mode][2]}')
+
+        if last_notification:
+            n = last_notification
+            n.update(notification_summary, help)
+        else:
+            n = notify2.Notification(notification_summary, help)
+            last_notification = n
+
+        print(help)
+
+        n.set_urgency(notify2.URGENCY_NORMAL)
+        n.set_timeout(1000)
+        n.show()
 
     print_help()
 
@@ -207,13 +229,14 @@ def main(args):
 
     args = parser.parse_args(args=args)
 
-    global debug
+    global debug, quiet
     debug = args.debug
+    quiet = args.quiet
 
     # Open /dev/uinput.
     ui = UInput(name='ShuttleXPress-remapper-uinput')
 
-    run_remap(ui, args.device_name, args.jog_multiplier, args.quiet)
+    run_remap(ui, args.device_name, args.jog_multiplier)
 
 
 if __name__ == '__main__':
