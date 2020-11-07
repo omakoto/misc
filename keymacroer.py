@@ -62,7 +62,7 @@ def is_syn(ev: evdev.InputEvent) -> bool:
     return ev and ev.type == e.EV_SYN and ev.code == e.SYN_REPORT and ev.value == 0
 
 # Main loop.
-def read_loop(ui, device_name_matcher, new_device_detector_r, remapper):
+def read_loop(ui, device_name_matcher, new_device_detector_r, remapper, match_all_devices=False):
     # Find all the keyboard devices. Ignore all the devices that support non-keyboard events.
     devices = []
     capabilities = []
@@ -90,7 +90,10 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper):
             add = False
             caps = d.capabilities()
             for c in caps.keys():
-                if c not in (e.EV_SYN, e.EV_KEY, e.EV_MSC, e.EV_LED, e.EV_REP):
+                if match_all_devices:
+                    add = True
+                    break
+                if match_all_devices or c not in (e.EV_SYN, e.EV_KEY, e.EV_MSC, e.EV_LED, e.EV_REP):
                     add = False
                     break
                 if c == e.EV_KEY:
@@ -205,17 +208,11 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper):
                 pass # Ignore any exception
 
 
-def main(args, remapper=null_remapper, description="key remapper"):
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('-m', '--match-device-name', metavar='D', default='', help='Only use devices matching this regex')
-    parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
-
-    args = parser.parse_args()
-
+def run(match_device_name, remapper, match_all_devices=False, force_debug=False):
     global debug
-    debug = args.debug
+    debug = force_debug
 
-    device_name_matcher = re.compile(args.match_device_name)
+    device_name_matcher = re.compile(match_device_name)
 
     # Create our /dev/uinput device.
     ui = UInput(name=UINPUT_DEVICE_NAME)
@@ -231,11 +228,21 @@ def main(args, remapper=null_remapper, description="key remapper"):
     start_device_monitor(new_device_detector_w)
 
     while True:
-        # try:
-            read_loop(ui, device_name_matcher, new_device_detector_r, remapper)
-        # except BaseException as ex:
-        #     print(f'Unhandled exception (retrying in 1 second): {ex}', file=sys.stderr)
-        #     time.sleep(1)
+    # try:
+        read_loop(ui, device_name_matcher, new_device_detector_r, remapper, match_all_devices)
+    # except BaseException as ex:
+    #     print(f'Unhandled exception (retrying in 1 second): {ex}', file=sys.stderr)
+    #     time.sleep(1)
+
+
+def main(args, remapper=null_remapper, description="key remapper"):
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('-m', '--match-device-name', metavar='D', default='', help='Only use devices matching this regex')
+    parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
+
+    args = parser.parse_args(args)
+
+    run(args.match_device_name, remapper, args.debug)
 
 
 if __name__ == '__main__':
