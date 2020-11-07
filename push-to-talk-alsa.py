@@ -90,30 +90,42 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='push-to-talk with alsa')
     parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
     parser.add_argument('-m', '--mixer-name', default=DEFAULT_MIXER_NAME, help='Capture mixer name')
-    parser.add_argument('--device', help='Regex for the device name')
-    parser.add_argument('--key-toggle', type=int, help='Key code for toggle mute')
-    parser.add_argument('--key-ppt', type=int, help='Key code for push-to-talk')
+    parser.add_argument('device', help='Regex for the device name')
+    parser.add_argument('key_toggle', type=int, help='Key code for toggle mute')
+    parser.add_argument('key_ppt', type=int, help='Key code for push-to-talk')
 
     args = parser.parse_args()
     muter = Muter(args.mixer_name)
+
+    device = args.device
+    key_toggle = int(args.key_toggle)
+    key_ppt = int(args.key_ppt)
+
 
     def remapper(
             device: evdev.InputDevice,
             events: typing.List[evdev.InputEvent]) -> typing.List[evdev.InputEvent]:
         for ev in events:
-            if ev.type == e.EV_KEY and ev.code == e.BTN_LEFT:
-                muter.set_pushed(ev.value == 1)
+            if ev.type == e.EV_KEY and ev.code == key_ppt:
+                muter.set_pushed(ev.value >= 1)
             elif (ev.type == e.EV_KEY and
-                  ev.code in (e.KEY_ESC, e.KEY_LEFT, e.BTN_RIGHT) and
+                  ev.code == key_toggle and
                   ev.value == 1):
                 muter.toggle_default_mute()
         return [] # eat all events
 
     try:
-        keymacroer.run('^Smart Smart dongle', remapper,
+        keymacroer.run(device, remapper,
                        force_debug=args.debug, match_all_devices=True, no_output=True)
     finally:
         muter.update_mute(False)
+
+# Use with the ten-key. 0 for PPT, enter to toggle.
+# push-to-talk-alsa.py '^MOSART Semi. 2.4G Keyboard Mouse$' 96 82
+
+# Use with the handheld trackball. Trigger for PPT, top-left to toggle.
+# push-to-talk-alsa.py '^Smart Smart dongle$' 105 272
+
 
 # /dev/input/event17:	Smart Smart dongle
 # /dev/input/event18:	Smart Smart dongle
