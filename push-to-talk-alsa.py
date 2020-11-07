@@ -70,6 +70,9 @@ class Muter(object):
 
         message = "Mic Muted" if mute else "Mic Unmuted"
 
+        if not mute and self.__get_volume() < 10:
+            message += " But Volume Too Low!"
+
         if self.__last_notification:
             n = self.__last_notification
             n.update(self.__notification_summary, message)
