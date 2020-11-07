@@ -29,7 +29,7 @@ def do_mute(mute):
             in_mixer.setrec(0, channel)
         else:
             last_volume = in_mixer.getvolume(alsaaudio.PCM_CAPTURE)[0]
-            print(f'Last volume={last_volume}')
+            # print(f'Last volume={last_volume}')
             in_mixer.setvolume(0)
     else:
         if USE_MUTE:
