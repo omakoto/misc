@@ -155,6 +155,9 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper, match_al
                     # Send all of them to remapper.
                     events = remapper(device, events)
 
+                    if not ui:
+                        continue
+
                     last_event = None
                     for ev in events:
                         if is_syn(ev) and is_syn(last_event):
@@ -190,14 +193,15 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper, match_al
             print(f'Device lost: {ex}')
             return False
         finally:
-            # Release all pressed keys.
-            try:
-                for key in key_states.keys():
-                    if key_states[key] > 0:
-                        ui.write(e.EV_KEY, key, 0)
-                        ui.syn()
-            except:
-                pass # ignore any exception
+            if ui:
+                # Release all pressed keys.
+                try:
+                    for key in key_states.keys():
+                        if key_states[key] > 0:
+                            ui.write(e.EV_KEY, key, 0)
+                            ui.syn()
+                except:
+                    pass # ignore any exception
     finally:
 
         for d in devices:
@@ -208,15 +212,17 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper, match_al
                 pass # Ignore any exception
 
 
-def run(match_device_name, remapper, match_all_devices=False, force_debug=False):
+def run(match_device_name, remapper, match_all_devices=False, no_output = False, force_debug=False):
     global debug
     debug = force_debug
 
     device_name_matcher = re.compile(match_device_name)
 
-    # Create our /dev/uinput device.
-    ui = UInput(name=UINPUT_DEVICE_NAME)
-    if debug: print(f'Synthesized device name: {UINPUT_DEVICE_NAME}')
+    ui = None
+    if not no_output:
+        # Create our /dev/uinput device.
+        ui = UInput(name=UINPUT_DEVICE_NAME)
+        if debug: print(f'Synthesized device name: {UINPUT_DEVICE_NAME}')
 
     # Create a worker thread that detects new devices.
     pipe_r, pipe_w = os.pipe()

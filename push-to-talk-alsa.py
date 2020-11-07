@@ -53,7 +53,8 @@ if __name__ == '__main__':
         sys.exit(1)
 
     update()
-    keymacroer.run('^Smart Smart dongle', remapper, force_debug=args.debug, match_all_devices=True)
+    keymacroer.run('^Smart Smart dongle', remapper, force_debug=args.debug, match_all_devices=True,
+                   no_output=True)
 
 # /dev/input/event17:	Smart Smart dongle
 # /dev/input/event18:	Smart Smart dongle
