@@ -17,11 +17,10 @@ in_mixer = None
 channel = alsaaudio.MIXER_CHANNEL_ALL
 
 last_notification = None
+notification_summary = "Push-to-talk"
 
 def update():
     global last_notification
-    if last_notification:
-        last_notification.close()
 
     message = ""
     if mic_muted == default_mic_muted:
@@ -31,12 +30,14 @@ def update():
         in_mixer.setrec(1, channel)
         message = "Mic Unmuted"
 
-    n = notify2.Notification(message)
+    global last_notification
+    if last_notification:
+        n = last_notification
+        n.update(notification_summary, message)
+    else:
+        n = notify2.Notification(notification_summary, message)
 
-    # Set the urgency level
     n.set_urgency(notify2.URGENCY_NORMAL)
-
-    # Set the timeout
     n.set_timeout(1000)
 
     n.show()
