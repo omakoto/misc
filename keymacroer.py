@@ -225,7 +225,7 @@ def run(match_device_name, remapper, match_all_devices=False, no_output = False,
         os.umask(0o000)
         lock = open(lockfile, 'w')
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except IOError as err:
+    except IOError:
         raise SystemExit(f'Unable to obtain file lock {lockfile}')
 
     device_name_matcher = re.compile(match_device_name)
@@ -258,7 +258,8 @@ def run(match_device_name, remapper, match_all_devices=False, no_output = False,
 
 def main(args, remapper=null_remapper, description="key remapper"):
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('-m', '--match-device-name', metavar='D', default='', help='Only use devices matching this regex')
+    parser.add_argument('-m', '--match-device-name', metavar='D', default='',
+                        help='Only use devices matching this regex')
     parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
 
     args = parser.parse_args(args)
