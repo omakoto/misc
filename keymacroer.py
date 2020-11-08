@@ -63,7 +63,8 @@ def is_syn(ev: evdev.InputEvent) -> bool:
     return ev and ev.type == e.EV_SYN and ev.code == e.SYN_REPORT and ev.value == 0
 
 # Main loop.
-def read_loop(ui, device_name_matcher, new_device_detector_r, remapper, match_all_devices=False):
+def read_loop(ui, device_name_matcher, new_device_detector_r, remapper, match_all_devices=False,
+              grab_device=True):
     # Find all the keyboard devices. Ignore all the devices that support non-keyboard events.
     devices = []
     capabilities = []
@@ -107,8 +108,6 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper, match_al
         if not devices:
             print("No keyboard devices found.")
 
-        do_grab_devices = True # Only for debugging.
-
         key_states: typing.Dict[int, int] = collections.defaultdict(int) # Current state of each key
 
         # Start the main loop.
@@ -119,7 +118,7 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper, match_al
 
             for d in devices:
                 print(f"Using device: {d}")
-                if do_grab_devices:
+                if grab_device:
                     try:
                         d.grab()
                     except:
@@ -208,13 +207,13 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper, match_al
         for d in devices:
             print(f"Releasing device: {d}")
             try:
-                if do_grab_devices: d.ungrab()
+                if grab_device: d.ungrab()
             except:
                 pass # Ignore any exception
 
 
 def run(match_device_name, remapper, match_all_devices=False, no_output = False, force_debug=False,
-        lock_global_name=os.path.basename(sys.argv[0])):
+        grab_device=True, lock_global_name=os.path.basename(sys.argv[0])):
     global debug
     debug = force_debug
 
@@ -247,11 +246,14 @@ def run(match_device_name, remapper, match_all_devices=False, no_output = False,
     start_device_monitor(new_device_detector_w)
 
     while True:
-        # try:
-            read_loop(ui, device_name_matcher, new_device_detector_r, remapper, match_all_devices)
-        # except BaseException as ex:
-        #     print(f'Unhandled exception (retrying in 1 second): {ex}', file=sys.stderr)
-        #     time.sleep(1)
+        try:
+            read_loop(ui, device_name_matcher, new_device_detector_r, remapper,
+                      match_all_devices=match_all_devices, grab_device=grab_device)
+        except KeyboardInterrupt:
+            sys.exit(1)
+        except BaseException as ex:
+            print(f'Unhandled exception (retrying in 1 second): {ex}', file=sys.stderr)
+            time.sleep(1)
 
 
 def main(args, remapper=null_remapper, description="key remapper"):
