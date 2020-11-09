@@ -31,6 +31,7 @@ class Muter(object):
 
         self.__default_mute = True
         self.__pushed = False
+        self.__was_muted = False
 
         self.update_mute()
 
@@ -41,6 +42,10 @@ class Muter(object):
         self.__rec_mixer.setvolume(value)
 
     def __do_mute(self, mute):
+        if self.__was_muted == mute:
+            return
+        self.__was_muted = mute
+
         if USE_MUTE:
             if mute:
                 self.__rec_mixer.setrec(0, self.__channel)
@@ -156,3 +161,6 @@ if __name__ == '__main__':
 # Event: time 1604716357.784751, -------------- SYN_REPORT ------------
 # Event: time 1604716357.976476, type 4 (EV_MSC), code 4 (MSC_SCAN), value 90001
 # Event: time 1604716357.976476, type 1 (EV_KEY), code 272 (BTN_LEFT), value 0
+
+
+# FM8PU83-Ver0E-0000 RF 2.4G
