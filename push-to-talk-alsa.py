@@ -9,6 +9,8 @@ from evdev import ecodes as e
 import alsaaudio
 import notify2
 
+NAME = 'Push-to-talk'
+
 default_mic_muted = True
 button_pressed = False
 
@@ -24,7 +26,6 @@ class Muter(object):
             print(f'No such mixer: {mixer_name}', file=sys.stderr)
             sys.exit(1)
 
-        self.__notification_summary = "Push-to-talk"
         self.__last_notification = None
         self.__last_volume = self.__get_volume()
         self.__channel = alsaaudio.MIXER_CHANNEL_ALL
@@ -55,6 +56,9 @@ class Muter(object):
 
         if mute:
             self.__last_volume = self.__get_volume()
+            # print(f'Last volume: {self.__last_volume}')
+            if self.__last_volume < 10:
+                self.__last_volume = 100
             self.__set_volume(0)
         elif self.__last_volume >= 0:
             self.__rec_mixer.setvolume(self.__last_volume)
@@ -80,9 +84,9 @@ class Muter(object):
 
         if self.__last_notification:
             n = self.__last_notification
-            n.update(self.__notification_summary, message)
+            n.update(NAME, message)
         else:
-            n = notify2.Notification(self.__notification_summary, message)
+            n = notify2.Notification(NAME, message)
 
         n.set_urgency(notify2.URGENCY_NORMAL)
         n.set_timeout(1000)
@@ -122,8 +126,17 @@ if __name__ == '__main__':
                 muter.toggle_default_mute()
         return [] # eat all events
 
+    def on_device_detected(devices:typing.List[evdev.InputDevice]):
+        if not devices:
+            return
+        message = '\n'.join([d.name for d in devices])
+        n = notify2.Notification(NAME + ' -  Device detected', message)
+        n.set_urgency(notify2.URGENCY_NORMAL)
+        n.set_timeout(1000)
+        n.show()
+
     try:
-        keymacroer.run(device, remapper,
+        keymacroer.run(device, remapper, on_device_detected=on_device_detected,
                        force_debug=args.debug, match_all_devices=True, no_output=True)
     finally:
         muter.update_mute(False)

@@ -62,9 +62,13 @@ def start_device_monitor(new_device_detector_w):
 def is_syn(ev: evdev.InputEvent) -> bool:
     return ev and ev.type == e.EV_SYN and ev.code == e.SYN_REPORT and ev.value == 0
 
+
 # Main loop.
-def read_loop(ui, device_name_matcher, new_device_detector_r, remapper, match_all_devices=False,
-              grab_device=True):
+def read_loop(ui, device_name_matcher, new_device_detector_r,
+              remapper: typing.Callable[[evdev.InputDevice, typing.List[evdev.InputEvent]],
+                                        typing.List[evdev.InputEvent]],
+              on_device_detected: typing.Callable[[typing.List[evdev.InputDevice]], None],
+              match_all_devices=False, grab_device=True):
     # Find all the keyboard devices. Ignore all the devices that support non-keyboard events.
     devices = []
     capabilities = []
@@ -125,6 +129,9 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper, match_al
                         print(f"  Unable to grab, skipping")
                         continue
                 selector.register(d, selectors.EVENT_READ)
+
+            if on_device_detected:
+                on_device_detected(devices)
 
             # Before starting, drain the all the data new_device_detector_r.
             while new_device_detector_r.readline():
@@ -212,8 +219,14 @@ def read_loop(ui, device_name_matcher, new_device_detector_r, remapper, match_al
                 pass # Ignore any exception
 
 
-def run(match_device_name, remapper, match_all_devices=False, no_output = False, force_debug=False,
-        grab_device=True, lock_global_name=os.path.basename(sys.argv[0])):
+def run(match_device_name: str,
+        remapper: typing.Callable[[evdev.InputDevice, typing.List[evdev.InputEvent]],
+                                  typing.List[evdev.InputEvent]],
+        on_device_detected:typing.Callable[[typing.List[evdev.InputDevice]], None]=None,
+        match_all_devices=False, no_output = False, force_debug=False,
+        grab_device=True,
+        lock_global_name=os.path.basename(sys.argv[0]),
+        ) -> None:
     global debug
     debug = force_debug
 
@@ -248,6 +261,7 @@ def run(match_device_name, remapper, match_all_devices=False, no_output = False,
     while True:
         try:
             read_loop(ui, device_name_matcher, new_device_detector_r, remapper,
+                      on_device_detected,
                       match_all_devices=match_all_devices, grab_device=grab_device)
         except KeyboardInterrupt:
             sys.exit(1)
