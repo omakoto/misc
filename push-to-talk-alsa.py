@@ -57,8 +57,8 @@ class Muter(object):
         if mute:
             self.__last_volume = self.__get_volume()
             # print(f'Last volume: {self.__last_volume}')
-            if self.__last_volume < 10:
-                self.__last_volume = 100
+            # if self.__last_volume < 10:
+            #     self.__last_volume = 100
             self.__set_volume(0)
         elif self.__last_volume >= 0:
             self.__rec_mixer.setvolume(self.__last_volume)
@@ -79,7 +79,7 @@ class Muter(object):
 
         message = "Mic Muted" if mute else "Mic Unmuted"
 
-        if not mute and self.__get_volume() < 10:
+        if not mute and self.__get_volume() < 50:
             message += " But Volume Too Low!"
 
         if self.__last_notification:
