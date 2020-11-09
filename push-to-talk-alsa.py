@@ -99,25 +99,25 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
     parser.add_argument('-m', '--mixer-name', default=DEFAULT_MIXER_NAME, help='Capture mixer name')
     parser.add_argument('device', help='Regex for the device name')
-    parser.add_argument('key_toggle', type=int, help='Key code for toggle mute')
-    parser.add_argument('key_ppt', type=int, help='Key code for push-to-talk')
+    parser.add_argument('key_toggle', help='Key codes (csv) for toggle mute')
+    parser.add_argument('key_ppt', help='Key codes (csv) for push-to-talk')
 
     args = parser.parse_args()
     muter = Muter(args.mixer_name)
 
     device = args.device
-    key_toggle = int(args.key_toggle)
-    key_ppt = int(args.key_ppt)
+    keys_toggle = [int(n) for n in args.key_toggle.split(',')]
+    keys_ppt = [int(n) for n in args.key_ppt.split(',')]
 
 
     def remapper(
             device: evdev.InputDevice,
             events: typing.List[evdev.InputEvent]) -> typing.List[evdev.InputEvent]:
         for ev in events:
-            if ev.type == e.EV_KEY and ev.code == key_ppt:
+            if ev.type == e.EV_KEY and ev.code in keys_ppt:
                 muter.set_pushed(ev.value >= 1)
             elif (ev.type == e.EV_KEY and
-                  ev.code == key_toggle and
+                  ev.code in keys_toggle and
                   ev.value == 1):
                 muter.toggle_default_mute()
         return [] # eat all events
