@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import argparse
 import os
+import threading
 import typing
 
 import keymacroer
@@ -8,7 +9,6 @@ import sys
 import evdev
 from evdev import ecodes as e
 import alsaaudio
-import notify2
 
 import gi
 gi.require_version('Gtk', '3.0')
@@ -32,16 +32,17 @@ SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 MIC_ICON = os.path.join(SCRIPT_PATH, 'microphone.png')
 MIC_MUTED_ICON = os.path.join(SCRIPT_PATH, 'microphone-muted.png')
 
+
 class Ui:
     def __init__(self):
         notify.init(NAME)
         self.indicator = appindicator.Indicator.new(NAME, MIC_ICON,
                                                     appindicator.IndicatorCategory.SYSTEM_SERVICES)
         self.indicator.set_status(appindicator.IndicatorStatus.ACTIVE)
-        self.indicator.set_menu(self.build_menu())
+        self.indicator.set_menu(self.__build_menu())
         self.notification = notify.Notification.new(NAME, '', None)
 
-    def build_menu(self):
+    def __build_menu(self):
         menu = gtk.Menu()
 
         item_quit = gtk.MenuItem('Quit')
@@ -74,6 +75,9 @@ class Ui:
         gtk.main()
 
 
+UI = Ui()
+
+
 class Muter(object):
     def __init__(self, mixer_name):
         try:
@@ -82,7 +86,6 @@ class Muter(object):
             print(f'No such mixer: {mixer_name}', file=sys.stderr)
             sys.exit(1)
 
-        self.__last_notification = None
         self.__last_volume = self.__get_volume()
         self.__channel = alsaaudio.MIXER_CHANNEL_ALL
 
@@ -133,32 +136,17 @@ class Muter(object):
 
         self.__do_mute(mute)
 
+        UI.update_muted(mute)
+
         message = "Mic Muted" if mute else "Mic Unmuted"
 
         if not mute and self.__get_volume() < 50:
             message += " But Volume Too Low!"
 
-        if self.__last_notification:
-            n = self.__last_notification
-            n.update(NAME, message)
-        else:
-            n = notify2.Notification(NAME, message)
-
-        n.set_urgency(notify2.URGENCY_NORMAL)
-        n.set_timeout(1000)
-
-        n.show()
-
-        self.__last_notification = n
+        UI.notify(message)
 
 
 if __name__ == '__main__':
-    ui = Ui()
-    ui.run()
-    sys.exit(5)
-
-    notify2.init("Push-to-talk")
-
     parser = argparse.ArgumentParser(description='push-to-talk with alsa')
     parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
     parser.add_argument('-m', '--mixer-name', default=DEFAULT_MIXER_NAME, help='Capture mixer name')
@@ -194,19 +182,28 @@ if __name__ == '__main__':
         def on_device_detected(self, devices: typing.List[evdev.InputDevice]):
             if not devices:
                 return
-            message = '\n'.join([d.name for d in devices])
-            n = notify2.Notification(NAME + ' -  Device detected', message)
-            n.set_urgency(notify2.URGENCY_NORMAL)
-            n.set_timeout(1000)
-            n.show()
+            message = 'Device detected\n' + '\n'.join([d.name for d in devices])
+            UI.notify(message)
 
         def on_exception(self, exception: BaseException):
             pass
 
         def on_device_lost(self, exception: BaseException):
             pass
+
+    class RemapperThread(threading.Thread):
+        def __init__(self):
+            super().__init__()
+
+        def run(self):
+            keymacroer.run2(MyRemapper())
+
+    th = RemapperThread()
+    th.setDaemon(True)
+    th.start()
+
     try:
-        keymacroer.run2(MyRemapper())
+        UI.run()
     finally:
         muter.update_mute(False)
 
