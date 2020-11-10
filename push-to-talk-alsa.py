@@ -9,6 +9,11 @@ from evdev import ecodes as e
 import alsaaudio
 import notify2
 
+from gi.repository import Gtk as gtk
+from gi.repository import AppIndicator3 as appindicator
+from gi.repository import Notify as notify
+
+
 NAME = 'Push-to-talk'
 
 default_mic_muted = True
@@ -16,6 +21,19 @@ button_pressed = False
 
 DEFAULT_MIXER_NAME = 'Capture'
 USE_MUTE = False
+
+# class Ui:
+#     def __init__(self):
+#         notify.init(NAME)
+#         indicator = appindicator.Indicator.new(NAME, os.path.abspath('sample_icon.svg'), appindicator.IndicatorCategory.SYSTEM_SERVICES)
+#         indicator.set_status(appindicator.IndicatorStatus.ACTIVE)
+#         indicator.set_menu(build_menu())
+#         indicator.set_label('Mic Muter', 'Mic Muter')
+#
+#     gtk.main()
+#
+
+
 
 
 class Muter(object):
