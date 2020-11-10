@@ -113,31 +113,40 @@ if __name__ == '__main__':
     keys_toggle = [int(n) for n in args.key_toggle.split(',')]
     keys_ppt = [int(n) for n in args.key_ppt.split(',')]
 
+    class MyRemapper(keymacroer.BaseRemapper):
 
-    def remapper(
-            device: evdev.InputDevice,
-            events: typing.List[evdev.InputEvent]) -> typing.List[evdev.InputEvent]:
-        for ev in events:
-            if ev.type == e.EV_KEY and ev.code in keys_ppt:
-                muter.set_pushed(ev.value >= 1)
-            elif (ev.type == e.EV_KEY and
-                  ev.code in keys_toggle and
-                  ev.value == 1):
-                muter.toggle_default_mute()
-        return [] # eat all events
+        def __init__(self):
+            super().__init__(device_name_regex=device,
+                             output_to_uinput=False, match_all_devices=True, grab_devices=True,
+                             force_debug=args.debug)
 
-    def on_device_detected(devices:typing.List[evdev.InputDevice]):
-        if not devices:
-            return
-        message = '\n'.join([d.name for d in devices])
-        n = notify2.Notification(NAME + ' -  Device detected', message)
-        n.set_urgency(notify2.URGENCY_NORMAL)
-        n.set_timeout(1000)
-        n.show()
+        def remap(self, device: evdev.InputDevice, events: typing.List[evdev.InputEvent]
+                  ) -> typing.List[evdev.InputEvent]:
+            for ev in events:
+                if ev.type == e.EV_KEY and ev.code in keys_ppt:
+                    muter.set_pushed(ev.value >= 1)
+                elif (ev.type == e.EV_KEY and
+                      ev.code in keys_toggle and
+                      ev.value == 1):
+                    muter.toggle_default_mute()
+            return [] # eat all events
 
+        def on_device_detected(self, devices: typing.List[evdev.InputDevice]):
+            if not devices:
+                return
+            message = '\n'.join([d.name for d in devices])
+            n = notify2.Notification(NAME + ' -  Device detected', message)
+            n.set_urgency(notify2.URGENCY_NORMAL)
+            n.set_timeout(1000)
+            n.show()
+
+        def on_exception(self, exception: BaseException):
+            pass
+
+        def on_device_lost(self, exception: BaseException):
+            pass
     try:
-        keymacroer.run(device, remapper, on_device_detected=on_device_detected,
-                       force_debug=args.debug, match_all_devices=True, no_output=True)
+        keymacroer.run2(MyRemapper())
     finally:
         muter.update_mute(False)
 

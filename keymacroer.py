@@ -34,6 +34,7 @@ def null_remapper(
         events: typing.List[evdev.InputEvent]) -> typing.List[evdev.InputEvent]:
     return events
 
+
 class deviceMonitor(threading.Thread):
     def __init__(self, new_device_detector_w):
         threading.Thread.__init__(self)
@@ -68,6 +69,7 @@ def read_loop(ui, device_name_matcher, new_device_detector_r,
               remapper: typing.Callable[[evdev.InputDevice, typing.List[evdev.InputEvent]],
                                         typing.List[evdev.InputEvent]],
               on_device_detected: typing.Callable[[typing.List[evdev.InputDevice]], None],
+              on_device_lost:typing.Callable[[BaseException], None]=None,
               match_all_devices=False, grab_device=True):
     # Find all the keyboard devices. Ignore all the devices that support non-keyboard events.
     devices = []
@@ -95,15 +97,15 @@ def read_loop(ui, device_name_matcher, new_device_detector_r,
             # By default, python-uidev only make the device support key events.
             add = False
             caps = d.capabilities()
-            for c in caps.keys():
-                if match_all_devices:
-                    add = True
-                    break
-                if match_all_devices or c not in (e.EV_SYN, e.EV_KEY, e.EV_MSC, e.EV_LED, e.EV_REP):
-                    add = False
-                    break
-                if c == e.EV_KEY:
-                    add = True
+            if match_all_devices:
+                add = True
+            else:
+                for c in caps.keys():
+                    if c not in (e.EV_SYN, e.EV_KEY, e.EV_MSC, e.EV_LED, e.EV_REP):
+                        add = False
+                        break
+                    if c == e.EV_KEY:
+                        add = True
 
             if add:
                 devices.append(d)
@@ -197,6 +199,8 @@ def read_loop(ui, device_name_matcher, new_device_detector_r,
                         ui.syn()
 
         except OSError as ex:
+            if on_device_lost:
+                on_device_lost(ex)
             print(f'Device lost: {ex}')
             return False
         finally:
@@ -219,11 +223,54 @@ def read_loop(ui, device_name_matcher, new_device_detector_r,
                 pass # Ignore any exception
 
 
+class BaseRemapper(object):
+    def __init__(self,
+                 device_name_regex:str,
+                 output_to_uinput=True,
+                 match_all_devices=False,
+                 grab_devices=True,
+                 global_lock_name:str=os.path.basename(sys.argv[0]),
+                 force_debug=False):
+        self.device_name_regex = device_name_regex
+        self.output_to_uinput = output_to_uinput
+        self.match_all_devices = match_all_devices
+        self.grab_devices = grab_devices
+        self.global_lock_name = global_lock_name
+        self.force_debug = force_debug
+
+    def remap(self, device: evdev.InputDevice,
+            events: typing.List[evdev.InputEvent]) -> typing.List[evdev.InputEvent]:
+        return events
+
+    def on_device_detected(self, devices: typing.List[evdev.InputDevice]):
+        pass
+
+    def on_exception(self, exception:BaseException):
+        pass
+
+    def on_device_lost(self, exception:BaseException):
+        pass
+
+
+def run2(remapper: BaseRemapper) -> None:
+    run(match_device_name=remapper.device_name_regex,
+        remapper=remapper.remap,
+        on_device_detected=remapper.on_device_detected,
+        on_device_lost=remapper.on_device_lost,
+        match_all_devices=remapper.match_all_devices,
+        grab_device=remapper.grab_devices,
+        lock_global_name=remapper.global_lock_name)
+
+
 def run(match_device_name: str,
         remapper: typing.Callable[[evdev.InputDevice, typing.List[evdev.InputEvent]],
                                   typing.List[evdev.InputEvent]],
         on_device_detected:typing.Callable[[typing.List[evdev.InputDevice]], None]=None,
-        match_all_devices=False, no_output = False, force_debug=False,
+        on_device_lost:typing.Callable[[BaseException], None]=None,
+        on_exception:typing.Callable[[BaseException], None]=None,
+        match_all_devices=False,
+        no_output = False,
+        force_debug=False,
         grab_device=True,
         lock_global_name=os.path.basename(sys.argv[0]),
         ) -> None:
@@ -261,12 +308,14 @@ def run(match_device_name: str,
     while True:
         try:
             read_loop(ui, device_name_matcher, new_device_detector_r, remapper,
-                      on_device_detected,
+                      on_device_detected, on_device_lost,
                       match_all_devices=match_all_devices, grab_device=grab_device)
         except KeyboardInterrupt:
             sys.exit(1)
         except BaseException as ex:
             print(f'Unhandled exception (retrying in 1 second): {ex}', file=sys.stderr)
+            if on_exception:
+                on_exception(ex)
             time.sleep(1)
 
 
