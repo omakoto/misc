@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import argparse
+import os
 import typing
 
 import keymacroer
@@ -9,7 +10,12 @@ from evdev import ecodes as e
 import alsaaudio
 import notify2
 
+import gi
+gi.require_version('Gtk', '3.0')
+gi.require_version('AppIndicator3', '0.1')
+gi.require_version('Notify', '0.7')
 from gi.repository import Gtk as gtk
+from gi.repository import GLib as glib
 from gi.repository import AppIndicator3 as appindicator
 from gi.repository import Notify as notify
 
@@ -22,18 +28,50 @@ button_pressed = False
 DEFAULT_MIXER_NAME = 'Capture'
 USE_MUTE = False
 
-# class Ui:
-#     def __init__(self):
-#         notify.init(NAME)
-#         indicator = appindicator.Indicator.new(NAME, os.path.abspath('sample_icon.svg'), appindicator.IndicatorCategory.SYSTEM_SERVICES)
-#         indicator.set_status(appindicator.IndicatorStatus.ACTIVE)
-#         indicator.set_menu(build_menu())
-#         indicator.set_label('Mic Muter', 'Mic Muter')
-#
-#     gtk.main()
-#
+SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
+MIC_ICON = os.path.join(SCRIPT_PATH, 'microphone.png')
+MIC_MUTED_ICON = os.path.join(SCRIPT_PATH, 'microphone-muted.png')
 
+class Ui:
+    def __init__(self):
+        notify.init(NAME)
+        self.indicator = appindicator.Indicator.new(NAME, MIC_ICON,
+                                                    appindicator.IndicatorCategory.SYSTEM_SERVICES)
+        self.indicator.set_status(appindicator.IndicatorStatus.ACTIVE)
+        self.indicator.set_menu(self.build_menu())
+        self.notification = notify.Notification.new(NAME, '', None)
 
+    def build_menu(self):
+        menu = gtk.Menu()
+
+        item_quit = gtk.MenuItem('Quit')
+        item_quit.connect('activate', self.quit)
+        menu.append(item_quit)
+
+        menu.show_all()
+        return menu
+
+    def quit(self, source):
+        notify.uninit()
+        gtk.main_quit()
+
+    def update_muted(self, muted=False):
+        # https://pygobject.readthedocs.io/en/latest/guide/threading.html
+        def inner():
+            # nonlocal self, muted
+            icon = MIC_MUTED_ICON if muted else MIC_ICON
+            self.indicator.set_icon_full(icon, '')
+        glib.idle_add(inner)
+
+    def notify(self, message):
+        def inner():
+            # nonlocal self, muted
+            self.notification.update(NAME, message, None)
+            self.notification.show()
+        glib.idle_add(inner)
+
+    def run(self):
+        gtk.main()
 
 
 class Muter(object):
@@ -115,6 +153,10 @@ class Muter(object):
 
 
 if __name__ == '__main__':
+    ui = Ui()
+    ui.run()
+    sys.exit(5)
+
     notify2.init("Push-to-talk")
 
     parser = argparse.ArgumentParser(description='push-to-talk with alsa')
