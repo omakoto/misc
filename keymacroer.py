@@ -70,7 +70,7 @@ def read_loop(ui, device_name_matcher, new_device_detector_r,
                                         typing.List[evdev.InputEvent]],
               on_device_detected: typing.Callable[[typing.List[evdev.InputDevice]], None],
               on_device_lost:typing.Callable[[BaseException], None]=None,
-              match_all_devices=False, grab_device=True):
+              match_all_devices=False, grab_devices=True):
     # Find all the keyboard devices. Ignore all the devices that support non-keyboard events.
     devices = []
     capabilities = []
@@ -124,7 +124,7 @@ def read_loop(ui, device_name_matcher, new_device_detector_r,
 
             for d in devices:
                 print(f"Using device: {d}")
-                if grab_device:
+                if grab_devices:
                     try:
                         d.grab()
                     except:
@@ -218,7 +218,7 @@ def read_loop(ui, device_name_matcher, new_device_detector_r,
         for d in devices:
             print(f"Releasing device: {d}")
             try:
-                if grab_device: d.ungrab()
+                if grab_devices: d.ungrab()
             except:
                 pass # Ignore any exception
 
@@ -253,32 +253,32 @@ class BaseRemapper(object):
 
 
 def run2(remapper: BaseRemapper) -> None:
-    run(match_device_name=remapper.device_name_regex,
+    run(device_name_regex=remapper.device_name_regex,
         remapper=remapper.remap,
         on_device_detected=remapper.on_device_detected,
         on_device_lost=remapper.on_device_lost,
         match_all_devices=remapper.match_all_devices,
-        grab_device=remapper.grab_devices,
-        lock_global_name=remapper.global_lock_name)
+        grab_devices=remapper.grab_devices,
+        global_lock_name=remapper.global_lock_name)
 
 
-def run(match_device_name: str,
+def run(device_name_regex: str,
         remapper: typing.Callable[[evdev.InputDevice, typing.List[evdev.InputEvent]],
                                   typing.List[evdev.InputEvent]],
         on_device_detected:typing.Callable[[typing.List[evdev.InputDevice]], None]=None,
         on_device_lost:typing.Callable[[BaseException], None]=None,
         on_exception:typing.Callable[[BaseException], None]=None,
         match_all_devices=False,
-        no_output = False,
+        no_uinput_output = False,
         force_debug=False,
-        grab_device=True,
-        lock_global_name=os.path.basename(sys.argv[0]),
+        grab_devices=True,
+        global_lock_name=os.path.basename(sys.argv[0]),
         ) -> None:
     global debug
     debug = force_debug
 
     # Prevent multiple instances.
-    lockfile = f'/tmp/{lock_global_name}.lock'
+    lockfile = f'/tmp/{global_lock_name}.lock'
     if debug:
         print(f'Lockfile: {lockfile}')
     try:
@@ -288,10 +288,10 @@ def run(match_device_name: str,
     except IOError:
         raise SystemExit(f'Unable to obtain file lock {lockfile}')
 
-    device_name_matcher = re.compile(match_device_name)
+    device_name_matcher = re.compile(device_name_regex)
 
     ui = None
-    if not no_output:
+    if not no_uinput_output:
         # Create our /dev/uinput device.
         ui = UInput(name=UINPUT_DEVICE_NAME)
         if debug: print(f'Synthesized device name: {UINPUT_DEVICE_NAME}')
@@ -309,7 +309,7 @@ def run(match_device_name: str,
         try:
             read_loop(ui, device_name_matcher, new_device_detector_r, remapper,
                       on_device_detected, on_device_lost,
-                      match_all_devices=match_all_devices, grab_device=grab_device)
+                      match_all_devices=match_all_devices, grab_devices=grab_devices)
         except KeyboardInterrupt:
             sys.exit(1)
         except BaseException as ex:
