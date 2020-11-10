@@ -53,8 +53,10 @@ class Ui:
         return menu
 
     def quit(self, source):
-        notify.uninit()
-        gtk.main_quit()
+        def inner():
+            notify.uninit()
+            gtk.main_quit()
+        glib.idle_add(inner)
 
     def update_muted(self, muted=False):
         # https://pygobject.readthedocs.io/en/latest/guide/threading.html
@@ -182,21 +184,24 @@ if __name__ == '__main__':
         def on_device_detected(self, devices: typing.List[evdev.InputDevice]):
             if not devices:
                 return
-            message = 'Device detected\n' + '\n'.join([d.name for d in devices])
+            message = 'Device detected:\n' + '\n'.join([d.name for d in devices])
             UI.notify(message)
 
         def on_exception(self, exception: BaseException):
-            pass
+            UI.notify(f'Unhandled exception: {exception}')
 
         def on_device_lost(self, exception: BaseException):
-            pass
+            UI.notify(f'Device lost: {exception}')
 
     class RemapperThread(threading.Thread):
         def __init__(self):
             super().__init__()
 
         def run(self):
-            keymacroer.run2(MyRemapper())
+            try:
+                keymacroer.run2(MyRemapper())
+            finally:
+                UI.quit(None)
 
     th = RemapperThread()
     th.setDaemon(True)
