@@ -93,7 +93,7 @@ def read_loop(ui, device_name_matcher, new_device_detector_r,
 
             # Make sure the device only supports key events -- i.e. ignore mice, trackpads, etc.
             # this is only for the sake of simplicity. It's possible to support these devices,
-            # we need to propagete the right capabilities.
+            # we need to propagate the right capabilities.
             # By default, python-uidev only make the device support key events.
             add = False
             caps = d.capabilities()
@@ -143,7 +143,7 @@ def read_loop(ui, device_name_matcher, new_device_detector_r,
             stop = False
             while not stop:
                 for key, mask in selector.select():
-                    device = key.fileobj
+                    device = typing.cast(evdev.InputDevice, key.fileobj)
 
                     # See if a new device hsa been detected.
                     if device == new_device_detector_r:

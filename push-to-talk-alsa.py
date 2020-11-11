@@ -18,7 +18,7 @@ from gi.repository import Gtk as gtk
 from gi.repository import GLib as glib
 from gi.repository import AppIndicator3 as appindicator
 from gi.repository import Notify as notify
-
+import tasktray
 
 NAME = 'Push-to-talk'
 
@@ -33,38 +33,15 @@ MIC_ICON = os.path.join(SCRIPT_PATH, 'microphone.png')
 MIC_MUTED_ICON = os.path.join(SCRIPT_PATH, 'microphone-muted.png')
 
 
-class Ui:
+class Ui(tasktray.TaskTrayIcon):
     def __init__(self):
+        super().__init__(NAME, MIC_ICON)
         notify.init(NAME)
-        self.indicator = appindicator.Indicator.new(NAME, MIC_ICON,
-                                                    appindicator.IndicatorCategory.SYSTEM_SERVICES)
-        self.indicator.set_status(appindicator.IndicatorStatus.ACTIVE)
-        self.indicator.set_menu(self.__build_menu())
         self.notification = notify.Notification.new(NAME, '', None)
 
-    def __build_menu(self):
-        menu = gtk.Menu()
-
-        item_quit = gtk.MenuItem('Quit')
-        item_quit.connect('activate', self.quit)
-        menu.append(item_quit)
-
-        menu.show_all()
-        return menu
-
-    def quit(self, source):
-        def inner():
-            notify.uninit()
-            gtk.main_quit()
-        glib.idle_add(inner)
-
     def update_muted(self, muted=False):
-        # https://pygobject.readthedocs.io/en/latest/guide/threading.html
-        def inner():
-            # nonlocal self, muted
-            icon = MIC_MUTED_ICON if muted else MIC_ICON
-            self.indicator.set_icon_full(icon, '')
-        glib.idle_add(inner)
+        icon = MIC_MUTED_ICON if muted else MIC_ICON
+        self.set_icon(icon)
 
     def notify(self, message):
         def inner():
@@ -72,6 +49,9 @@ class Ui:
             self.notification.update(NAME, message, None)
             self.notification.show()
         glib.idle_add(inner)
+
+    def _on_quit(self):
+        notify.uninit()
 
     def run(self):
         gtk.main()
