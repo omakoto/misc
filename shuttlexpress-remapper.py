@@ -93,7 +93,7 @@ def run_remap(ui, device_name, jog_multiplier):
             last_notification = n
 
         n.set_urgency(notify2.URGENCY_NORMAL)
-        n.set_timeout(1000)
+        n.set_timeout(3000)
         n.show()
 
     print_help()
