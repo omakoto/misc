@@ -1,22 +1,22 @@
 #!/usr/bin/python3
 import argparse
 import os
+import sys
 import threading
 import typing
 
-import keymacroer
-import sys
-import evdev
-from evdev import ecodes as e
 import alsaaudio
-
+import evdev
 import gi
+from evdev import ecodes as e
+
+import keymacroer
+
 gi.require_version('Gtk', '3.0')
 gi.require_version('AppIndicator3', '0.1')
 gi.require_version('Notify', '0.7')
 from gi.repository import Gtk as gtk
 from gi.repository import GLib as glib
-from gi.repository import AppIndicator3 as appindicator
 from gi.repository import Notify as notify
 import tasktray
 
