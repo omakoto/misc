@@ -18,12 +18,15 @@ class TaskTrayIcon:
         self.indicator.set_status(appindicator.IndicatorStatus.ACTIVE)
         self.indicator.set_menu(self.__build_menu())
 
-    def __build_menu(self):
-        menu = gtk.Menu()
-
+    def _add_menu_items(self, menu):
         item_quit = gtk.MenuItem('Quit')
         item_quit.connect('activate', self.quit)
         menu.append(item_quit)
+
+    def __build_menu(self):
+        menu = gtk.Menu()
+
+        self._add_menu_items(menu)
 
         menu.show_all()
         return menu

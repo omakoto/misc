@@ -251,6 +251,9 @@ class BaseRemapper(object):
     def on_device_lost(self, exception:BaseException):
         pass
 
+    def get_events(self) -> typing.Optional[typing.Dict[int, typing.List[int]]]:
+        return None
+
 
 def run2(remapper: BaseRemapper) -> None:
     run(device_name_regex=remapper.device_name_regex,
@@ -273,6 +276,7 @@ def run(device_name_regex: str,
         force_debug=False,
         grab_devices=True,
         global_lock_name=os.path.basename(sys.argv[0]),
+        events: typing.Optional[typing.Dict[int, typing.List[int]]]=None,
         ) -> None:
     global debug
     debug = force_debug
@@ -293,7 +297,7 @@ def run(device_name_regex: str,
     ui = None
     if not no_uinput_output:
         # Create our /dev/uinput device.
-        ui = UInput(name=UINPUT_DEVICE_NAME)
+        ui = UInput(name=UINPUT_DEVICE_NAME, events=events)
         if debug: print(f'Synthesized device name: {UINPUT_DEVICE_NAME}')
 
     # Create a worker thread that detects new devices.
