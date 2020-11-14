@@ -23,6 +23,8 @@ import pyudev
 import typing
 from evdev import UInput, ecodes as e
 
+import singleton
+
 debug = True
 
 UINPUT_DEVICE_NAME_PREFIX = 'key-macro-uinput-'
@@ -281,16 +283,7 @@ def run(device_name_regex: str,
     global debug
     debug = force_debug
 
-    # Prevent multiple instances.
-    lockfile = f'/tmp/{global_lock_name}.lock'
-    if debug:
-        print(f'Lockfile: {lockfile}')
-    try:
-        os.umask(0o000)
-        lock = open(lockfile, 'w')
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except IOError:
-        raise SystemExit(f'Unable to obtain file lock {lockfile}')
+    singleton.ensure_singleton(global_lock_name, debug=debug)
 
     device_name_matcher = re.compile(device_name_regex)
 
