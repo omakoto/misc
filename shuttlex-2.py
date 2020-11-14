@@ -9,6 +9,7 @@ from typing import List, Optional, Dict
 import evdev
 import notify2
 
+import synced_uinput
 import tasktray
 from key_remapper import main_loop, BaseRemapper
 
@@ -24,6 +25,7 @@ debug = False
 
 
 class Remapper(BaseRemapper):
+    uinput: synced_uinput.SyncedUinput
 
     def __init__(self, device_name_regex: str, enable_debug=False):
         super().__init__(device_name_regex,
@@ -35,14 +37,16 @@ class Remapper(BaseRemapper):
         self.device_notification.set_urgency(notify2.URGENCY_NORMAL)
         self.device_notification.set_timeout(3000)
 
+    def on_initialize(self, ui: Optional[synced_uinput.SyncedUinput]):
+        self.uinput = ui
+
     def show_device_notification(self, message: str) -> None:
         if debug: print(message)
         self.device_notification.update(NAME, message)
         self.device_notification.show()
 
-    def remap(self, device: evdev.InputDevice, events: List[evdev.InputEvent]) \
-            -> List[evdev.InputEvent]:
-        return super().remap(device, events)
+    def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]):
+        print(f'-> Event: {events}')
 
     def on_device_detected(self, devices: List[evdev.InputDevice]):
         self.show_device_notification('Device connected:\n'

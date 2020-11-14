@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 import argparse
-import collections
 import os
 import random
 import re
@@ -20,18 +19,18 @@ import synced_uinput
 debug = False
 
 UINPUT_DEVICE_NAME_PREFIX = 'key-remapper-uinput-'
-UINPUT_DEVICE_NAME = f"{UINPUT_DEVICE_NAME_PREFIX}{int(time.time()*1000) :020}"
+UINPUT_DEVICE_NAME = f"{UINPUT_DEVICE_NAME_PREFIX}{int(time.time() * 1000) :020}"
 
 
 class BaseRemapper(object):
     def __init__(self,
-                 device_name_regex: str,
-                 match_non_keyboards=False,
-                 grab_devices=True,
-                 write_to_uinput=True,
-                 uinput_events: Optional[Dict[int, List[int]]] = None,
-                 global_lock_name: str = os.path.basename(sys.argv[0]),
-                 enable_debug=False):
+            device_name_regex: str,
+            match_non_keyboards=False,
+            grab_devices=True,
+            write_to_uinput=True,
+            uinput_events: Optional[Dict[int, List[int]]] = None,
+            global_lock_name: str = os.path.basename(sys.argv[0]),
+            enable_debug=False):
         self.device_name_regex = device_name_regex
         self.match_non_keyboards = match_non_keyboards
         self.grab_devices = grab_devices
@@ -44,10 +43,8 @@ class BaseRemapper(object):
         if debug:
             print(f'on_initialize: {ui}')
 
-    def remap(self, device: evdev.InputDevice,
-              events: List[evdev.InputEvent]
-              ) -> List[evdev.InputEvent]:
-        return events
+    def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]) -> None:
+        pass
 
     def on_device_detected(self, devices: List[evdev.InputDevice]):
         if debug:
@@ -97,8 +94,8 @@ def start_udev_monitor() -> TextIO:
 
 def open_devices(
         device_name_regex: str,
-        match_non_keyboards=False,
-        ) -> [List[evdev.InputDevice], Optional[Dict[int, List[int]]]]:
+        match_non_keyboards=False) \
+        -> [List[evdev.InputDevice], Optional[Dict[int, List[int]]]]:
     devices = []
     all_capabilities = []
 
@@ -160,7 +157,7 @@ def try_ungrab(device: evdev.InputDevice) -> bool:
         return False
 
 
-def main_loop(remapper:BaseRemapper) -> None:
+def main_loop(remapper: BaseRemapper) -> None:
     global debug
     debug = remapper.enable_debug
     singleton.ensure_singleton(remapper.global_lock_name, debug=debug)
@@ -182,7 +179,7 @@ def main_loop(remapper:BaseRemapper) -> None:
 
         # Find the devivces.
         devices, all_capabilities = open_devices(remapper.device_name_regex,
-                                                 remapper.match_non_keyboards)
+            remapper.match_non_keyboards)
         try:
             # Prepare the selector.
             selector = selectors.DefaultSelector()
@@ -231,9 +228,7 @@ def main_loop(remapper:BaseRemapper) -> None:
                             for ev in events:
                                 if debug: print(f'-> Event: {ev}')
 
-                        # If we're not writing to uinput, that's it.
-                        if ui:
-                            ui.write(events)
+                        remapper.handle_events(device, events)
 
             except OSError as ex:
                 print(f'Device lost: {ex}')
@@ -244,6 +239,7 @@ def main_loop(remapper:BaseRemapper) -> None:
         except KeyboardInterrupt:
             break
         except BaseException as ex:
+            print(f'Caught exception: f{ex}')
             remapper.on_exception(ex)
         finally:
             for d in devices:
@@ -255,17 +251,16 @@ def main_loop(remapper:BaseRemapper) -> None:
     remapper.on_stop()
 
 
-
 def main(args, description="key remapper test"):
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('-m', '--match-device-name', metavar='D', default='',
-                        help='Only use devices matching this regex')
+        help='Only use devices matching this regex')
     parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
 
     args = parser.parse_args(args)
 
     main_loop(BaseRemapper(device_name_regex=args.match_device_name,
-                           enable_debug=args.debug))
+        enable_debug=args.debug))
 
 
 if __name__ == '__main__':
