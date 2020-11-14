@@ -196,7 +196,8 @@ def main_loop(remapper:BaseRemapper) -> None:
 
             devices = reading_devices
 
-            remapper.on_device_detected(devices)
+            if devices:
+                remapper.on_device_detected(devices)
 
             # Current state of each key
             key_states: Dict[int, int] = collections.defaultdict(int)
