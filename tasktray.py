@@ -28,7 +28,6 @@ class TaskTrayIcon:
 
     def __build_menu(self):
         menu = gtk.Menu()
-        menu.set_title(self.name)
 
         self._add_menu_items(menu)
 
