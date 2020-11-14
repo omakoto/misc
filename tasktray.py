@@ -22,7 +22,7 @@ class TaskTrayIcon:
         self.indicator.set_menu(self.__build_menu())
 
     def _add_menu_items(self, menu):
-        item_quit = gtk.MenuItem(f'Quit {self.name}')
+        item_quit = gtk.MenuItem(f'Exit {self.name}')
         item_quit.connect('activate', self.quit)
         menu.append(item_quit)
 

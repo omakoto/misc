@@ -48,9 +48,13 @@ class BaseRemapper(object):
         if debug:
             print(f'on_device_detected: {devices}')
 
+    def on_device_not_found(self):
+        if debug:
+            print('on_device_not_found')
+
     def on_device_lost(self):
         if debug:
-            print(f'on_device_lost:')
+            print('on_device_lost:')
 
     def on_exception(self, exception: BaseException):
         if debug:
@@ -58,7 +62,7 @@ class BaseRemapper(object):
 
     def on_stop(self):
         if debug:
-            print(f'on_stop:')
+            print('on_stop:')
 
 
 def start_udev_monitor() -> TextIO:
@@ -201,6 +205,8 @@ def main_loop(remapper:BaseRemapper) -> None:
 
             if devices:
                 remapper.on_device_detected(devices)
+            else:
+                remapper.on_device_not_found()
 
             # Current state of each key
             key_states: Dict[int, int] = collections.defaultdict(int)
