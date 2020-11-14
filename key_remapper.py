@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 import argparse
-import asyncio
 import collections
 import os
 import random
@@ -25,12 +24,12 @@ UINPUT_DEVICE_NAME = f"{UINPUT_DEVICE_NAME_PREFIX}{int(time.time()*1000) :020}"
 
 class BaseRemapper(object):
     def __init__(self,
-                 device_name_regex:str,
+                 device_name_regex: str,
                  match_non_keyboards=False,
                  grab_devices=True,
                  write_to_uinput=True,
-                 uinput_events: Optional[Dict[int, List[int]]]=None,
-                 global_lock_name:str=os.path.basename(sys.argv[0]),
+                 uinput_events: Optional[Dict[int, List[int]]] = None,
+                 global_lock_name: str = os.path.basename(sys.argv[0]),
                  enable_debug=False):
         self.device_name_regex = device_name_regex
         self.match_non_keyboards = match_non_keyboards
@@ -53,7 +52,7 @@ class BaseRemapper(object):
         if debug:
             print(f'on_device_lost:')
 
-    def on_exception(self, exception:BaseException):
+    def on_exception(self, exception: BaseException):
         if debug:
             print(f'on_exception: {exception}')
 
@@ -90,7 +89,6 @@ def start_udev_monitor() -> TextIO:
 def open_devices(
         device_name_regex: str,
         match_non_keyboards=False,
-        grab_devices=True,
         ) -> [List[evdev.InputDevice], Optional[Dict[int, List[int]]]]:
     devices = []
     all_capabilities = []
@@ -181,8 +179,7 @@ def main_loop(remapper:BaseRemapper) -> None:
 
         # Find the devivces.
         devices, all_capabilities = open_devices(remapper.device_name_regex,
-                                                 remapper.match_non_keyboards,
-                                                 remapper.grab_devices)
+                                                 remapper.match_non_keyboards)
         try:
             # Prepare the selector.
             selector = selectors.DefaultSelector()
@@ -203,6 +200,7 @@ def main_loop(remapper:BaseRemapper) -> None:
 
             # Current state of each key
             key_states: Dict[int, int] = collections.defaultdict(int)
+
             def release_all_keys():
                 if ui:
                     # Release all pressed keys.
@@ -212,7 +210,7 @@ def main_loop(remapper:BaseRemapper) -> None:
                                 ui.write(e.EV_KEY, key, 0)
                                 ui.syn()
                     except:
-                        pass # ignore any exception
+                        pass  # ignore any exception
 
             try:
                 # Start the main loop.
@@ -224,7 +222,7 @@ def main_loop(remapper:BaseRemapper) -> None:
                         # See if a new device hsa been detected.
                         if device == udev_monitor:
                             if (action := udev_monitor.readline()) != 'add':
-                                continue # ignore the event
+                                continue  # ignore the event
                             print('A new device has been detected.')
                             # Wait a bit because udev sends multiple add events in a row.
                             # Also randomize to avoid multiple instances of keymapper
@@ -252,18 +250,18 @@ def main_loop(remapper:BaseRemapper) -> None:
                                 # (Not sure if it matters but just in case.)
                                 continue
 
-                            # When sending a KEY event, only send what'd make sense given the current
-                            # key state.
+                            # When sending a KEY event, only send what'd make sense given the
+                            # current key state.
                             if ev.type == e.EV_KEY:
                                 old_state = key_states[ev.code]
                                 if ev.value == 0:
-                                    if old_state == 0: # Don't send if already released.
+                                    if old_state == 0:  # Don't send if already released.
                                         continue
                                 elif ev.value == 1:
-                                    if old_state > 0: # Don't send if already pressed.
+                                    if old_state > 0:  # Don't send if already pressed.
                                         continue
                                 elif ev.value == 2:
-                                    if old_state == 0: # Don't send if not pressed.
+                                    if old_state == 0:  # Don't send if not pressed.
                                         continue
 
                                 key_states[ev.code] = ev.value
@@ -277,7 +275,7 @@ def main_loop(remapper:BaseRemapper) -> None:
                             ui.syn()
             except OSError as ex:
                 print(f'Device lost: {ex}')
-                remapper.on_device_lost(ex)
+                remapper.on_device_lost()
             finally:
                 release_all_keys()
         except KeyboardInterrupt:
