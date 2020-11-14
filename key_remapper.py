@@ -40,6 +40,10 @@ class BaseRemapper(object):
         self.global_lock_name = global_lock_name
         self.enable_debug = enable_debug
 
+    def on_initialize(self, ui: Optional[synced_uinput.SyncedUinput]):
+        if debug:
+            print(f'on_initialize: {ui}')
+
     def remap(self, device: evdev.InputDevice,
               events: List[evdev.InputEvent]
               ) -> List[evdev.InputEvent]:
@@ -169,6 +173,8 @@ def main_loop(remapper:BaseRemapper) -> None:
         ui = synced_uinput.SyncedUinput(uinput)
 
     udev_monitor = start_udev_monitor()
+
+    remapper.on_initialize(ui)
 
     while True:
         # Drain all the udev events
