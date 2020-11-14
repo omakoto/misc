@@ -22,6 +22,7 @@ import os
 import sys
 import time
 
+import asyncio_glib
 import evdev
 import notify2
 from evdev import UInput, ecodes as e
@@ -235,6 +236,8 @@ def main(args):
 
     # Open /dev/uinput.
     ui = UInput(name='ShuttleXPress-remapper-uinput')
+
+    asyncio.set_event_loop_policy(asyncio_glib.GLibEventLoopPolicy())
 
     run_remap(ui, args.device_name, args.jog_multiplier)
 

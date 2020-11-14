@@ -1,18 +1,21 @@
 #!/usr/bin/python3
 import argparse
+import asyncio
 import collections
 import os
 import re
 import sys
+import threading
 import time
 from typing import Optional, Dict, List
 
 import evdev
+import pyudev
 from evdev import UInput, ecodes as e
 
 import singleton
 
-debug = False
+Debug = False
 
 UINPUT_DEVICE_NAME_PREFIX = 'key-remapper-uinput-'
 UINPUT_DEVICE_NAME = f"{UINPUT_DEVICE_NAME_PREFIX}{int(time.time()*1000) :020}"
@@ -26,7 +29,25 @@ class NullRemapper(BaseRemapper):
     pass
 
 
-def find_devices(
+def start_device_monitor():
+    def run():
+        context = pyudev.Context()
+        monitor = pyudev.Monitor.from_netlink(context)
+        monitor.filter_by(subsystem='input')
+
+        if Debug: print('Device monitor started.')
+
+        for action, device in monitor:
+            if Debug: print(f'udev: action={action} {device}')
+
+
+
+    th = threading.Thread(target=run)
+    th.setDaemon(True)
+    th.start()
+
+
+def open_devices(
         device_name_regex: str,
         match_non_keyboards=False,
         grab_devices=True,
@@ -42,13 +63,13 @@ def find_devices(
         if d.name.startswith(UINPUT_DEVICE_NAME_PREFIX) and d.name >= UINPUT_DEVICE_NAME:
             continue
 
-        if debug:
+        if Debug:
             print(f'Device: {d}')
             print(f'  Capabilities: {d.capabilities(verbose=True)}')
 
         # Reject the ones that don't match the name filter.
         if not device_name_matcher.search(d.name):
-            if debug: print(f'  Skipping {d.name}')
+            if Debug: print(f'  Skipping {d.name}')
             continue
 
         add = False
@@ -89,7 +110,8 @@ def main_loop(
         debug=False,
         events: Optional[Dict[int, List[int]]]=None,
         ) -> None:
-
+    global Debug
+    Debug = debug
     singleton.ensure_singleton(global_lock_name, debug=debug)
 
     ui = None
@@ -98,8 +120,19 @@ def main_loop(
         ui = UInput(name=UINPUT_DEVICE_NAME, events=events)
         if debug: print(f'Uinput device name: {UINPUT_DEVICE_NAME}')
 
-    devices, all_capabilities = find_devices(device_name_regex, match_non_keyboards,
+    devices, all_capabilities = open_devices(device_name_regex, match_non_keyboards,
                                              grab_devices)
+
+    async def print_events(device):
+        async for event in device.async_read_loop():
+            print(device.path, evdev.categorize(event), sep=': ')
+
+    for device in devices:
+        asyncio.ensure_future(print_events(device))
+
+    loop = asyncio.get_event_loop()
+    loop.run_forever()
+
 
 
 def main(args, description="key remapper test"):
@@ -110,6 +143,7 @@ def main(args, description="key remapper test"):
 
     args = parser.parse_args(args)
 
+    start_device_monitor()
 
     main_loop(args.match_device_name, match_non_keyboards=False, grab_devices=True,
               write_to_uinput=True, global_lock_name="key_remapper_test",
