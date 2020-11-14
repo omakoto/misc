@@ -13,14 +13,6 @@ SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 ICON = os.path.join(SCRIPT_PATH, 'knob.png')
 
 
-class TrayIcon(tasktray.TaskTrayIcon):
-    def __init__(self):
-        super().__init__(NAME, ICON)
-
-    def _on_quit(self):
-        sys.exit(0)
-
-
 def main(args, description=NAME):
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('-m', '--match-device-name', metavar='D', default='',
@@ -29,7 +21,6 @@ def main(args, description=NAME):
 
     args = parser.parse_args(args)
 
-    trayicon = TrayIcon()
 
     def do():
         # evdev will complain if the thread has no event loop set.
@@ -42,7 +33,7 @@ def main(args, description=NAME):
     th.setDaemon(True)
     th.start()
 
-    trayicon.run()
+    tasktray.start_quitting_tray_icon(NAME, ICON)
 
 
 if __name__ == '__main__':

@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import sys
 
 import gi
 gi.require_version('Gtk', '3.0')
@@ -13,18 +14,21 @@ from gi.repository import AppIndicator3 as appindicator
 
 class TaskTrayIcon:
     def __init__(self, name, icon_path):
+        self.name = name
+        self.icon_path = icon_path
         self.indicator = appindicator.Indicator.new(name, icon_path,
                                                     appindicator.IndicatorCategory.SYSTEM_SERVICES)
         self.indicator.set_status(appindicator.IndicatorStatus.ACTIVE)
         self.indicator.set_menu(self.__build_menu())
 
     def _add_menu_items(self, menu):
-        item_quit = gtk.MenuItem('Quit')
+        item_quit = gtk.MenuItem(f'Quit {self.name}')
         item_quit.connect('activate', self.quit)
         menu.append(item_quit)
 
     def __build_menu(self):
         menu = gtk.Menu()
+        menu.set_title(self.name)
 
         self._add_menu_items(menu)
 
@@ -41,9 +45,22 @@ class TaskTrayIcon:
         glib.idle_add(inner)
 
     def set_icon(self, icon_path):
+        self.icon_path = icon_path
         def inner():
-            self.indicator.set_icon_full(icon_path, '')
+            self.indicator.set_icon_full(self.icon_path, '')
         glib.idle_add(inner)
 
     def run(self):
         gtk.main()
+
+
+class QuittingTaskTrayIcon(TaskTrayIcon):
+    def __init__(self, name, icon_path):
+        super().__init__(name, icon_path)
+
+    def _on_quit(self):
+        sys.exit(0)
+
+
+def start_quitting_tray_icon(name, icon_path):
+    QuittingTaskTrayIcon(name, icon_path).run()
