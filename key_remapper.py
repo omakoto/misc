@@ -40,8 +40,6 @@ def start_device_monitor():
         for action, device in monitor:
             if Debug: print(f'udev: action={action} {device}')
 
-
-
     th = threading.Thread(target=run)
     th.setDaemon(True)
     th.start()
@@ -120,18 +118,27 @@ def main_loop(
         ui = UInput(name=UINPUT_DEVICE_NAME, events=events)
         if debug: print(f'Uinput device name: {UINPUT_DEVICE_NAME}')
 
+    start_device_monitor()
+
     devices, all_capabilities = open_devices(device_name_regex, match_non_keyboards,
                                              grab_devices)
 
-    async def print_events(device):
-        async for event in device.async_read_loop():
-            print(device.path, evdev.categorize(event), sep=': ')
+    async def print_events(d:evdev.InputDevice):
+        try:
+            if debug: print('Starting the read loop...')
+            async for event in d.async_read_loop():
+                print(d.path, evdev.categorize(event), sep=': ')
+        except BaseException as e:
+            print(f'Caught exception: {e}', file=sys.stderr)
 
-    for device in devices:
-        asyncio.ensure_future(print_events(device))
+    for d in devices:
+        asyncio.ensure_future(print_events(d))
 
     loop = asyncio.get_event_loop()
-    loop.run_forever()
+    try:
+        loop.run_forever()
+    finally:
+        loop.close()
 
 
 
@@ -143,12 +150,10 @@ def main(args, description="key remapper test"):
 
     args = parser.parse_args(args)
 
-    start_device_monitor()
-
     main_loop(args.match_device_name, match_non_keyboards=False, grab_devices=True,
               write_to_uinput=True, global_lock_name="key_remapper_test",
               debug=args.debug, events=None)
 
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    asyncio.run(main(sys.argv[1:]), debug=True)
