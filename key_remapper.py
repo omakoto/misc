@@ -126,6 +126,8 @@ def open_devices(
             print(f"Found device: {d}")
             devices.append(d)
             all_capabilities.append(caps)
+        else:
+            d.close()
 
     if not devices:
         print("No matching devices found.")
@@ -135,6 +137,7 @@ def open_devices(
 
 def is_syn(ev: evdev.InputEvent) -> bool:
     return ev and ev.type == e.EV_SYN and ev.code == e.SYN_REPORT and ev.value == 0
+
 
 def try_grab(device: evdev.InputDevice) -> bool:
     try:
@@ -288,6 +291,7 @@ def main_loop(remapper:BaseRemapper) -> None:
                 print(f"Releasing device: {d}")
                 if remapper.grab_devices:
                     try_ungrab(d)
+                d.close()
             remapper.on_device_lost()
     remapper.on_stop()
 
