@@ -15,6 +15,7 @@ import pyudev
 from evdev import UInput, ecodes as e
 
 import singleton
+import synced_uinput
 
 debug = False
 
@@ -139,10 +140,6 @@ def open_devices(
     return [devices, all_capabilities]
 
 
-def is_syn(ev: evdev.InputEvent) -> bool:
-    return ev and ev.type == e.EV_SYN and ev.code == e.SYN_REPORT and ev.value == 0
-
-
 def try_grab(device: evdev.InputDevice) -> bool:
     try:
         device.grab()
@@ -160,14 +157,6 @@ def try_ungrab(device: evdev.InputDevice) -> bool:
 
 
 def main_loop(remapper:BaseRemapper) -> None:
-        # # device_name_regex: str,
-        # # match_non_keyboards=False,
-        # # grab_devices=True,
-        # # write_to_uinput=False,
-        # # global_lock_name:str=os.path.basename(sys.argv[0]),
-        # # debug=False,
-        # # events: Optional[Dict[int, List[int]]]=None,
-        # ) -> None:
     global debug
     debug = remapper.enable_debug
     singleton.ensure_singleton(remapper.global_lock_name, debug=debug)
@@ -175,8 +164,9 @@ def main_loop(remapper:BaseRemapper) -> None:
     ui = None
     if remapper.write_to_uinput:
         # Create our /dev/uinput device.
-        ui = UInput(name=UINPUT_DEVICE_NAME, events=remapper.uinput_events)
+        uinput = UInput(name=UINPUT_DEVICE_NAME, events=remapper.uinput_events)
         if debug: print(f'Uinput device name: {UINPUT_DEVICE_NAME}')
+        ui = synced_uinput.SyncedUinput(uinput)
 
     udev_monitor = start_udev_monitor()
 
@@ -208,20 +198,6 @@ def main_loop(remapper:BaseRemapper) -> None:
             else:
                 remapper.on_device_not_found()
 
-            # Current state of each key
-            key_states: Dict[int, int] = collections.defaultdict(int)
-
-            def release_all_keys():
-                if ui:
-                    # Release all pressed keys.
-                    try:
-                        for key in key_states.keys():
-                            if key_states[key] > 0:
-                                ui.write(e.EV_KEY, key, 0)
-                                ui.syn()
-                    except:
-                        pass  # ignore any exception
-
             try:
                 # Start the main loop.
                 stop = False
@@ -250,44 +226,15 @@ def main_loop(remapper:BaseRemapper) -> None:
                                 if debug: print(f'-> Event: {ev}')
 
                         # If we're not writing to uinput, that's it.
-                        if not ui:
-                            continue
+                        if ui:
+                            ui.write(events)
 
-                        last_event = None
-                        for ev in events:
-                            if is_syn(ev) and is_syn(last_event):
-                                # Don't send syn twice in a row.
-                                # (Not sure if it matters but just in case.)
-                                continue
-
-                            # When sending a KEY event, only send what'd make sense given the
-                            # current key state.
-                            if ev.type == e.EV_KEY:
-                                old_state = key_states[ev.code]
-                                if ev.value == 0:
-                                    if old_state == 0:  # Don't send if already released.
-                                        continue
-                                elif ev.value == 1:
-                                    if old_state > 0:  # Don't send if already pressed.
-                                        continue
-                                elif ev.value == 2:
-                                    if old_state == 0:  # Don't send if not pressed.
-                                        continue
-
-                                key_states[ev.code] = ev.value
-
-                            if debug: print(f'Event -> : {ev}')
-                            ui.write_event(ev)
-                            last_event = ev
-
-                        # If the last event isn't a syn, send one.
-                        if not is_syn(last_event):
-                            ui.syn()
             except OSError as ex:
                 print(f'Device lost: {ex}')
                 remapper.on_device_lost()
             finally:
-                release_all_keys()
+                if ui:
+                    ui.reset()
         except KeyboardInterrupt:
             break
         except BaseException as ex:
