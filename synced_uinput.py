@@ -22,8 +22,7 @@ class SyncedUinput:
         self.__key_states = collections.defaultdict(int)
 
     def write(self, events: Iterable[evdev.InputEvent]):
-        self.__lock.acquire()
-        try:
+        with self.__lock:
             last_event = None
             for ev in events:
                 if is_syn(ev) and is_syn(last_event):
@@ -53,9 +52,6 @@ class SyncedUinput:
             # If any event was written, and the last event isn't a syn, send one.
             if last_event and not is_syn(last_event):
                 self.wrapped.syn()
-
-        finally:
-            self.__lock.release()
 
     def reset(self):
         # Release all pressed keys.
