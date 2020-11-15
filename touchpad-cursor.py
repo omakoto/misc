@@ -48,6 +48,14 @@ class TouchpadRemapper(key_remapper.BaseRemapper):
 
     def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]) -> None:
         for ev in events:
+            if ev.type == ecodes.EV_KEY:
+                if ev.code == ecodes.BTN_LEFT and ev.value == 1:
+                    self.press_key(ecodes.KEY_LEFT)
+                    continue
+                if ev.code == ecodes.BTN_RIGHT and ev.value == 1:
+                    self.press_key(ecodes.KEY_RIGHT)
+                    continue
+
             if ev.type != ecodes.EV_REL:
                 continue
             if ev.code == ecodes.REL_X:
@@ -94,7 +102,7 @@ def main(args, description=NAME):
         help='Use devices matching this regex')
     parser.add_argument('-i', '--match-id', metavar='D', default='',
         help='Use devices with info ("vXXX pXXX") matching this regex')
-    parser.add_argument('-s', '--sensitivity', metavar='S', type=float, default=8,
+    parser.add_argument('-s', '--sensitivity', metavar='S', type=float, default=32,
         help='Sensitivity; smaller value mean more sensitive')
     parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
     parser.add_argument('-q', '--quiet', action='store_true', help='Quiet mode')
