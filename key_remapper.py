@@ -17,52 +17,63 @@ import singleton
 import synced_uinput
 
 debug = False
+quiet = False
 
 UINPUT_DEVICE_NAME_PREFIX = 'key-remapper-uinput-'
 UINPUT_DEVICE_NAME = f"{UINPUT_DEVICE_NAME_PREFIX}{int(time.time() * 1000) :020}"
 
 
 class BaseRemapper(object):
+    uinput: synced_uinput.SyncedUinput
+
+    device_name_regex: str
+    id_regex: str
+
     def __init__(self,
             device_name_regex: str,
-            match_non_keyboards=False,
-            grab_devices=True,
-            write_to_uinput=True,
+            *,
+            id_regex = '',
+            match_non_keyboards = False,
+            grab_devices = True,
+            write_to_uinput = True,
             uinput_events: Optional[Dict[int, List[int]]] = None,
             global_lock_name: str = os.path.basename(sys.argv[0]),
-            enable_debug=False):
+            enable_debug = False,
+            force_quiet = False):
         self.device_name_regex = device_name_regex
+        self.id_regex = id_regex
         self.match_non_keyboards = match_non_keyboards
         self.grab_devices = grab_devices
         self.write_to_uinput = write_to_uinput
         self.uinput_events = uinput_events
         self.global_lock_name = global_lock_name
         self.enable_debug = enable_debug
+        self.force_quiet = force_quiet
 
-    def _on_initialize(self, ui: Optional[synced_uinput.SyncedUinput]):
+    def on_initialize(self, ui: Optional[synced_uinput.SyncedUinput]):
         if debug:
             print(f'on_initialize: {ui}')
 
-    def _handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]) -> None:
+    def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]) -> None:
         pass
 
-    def _on_device_detected(self, devices: List[evdev.InputDevice]):
+    def on_device_detected(self, devices: List[evdev.InputDevice]):
         if debug:
             print(f'on_device_detected: {devices}')
 
-    def _on_device_not_found(self):
+    def on_device_not_found(self):
         if debug:
             print('on_device_not_found')
 
-    def _on_device_lost(self):
+    def on_device_lost(self):
         if debug:
             print('on_device_lost:')
 
-    def _on_exception(self, exception: BaseException):
+    def on_exception(self, exception: BaseException):
         if debug:
             print(f'on_exception: {exception}')
 
-    def _on_stop(self):
+    def on_stop(self):
         if debug:
             print('on_stop:')
 
@@ -94,12 +105,14 @@ def start_udev_monitor() -> TextIO:
 
 def open_devices(
         device_name_regex: str,
+        id_regex: str,
         match_non_keyboards=False) \
         -> [List[evdev.InputDevice], Optional[Dict[int, List[int]]]]:
     devices = []
     all_capabilities = []
 
     device_name_matcher = re.compile(device_name_regex)
+    id_matcher = re.compile(id_regex)
 
     # Find the keyboard devices, except for the one that we created with /dev/uinput.
     for d in [evdev.InputDevice(path) for path in sorted(evdev.list_devices())]:
@@ -107,12 +120,13 @@ def open_devices(
         if d.name.startswith(UINPUT_DEVICE_NAME_PREFIX) and d.name >= UINPUT_DEVICE_NAME:
             continue
 
+        id_info = f'v{d.info.vendor :04x} p{d.info.product :04x}'
         if debug:
-            print(f'Device: {d}')
+            print(f'Device: {d} / {id_info}')
             print(f'  Capabilities: {d.capabilities(verbose=True)}')
 
         # Reject the ones that don't match the name filter.
-        if not device_name_matcher.search(d.name):
+        if not (device_name_matcher.search(d.name) and id_matcher.search(id_info)):
             if debug: print(f'  Skipping {d.name}')
             continue
 
@@ -158,8 +172,10 @@ def try_ungrab(device: evdev.InputDevice) -> bool:
 
 
 def main_loop(remapper: BaseRemapper) -> None:
-    global debug
+    global debug, quiet
     debug = remapper.enable_debug
+    quiet = remapper.force_quiet
+
     singleton.ensure_singleton(remapper.global_lock_name, debug=debug)
 
     ui = None
@@ -171,14 +187,17 @@ def main_loop(remapper: BaseRemapper) -> None:
 
     udev_monitor = start_udev_monitor()
 
-    remapper._on_initialize(ui)
+    remapper.uinput = ui
+    remapper.on_initialize(ui)
 
     while True:
         # Drain all the udev events
         udev_monitor.readlines()
 
         # Find the devivces.
-        devices, all_capabilities = open_devices(remapper.device_name_regex,
+        devices, all_capabilities = open_devices(
+            remapper.device_name_regex,
+            remapper.id_regex,
             remapper.match_non_keyboards)
         try:
             # Prepare the selector.
@@ -197,9 +216,9 @@ def main_loop(remapper: BaseRemapper) -> None:
             devices = reading_devices
 
             if devices:
-                remapper._on_device_detected(devices)
+                remapper.on_device_detected(devices)
             else:
-                remapper._on_device_not_found()
+                remapper.on_device_not_found()
 
             try:
                 # Start the main loop.
@@ -228,11 +247,11 @@ def main_loop(remapper: BaseRemapper) -> None:
                             for ev in events:
                                 if debug: print(f'-> Event: {ev}')
 
-                        remapper._handle_events(device, events)
+                        remapper.handle_events(device, events)
 
             except OSError as ex:
                 print(f'Device lost: {ex}')
-                remapper._on_device_lost()
+                remapper.on_device_lost()
             finally:
                 if ui:
                     ui.reset()
@@ -240,15 +259,15 @@ def main_loop(remapper: BaseRemapper) -> None:
             break
         except BaseException as ex:
             print(f'Caught exception: f{ex}')
-            remapper._on_exception(ex)
+            remapper.on_exception(ex)
         finally:
             for d in devices:
                 print(f"Releasing device: {d}")
                 if remapper.grab_devices:
                     try_ungrab(d)
                 d.close()
-            remapper._on_device_lost()
-    remapper._on_stop()
+            remapper.on_device_lost()
+    remapper.on_stop()
 
 
 def main(args, description="key remapper test"):

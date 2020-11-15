@@ -14,7 +14,7 @@ from evdev import UInput, ecodes as e
 
 # udev device action monitoring test
 
-if True:
+if False:
     context = pyudev.Context()
     monitor = pyudev.Monitor.from_netlink(context)
     monitor.filter_by(subsystem='input')
@@ -28,6 +28,7 @@ if True:
 if True:
     device = evdev.InputDevice(sys.argv[1])
     print(f'Device: {device}')
+    print(f'Device.info: {device.info}')
 
     device.grab()
 

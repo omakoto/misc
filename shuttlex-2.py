@@ -6,16 +6,15 @@ import os
 import sys
 import threading
 import time
-from threading import Thread
 from typing import List, Optional
 
 import evdev
 import notify2
 from evdev import ecodes
 
+import key_remapper
 import synced_uinput
 import tasktray
-from key_remapper import main_loop, BaseRemapper
 
 NAME = "ShuttleXpress media controller 2"
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -36,13 +35,14 @@ KEY_MODES = [LEFT_RIGHT_KEYS, UP_DOWN_KEYS, VOLUME_KEYS]
 def get_next_key_mode(mode: int) -> int:
     return (mode + 1) % len(KEY_MODES)
 
-class ShuttlexRemapper(BaseRemapper):
+class ShuttlexRemapper(key_remapper.BaseRemapper):
     uinpqut: synced_uinput.SyncedUinput
     __lock: threading.RLock
     __wheel_thread: threading.Thread
 
-    def __init__(self, device_name_regex: str, enable_debug=False, quiet=False):
+    def __init__(self, device_name_regex: str, *, enable_debug=False, quiet=False):
         super().__init__(device_name_regex,
+            id_regex='',
             match_non_keyboards=True,
             grab_devices=True,
             write_to_uinput=True,
@@ -90,8 +90,7 @@ class ShuttlexRemapper(BaseRemapper):
         with self.__lock:
             self.__wheel_mode = get_next_key_mode(self.__wheel_mode)
 
-    def _on_initialize(self, ui: Optional[synced_uinput.SyncedUinput]):
-        self.uinput = ui
+    def on_initialize(self, ui: Optional[synced_uinput.SyncedUinput]):
         self.__wheel_thread.start()
         self.show_help()
 
@@ -120,7 +119,7 @@ class ShuttlexRemapper(BaseRemapper):
             evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 0),
         ])
 
-    def _handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]):
+    def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]):
         for ev in events:
             if debug: print(f'Input: {ev}')
 
@@ -209,20 +208,20 @@ class ShuttlexRemapper(BaseRemapper):
 
             self.press_key(key)
 
-    def _on_device_detected(self, devices: List[evdev.InputDevice]):
+    def on_device_detected(self, devices: List[evdev.InputDevice]):
         self.show_notification('Device connected:\n'
                                + '\n'.join ('- ' + d.name for d in devices))
 
-    def _on_device_not_found(self):
+    def on_device_not_found(self):
         self.show_notification('Device not found')
 
-    def _on_device_lost(self):
+    def on_device_lost(self):
         self.show_notification('Device lost')
 
-    def _on_exception(self, exception: BaseException):
+    def on_exception(self, exception: BaseException):
         self.show_notification('Device lost')
 
-    def _on_stop(self):
+    def on_stop(self):
         self.show_notification('Closing...')
 
 
@@ -238,17 +237,20 @@ def main(args, description=NAME):
     global debug
     debug = args.debug
 
-    remapper = ShuttlexRemapper(device_name_regex=args.match_device_name, enable_debug=debug)
+    remapper = ShuttlexRemapper(device_name_regex=args.match_device_name, enable_debug=debug,
+            quiet=args.quiet)
 
     def do():
         # evdev will complain if the thread has no event loop set.
         asyncio.set_event_loop(asyncio.new_event_loop())
 
-        main_loop(remapper)
+        key_remapper.main_loop(remapper)
 
-    th = Thread(target=do)
+    th = threading.Thread(target=do)
     th.setDaemon(True)
     th.start()
+
+    threading.excepthook
 
     tasktray.start_quitting_tray_icon(NAME, ICON)
 
