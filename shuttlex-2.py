@@ -5,8 +5,9 @@ import math
 import os
 import sys
 import threading
+import time
 from threading import Thread
-from typing import List, Optional, Dict
+from typing import List, Optional
 
 import evdev
 import notify2
@@ -36,61 +37,139 @@ def get_next_key_mode(mode: int) -> int:
     return (mode + 1) % len(KEY_MODES)
 
 class ShuttlexRemapper(BaseRemapper):
-    uinput: synced_uinput.SyncedUinput
+    uinpqut: synced_uinput.SyncedUinput
     __lock: threading.RLock
     __wheel_thread: threading.Thread
 
-    def __init__(self, device_name_regex: str, enable_debug=False):
+    def __init__(self, device_name_regex: str, enable_debug=False, quiet=False):
         super().__init__(device_name_regex,
             match_non_keyboards=True,
             grab_devices=True,
             write_to_uinput=True,
             enable_debug=enable_debug)
-        self.device_notification = notify2.Notification(NAME, '')
-        self.device_notification.set_urgency(notify2.URGENCY_NORMAL)
-        self.device_notification.set_timeout(3000)
-        self.__lock = threading.RLock
+        self.__quiet = quiet
+        self.__notification = notify2.Notification(NAME, '')
+        self.__notification.set_urgency(notify2.URGENCY_NORMAL)
+        self.__notification.set_timeout(3000)
+        self.__lock = threading.RLock()
         self.__wheel_pos = 0
         self.__wheel_thread = threading.Thread(name='wheel-thread', target=self.__handle_wheel)
         self.__wheel_thread.setDaemon(True)
         self.__jog_mode = 0 # left / right keys
         self.__wheel_mode = 1 # vol up/down keys
+        self.__button1_pressed = False
+        self.__last_dial = 0
 
+    # Thread safe
     def __set_wheel_pos(self, pos: int) -> None:
         with self.__lock:
             self.__wheel_pos = pos
 
+    # Thread safe
     def __get_wheel_pos(self) -> int:
         with self.__lock:
             return self.__wheel_pos
 
+    # Thread safe
     def __get_jog_mode(self):
         with self.__lock:
             return KEY_MODES[self.__jog_mode]
 
+    # Thread safe
     def __get_wheel_mode(self):
         with self.__lock:
             return KEY_MODES[self.__wheel_mode]
 
+    # Thread safe
     def __toggle_jog_mode(self):
         with self.__lock:
             self.__jog_mode = get_next_key_mode(self.__jog_mode)
 
+    # Thread safe
     def __toggle_wheel_mode(self):
         with self.__lock:
             self.__wheel_mode = get_next_key_mode(self.__wheel_mode)
 
-    def on_initialize(self, ui: Optional[synced_uinput.SyncedUinput]):
+    def _on_initialize(self, ui: Optional[synced_uinput.SyncedUinput]):
         self.uinput = ui
         self.__wheel_thread.start()
+        self.show_help()
 
-    def show_device_notification(self, message: str) -> None:
+    def show_notification(self, message: str) -> None:
         if debug: print(message)
-        self.device_notification.update(NAME, message)
-        self.device_notification.show()
+        self.__notification.update(NAME, message)
+        self.__notification.show()
 
-    def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]):
-        print(f'-> Event: {events}')
+    def show_help(self):
+        key4 = 'KEY_F' if self.__button1_pressed else 'KEY_F11'
+        key2 = 'Toggle Dial' if self.__button1_pressed else 'Toggle Jog'
+
+        help = (f'[ALT] [{key2}] [KEY_SPACE] [{key4}] [KEY_MUTE]\n' +
+                f'  Jog mode : {self.__get_jog_mode()[2]}\n' +
+                f'  Dial mode: {self.__get_wheel_mode()[2]}')
+
+        if not self.__quiet:
+            print(help)
+
+        self.show_notification(help)
+
+    # Thread safe
+    def press_key(self, key: int) -> None:
+        self.uinput.write([
+            evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 1),
+            evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 0),
+        ])
+
+    def _handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]):
+        for ev in events:
+            if debug: print(f'Input: {ev}')
+
+            if ev.type == ecodes.EV_KEY:
+                key = None
+                value = 0
+
+                # Remap the buttons.
+                if ev.code == ecodes.BTN_4: # button 1 pressed
+                    self.__button1_pressed = ev.value == 1
+                    self.show_help()
+                if ev.code == ecodes.BTN_5 and ev.value == 0: # toggle jog/dial mode
+                    if self.__button1_pressed:
+                        self.__toggle_wheel_mode()
+                    else:
+                        self.__toggle_jog_mode()
+                    self.show_help()
+                elif ev.code == ecodes.BTN_6 and ev.value == 0: # button 2 -> space
+                    key = ecodes.KEY_SPACE
+                elif ev.code == ecodes.BTN_7 and ev.value == 0: # button 4 -> F11
+                    if self.__button1_pressed:
+                        key = ecodes.KEY_F
+                    else:
+                        key = ecodes.KEY_F11
+                elif ev.code == ecodes.BTN_8 and ev.value == 0: # button 5 -> mute
+                    key = ecodes.KEY_MUTE
+
+                if key:
+                    self.press_key(key)
+                continue
+
+            # Handle the dial
+            if ev.type == ecodes.EV_REL and ev.code == ecodes.REL_DIAL:
+                now_dial = ev.value
+                delta = now_dial - self.__last_dial
+                self.__last_dial = now_dial
+
+                key = 0
+                if delta < 0:
+                    key = self.__get_wheel_mode()[0]
+                if delta > 0:
+                    key = self.__get_wheel_mode()[1]
+
+                if key != 0:
+                    self.press_key(key)
+
+            # Handle the jog
+            if ev.type == ecodes.EV_REL and ev.code == ecodes.REL_WHEEL:
+                self.__set_wheel_pos(ev.value)
 
     def __handle_wheel(self):
         jog_multiplier = 1.0
@@ -98,7 +177,7 @@ class ShuttlexRemapper(BaseRemapper):
         sleep_duration = 0.1
 
         while True:
-            threading.sleep(sleep_duration)
+            time.sleep(sleep_duration)
             sleep_duration = 0.1
 
             current_wheel = self.__get_wheel_pos()
@@ -128,26 +207,23 @@ class ShuttlexRemapper(BaseRemapper):
             sleep_duration = 0.8 / (jog_multiplier * speed)
             # print(f'{count}, {sleep_duration}')
 
-            self.uinput.write([
-                evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 1),
-                evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 0),
-            ])
+            self.press_key(key)
 
-    def on_device_detected(self, devices: List[evdev.InputDevice]):
-        self.show_device_notification('Device connected:\n'
-                + '\n'.join ('- ' + d.name for d in devices))
+    def _on_device_detected(self, devices: List[evdev.InputDevice]):
+        self.show_notification('Device connected:\n'
+                               + '\n'.join ('- ' + d.name for d in devices))
 
-    def on_device_not_found(self):
-        self.show_device_notification('Device not found')
+    def _on_device_not_found(self):
+        self.show_notification('Device not found')
 
-    def on_device_lost(self):
-        self.show_device_notification('Device lost')
+    def _on_device_lost(self):
+        self.show_notification('Device lost')
 
-    def on_exception(self, exception: BaseException):
-        self.show_device_notification('Device lost')
+    def _on_exception(self, exception: BaseException):
+        self.show_notification('Device lost')
 
-    def on_stop(self):
-        self.show_device_notification('Closing...')
+    def _on_stop(self):
+        self.show_notification('Closing...')
 
 
 def main(args, description=NAME):
@@ -155,6 +231,7 @@ def main(args, description=NAME):
     parser.add_argument('-m', '--match-device-name', metavar='D', default=DEFAULT_DEVICE_NAME,
         help='Use devices matching this regex')
     parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
+    parser.add_argument('-q', '--quiet', action='store_true', help='Quiet mode')
 
     args = parser.parse_args(args)
 

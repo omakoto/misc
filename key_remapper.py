@@ -39,30 +39,30 @@ class BaseRemapper(object):
         self.global_lock_name = global_lock_name
         self.enable_debug = enable_debug
 
-    def on_initialize(self, ui: Optional[synced_uinput.SyncedUinput]):
+    def _on_initialize(self, ui: Optional[synced_uinput.SyncedUinput]):
         if debug:
             print(f'on_initialize: {ui}')
 
-    def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]) -> None:
+    def _handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]) -> None:
         pass
 
-    def on_device_detected(self, devices: List[evdev.InputDevice]):
+    def _on_device_detected(self, devices: List[evdev.InputDevice]):
         if debug:
             print(f'on_device_detected: {devices}')
 
-    def on_device_not_found(self):
+    def _on_device_not_found(self):
         if debug:
             print('on_device_not_found')
 
-    def on_device_lost(self):
+    def _on_device_lost(self):
         if debug:
             print('on_device_lost:')
 
-    def on_exception(self, exception: BaseException):
+    def _on_exception(self, exception: BaseException):
         if debug:
             print(f'on_exception: {exception}')
 
-    def on_stop(self):
+    def _on_stop(self):
         if debug:
             print('on_stop:')
 
@@ -171,7 +171,7 @@ def main_loop(remapper: BaseRemapper) -> None:
 
     udev_monitor = start_udev_monitor()
 
-    remapper.on_initialize(ui)
+    remapper._on_initialize(ui)
 
     while True:
         # Drain all the udev events
@@ -197,9 +197,9 @@ def main_loop(remapper: BaseRemapper) -> None:
             devices = reading_devices
 
             if devices:
-                remapper.on_device_detected(devices)
+                remapper._on_device_detected(devices)
             else:
-                remapper.on_device_not_found()
+                remapper._on_device_not_found()
 
             try:
                 # Start the main loop.
@@ -228,11 +228,11 @@ def main_loop(remapper: BaseRemapper) -> None:
                             for ev in events:
                                 if debug: print(f'-> Event: {ev}')
 
-                        remapper.handle_events(device, events)
+                        remapper._handle_events(device, events)
 
             except OSError as ex:
                 print(f'Device lost: {ex}')
-                remapper.on_device_lost()
+                remapper._on_device_lost()
             finally:
                 if ui:
                     ui.reset()
@@ -240,15 +240,15 @@ def main_loop(remapper: BaseRemapper) -> None:
             break
         except BaseException as ex:
             print(f'Caught exception: f{ex}')
-            remapper.on_exception(ex)
+            remapper._on_exception(ex)
         finally:
             for d in devices:
                 print(f"Releasing device: {d}")
                 if remapper.grab_devices:
                     try_ungrab(d)
                 d.close()
-            remapper.on_device_lost()
-    remapper.on_stop()
+            remapper._on_device_lost()
+    remapper._on_stop()
 
 
 def main(args, description="key remapper test"):
