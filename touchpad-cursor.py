@@ -4,19 +4,18 @@ import asyncio
 import os
 import sys
 import threading
-from typing import List, Optional, Dict
+from typing import List
 
 import evdev
 import notify2
 from evdev import ecodes
 
 import key_remapper
-import synced_uinput
 import tasktray
 
-NAME = "ShuttleXpress media controller 2"
+NAME = "Touchpad Cursor"
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
-ICON = os.path.join(SCRIPT_PATH, 'knob.png')
+ICON = os.path.join(SCRIPT_PATH, 'trackpad.png')
 
 DEFAULT_DEVICE_NAME = '^MOSART Semi. 2.4G Wireless Mouse$'
 
@@ -95,7 +94,7 @@ def main(args, description=NAME):
         help='Use devices matching this regex')
     parser.add_argument('-i', '--match-id', metavar='D', default='',
         help='Use devices with info ("vXXX pXXX") matching this regex')
-    parser.add_argument('-s', '--sensitivity', metavar='S', type=float, default=4,
+    parser.add_argument('-s', '--sensitivity', metavar='S', type=float, default=8,
         help='Sensitivity; smaller value mean more sensitive')
     parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
     parser.add_argument('-q', '--quiet', action='store_true', help='Quiet mode')
