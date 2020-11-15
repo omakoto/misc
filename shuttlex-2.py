@@ -6,6 +6,7 @@ import os
 import sys
 import threading
 import time
+import traceback
 from typing import List, Optional
 
 import evdev
@@ -111,13 +112,6 @@ class ShuttlexRemapper(key_remapper.BaseRemapper):
             print(help)
 
         self.show_notification(help)
-
-    # Thread safe
-    def press_key(self, key: int) -> None:
-        self.uinput.write([
-            evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 1),
-            evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 0),
-        ])
 
     def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]):
         for ev in events:
@@ -243,8 +237,11 @@ def main(args, description=NAME):
     def do():
         # evdev will complain if the thread has no event loop set.
         asyncio.set_event_loop(asyncio.new_event_loop())
-
-        key_remapper.main_loop(remapper)
+        try:
+            key_remapper.main_loop(remapper)
+        except BaseException as e:
+            traceback.print_exc()
+            os._exit(1)
 
     th = threading.Thread(target=do)
     th.setDaemon(True)

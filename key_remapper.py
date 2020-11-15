@@ -7,11 +7,12 @@ import selectors
 import sys
 import threading
 import time
+import traceback
 from typing import Optional, Dict, List, TextIO, cast
 
 import evdev
 import pyudev
-from evdev import UInput, ecodes as e
+from evdev import UInput, ecodes as e, ecodes
 
 import singleton
 import synced_uinput
@@ -77,6 +78,16 @@ class BaseRemapper(object):
         if debug:
             print('on_stop:')
 
+    # Thread safe
+    def press_key(self, key: int) -> None:
+        if debug:
+            print(f'Press: f{evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 1)}')
+        self.uinput.write([
+            evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 1),
+            evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 0),
+        ])
+
+
 
 def start_udev_monitor() -> TextIO:
     pr, pw = os.pipe()
@@ -85,16 +96,19 @@ def start_udev_monitor() -> TextIO:
     writer = os.fdopen(pw, 'w')
 
     def run():
-        context = pyudev.Context()
-        monitor = pyudev.Monitor.from_netlink(context)
-        monitor.filter_by(subsystem='input')
+        try:
+            context = pyudev.Context()
+            monitor = pyudev.Monitor.from_netlink(context)
+            monitor.filter_by(subsystem='input')
+            if debug: print('Device monitor started.')
 
-        if debug: print('Device monitor started.')
-
-        for action, device in monitor:
-            if debug: print(f'udev: action={action} {device}')
-            writer.writelines(action)
-            writer.flush()
+            for action, device in monitor:
+                if debug: print(f'udev: action={action} {device}')
+                writer.writelines(action)
+                writer.flush()
+        except BaseException as e:
+            traceback.print_exc()
+            os._exit(1)
 
     th = threading.Thread(target=run)
     th.setDaemon(True)
