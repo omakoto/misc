@@ -38,10 +38,7 @@ class TaskTrayIcon:
         pass
 
     def quit(self, source):
-        def inner():
-            self._on_quit()
-            gtk.main_quit()
-        glib.idle_add(inner)
+        quit(self._on_quit)
 
     def set_icon(self, icon_path):
         self.icon_path = icon_path
@@ -63,3 +60,10 @@ class QuittingTaskTrayIcon(TaskTrayIcon):
 
 def start_quitting_tray_icon(name, icon_path):
     QuittingTaskTrayIcon(name, icon_path).run()
+
+def quit(callback=None):
+    def inner():
+        if callback:
+            callback()
+        gtk.main_quit()
+    glib.idle_add(inner)

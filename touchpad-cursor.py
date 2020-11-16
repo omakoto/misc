@@ -4,6 +4,7 @@ import asyncio
 import os
 import sys
 import threading
+import traceback
 from typing import List
 
 import evdev
@@ -84,7 +85,7 @@ class TouchpadRemapper(key_remapper.BaseRemapper):
                                + '\n'.join ('- ' + d.name for d in devices))
 
     def on_device_not_found(self):
-        self.show_notification('Device not found')
+        self.sthow_notification('Device not found')
 
     def on_device_lost(self):
         self.show_notification('Device lost')
@@ -123,7 +124,11 @@ def main(args, description=NAME):
         # evdev will complain if the thread has no event loop set.
         asyncio.set_event_loop(asyncio.new_event_loop())
 
-        key_remapper.main_loop(remapper)
+        try:
+            key_remapper.main_loop(remapper)
+        except BaseException as e:
+            traceback.print_exc()
+            tasktray.quit()
 
     th = threading.Thread(target=do)
     th.setDaemon(True)

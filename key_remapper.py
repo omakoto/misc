@@ -275,6 +275,7 @@ def main_loop(remapper: BaseRemapper) -> None:
             print(f'Caught exception: f{ex}')
             remapper.on_exception(ex)
         finally:
+            if debug: print('Stopping...')
             for d in devices:
                 print(f"Releasing device: {d}")
                 if remapper.grab_devices:

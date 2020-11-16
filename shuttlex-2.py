@@ -241,13 +241,11 @@ def main(args, description=NAME):
             key_remapper.main_loop(remapper)
         except BaseException as e:
             traceback.print_exc()
-            os._exit(1)
+            tasktray.quit()
 
     th = threading.Thread(target=do)
     th.setDaemon(True)
     th.start()
-
-    threading.excepthook
 
     tasktray.start_quitting_tray_icon(NAME, ICON)
 
