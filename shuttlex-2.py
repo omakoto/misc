@@ -238,7 +238,7 @@ def main(args, description=NAME):
         # evdev will complain if the thread has no event loop set.
         asyncio.set_event_loop(asyncio.new_event_loop())
         try:
-            key_remapper.main_loop(remapper)
+            key_remapper.start_remapper(remapper)
         except BaseException as e:
             traceback.print_exc()
             tasktray.quit()

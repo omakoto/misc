@@ -89,7 +89,7 @@ class BaseRemapper(object):
 
 
 
-def start_udev_monitor() -> TextIO:
+def _start_udev_monitor() -> TextIO:
     pr, pw = os.pipe()
     os.set_blocking(pr, False)
     reader = os.fdopen(pr)
@@ -117,7 +117,7 @@ def start_udev_monitor() -> TextIO:
     return reader
 
 
-def open_devices(
+def _open_devices(
         device_name_regex: str,
         id_regex: str,
         match_non_keyboards=False) \
@@ -169,7 +169,7 @@ def open_devices(
     return [devices, all_capabilities]
 
 
-def try_grab(device: evdev.InputDevice) -> bool:
+def _try_grab(device: evdev.InputDevice) -> bool:
     try:
         device.grab()
         return True
@@ -177,15 +177,15 @@ def try_grab(device: evdev.InputDevice) -> bool:
         return False
 
 
-def try_ungrab(device: evdev.InputDevice) -> bool:
+def _try_ungrab(device: evdev.InputDevice) -> bool:
     try:
         device.ungrab()
         return True
     except IOError:
-        return False
+        retur_n False
 
 
-def main_loop(remapper: BaseRemapper) -> None:
+def start_remapper(remapper: BaseRemapper) -> None:
     global debug, quiet
     debug = remapper.enable_debug
     quiet = remapper.force_quiet
@@ -199,7 +199,7 @@ def main_loop(remapper: BaseRemapper) -> None:
         if debug: print(f'Uinput device name: {UINPUT_DEVICE_NAME}')
         ui = synced_uinput.SyncedUinput(uinput)
 
-    udev_monitor = start_udev_monitor()
+    udev_monitor = _start_udev_monitor()
 
     remapper.uinput = ui
     remapper.on_initialize(ui)
@@ -209,7 +209,7 @@ def main_loop(remapper: BaseRemapper) -> None:
         udev_monitor.readlines()
 
         # Find the devivces.
-        devices, all_capabilities = open_devices(
+        devices, all_capabilities = _open_devices(
             remapper.device_name_regex,
             remapper.id_regex,
             remapper.match_non_keyboards)
@@ -221,7 +221,7 @@ def main_loop(remapper: BaseRemapper) -> None:
             # Grab the devices if needed, and add them to the selector.
             reading_devices = []
             for d in devices:
-                if remapper.grab_devices and not try_grab(d):
+                if remapper.grab_devices and not _try_grab(d):
                     print(f"  Unable to grab, skipping device {d}", file=sys.stderr)
                     continue
                 reading_devices.append(d)
@@ -279,13 +279,13 @@ def main_loop(remapper: BaseRemapper) -> None:
             for d in devices:
                 print(f"Releasing device: {d}")
                 if remapper.grab_devices:
-                    try_ungrab(d)
+                    _try_ungrab(d)
                 d.close()
             remapper.on_device_lost()
     remapper.on_stop()
 
 
-def main(args, description="key remapper test"):
+def _main(args, description="key remapper test"):
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('-m', '--match-device-name', metavar='D', default='',
         help='Only use devices matching this regex')
@@ -293,9 +293,9 @@ def main(args, description="key remapper test"):
 
     args = parser.parse_args(args)
 
-    main_loop(BaseRemapper(device_name_regex=args.match_device_name,
+    start_remapper(BaseRemapper(device_name_regex=args.match_device_name,
         enable_debug=args.debug))
 
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    _main(sys.argv[1:])
