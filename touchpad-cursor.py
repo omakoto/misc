@@ -85,7 +85,7 @@ class TouchpadRemapper(key_remapper.BaseRemapper):
                                + '\n'.join ('- ' + d.name for d in devices))
 
     def on_device_not_found(self):
-        self.sthow_notification('Device not found')
+        self.show_notification('Device not found')
 
     def on_device_lost(self):
         self.show_notification('Device lost')

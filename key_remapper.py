@@ -182,7 +182,7 @@ def _try_ungrab(device: evdev.InputDevice) -> bool:
         device.ungrab()
         return True
     except IOError:
-        retur_n False
+        return False
 
 
 def start_remapper(remapper: BaseRemapper) -> None:
