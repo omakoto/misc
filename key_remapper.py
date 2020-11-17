@@ -108,13 +108,36 @@ def _start_udev_monitor() -> TextIO:
                 writer.flush()
         except BaseException as e:
             traceback.print_exc()
-            os._exit(1)
+            stop_remapper()
 
     th = threading.Thread(target=run)
     th.setDaemon(True)
     th.start()
 
     return reader
+
+
+class _Stopper:
+    stopped = False
+
+    def __init__(self) -> None:
+        pr, pw = os.pipe()
+        os.set_blocking(pr, False)
+        self.stop_fd = os.fdopen(pr)
+        self.__writer = os.fdopen(pw, 'w')
+
+    def stop(self):
+        self.stopped = True
+        self.__writer.write('stop\n')
+        self.__writer.flush()
+        if debug: print('Stop!')
+
+
+STOPPER = _Stopper()
+
+
+def stop_remapper():
+    STOPPER.stop()
 
 
 def _open_devices(
@@ -204,7 +227,7 @@ def start_remapper(remapper: BaseRemapper) -> None:
     remapper.uinput = ui
     remapper.on_initialize(ui)
 
-    while True:
+    while not STOPPER.stopped:
         # Drain all the udev events
         udev_monitor.readlines()
 
@@ -217,6 +240,7 @@ def start_remapper(remapper: BaseRemapper) -> None:
             # Prepare the selector.
             selector = selectors.DefaultSelector()
             selector.register(udev_monitor, selectors.EVENT_READ)
+            selector.register(STOPPER.stop_fd, selectors.EVENT_READ)
 
             # Grab the devices if needed, and add them to the selector.
             reading_devices = []
@@ -237,9 +261,12 @@ def start_remapper(remapper: BaseRemapper) -> None:
             try:
                 # Start the main loop.
                 stop = False
-                while not stop:
+                while not stop and not STOPPER.stopped:
                     for key, mask in selector.select():
                         device = cast(evdev.InputDevice, key.fileobj)
+
+                        if device == STOPPER.stop_fd:
+                            break
 
                         # See if a new device hsa been detected.
                         if device == udev_monitor:
@@ -272,7 +299,7 @@ def start_remapper(remapper: BaseRemapper) -> None:
         except KeyboardInterrupt:
             break
         except BaseException as ex:
-            print(f'Caught exception: f{ex}')
+            traceback.print_exc()
             remapper.on_exception(ex)
         finally:
             if debug: print('Stopping...')

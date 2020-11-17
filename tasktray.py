@@ -51,12 +51,10 @@ class TaskTrayIcon:
 
 
 class QuittingTaskTrayIcon(TaskTrayIcon):
+    """Deprecated -- it's the same thing as TaskTrayIcon.
+    """
     def __init__(self, name, icon_path):
         super().__init__(name, icon_path)
-
-    def _on_quit(self):
-        sys.exit(0)
-
 
 def start_quitting_tray_icon(name, icon_path):
     QuittingTaskTrayIcon(name, icon_path).run()

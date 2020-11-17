@@ -244,10 +244,10 @@ def main(args, description=NAME):
             tasktray.quit()
 
     th = threading.Thread(target=do)
-    th.setDaemon(True)
     th.start()
 
     tasktray.start_quitting_tray_icon(NAME, ICON)
+    key_remapper.stop_remapper()
 
 
 if __name__ == '__main__':

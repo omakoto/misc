@@ -26,7 +26,7 @@ notify2.init(NAME)
 
 
 class TouchpadRemapper(key_remapper.BaseRemapper):
-    sensitivity:float
+    sensitivity: float
     x: int
     y: int
 
@@ -82,7 +82,7 @@ class TouchpadRemapper(key_remapper.BaseRemapper):
 
     def on_device_detected(self, devices: List[evdev.InputDevice]):
         self.show_notification('Device connected:\n'
-                               + '\n'.join ('- ' + d.name for d in devices))
+                               + '\n'.join('- ' + d.name for d in devices))
 
     def on_device_not_found(self):
         self.show_notification('Device not found')
@@ -131,10 +131,10 @@ def main(args, description=NAME):
             tasktray.quit()
 
     th = threading.Thread(target=do)
-    th.setDaemon(True)
     th.start()
 
     tasktray.start_quitting_tray_icon(NAME, ICON)
+    key_remapper.stop_remapper()
 
 
 if __name__ == '__main__':
