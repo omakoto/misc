@@ -1,4 +1,4 @@
 #!/bin/bash
 
-pids=$(ps -ef | fgrep '/chrome --type=gpu-process ' | fgrep -v grep | awk '{print $2}')
-kill $pids
+# kill $(ps -ef | fgrep '/chrome --type=gpu-process ' | fgrep -v grep | awk '{print $2}')
+pkill -f 'chrome \-\-type=gpu-process'
