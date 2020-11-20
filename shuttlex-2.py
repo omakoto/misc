@@ -37,7 +37,6 @@ def get_next_key_mode(mode: int) -> int:
     return (mode + 1) % len(KEY_MODES)
 
 class ShuttlexRemapper(key_remapper.BaseRemapper):
-    uinpqut: synced_uinput.SyncedUinput
     __lock: threading.RLock
     __wheel_thread: threading.Thread
 
