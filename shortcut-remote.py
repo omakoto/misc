@@ -28,14 +28,62 @@ notify2.init(NAME)
 
 debug = False
 
-LEFT_RIGHT_KEYS = [ecodes.KEY_LEFT, ecodes.KEY_RIGHT, 'Left/Right']
-VOLUME_KEYS = [ecodes.KEY_VOLUMEDOWN, ecodes.KEY_VOLUMEUP, 'VolUp/Down']
-UP_DOWN_KEYS = [ecodes.KEY_UP, ecodes.KEY_DOWN, 'Up/Down']
-KEY_MODES = [LEFT_RIGHT_KEYS, UP_DOWN_KEYS, VOLUME_KEYS]
+KEY_LABELS = [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
 
+    "Left",
+    "Right",
+    "Button",
+]
 
-def get_next_key_mode(mode: int) -> int:
-    return (mode + 1) % len(KEY_MODES)
+MODE_1 = [-1, "Cursor mode"]
+MODE_2 = [-2, "Volume mode"]
+MODE_3 = [-3, "Volume mode"]
+
+CURSOR_MODE = collections.OrderedDict([
+    [ecodes.KEY_M, [0, ""]],
+    [ecodes.KEY_P, [0, ""]],
+    [ecodes.KEY_U, [0, "Help"]],
+    [ecodes.KEY_B, [ecodes.KEY_VOLUMEDOWN, "Vol Down"]],
+    [ecodes.KEY_ENTER, [ecodes.KEY_MUTE, "Mute"]],
+    [ecodes.KEY_Z, [ecodes.KEY_VOLUMEUP, "Vol Up"]],
+
+    [ecodes.KEY_V, MODE_1],
+    [ecodes.KEY_I, MODE_2],
+    [ecodes.KEY_SPACE, MODE_3],
+
+    [ecodes.KEY_KPMINUS, [ecodes.KEY_LEFT, "Left"]],
+    [ecodes.KEY_KPPLUS, [ecodes.KEY_RIGHT, "Right"]],
+    [ecodes.KEY_LEFTSHIFT, [ecodes.KEY_ENTER, "Enter"]],
+])
+
+VOLUME_MODE = collections.OrderedDict([
+    [ecodes.KEY_M, [ecodes.KEY_F20, "Mic Mute"]],
+    [ecodes.KEY_P, [0, ""]],
+    [ecodes.KEY_U, [0, "Help"]],
+    [ecodes.KEY_B, [ecodes.KEY_LEFT, "Left"]],
+    [ecodes.KEY_ENTER, [ecodes.KEY_ENTER, "Enter"]],
+    [ecodes.KEY_Z, [ecodes.KEY_RIGHT, "Right"]],
+
+    [ecodes.KEY_V, MODE_1],
+    [ecodes.KEY_I, MODE_2],
+    [ecodes.KEY_SPACE, MODE_3],
+
+    [ecodes.KEY_KPMINUS, [ecodes.KEY_VOLUMEDOWN, "Vol Down"]],
+    [ecodes.KEY_KPPLUS, [ecodes.KEY_VOLUMEUP, "Vol Up"]],
+    [ecodes.KEY_LEFTSHIFT, [ecodes.KEY_MUTE, "Mute"]],
+])
+
+ALL_MODES = [CURSOR_MODE, VOLUME_MODE, VOLUME_MODE]
+
 
 class Remapper(key_remapper.BaseRemapper):
     __lock: threading.RLock
@@ -43,35 +91,30 @@ class Remapper(key_remapper.BaseRemapper):
 
     def __init__(self, device_name_regex: str, *, enable_debug=False, quiet=False):
         super().__init__(device_name_regex,
-            id_regex='',
-            match_non_keyboards=True,
-            grab_devices=True,
-            write_to_uinput=True,
-            enable_debug=enable_debug)
+                         id_regex='',
+                         match_non_keyboards=True,
+                         grab_devices=True,
+                         write_to_uinput=True,
+                         enable_debug=enable_debug)
         self.__quiet = quiet
         self.__notification = notify2.Notification(NAME, '')
         self.__notification.set_urgency(notify2.URGENCY_NORMAL)
         self.__notification.set_timeout(3000)
         self.__key_states = collections.defaultdict(int)
+        self.__mode = 0
 
     def show_notification(self, message: str) -> None:
         if debug: print(message)
         self.__notification.update(NAME, message)
         self.__notification.show()
 
+    def get_current_mode(self):
+        return ALL_MODES[self.__mode]
+
     def show_help(self):
-        help = NAME
-        help += "\n[1] Mic mute"
-        help += "\n[2]"
-        help += "\n[3] Help"
-        help += "\n[4] Vol Down"
-        help += "\n[5] Mute"
-        help += "\n[6] Vol Up"
-        help += "\n[7]"
-        help += "\n[8] f"
-        help += "\n[9] F11"
-        help += "\n[Dial] Left and Right"
-        help += "\n[Center] Enter"
+        descs = [v[1] for v in self.get_current_mode().values()]
+
+        help = NAME + "\n" + "\n".join(f'[{v[0]}] {v[1]}' for v in zip(KEY_LABELS, descs))
 
         if not self.__quiet:
             print(help)
@@ -82,36 +125,18 @@ class Remapper(key_remapper.BaseRemapper):
         for ev in events:
             if ev.type != ecodes.EV_KEY:
                 continue
-
-            key = 0
             if ev.code == ecodes.KEY_LEFTCTRL:
-                continue # ignore it
-            elif ev.code == ecodes.KEY_M:
-                key = ecodes.KEY_F20 # mic mute
-            elif ev.code == ecodes.KEY_P:
-                pass
-            elif ev.code == ecodes.KEY_U:
-                self.show_help()
-                pass
-            elif ev.code == ecodes.KEY_B:
-                key = ecodes.KEY_VOLUMEDOWN
-            elif ev.code == ecodes.KEY_ENTER:
-                key = ecodes.KEY_MUTE
-            elif ev.code == ecodes.KEY_Z:
-                key = ecodes.KEY_VOLUMEUP
-            elif ev.code == ecodes.KEY_V:
-                pass
-            elif ev.code == ecodes.KEY_I:
-                key = ecodes.KEY_F
-            elif ev.code == ecodes.KEY_SPACE:
-                key = ecodes.KEY_F11
+                continue  # ignore it
 
-            elif ev.code == ecodes.KEY_LEFTSHIFT:
-                key = ecodes.KEY_ENTER
-            elif ev.code == ecodes.KEY_KPMINUS:
-                key = ecodes.KEY_LEFT
-            elif ev.code == ecodes.KEY_KPPLUS:
-                key = ecodes.KEY_RIGHT
+            key = self.get_current_mode()[ev.code][0]
+            if key == 0:
+                self.show_help()
+                continue
+
+            if key < 0:
+                self.__mode = -key - 1
+                self.show_help()
+                continue
 
             if key != 0:
                 self.__key_states[key] = key, ev.value
@@ -119,7 +144,7 @@ class Remapper(key_remapper.BaseRemapper):
 
     def on_device_detected(self, devices: List[evdev.InputDevice]):
         self.show_notification('Device connected:\n'
-                               + '\n'.join ('- ' + d.name for d in devices))
+                               + '\n'.join('- ' + d.name for d in devices))
         self.show_help()
 
     def on_device_not_found(self):
@@ -138,7 +163,7 @@ class Remapper(key_remapper.BaseRemapper):
 def main(args, description=NAME):
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('-m', '--match-device-name', metavar='D', default=DEFAULT_DEVICE_NAME,
-        help='Use devices matching this regex')
+                        help='Use devices matching this regex')
     parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
     parser.add_argument('-q', '--quiet', action='store_true', help='Quiet mode')
 
@@ -148,7 +173,7 @@ def main(args, description=NAME):
     debug = args.debug
 
     remapper = Remapper(device_name_regex=args.match_device_name, enable_debug=debug,
-            quiet=args.quiet)
+                        quiet=args.quiet)
 
     def do():
         # evdev will complain if the thread has no event loop set.
@@ -169,7 +194,7 @@ def main(args, description=NAME):
 if __name__ == '__main__':
     main(sys.argv[1:])
 
-#------------------------------
+# ------------------------------
 # 1
 # Event: time 1605849332.729321, type 4 (EV_MSC), code 4 (MSC_SCAN), value 70010
 # Event: time 1605849332.729321, type 1 (EV_KEY), code 50 (KEY_M), value 1
