@@ -46,7 +46,7 @@ KEY_LABELS = [
 
 MODE_1 = [-1, "Cursor mode"]
 MODE_2 = [-2, "Volume mode"]
-MODE_3 = [-3, "Volume mode"]
+MODE_3 = [-3, "Scroll mode"]
 
 CURSOR_MODE = collections.OrderedDict([
     [ecodes.KEY_M, [0, ""]],
@@ -82,7 +82,24 @@ VOLUME_MODE = collections.OrderedDict([
     [ecodes.KEY_LEFTSHIFT, [ecodes.KEY_MUTE, "Mute"]],
 ])
 
-ALL_MODES = [CURSOR_MODE, VOLUME_MODE, VOLUME_MODE]
+SCROLL_MODE = collections.OrderedDict([
+    [ecodes.KEY_M, [0, ""]],
+    [ecodes.KEY_P, [ecodes.KEY_DOWN, "Down"]],
+    [ecodes.KEY_U, [0, ""]],
+    [ecodes.KEY_B, [ecodes.KEY_LEFT, "Left"]],
+    [ecodes.KEY_ENTER, [ecodes.KEY_UP, "Up"]],
+    [ecodes.KEY_Z, [ecodes.KEY_RIGHT, "Right"]],
+
+    [ecodes.KEY_V, MODE_1],
+    [ecodes.KEY_I, MODE_2],
+    [ecodes.KEY_SPACE, MODE_3],
+
+    [ecodes.KEY_KPMINUS, [ecodes.KEY_PAGEUP, "Page Down"]],
+    [ecodes.KEY_KPPLUS, [ecodes.KEY_PAGEDOWN, "Page Up"]],
+    [ecodes.KEY_LEFTSHIFT, [ecodes.KEY_SPACE, "Space"]],
+])
+
+ALL_MODES = [CURSOR_MODE, VOLUME_MODE, SCROLL_MODE]
 
 
 class Remapper(key_remapper.BaseRemapper):
@@ -308,3 +325,7 @@ if __name__ == '__main__':
 # Event: time 1605849415.910189, type 4 (EV_MSC), code 4 (MSC_SCAN), value 700e1
 # Event: time 1605849415.910189, type 1 (EV_KEY), code 42 (KEY_LEFTSHIFT), value 0
 # Event: time 1605849415.910189, -------------- SYN_REPORT ------------
+
+# wheel
+# Event: time 1606370588.253422, type 2 (EV_REL), code 8 (REL_WHEEL), value -1
+# Event: time 1606370588.253422, type 2 (EV_REL), code 11 (REL_WHEEL_HI_RES), value -120
