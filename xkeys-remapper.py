@@ -18,72 +18,15 @@ import key_remapper
 import synced_uinput
 import tasktray
 
-NAME = "Shortcut Remote remapper"
+NAME = "X-keys remapper"
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 ICON = os.path.join(SCRIPT_PATH, '10key.png')
 
-DEFAULT_DEVICE_NAME = "^UGEE TABLET TABLET KT01"
+DEFAULT_DEVICE_NAME = "^P. I. Engineering XK-16 HID"
 
 notify2.init(NAME)
 
 debug = False
-
-KEY_LABELS = [
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-    "6",
-    "7",
-    "8",
-    "9",
-
-    "Left",
-    "Right",
-    "Button",
-]
-
-MODE_1 = [-1, "Cursor mode"]
-MODE_2 = [-2, "Volume mode"]
-MODE_3 = [-3, "Volume mode"]
-
-CURSOR_MODE = collections.OrderedDict([
-    [ecodes.KEY_M, [0, ""]],
-    [ecodes.KEY_P, [ecodes.KEY_F11, "F11"]],
-    [ecodes.KEY_U, [ecodes.KEY_F, "F"]],
-    [ecodes.KEY_B, [ecodes.KEY_VOLUMEDOWN, "Vol Down"]],
-    [ecodes.KEY_ENTER, [ecodes.KEY_MUTE, "Mute"]],
-    [ecodes.KEY_Z, [ecodes.KEY_VOLUMEUP, "Vol Up"]],
-
-    [ecodes.KEY_V, MODE_1],
-    [ecodes.KEY_I, MODE_2],
-    [ecodes.KEY_SPACE, MODE_3],
-
-    [ecodes.KEY_KPMINUS, [ecodes.KEY_LEFT, "Left"]],
-    [ecodes.KEY_KPPLUS, [ecodes.KEY_RIGHT, "Right"]],
-    [ecodes.KEY_LEFTSHIFT, [ecodes.KEY_ENTER, "Enter"]],
-])
-
-VOLUME_MODE = collections.OrderedDict([
-    [ecodes.KEY_M, [ecodes.KEY_F20, "Mic Mute"]],
-    [ecodes.KEY_P, [0, ""]],
-    [ecodes.KEY_U, [0, ""]],
-    [ecodes.KEY_B, [ecodes.KEY_LEFT, "Left"]],
-    [ecodes.KEY_ENTER, [ecodes.KEY_ENTER, "Enter"]],
-    [ecodes.KEY_Z, [ecodes.KEY_RIGHT, "Right"]],
-
-    [ecodes.KEY_V, MODE_1],
-    [ecodes.KEY_I, MODE_2],
-    [ecodes.KEY_SPACE, MODE_3],
-
-    [ecodes.KEY_KPMINUS, [ecodes.KEY_VOLUMEDOWN, "Vol Down"]],
-    [ecodes.KEY_KPPLUS, [ecodes.KEY_VOLUMEUP, "Vol Up"]],
-    [ecodes.KEY_LEFTSHIFT, [ecodes.KEY_MUTE, "Mute"]],
-])
-
-ALL_MODES = [CURSOR_MODE, VOLUME_MODE, VOLUME_MODE]
-
 
 class Remapper(key_remapper.BaseRemapper):
     __lock: threading.RLock
@@ -99,7 +42,7 @@ class Remapper(key_remapper.BaseRemapper):
         self.__quiet = quiet
         self.__notification = notify2.Notification(NAME, '')
         self.__notification.set_urgency(notify2.URGENCY_NORMAL)
-        self.__notification.set_timeout(5000)
+        self.__notification.set_timeout(3000)
         self.__key_states = collections.defaultdict(int)
         self.__mode = 0
 
@@ -108,44 +51,30 @@ class Remapper(key_remapper.BaseRemapper):
         self.__notification.update(NAME, message)
         self.__notification.show()
 
-    def get_current_mode(self):
-        return ALL_MODES[self.__mode]
 
-    def show_help(self):
-        descs = [v[1] for v in self.get_current_mode().values()]
-
-        help = NAME + "\n" + "\n".join(f'[{v[0]}] {v[1]}' for v in zip(KEY_LABELS, descs))
-
-        if not self.__quiet:
-            print(help)
-
-        self.show_notification(help)
+    def send_modifiers(self, val):
+        self.uinput.write([
+            InputEvent(0, 0, ecodes.EV_KEY, ecodes.KEY_LEFTCTRL, val),
+            InputEvent(0, 0, ecodes.EV_KEY, ecodes.KEY_LEFTSHIFT, val),
+        ])
 
     def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]):
         for ev in events:
             if ev.type != ecodes.EV_KEY:
                 continue
-            if ev.code == ecodes.KEY_LEFTCTRL:
-                continue  # ignore it
 
-            key = self.get_current_mode()[ev.code][0]
-            if key == 0:
-                self.show_help()
-                continue
+            print(f'{ev}')
 
-            if key < 0:
-                self.__mode = -key - 1
-                self.show_help()
-                continue
-
-            if key != 0:
-                self.__key_states[key] = key, ev.value
-                self.uinput.write([InputEvent(0, 0, ev.type, key, ev.value)])
+            if ecodes.KEY_1 <= ev.code <= ecodes.KEY_8:
+                if ev.value == 1:
+                    self.send_modifiers(1)
+                self.uinput.write([InputEvent(0, 0, ecodes.EV_KEY, ev.code, ev.value)])
+                if ev.value == 0:
+                    self.send_modifiers(0)
 
     def on_device_detected(self, devices: List[evdev.InputDevice]):
         self.show_notification('Device connected:\n'
                                + '\n'.join('- ' + d.name for d in devices))
-        self.show_help()
 
     def on_device_not_found(self):
         self.show_notification('Device not found')

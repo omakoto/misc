@@ -50,7 +50,7 @@ class ShuttlexRemapper(key_remapper.BaseRemapper):
         self.__quiet = quiet
         self.__notification = notify2.Notification(NAME, '')
         self.__notification.set_urgency(notify2.URGENCY_NORMAL)
-        self.__notification.set_timeout(3000)
+        self.__notification.set_timeout(5000)
         self.__lock = threading.RLock()
         self.__wheel_pos = 0
         self.__wheel_thread = threading.Thread(name='wheel-thread', target=self.__handle_wheel)
