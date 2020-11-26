@@ -49,9 +49,9 @@ MODE_2 = [-2, "Volume mode"]
 MODE_3 = [-3, "Scroll mode"]
 
 CURSOR_MODE = collections.OrderedDict([
-    [ecodes.KEY_M, [0, ""]],
+    [ecodes.KEY_M, [ecodes.KEY_F, "F"]],
     [ecodes.KEY_P, [ecodes.KEY_F11, "F11"]],
-    [ecodes.KEY_U, [ecodes.KEY_F, "F"]],
+    [ecodes.KEY_U, [ecodes.KEY_ENTER, "Enter"]],
     [ecodes.KEY_B, [ecodes.KEY_VOLUMEDOWN, "Vol Down"]],
     [ecodes.KEY_ENTER, [ecodes.KEY_MUTE, "Mute"]],
     [ecodes.KEY_Z, [ecodes.KEY_VOLUMEUP, "Vol Up"]],
@@ -62,7 +62,7 @@ CURSOR_MODE = collections.OrderedDict([
 
     [ecodes.KEY_KPMINUS, [ecodes.KEY_LEFT, "Left"]],
     [ecodes.KEY_KPPLUS, [ecodes.KEY_RIGHT, "Right"]],
-    [ecodes.KEY_LEFTSHIFT, [ecodes.KEY_ENTER, "Enter"]],
+    [ecodes.KEY_LEFTSHIFT, [ecodes.KEY_SPACE, "Space"]],
 ])
 
 VOLUME_MODE = collections.OrderedDict([
@@ -85,7 +85,7 @@ VOLUME_MODE = collections.OrderedDict([
 SCROLL_MODE = collections.OrderedDict([
     [ecodes.KEY_M, [0, ""]],
     [ecodes.KEY_P, [ecodes.KEY_DOWN, "Down"]],
-    [ecodes.KEY_U, [0, ""]],
+    [ecodes.KEY_U, [ecodes.KEY_ENTER, "Enter"]],
     [ecodes.KEY_B, [ecodes.KEY_LEFT, "Left"]],
     [ecodes.KEY_ENTER, [ecodes.KEY_UP, "Up"]],
     [ecodes.KEY_Z, [ecodes.KEY_RIGHT, "Right"]],
