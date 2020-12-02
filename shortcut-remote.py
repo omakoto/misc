@@ -106,19 +106,21 @@ class Remapper(key_remapper.BaseRemapper):
     __lock: threading.RLock
     __wheel_thread: threading.Thread
 
-    def __init__(self, device_name_regex: str, *, enable_debug=False, quiet=False):
+    def __init__(self, device_name_regex: str, *, enable_debug=False, quiet=False, initial_mode=0):
         super().__init__(device_name_regex,
                          id_regex='',
                          match_non_keyboards=True,
                          grab_devices=True,
                          write_to_uinput=True,
                          enable_debug=enable_debug)
+        if initial_mode < 0 or initial_mode >= len(ALL_MODES):
+            raise ValueError(f'Invalid mode {initial_mode}. Must be 0 <= mode < {len(ALL_MODES)}')
         self.__quiet = quiet
         self.__notification = notify2.Notification(NAME, '')
         self.__notification.set_urgency(notify2.URGENCY_NORMAL)
         self.__notification.set_timeout(5000)
         self.__key_states = collections.defaultdict(int)
-        self.__mode = 0
+        self.__mode = initial_mode
 
     def show_notification(self, message: str) -> None:
         if debug: print(message)
@@ -183,6 +185,7 @@ def main(args, description=NAME):
                         help='Use devices matching this regex')
     parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
     parser.add_argument('-q', '--quiet', action='store_true', help='Quiet mode')
+    parser.add_argument('--mode', type=int, default=0, help='Specify the initial mode (0-2)')
 
     args = parser.parse_args(args)
 
@@ -190,7 +193,7 @@ def main(args, description=NAME):
     debug = args.debug
 
     remapper = Remapper(device_name_regex=args.match_device_name, enable_debug=debug,
-                        quiet=args.quiet)
+                        quiet=args.quiet, initial_mode=args.mode)
 
     def do():
         # evdev will complain if the thread has no event loop set.
