@@ -63,7 +63,7 @@ class Remapper(key_remapper.BaseRemapper):
             if ev.type != ecodes.EV_KEY:
                 continue
 
-            print(f'{ev}')
+            # print(f'{ev}')
 
             if ecodes.KEY_1 <= ev.code <= ecodes.KEY_8:
                 if ev.value == 1:
