@@ -243,6 +243,7 @@ if [[ -n "$DISPLAY" ]] || iswsl  ; then
       is_sublime=1
     else
       command=$(firstbin \
+          /usr/bin/code \
           /opt/sublime_text/sublime_text \
           /usr/local/makoto/sublime_text_3/sublime_text \
           /usr/local/sublime/sublime_text \
@@ -303,16 +304,17 @@ if (( ${#files[@]} > 0 )) ; then
       fi
     done
   fi
-  # Bring the sublime window to top
-  (
-    set +e
-    for n in {1..10}; do
-      if focus-window perl -e 'exit(($ARGV[1] =~ m!/sublime_text$! and $ARGV[0] =~ m!^\Q'"$file0"'\E\s.*Sublime Text$!) ? 0 : 1)' ; then
-        break
-      fi
-      sleep 0.1
-    done
-  ) >&/dev/null &
+  # # Bring the sublime window to top
+  # This is not needed with VS.code
+  # (
+  #   set +e
+  #   for n in {1..10}; do
+  #     if focus-window perl -e 'exit(($ARGV[1] =~ m!/sublime_text$! and $ARGV[0] =~ m!^\Q'"$file0"'\E\s.*Sublime Text$!) ? 0 : 1)' ; then
+  #       break
+  #     fi
+  #     sleep 0.1
+  #   done
+  # ) >&/dev/null &
 
   cd $HOME
   ee $bg_opt $command $opts "${files[@]}" #| zenlog write-to-outer
