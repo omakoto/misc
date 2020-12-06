@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 import argparse
+import asyncio
+import collections
 import os
 import random
 import re
@@ -11,11 +13,13 @@ import traceback
 from typing import Optional, Dict, List, TextIO, cast
 
 import evdev
+import notify2
 import pyudev
 from evdev import UInput, ecodes as e, ecodes
 
 import singleton
 import synced_uinput
+import tasktray
 
 debug = False
 quiet = False
@@ -310,6 +314,100 @@ def start_remapper(remapper: BaseRemapper) -> None:
                 d.close()
             remapper.on_device_lost()
     remapper.on_stop()
+
+
+class SimpleRemapper(BaseRemapper):
+    def __init__(self,
+                 remapper_name: str,
+                 remapper_icon: str,
+                 device_name_regex: str,
+                 *,
+                 id_regex = '',
+                 match_non_keyboards = True,
+                 grab_devices = True,
+                 write_to_uinput = True,
+                 uinput_events: Optional[Dict[int, List[int]]] = None,
+                 global_lock_name: str = os.path.basename(sys.argv[0]),
+                 enable_debug = False,
+                 force_quiet = False):
+        super().__init__(device_name_regex,
+                         id_regex=id_regex,
+                         match_non_keyboards=match_non_keyboards,
+                         grab_devices=grab_devices,
+                         write_to_uinput=write_to_uinput,
+                         uinput_events=uinput_events,
+                         global_lock_name=global_lock_name,
+                         enable_debug=enable_debug,
+                         force_quiet=force_quiet)
+        self.remapper_name = remapper_name
+        self.remapper_icon = remapper_icon
+        self.__quiet = force_quiet
+        self.__notification = notify2.Notification(remapper_name, '')
+        self.__notification.set_urgency(notify2.URGENCY_NORMAL)
+        self.__notification.set_timeout(3000)
+        self.__key_states = collections.defaultdict(int)
+        self.__mode = 0
+
+    def show_notification(self, message: str) -> None:
+        if self.enable_debug: print(message)
+        self.__notification.update(self.remapper_name, message)
+        self.__notification.show()
+
+    def on_device_detected(self, devices: List[evdev.InputDevice]):
+        self.show_notification('Device connected:\n'
+                               + '\n'.join('- ' + d.name for d in devices))
+
+    def on_device_not_found(self):
+        self.show_notification('Device not found')
+
+    def on_device_lost(self):
+        self.show_notification('Device lost')
+
+    def on_exception(self, exception: BaseException):
+        self.show_notification('Device lost')
+
+    def on_stop(self):
+        self.show_notification('Closing...')
+
+    def on_init_arguments(self, parser):
+        pass
+
+    def on_arguments_parsed(self, args):
+        pass
+
+    def start(self, args):
+        parser = argparse.ArgumentParser(description=self.remapper_name)
+        parser.add_argument('-m', '--match-device-name', metavar='D', default=self.device_name_regex,
+                            help='Use devices matching this regex')
+        parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
+        parser.add_argument('-q', '--quiet', action='store_true', help='Quiet mode')
+
+        self.on_init_arguments(parser)
+
+        args = parser.parse_args(args)
+
+        self.device_name_regex = args.match_device_name
+        self.enable_debug = args.debug
+        self.force_quiet = args.quiet
+
+        self.on_arguments_parsed(args)
+
+        notify2.init(self.remapper_name)
+
+        def do():
+            # evdev will complain if the thread has no event loop set.
+            asyncio.set_event_loop(asyncio.new_event_loop())
+            try:
+                start_remapper(self)
+            except BaseException as e:
+                traceback.print_exc()
+                tasktray.quit()
+
+        th = threading.Thread(target=do)
+        th.start()
+
+        tasktray.start_quitting_tray_icon(self.remapper_name, self.remapper_icon)
+        stop_remapper()
 
 
 def _main(args, description="key remapper test"):
