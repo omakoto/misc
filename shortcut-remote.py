@@ -102,30 +102,9 @@ SCROLL_MODE = collections.OrderedDict([
 ALL_MODES = [CURSOR_MODE, VOLUME_MODE, SCROLL_MODE]
 
 
-class Remapper(key_remapper.BaseRemapper):
-    __lock: threading.RLock
-    __wheel_thread: threading.Thread
-
-    def __init__(self, device_name_regex: str, *, enable_debug=False, quiet=False, initial_mode=0):
-        super().__init__(device_name_regex,
-                         id_regex='',
-                         match_non_keyboards=True,
-                         grab_devices=True,
-                         write_to_uinput=True,
-                         enable_debug=enable_debug)
-        if initial_mode < 0 or initial_mode >= len(ALL_MODES):
-            raise ValueError(f'Invalid mode {initial_mode}. Must be 0 <= mode < {len(ALL_MODES)}')
-        self.__quiet = quiet
-        self.__notification = notify2.Notification(NAME, '')
-        self.__notification.set_urgency(notify2.URGENCY_NORMAL)
-        self.__notification.set_timeout(5000)
-        self.__key_states = collections.defaultdict(int)
-        self.__mode = initial_mode
-
-    def show_notification(self, message: str) -> None:
-        if debug: print(message)
-        self.__notification.update(NAME, message)
-        self.__notification.show()
+class Remapper(key_remapper.SimpleRemapper):
+    def __init__(self):
+        super().__init__(NAME, ICON, DEFAULT_DEVICE_NAME)
 
     def get_current_mode(self):
         return ALL_MODES[self.__mode]
@@ -135,7 +114,7 @@ class Remapper(key_remapper.BaseRemapper):
 
         help = NAME + "\n" + "\n".join(f'[{v[0]}] {v[1]}' for v in zip(KEY_LABELS, descs))
 
-        if not self.__quiet:
+        if not self.force_quiet:
             print(help)
 
         self.show_notification(help)
@@ -158,57 +137,24 @@ class Remapper(key_remapper.BaseRemapper):
                 continue
 
             if key != 0:
-                self.__key_states[key] = key, ev.value
                 self.uinput.write([InputEvent(0, 0, ev.type, key, ev.value)])
 
     def on_device_detected(self, devices: List[evdev.InputDevice]):
-        self.show_notification('Device connected:\n'
-                               + '\n'.join('- ' + d.name for d in devices))
+        super().on_device_detected(devices)
         self.show_help()
 
-    def on_device_not_found(self):
-        self.show_notification('Device not found')
+    def on_init_arguments(self, parser):
+        parser.add_argument('--mode', type=int, default=0, help='Specify the initial mode (0-2)')
 
-    def on_device_lost(self):
-        self.show_notification('Device lost')
-
-    def on_exception(self, exception: BaseException):
-        self.show_notification('Device lost')
-
-    def on_stop(self):
-        self.show_notification('Closing...')
+    def on_arguments_parsed(self, args):
+        self.__mode = args.mode
+        if self.__mode < 0 or self.__mode >= len(ALL_MODES):
+            raise ValueError(f'Invalid mode {self.__mode}. Must be 0 <= mode < {len(ALL_MODES)}')
 
 
-def main(args, description=NAME):
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('-m', '--match-device-name', metavar='D', default=DEFAULT_DEVICE_NAME,
-                        help='Use devices matching this regex')
-    parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
-    parser.add_argument('-q', '--quiet', action='store_true', help='Quiet mode')
-    parser.add_argument('--mode', type=int, default=0, help='Specify the initial mode (0-2)')
-
-    args = parser.parse_args(args)
-
-    global debug
-    debug = args.debug
-
-    remapper = Remapper(device_name_regex=args.match_device_name, enable_debug=debug,
-                        quiet=args.quiet, initial_mode=args.mode)
-
-    def do():
-        # evdev will complain if the thread has no event loop set.
-        asyncio.set_event_loop(asyncio.new_event_loop())
-        try:
-            key_remapper.start_remapper(remapper)
-        except BaseException as e:
-            traceback.print_exc()
-            tasktray.quit()
-
-    th = threading.Thread(target=do)
-    th.start()
-
-    tasktray.start_quitting_tray_icon(NAME, ICON)
-    key_remapper.stop_remapper()
+def main(args):
+    remapper = Remapper()
+    remapper.start(args)
 
 
 if __name__ == '__main__':
