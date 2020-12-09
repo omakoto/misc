@@ -345,7 +345,6 @@ class SimpleRemapper(BaseRemapper):
         self.__notification = notify2.Notification(remapper_name, '')
         self.__notification.set_urgency(notify2.URGENCY_NORMAL)
         self.__notification.set_timeout(3000)
-        self.__key_states = collections.defaultdict(int)
         self.__mode = 0
 
     def show_notification(self, message: str) -> None:

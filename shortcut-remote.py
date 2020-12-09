@@ -48,6 +48,8 @@ MODE_1 = [-1, "Cursor mode"]
 MODE_2 = [-2, "Volume mode"]
 MODE_3 = [-3, "Scroll mode"]
 
+HALF_TOGGLE = 0x1_000_000
+
 CURSOR_MODE = collections.OrderedDict([
     [ecodes.KEY_M, [ecodes.KEY_F, "F"]],
     [ecodes.KEY_P, [ecodes.KEY_F11, "F11"]],
@@ -68,7 +70,7 @@ CURSOR_MODE = collections.OrderedDict([
 VOLUME_MODE = collections.OrderedDict([
     [ecodes.KEY_M, [ecodes.KEY_F20, "Mic Mute"]],
     [ecodes.KEY_P, [0, ""]],
-    [ecodes.KEY_U, [0, ""]],
+    [ecodes.KEY_U, [ecodes.KEY_F20 | HALF_TOGGLE, "Mic Mute PPT"]],
     [ecodes.KEY_B, [ecodes.KEY_LEFT, "Left"]],
     [ecodes.KEY_ENTER, [ecodes.KEY_ENTER, "Enter"]],
     [ecodes.KEY_Z, [ecodes.KEY_RIGHT, "Right"]],
@@ -125,19 +127,24 @@ class Remapper(key_remapper.SimpleRemapper):
                 continue
             if ev.code == ecodes.KEY_LEFTCTRL:
                 continue  # ignore it
+            if ev.value not in [0, 1]:
+                continue
 
             key = self.get_current_mode()[ev.code][0]
             if key == 0:
                 self.show_help()
                 continue
 
-            if key < 0:
+            if key <= 0:
                 self.__mode = -key - 1
                 self.show_help()
                 continue
 
-            if key != 0:
-                self.uinput.write([InputEvent(0, 0, ev.type, key, ev.value)])
+            half_toggle = (key & HALF_TOGGLE) != 0
+            key = key & ~HALF_TOGGLE
+
+            if half_toggle or ev.value == 1:
+                self.press_key(key)
 
     def on_device_detected(self, devices: List[evdev.InputDevice]):
         super().on_device_detected(devices)
