@@ -49,7 +49,6 @@ eval "$(bashgetopt -u usage '
   e|force-editor   force_editor=1  # Disable smart file handling and force editor.
   p|pretty         pretty=1        # Pretty-print for XML/Json.
   d|no-pretty      pretty=0        # No pretty-print.
-  c|copy           copy=1          # Open copy instead.
   N|newdoc         cbin=1;newdoc=1        # Open new timestamped doc.
   z|no-zenlog      no_zenlog=1     # Don'\''t use zenlog logfile to catch stdin input.
   pipe             pipe=1          # Read from stdin.
@@ -230,6 +229,7 @@ sublime_win="$HOME/cbin/sublime-win"
 command=""
 is_vi=0
 is_sublime=0
+is_code=0
 
 if [[ -n "$DISPLAY" ]] || iswsl  ; then
   if (( $use_vim )) ; then
@@ -249,7 +249,9 @@ if [[ -n "$DISPLAY" ]] || iswsl  ; then
           /usr/local/sublime/sublime_text \
           "$sublime_win"
           )
-      if [[ -n "$command" ]] ; then
+      if [[ "$command" =~ /code$ ]]; then
+        is_code=1
+      elif [[ -n "$command" ]] ; then
         is_sublime=1
       fi
     fi
@@ -265,23 +267,22 @@ if [[ -z "$command" ]] ; then
   is_vi=1
 fi
 
-if (( $is_sublime )) ; then
-  if (( $line > 0 )) ; then
+if (( $line > 0 )) ; then
+  if (( $is_code )) ; then
+    opts="-g"
     files[0]="$file0":$line
-  fi
-fi
-
-if (( $is_vi )) ; then
-  if (( $line > 0 )) ; then
+  elif (( $is_sublime )) ; then
+    files[0]="$file0":$line
+  elif (( $is_vi )) ; then
     opts="+$line"
   fi
 fi
 
-if (( $copy )) ; then
-  copy_temp=$(tempfile -p 1catfile)
-  cat "${files[@]}" > "$copy_temp"
-  files=("$copy_temp")
-fi
+# if (( $copy )) ; then
+#   copy_temp=$(tempfile -p 1catfile)
+#   cat "${files[@]}" > "$copy_temp"
+#   files=("$copy_temp")
+# fi
 
 
 bg_opt=""
@@ -304,17 +305,19 @@ if (( ${#files[@]} > 0 )) ; then
       fi
     done
   fi
-  # # Bring the sublime window to top
+  # Bring the sublime window to top
   # This is not needed with VS.code
-  # (
-  #   set +e
-  #   for n in {1..10}; do
-  #     if focus-window perl -e 'exit(($ARGV[1] =~ m!/sublime_text$! and $ARGV[0] =~ m!^\Q'"$file0"'\E\s.*Sublime Text$!) ? 0 : 1)' ; then
-  #       break
-  #     fi
-  #     sleep 0.1
-  #   done
-  # ) >&/dev/null &
+  if (( $is_sublime )) ; then
+    (
+      set +e
+      for n in {1..10}; do
+        if focus-window perl -e 'exit(($ARGV[1] =~ m!/sublime_text$! and $ARGV[0] =~ m!^\Q'"$file0"'\E\s.*Sublime Text$!) ? 0 : 1)' ; then
+          break
+        fi
+        sleep 0.1
+      done
+    ) >&/dev/null &
+  fi
 
   cd $HOME
   ee $bg_opt $command $opts "${files[@]}" #| zenlog write-to-outer
