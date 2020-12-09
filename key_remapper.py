@@ -25,7 +25,7 @@ debug = False
 quiet = False
 
 UINPUT_DEVICE_NAME_PREFIX = 'key-remapper-uinput-'
-UINPUT_DEVICE_NAME = f"{UINPUT_DEVICE_NAME_PREFIX}{int(time.time() * 1000) :020}"
+UINPUT_DEVICE_NAME = f"{UINPUT_DEVICE_NAME_PREFIX}{int(time.time() * 1000) :020}-{random.randint(0, 1000000) :06}"
 
 
 class BaseRemapper(object):
