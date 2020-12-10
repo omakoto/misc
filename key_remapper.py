@@ -317,6 +317,8 @@ def start_remapper(remapper: BaseRemapper) -> None:
 
 
 class SimpleRemapper(BaseRemapper):
+    tray_icon: tasktray.TaskTrayIcon
+
     def __init__(self,
                  remapper_name: str,
                  remapper_icon: str,
@@ -346,6 +348,7 @@ class SimpleRemapper(BaseRemapper):
         self.__notification.set_urgency(notify2.URGENCY_NORMAL)
         self.__notification.set_timeout(3000)
         self.__mode = 0
+        self.tray_icon = None
 
     def show_notification(self, message: str) -> None:
         if self.enable_debug: print(message)
@@ -405,7 +408,8 @@ class SimpleRemapper(BaseRemapper):
         th = threading.Thread(target=do)
         th.start()
 
-        tasktray.start_quitting_tray_icon(self.remapper_name, self.remapper_icon)
+        self.tray_icon = tasktray.QuittingTaskTrayIcon(self.remapper_name, self.remapper_icon)
+        self.tray_icon.run()
         stop_remapper()
 
 

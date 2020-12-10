@@ -1,160 +1,37 @@
 #!/usr/bin/python3
-import argparse
-import asyncio
-import collections
-import math
 import os
 import sys
-import threading
-import time
-import traceback
-from typing import List, Optional
+from typing import List
 
 import evdev
-import notify2
-from evdev import ecodes, InputEvent
+from evdev import ecodes
 
 import key_remapper
-import synced_uinput
-import tasktray
 
 NAME = "Shortcut Remote remapper"
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
-ICON = os.path.join(SCRIPT_PATH, '10key.png')
+ICON_MUTED = os.path.join(SCRIPT_PATH, 'microphone-muted.png')
+ICON_UNMUTED = os.path.join(SCRIPT_PATH, 'microphone.png')
 
 DEFAULT_DEVICE_NAME = ""
 
 debug = False
 
-KEY_LABELS = [
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-    "6",
-    "7",
-    "8",
-    "9",
-
-    "Left",
-    "Right",
-    "Button",
-]
-
-MODE_1 = [-1, "Cursor mode"]
-MODE_2 = [-2, "Volume mode"]
-MODE_3 = [-3, "Scroll mode"]
-
-HALF_TOGGLE = 0x1_000_000
-
-CURSOR_MODE = collections.OrderedDict([
-    [ecodes.KEY_M, [ecodes.KEY_F, "F"]],
-    [ecodes.KEY_P, [ecodes.KEY_F11, "F11"]],
-    [ecodes.KEY_U, [ecodes.KEY_ENTER, "Enter"]],
-    [ecodes.KEY_B, [ecodes.KEY_VOLUMEDOWN, "Vol Down"]],
-    [ecodes.KEY_ENTER, [ecodes.KEY_MUTE, "Mute"]],
-    [ecodes.KEY_Z, [ecodes.KEY_VOLUMEUP, "Vol Up"]],
-
-    [ecodes.KEY_V, MODE_1],
-    [ecodes.KEY_I, MODE_2],
-    [ecodes.KEY_SPACE, MODE_3],
-
-    [ecodes.KEY_KPMINUS, [ecodes.KEY_LEFT, "Left"]],
-    [ecodes.KEY_KPPLUS, [ecodes.KEY_RIGHT, "Right"]],
-    [ecodes.KEY_LEFTSHIFT, [ecodes.KEY_SPACE, "Space"]],
-])
-
-VOLUME_MODE = collections.OrderedDict([
-    [ecodes.KEY_M, [ecodes.KEY_F20, "Mic Mute"]],
-    [ecodes.KEY_P, [0, ""]],
-    [ecodes.KEY_U, [ecodes.KEY_F20 | HALF_TOGGLE, "Mic Mute PPT"]],
-    [ecodes.KEY_B, [ecodes.KEY_LEFT, "Left"]],
-    [ecodes.KEY_ENTER, [ecodes.KEY_ENTER, "Enter"]],
-    [ecodes.KEY_Z, [ecodes.KEY_RIGHT, "Right"]],
-
-    [ecodes.KEY_V, MODE_1],
-    [ecodes.KEY_I, MODE_2],
-    [ecodes.KEY_SPACE, MODE_3],
-
-    [ecodes.KEY_KPMINUS, [ecodes.KEY_VOLUMEDOWN, "Vol Down"]],
-    [ecodes.KEY_KPPLUS, [ecodes.KEY_VOLUMEUP, "Vol Up"]],
-    [ecodes.KEY_LEFTSHIFT, [ecodes.KEY_MUTE, "Mute"]],
-])
-
-SCROLL_MODE = collections.OrderedDict([
-    [ecodes.KEY_M, [0, ""]],
-    [ecodes.KEY_P, [ecodes.KEY_DOWN, "Down"]],
-    [ecodes.KEY_U, [ecodes.KEY_ENTER, "Enter"]],
-    [ecodes.KEY_B, [ecodes.KEY_LEFT, "Left"]],
-    [ecodes.KEY_ENTER, [ecodes.KEY_UP, "Up"]],
-    [ecodes.KEY_Z, [ecodes.KEY_RIGHT, "Right"]],
-
-    [ecodes.KEY_V, MODE_1],
-    [ecodes.KEY_I, MODE_2],
-    [ecodes.KEY_SPACE, MODE_3],
-
-    [ecodes.KEY_KPMINUS, [ecodes.KEY_PAGEUP, "Page Down"]],
-    [ecodes.KEY_KPPLUS, [ecodes.KEY_PAGEDOWN, "Page Up"]],
-    [ecodes.KEY_LEFTSHIFT, [ecodes.KEY_SPACE, "Space"]],
-])
-
-ALL_MODES = [CURSOR_MODE, VOLUME_MODE, SCROLL_MODE]
-
 
 class Remapper(key_remapper.SimpleRemapper):
     def __init__(self):
-        super().__init__(NAME, ICON, DEFAULT_DEVICE_NAME)
+        super().__init__(NAME, ICON_UNMUTED, DEFAULT_DEVICE_NAME, grab_devices=False)
+        self.muted = False
 
-    def get_current_mode(self):
-        return ALL_MODES[self.__mode]
-
-    def show_help(self):
-        descs = [v[1] for v in self.get_current_mode().values()]
-
-        help = NAME + "\n" + "\n".join(f'[{v[0]}] {v[1]}' for v in zip(KEY_LABELS, descs))
-
-        if not self.force_quiet:
-            print(help)
-
-        self.show_notification(help)
+    def update(self):
+        self.muted = not self.muted
+        icon = ICON_MUTED if self.muted else ICON_UNMUTED
+        self.tray_icon.set_icon(icon)
 
     def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]):
         for ev in events:
-            if ev.type != ecodes.EV_KEY:
-                continue
-            if ev.code == ecodes.KEY_LEFTCTRL:
-                continue  # ignore it
-            if ev.value not in [0, 1]:
-                continue
-
-            key = self.get_current_mode()[ev.code][0]
-            if key == 0:
-                self.show_help()
-                continue
-
-            if key <= 0:
-                self.__mode = -key - 1
-                self.show_help()
-                continue
-
-            half_toggle = (key & HALF_TOGGLE) != 0
-            key = key & ~HALF_TOGGLE
-
-            if half_toggle or ev.value == 1:
-                self.press_key(key)
-
-    def on_device_detected(self, devices: List[evdev.InputDevice]):
-        super().on_device_detected(devices)
-        self.show_help()
-
-    def on_init_arguments(self, parser):
-        parser.add_argument('--mode', type=int, default=0, help='Specify the initial mode (0-2)')
-
-    def on_arguments_parsed(self, args):
-        self.__mode = args.mode
-        if self.__mode < 0 or self.__mode >= len(ALL_MODES):
-            raise ValueError(f'Invalid mode {self.__mode}. Must be 0 <= mode < {len(ALL_MODES)}')
+            if ev.code == ecodes.KEY_F20 and ev.value == 1:
+                self.update()
 
 
 def main(args):
