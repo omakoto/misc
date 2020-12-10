@@ -1,22 +1,12 @@
 #!/usr/bin/python3
-import argparse
-import asyncio
-import collections
-import math
 import os
 import sys
-import threading
-import time
-import traceback
-from typing import List, Optional
+from typing import List
 
 import evdev
-import notify2
 from evdev import ecodes, InputEvent
 
 import key_remapper
-import synced_uinput
-import tasktray
 
 NAME = "X-keys remapper"
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -24,33 +14,11 @@ ICON = os.path.join(SCRIPT_PATH, '10key.png')
 
 DEFAULT_DEVICE_NAME = "^P. I. Engineering XK-16 HID"
 
-notify2.init(NAME)
-
 debug = False
 
-class Remapper(key_remapper.BaseRemapper):
-    __lock: threading.RLock
-    __wheel_thread: threading.Thread
-
-    def __init__(self, device_name_regex: str, *, enable_debug=False, quiet=False):
-        super().__init__(device_name_regex,
-                         id_regex='',
-                         match_non_keyboards=True,
-                         grab_devices=True,
-                         write_to_uinput=True,
-                         enable_debug=enable_debug)
-        self.__quiet = quiet
-        self.__notification = notify2.Notification(NAME, '')
-        self.__notification.set_urgency(notify2.URGENCY_NORMAL)
-        self.__notification.set_timeout(3000)
-        self.__key_states = collections.defaultdict(int)
-        self.__mode = 0
-
-    def show_notification(self, message: str) -> None:
-        if debug: print(message)
-        self.__notification.update(NAME, message)
-        self.__notification.show()
-
+class Remapper(key_remapper.SimpleRemapper):
+    def __init__(self):
+        super().__init__(NAME, ICON, DEFAULT_DEVICE_NAME)
 
     def send_modifiers(self, val):
         self.uinput.write([
@@ -72,52 +40,9 @@ class Remapper(key_remapper.BaseRemapper):
                 if ev.value == 0:
                     self.send_modifiers(0)
 
-    def on_device_detected(self, devices: List[evdev.InputDevice]):
-        self.show_notification('Device connected:\n'
-                               + '\n'.join('- ' + d.name for d in devices))
-
-    def on_device_not_found(self):
-        self.show_notification('Device not found')
-
-    def on_device_lost(self):
-        self.show_notification('Device lost')
-
-    def on_exception(self, exception: BaseException):
-        self.show_notification('Device lost')
-
-    def on_stop(self):
-        self.show_notification('Closing...')
-
-
-def main(args, description=NAME):
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('-m', '--match-device-name', metavar='D', default=DEFAULT_DEVICE_NAME,
-                        help='Use devices matching this regex')
-    parser.add_argument('-d', '--debug', action='store_true', help='Enable debug output')
-    parser.add_argument('-q', '--quiet', action='store_true', help='Quiet mode')
-
-    args = parser.parse_args(args)
-
-    global debug
-    debug = args.debug
-
-    remapper = Remapper(device_name_regex=args.match_device_name, enable_debug=debug,
-                        quiet=args.quiet)
-
-    def do():
-        # evdev will complain if the thread has no event loop set.
-        asyncio.set_event_loop(asyncio.new_event_loop())
-        try:
-            key_remapper.start_remapper(remapper)
-        except BaseException as e:
-            traceback.print_exc()
-            tasktray.quit()
-
-    th = threading.Thread(target=do)
-    th.start()
-
-    tasktray.start_quitting_tray_icon(NAME, ICON)
-    key_remapper.stop_remapper()
+def main(args):
+    remapper = Remapper()
+    remapper.start(args)
 
 
 if __name__ == '__main__':

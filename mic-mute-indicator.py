@@ -22,7 +22,7 @@ NAME = "Shortcut Remote remapper"
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 ICON = os.path.join(SCRIPT_PATH, '10key.png')
 
-DEFAULT_DEVICE_NAME = "^UGEE TABLET TABLET KT01"
+DEFAULT_DEVICE_NAME = ""
 
 debug = False
 
