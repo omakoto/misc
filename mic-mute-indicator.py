@@ -1,14 +1,16 @@
 #!/usr/bin/python3
 import os
 import sys
+import time
 from typing import List
 
+import alsaaudio
 import evdev
 from evdev import ecodes
 
 import key_remapper
 
-NAME = "Shortcut Remote remapper"
+NAME = 'Mic mute indicator'
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 ICON_MUTED = os.path.join(SCRIPT_PATH, 'microphone-muted.png')
 ICON_UNMUTED = os.path.join(SCRIPT_PATH, 'microphone.png')
@@ -21,17 +23,26 @@ debug = False
 class Remapper(key_remapper.SimpleRemapper):
     def __init__(self):
         super().__init__(NAME, ICON_UNMUTED, DEFAULT_DEVICE_NAME, grab_devices=False)
-        self.muted = False
 
     def update(self):
-        self.muted = not self.muted
-        icon = ICON_MUTED if self.muted else ICON_UNMUTED
+        mixer = alsaaudio.Mixer(self.capture_mixer)
+        muted = not mixer.getrec()[0]
+
+        icon = ICON_MUTED if muted else ICON_UNMUTED
         self.tray_icon.set_icon(icon)
 
     def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]):
         for ev in events:
             if ev.code == ecodes.KEY_F20 and ev.value == 1:
+                time.sleep(0.1)
                 self.update()
+
+    def on_init_arguments(self, parser):
+        parser.add_argument('-c', '--capture-mixer', default='Capture', help='ASLA capture device name')
+
+    def on_arguments_parsed(self, args):
+        self.capture_mixer = args.capture_mixer
+        self.update()
 
 
 def main(args):

@@ -378,6 +378,8 @@ class SimpleRemapper(BaseRemapper):
         pass
 
     def start(self, args):
+        self.tray_icon = tasktray.QuittingTaskTrayIcon(self.remapper_name, self.remapper_icon)
+
         parser = argparse.ArgumentParser(description=self.remapper_name)
         parser.add_argument('-m', '--match-device-name', metavar='D', default=self.device_name_regex,
                             help='Use devices matching this regex')
@@ -408,7 +410,6 @@ class SimpleRemapper(BaseRemapper):
         th = threading.Thread(target=do)
         th.start()
 
-        self.tray_icon = tasktray.QuittingTaskTrayIcon(self.remapper_name, self.remapper_icon)
         self.tray_icon.run()
         stop_remapper()
 
