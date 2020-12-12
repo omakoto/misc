@@ -411,7 +411,7 @@ class SimpleRemapper(BaseRemapper):
         notify2.init(self.remapper_name)
 
         def do():
-            gtk.gdk.threads_init()
+            # gtk.gdk.threads_init()
 
             # evdev will complain if the thread has no event loop set.
             asyncio.set_event_loop(asyncio.new_event_loop())
