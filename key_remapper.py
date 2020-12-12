@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 import argparse
 import asyncio
-import collections
 import os
 import random
 import re
@@ -13,6 +12,7 @@ import traceback
 from typing import Optional, Dict, List, TextIO, cast
 
 import evdev
+import gi
 import notify2
 import pyudev
 from evdev import UInput, ecodes as e, ecodes
@@ -20,6 +20,11 @@ from evdev import UInput, ecodes as e, ecodes
 import singleton
 import synced_uinput
 import tasktray
+
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk as gtk
+gi.require_version('Wnck', '3.0')
+from gi.repository import Wnck as wnck
 
 debug = False
 quiet = False
@@ -377,6 +382,13 @@ class SimpleRemapper(BaseRemapper):
     def on_arguments_parsed(self, args):
         pass
 
+    def get_active_window(self) -> [str, str]: # title, class
+        screen = wnck.Screen.get_default()
+        screen.force_update()
+        w = screen.get_active_window()
+
+        return (w.get_name(), w.get_class_instance_name())
+
     def start(self, args):
         self.tray_icon = tasktray.QuittingTaskTrayIcon(self.remapper_name, self.remapper_icon)
 
@@ -399,6 +411,8 @@ class SimpleRemapper(BaseRemapper):
         notify2.init(self.remapper_name)
 
         def do():
+            gtk.gdk.threads_init()
+
             # evdev will complain if the thread has no event loop set.
             asyncio.set_event_loop(asyncio.new_event_loop())
             try:
