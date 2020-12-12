@@ -1,22 +1,13 @@
 #!/usr/bin/python3
-import argparse
-import asyncio
 import collections
-import math
 import os
 import sys
-import threading
-import time
-import traceback
-from typing import List, Optional
+from typing import List
 
 import evdev
-import notify2
-from evdev import ecodes, InputEvent
+from evdev import ecodes
 
 import key_remapper
-import synced_uinput
-import tasktray
 
 NAME = "Shortcut Remote remapper"
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -83,7 +74,7 @@ VOLUME_MODE = collections.OrderedDict([
 ])
 
 SCROLL_MODE = collections.OrderedDict([
-    [ecodes.KEY_M, [0, ""]],
+    [ecodes.KEY_M, [ecodes.KEY_BACK, "Back"]],
     [ecodes.KEY_P, [ecodes.KEY_DOWN, "Down"]],
     [ecodes.KEY_U, [ecodes.KEY_ENTER, "Enter"]],
     [ecodes.KEY_B, [ecodes.KEY_LEFT, "Left"]],
