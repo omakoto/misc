@@ -8,7 +8,7 @@ import alsaaudio
 import evdev
 from evdev import ecodes
 
-import key_remapper
+import key_remapper2
 
 NAME = 'Mic mute indicator'
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -20,7 +20,7 @@ DEFAULT_DEVICE_NAME = ""
 debug = False
 
 
-class Remapper(key_remapper.SimpleRemapper):
+class Remapper(key_remapper2.SimpleRemapper):
     def __init__(self):
         super().__init__(NAME, ICON_UNMUTED, DEFAULT_DEVICE_NAME, grab_devices=False)
 
@@ -47,7 +47,7 @@ class Remapper(key_remapper.SimpleRemapper):
 
 def main(args):
     remapper = Remapper()
-    remapper.start(args)
+    remapper.main(args)
 
 
 if __name__ == '__main__':
