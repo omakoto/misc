@@ -302,6 +302,9 @@ class SimpleRemapper(BaseRemapper ):
             if debug:
                 print('# Udev device change detected.')
                 sys.stdout.flush()
+
+            self.uinput.reset()
+
             # Wait a bit because udev sends multiple add events in a row.
             # Also randomize the delay to avoid multiple instances of keymapper
             # clients don't race.
