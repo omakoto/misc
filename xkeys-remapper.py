@@ -6,7 +6,7 @@ from typing import List
 import evdev
 from evdev import ecodes, InputEvent
 
-import key_remapper
+import key_remapper2
 
 NAME = "X-keys remapper"
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -16,7 +16,7 @@ DEFAULT_DEVICE_NAME = "^P. I. Engineering XK-16 HID"
 
 debug = False
 
-class Remapper(key_remapper.SimpleRemapper):
+class Remapper(key_remapper2.SimpleRemapper):
     def __init__(self):
         super().__init__(NAME, ICON, DEFAULT_DEVICE_NAME)
 
@@ -42,7 +42,7 @@ class Remapper(key_remapper.SimpleRemapper):
 
 def main(args):
     remapper = Remapper()
-    remapper.start(args)
+    remapper.main(args)
 
 
 if __name__ == '__main__':

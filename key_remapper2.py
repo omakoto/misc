@@ -89,13 +89,22 @@ class BaseRemapper(object):
             print('on_stop:')
 
     # Thread safe
-    def press_key(self, key: int) -> None:
+    def press_key(self, key: int, value: int=-1) -> None:
         if debug:
             print(f'Press: f{evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 1)}')
-        self.uinput.write([
-            evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 1),
-            evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 0),
-        ])
+        if value == -1:
+            self.uinput.write([
+                evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 1),
+                evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 0),
+            ])
+        else:
+            self.uinput.write([
+                evdev.InputEvent(0, 0, ecodes.EV_KEY, key, value),
+            ])
+
+    def send_keys(self, keys: List[Tuple[int, int]]):
+        for k in keys:
+            self.uinput.write([evdev.InputEvent(0, 0, ecodes.EV_KEY, k[0], k[1])])
 
 
 class SimpleRemapper(BaseRemapper ):

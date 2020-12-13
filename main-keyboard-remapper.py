@@ -1,12 +1,12 @@
 #!/usr/bin/python3
 import os
 import sys
-from typing import List
+from typing import List, Tuple
 
 import evdev
 from evdev import ecodes, InputEvent
 
-import key_remapper
+import key_remapper2
 
 NAME = "Main Keyboard Remapper"
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -16,25 +16,34 @@ DEFAULT_DEVICE_NAME = "^(AT Translated Set 2 keyboard)"
 
 debug = False
 
-class Remapper(key_remapper.SimpleRemapper):
+class Remapper(key_remapper2.SimpleRemapper):
     def __init__(self):
         super().__init__(NAME, ICON, DEFAULT_DEVICE_NAME)
+
+    def is_chrome(self):
+        return self.get_active_window()[1] == "google-chrome"
 
     def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]):
         for ev in events:
             if ev.type != ecodes.EV_KEY:
                 continue
 
-            if ev.code == ecodes.KEY_F4:
-                # if self.get_active_window()[1] == "google-chrome":
-                    self.uinput.write([InputEvent(0, 0, ecodes.EV_KEY, ecodes.KEY_B, ev.value)])
-                    continue
+            # For chrome:
+            #  F5 -> back
+            #  F6 -> forward
+            if ev.code == ecodes.KEY_F5 and self.is_chrome():
+                if ev.value == 1: self.press_key(ecodes.KEY_BACK)
+                continue
+            if ev.code == ecodes.KEY_F6 and self.is_chrome():
+                if ev.value == 1: self.press_key(ecodes.KEY_FORWARD)
+                continue
 
             self.uinput.write([InputEvent(0, 0, ecodes.EV_KEY, ev.code, ev.value)])
 
+
 def main(args):
     remapper = Remapper()
-    remapper.start(args)
+    remapper.main(args)
 
 
 if __name__ == '__main__':
