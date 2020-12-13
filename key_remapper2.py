@@ -98,9 +98,9 @@ class BaseRemapper(object):
         ])
 
 
-class SimpleRemapper(BaseRemapper):
+class SimpleRemapper(BaseRemapper ):
     tray_icon: tasktray.TaskTrayIcon
-    devices: Dict[str, Tuple[evdev.InputDevice, int]]
+    __devices: Dict[str, Tuple[evdev.InputDevice, int]]
 
     def __init__(self,
                  remapper_name: str,
@@ -219,10 +219,10 @@ class SimpleRemapper(BaseRemapper):
         return reader
 
     def __release_devices(self):
-        if not self.devices:
+        if not self.__devices:
             return
         if debug: print('# Releasing devices...')
-        for path, t in self.devices.items():
+        for path, t in self.__devices.items():
             if debug: print(f'  Releasing {path}')
             glib.source_remove(t[1])
             try:
@@ -249,8 +249,8 @@ class SimpleRemapper(BaseRemapper):
                 print(f'  Capabilities: {device.capabilities(verbose=True)}')
 
             # Reject the ones that don't match the name filter.
-            if not (device_name_matcher.search(d.name) and id_matcher.search(id_info)):
-                if debug: print(f'  Skipping {d.name}')
+            if not (device_name_matcher.search(device.name) and id_matcher.search(id_info)):
+                if debug: print(f'  Skipping {device.name}')
                 continue
 
             add = False
@@ -273,13 +273,20 @@ class SimpleRemapper(BaseRemapper):
                 except IOError: pass
 
             tag = glib.io_add_watch(device, glib.IO_IN, self.__on_input_event)
-            self.devices[device.path] = [device, tag]
+            self.__devices[device.path] = [device, tag]
+
+        if self.__devices:
+            self.on_device_detected([t[0] for t in self.__devices.values()])
+        else:
+            self.on_device_not_found()
 
     def __on_udev_event(self, udev_monitor: TextIO , condition):
         if udev_monitor.readline() in ['add', 'remove']:
             self.__open_devices()
 
-            if debug: print('# New device has been detected.')
+            if debug:
+                print('# Udev device change detected.')
+                sys.stdout.flush()
             # Wait a bit because udev sends multiple add events in a row.
             # Also randomize the delay to avoid multiple instances of keymapper
             # clients don't race.
@@ -291,13 +298,15 @@ class SimpleRemapper(BaseRemapper):
 
 
     def __on_input_event(self, device: evdev.InputDevice, condition):
-        print(f'# {device}')
         events = []
         for ev in device.read():
             events.append(ev)
         if debug:
             for ev in events:
                 if debug: print(f'-> Event: {ev}')
+
+        self.handle_events(device, events)
+
         return True
 
     def main(self, args):
@@ -306,22 +315,20 @@ class SimpleRemapper(BaseRemapper):
 
         self.__parse_args(args)
 
-        udev_monitor = self.__start_udev_monitor()
-
         if self.write_to_uinput:
             # Create our /dev/uinput device.
             uinput = UInput(name=UINPUT_DEVICE_NAME, events=self.uinput_events)
             if debug: print(f'# Uinput device name: {UINPUT_DEVICE_NAME}')
             self.uinput = synced_uinput.SyncedUinput(uinput)
 
-        glib.io_add_watch(udev_monitor, glib.IO_IN, self.__on_udev_event())
+        udev_monitor = self.__start_udev_monitor()
+        glib.io_add_watch(udev_monitor, glib.IO_IN, self.__on_udev_event)
 
         self.on_initialize()
 
         self.__open_devices()
 
         gtk.main()
-
 
 
 def _main(args, description="key remapper test"):
