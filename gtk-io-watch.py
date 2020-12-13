@@ -31,6 +31,35 @@ NAME = "Test"
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 ICON = os.path.join(SCRIPT_PATH, 'trackpad.png')
 
+debug = True
+
+
+def start_udev_monitor() -> TextIO:
+    pr, pw = os.pipe()
+    os.set_blocking(pr, False)
+    reader = os.fdopen(pr)
+    writer = os.fdopen(pw, 'w')
+
+    def run():
+        try:
+            context = pyudev.Context()
+            monitor = pyudev.Monitor.from_netlink(context)
+            monitor.filter_by(subsystem='input')
+            if debug: print('Device monitor started.')
+
+            for action, device in monitor:
+                if debug: print(f'udev: action={action} {device}')
+                writer.writelines(action)
+                writer.flush()
+        except:
+            traceback.print_exc()
+            sys.exit(1)
+
+    th = threading.Thread(target=run)
+    th.setDaemon(True)
+    th.start()
+
+    return reader
 
 
 def main(args):
@@ -42,17 +71,41 @@ def main(args):
             print(f'- {ev}')
         return True
 
+    udev_monitor = start_udev_monitor()
+
     devices = {}
-    for device in [evdev.InputDevice(path) for path in sorted(evdev.list_devices())]:
-        use = dev_matcher.search(device.name)
-        print(f'{"Using" if use else "  Not using"} device: {device}')
-        if not use:
-            continue
 
-        tag = glib.io_add_watch(device , glib.IO_IN, on_device_readable)
-        devices[device.path] = [tag]
+    def init_devices():
+        if devices:
+            print('# Releasing devices...')
+            for path, t in devices.items():
+                print(f'{path} - {t}')
+                glib.source_remove(t[1])
 
+        print('# Detecting devices...')
+        for device in [evdev.InputDevice(path) for path in sorted(evdev.list_devices())]:
+            use = dev_matcher.search(device.name)
+            print(f'{"Using" if use else "  Not using"} device: {device}')
+            if not use:
+                continue
 
+            tag = glib.io_add_watch(device, glib.IO_IN, on_device_readable)
+            devices[device.path] = [device, tag]
+
+    init_devices()
+
+    def on_new_device(udev_monitor, condition):
+        if udev_monitor.readline() in ['add', 'remove']:
+            init_devices()
+
+            print('A new device has been detected.')
+            time.sleep(1)
+
+            # Drain all udev events.
+            udev_monitor.readlines()
+        return True
+
+    glib.io_add_watch(udev_monitor, glib.IO_IN, on_new_device)
 
     tray_icon = tasktray.QuittingTaskTrayIcon(NAME, ICON)
     tray_icon.run()
