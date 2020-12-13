@@ -241,7 +241,6 @@ class SimpleRemapper(BaseRemapper ):
                 t[0].close()
             except IOError: pass # ignore
 
-        self.__devices = {}
 
     def __open_devices(self):
         self.__release_devices()
