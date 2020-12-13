@@ -60,9 +60,9 @@ class BaseRemapper(object):
         self.enable_debug = enable_debug
         self.force_quiet = force_quiet
 
-    def on_initialize(self, ui: Optional[synced_uinput.SyncedUinput]):
+    def on_initialize(self):
         if debug:
-            print(f'on_initialize: {ui}')
+            print(f'on_initialize')
 
     def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]) -> None:
         pass
@@ -234,7 +234,7 @@ def start_remapper(remapper: BaseRemapper) -> None:
     udev_monitor = _start_udev_monitor()
 
     remapper.uinput = ui
-    remapper.on_initialize(ui)
+    remapper.on_initialize()
 
     while not STOPPER.stopped:
         # Drain all the udev events

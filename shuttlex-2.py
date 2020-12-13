@@ -90,7 +90,7 @@ class ShuttlexRemapper(key_remapper.BaseRemapper):
         with self.__lock:
             self.__wheel_mode = get_next_key_mode(self.__wheel_mode)
 
-    def on_initialize(self, ui: Optional[synced_uinput.SyncedUinput]):
+    def on_initialize(self):
         self.__wheel_thread.start()
         self.show_help()
 
