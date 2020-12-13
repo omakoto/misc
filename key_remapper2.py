@@ -235,10 +235,13 @@ class SimpleRemapper(BaseRemapper ):
             if debug: print(f'  Releasing {path}')
             glib.source_remove(t[1])
             try:
+                t[0].ungrab()
+            except IOError: pass # ignore
+            try:
                 t[0].close()
             except IOError: pass # ignore
 
-        self.devices = {}
+        self.__devices = {}
 
     def __open_devices(self):
         self.__release_devices()
@@ -286,6 +289,7 @@ class SimpleRemapper(BaseRemapper ):
                 try:
                     device.close()
                 except IOError: pass
+                continue
 
             tag = glib.io_add_watch(device, glib.IO_IN, self.__on_input_event)
             self.__devices[device.path] = [device, tag]
@@ -297,8 +301,6 @@ class SimpleRemapper(BaseRemapper ):
 
     def __on_udev_event(self, udev_monitor: TextIO , condition):
         if udev_monitor.readline() in ['add', 'remove']:
-            self.__open_devices()
-
             if debug:
                 print('# Udev device change detected.')
                 sys.stdout.flush()
@@ -306,6 +308,9 @@ class SimpleRemapper(BaseRemapper ):
             # Also randomize the delay to avoid multiple instances of keymapper
             # clients don't race.
             time.sleep(random.uniform(1, 2))
+
+            # Re-init the device.
+            self.__open_devices()
 
             # Drain all udev events.
             udev_monitor.readlines()
