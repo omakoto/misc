@@ -21,7 +21,7 @@ class Remapper(key_remapper2.SimpleRemapper):
         super().__init__(NAME, ICON, DEFAULT_DEVICE_NAME)
 
     def is_chrome(self):
-        return self.get_active_window()[1] == "google-chrome"
+        return self.get_active_window()[1].startswith("google-chrome")
 
     def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]):
         for ev in events:

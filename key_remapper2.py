@@ -170,7 +170,7 @@ class SimpleRemapper(BaseRemapper ):
     def on_arguments_parsed(self, args):
         pass
 
-    def get_active_window(self) -> [str, str]: # title, class
+    def get_active_window(self) -> Tuple[str, str]: # title, class
         screen = wnck.Screen.get_default()
         screen.force_update()
         w = screen.get_active_window()
@@ -240,7 +240,6 @@ class SimpleRemapper(BaseRemapper ):
             try:
                 t[0].close()
             except IOError: pass # ignore
-
 
     def __open_devices(self):
         self.__release_devices()
