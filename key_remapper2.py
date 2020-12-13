@@ -265,6 +265,12 @@ class SimpleRemapper(BaseRemapper ):
                     if c == e.EV_KEY:
                         add = True
 
+            if add and self.grab_devices:
+                try:
+                    device.grab()
+                except IOError:
+                    if not quiet: print(f'Unable to grab {device.path}', file=sys.stderr)
+
             if add:
                 if debug: print(f"Using device: {device}")
             else:
