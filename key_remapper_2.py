@@ -98,6 +98,11 @@ class BaseRemapper(object):
         ])
 
 
+
+class KeyRemapper:
+    def __init__(self):
+        pass
+
 def _finish():
     gtk.main_quit()
 
@@ -129,80 +134,88 @@ def _start_udev_monitor() -> TextIO:
     return reader
 
 
-# class _Stopper:
-#     stopped = False
-#
-#     def __init__(self) -> None:
-#         pr, pw = os.pipe()
-#         os.set_blocking(pr, False)
-#         self.stop_fd = os.fdopen(pr)
-#         self.__writer = os.fdopen(pw, 'w')
-#
-#     def stop(self):
-#         self.stopped = True
-#         self.__writer.write('stop\n')
-#         self.__writer.flush()
-#         if debug: print('Stop!')
-
-
-def _open_devices(
-        device_name_regex: str,
-        id_regex: str,
-        match_non_keyboards=False) \
-        -> [List[evdev.InputDevice], Optional[Dict[int, List[int]]]]:
-    devices = []
-    all_capabilities = []
-
-    device_name_matcher = re.compile(device_name_regex)
-    id_matcher = re.compile(id_regex)
-
-    # Find the keyboard devices, except for the one that we created with /dev/uinput.
-    for d in [evdev.InputDevice(path) for path in sorted(evdev.list_devices())]:
-        # Ignore our own device, and "any younger" devices.
-        if d.name.startswith(UINPUT_DEVICE_NAME_PREFIX) and d.name >= UINPUT_DEVICE_NAME:
-            continue
-
-        id_info = f'v{d.info.vendor :04x} p{d.info.product :04x}'
-        if debug:
-            print(f'Device: {d} / {id_info}')
-            print(f'  Capabilities: {d.capabilities(verbose=True)}')
-
-        # Reject the ones that don't match the name filter.
-        if not (device_name_matcher.search(d.name) and id_matcher.search(id_info)):
-            if debug: print(f'  Skipping {d.name}')
-            continue
-
-        add = False
-        caps = d.capabilities()
-        if match_non_keyboards:
-            add = True
-        else:
-            for c in caps.keys():
-                if c not in (e.EV_SYN, e.EV_KEY, e.EV_MSC, e.EV_LED, e.EV_REP):
-                    add = False
-                    break
-                if c == e.EV_KEY:
-                    add = True
-
-        if add:
-            print(f"Found device: {d}")
-            devices.append(d)
-            all_capabilities.append(caps)
-        else:
-            d.close()
-
-    if not devices:
-        print("No matching devices found.")
-
-    return [devices, all_capabilities]
-
-
 def _try_grab(device: evdev.InputDevice) -> bool:
     try:
         device.grab()
         return True
     except IOError:
         return False
+
+
+class DeviceOpener:
+    device_name_regex: str
+    id_regex: str
+    match_non_keyboards: bool
+
+    devices: List[evdev.InputDevice] = []
+    all_capabilities = []
+
+    def __init__(
+            self,
+            device_name_regex: str,
+            id_regex: str,
+            match_non_keyboards=False,
+            grab_devices=False):
+        self.device_name_regex = device_name_regex
+        self.id_regex = id_regex
+        self.match_non_keyboards = match_non_keyboards
+        self.device_name_matcher = re.compile(device_name_regex)
+        self.id_matcher = re.compile(id_regex)
+
+    def refresh(self):
+        self.close()
+        self.open()
+
+    def close(self):
+        for device in self.devices:
+            try:
+                device.close()
+            except IOError: pass # ignore exception
+        self.devices = []
+        self.all_capabilities = []
+
+    def open(self):
+        self.close()
+
+        # Find the keyboard devices, except for the one that we created with /dev/uinput.
+        for d in [evdev.InputDevice(path) for path in sorted(evdev.list_devices())]:
+            # Ignore our own device, and "any younger" devices.
+            if d.name.startswith(UINPUT_DEVICE_NAME_PREFIX) and d.name >= UINPUT_DEVICE_NAME:
+                continue
+
+            id_info = f'v{d.info.vendor :04x} p{d.info.product :04x}'
+            if debug:
+                print(f'Device: {d} / {id_info}')
+                print(f'  Capabilities: {d.capabilities(verbose=True)}')
+
+            # Reject the ones that don't match the name filter.
+            if not (self.device_name_matcher.search(d.name) and self.id_matcher.search(id_info)):
+                if debug: print(f'  Skipping {d.name}')
+                continue
+
+            add = False
+            caps = d.capabilities()
+            if self.match_non_keyboards:
+                add = True
+            else:
+                for c in caps.keys():
+                    if c not in (e.EV_SYN, e.EV_KEY, e.EV_MSC, e.EV_LED, e.EV_REP):
+                        add = False
+                        break
+                    if c == e.EV_KEY:
+                        add = True
+
+            if add:
+                print(f"Found device: {d}")
+                self.devices.append(d)
+                self.all_capabilities.append(caps)
+            else:
+                d.close()
+
+        if not self.devices:
+            if debug: print("No matching devices found.")
+
+
 
 
 def _try_ungrab(device: evdev.InputDevice) -> bool:
