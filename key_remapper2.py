@@ -125,6 +125,8 @@ class BaseRemapper(object):
     def get_key_state(self, key: int):
         return self.uinput.get_key_state(key)
 
+    def reset_all_keys(self):
+        self.uinput.reset()
 
 class SimpleRemapper(BaseRemapper ):
     tray_icon: tasktray.TaskTrayIcon
