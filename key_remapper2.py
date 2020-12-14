@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import argparse
 import asyncio
+import collections
 import os
 import random
 import re
@@ -122,7 +123,7 @@ class BaseRemapper(object):
         for k in keys:
             self.uinput.write([evdev.InputEvent(0, 0, ecodes.EV_KEY, k[0], k[1])])
 
-    def get_key_state(self, key: int):
+    def get_out_key_state(self, key: int):
         return self.uinput.get_key_state(key)
 
     def reset_all_keys(self):
@@ -131,6 +132,7 @@ class BaseRemapper(object):
 class SimpleRemapper(BaseRemapper ):
     tray_icon: tasktray.TaskTrayIcon
     __devices: Dict[str, Tuple[evdev.InputDevice, int]]
+    __orig_key_states: Dict[int, int] = collections.defaultdict(int)
 
     def __init__(self,
                  remapper_name: str,
@@ -343,13 +345,18 @@ class SimpleRemapper(BaseRemapper ):
         events = []
         for ev in device.read():
             events.append(ev)
+            self.__orig_key_states[ev.code] = ev.value
+
         if debug:
             for ev in events:
-                if debug: print(f'-> Event: {ev}')
+                print(f'-> Event: {ev}')
 
         self.handle_events(device, events)
 
         return True
+
+    def get_in_key_state(self, key: int):
+        return self.__orig_key_states[key]
 
     def main(self, args):
         singleton.ensure_singleton(self.global_lock_name, debug=debug)
