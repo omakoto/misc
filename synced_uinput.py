@@ -53,19 +53,22 @@ class SyncedUinput:
             if last_event and not is_syn(last_event):
                 self.wrapped.syn()
 
+    def get_key_state(self, key: int):
+        with self.__lock:
+            return self.__key_states[key]
+
     def reset(self):
         # Release all pressed keys.
-        self.__lock.acquire()
-        try:
-            for key in self.__key_states.keys():
-                if self.__key_states[key] > 0:
-                    self.wrapped.write(ecodes.EV_KEY, key, 0)
-                    self.wrapped.syn()
-        except:
-            pass  # ignore any exception
-        finally:
-            self.__key_states.clear()
-            self.__lock.release()
+        with self.__lock:
+            try:
+                for key in self.__key_states.keys():
+                    if self.__key_states[key] > 0:
+                        self.wrapped.write(ecodes.EV_KEY, key, 0)
+                        self.wrapped.syn()
+            except:
+                pass  # ignore any exception
+            finally:
+                self.__key_states.clear()
 
     def __str__(self) -> str:
         return f'SyncedUinput[{self.wrapped}]'

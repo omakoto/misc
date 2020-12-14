@@ -9,7 +9,7 @@ import sys
 import threading
 import time
 import traceback
-from typing import Optional, Dict, List, TextIO, cast, Tuple
+from typing import Optional, Dict, List, TextIO, cast, Tuple, Union
 
 import evdev
 import gi
@@ -89,22 +89,41 @@ class BaseRemapper(object):
             print('on_stop:')
 
     # Thread safe
-    def press_key(self, key: int, value: int=-1) -> None:
+    def press_key(self, key: int, value: Union[int, str] =-1) -> None:
         if debug:
             print(f'Press: f{evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 1)}')
+
         if value == -1:
             self.uinput.write([
                 evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 1),
                 evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 0),
             ])
-        else:
+            return
+        if isinstance(value, int):
             self.uinput.write([
                 evdev.InputEvent(0, 0, ecodes.EV_KEY, key, value),
             ])
+            return
+        if isinstance(value, str):
+            alt = 'a' in value
+            ctrl = 'c' in value
+            shift = 's' in value
+
+            if alt: self.press_key(ecodes.KEY_LEFTALT, 1)
+            if ctrl: self.press_key(ecodes.KEY_LEFTCTRL, 1)
+            if shift: self.press_key(ecodes.KEY_LEFTSHIFT, 1)
+            self.press_key(key)
+            if shift: self.press_key(ecodes.KEY_LEFTSHIFT, 0)
+            if ctrl: self.press_key(ecodes.KEY_LEFTCTRL, 0)
+            if alt: self.press_key(ecodes.KEY_LEFTALT, 0)
+
 
     def send_keys(self, keys: List[Tuple[int, int]]):
         for k in keys:
             self.uinput.write([evdev.InputEvent(0, 0, ecodes.EV_KEY, k[0], k[1])])
+
+    def get_key_state(self, key: int):
+        return self.uinput.get_key_state(key)
 
 
 class SimpleRemapper(BaseRemapper ):

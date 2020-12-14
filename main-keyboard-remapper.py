@@ -38,6 +38,27 @@ class Remapper(key_remapper2.SimpleRemapper):
                 if ev.value == 1: self.press_key(ecodes.KEY_FORWARD)
                 continue
 
+            # ESC + HOME -> CTRL+ATL+1 -> work.txt
+            if ev.code == ecodes.KEY_HOME:
+                if ev.value == 1 and self.get_key_state(ecodes.KEY_ESC) > 0:
+                    self.press_key(ecodes.KEY_ESC, 0)
+                    self.press_key(ecodes.KEY_MINUS, 'ac')
+                    continue
+
+            # ESC + END -> CTRL+ATL+T -> terminal
+            if ev.code == ecodes.KEY_END:
+                if ev.value == 1 and self.get_key_state(ecodes.KEY_ESC) > 0:
+                    self.press_key(ecodes.KEY_ESC, 0)
+                    self.press_key(ecodes.KEY_T, 'ac')
+                    continue
+
+            # ESC + DEL -> CTRL+ATL+1 -> chrome
+            if ev.code == ecodes.KEY_DELETE:
+                if ev.value == 1 and self.get_key_state(ecodes.KEY_ESC) > 0:
+                    self.press_key(ecodes.KEY_ESC, 0)
+                    self.press_key(ecodes.KEY_C, 'ac')
+                    continue
+
             self.uinput.write([InputEvent(0, 0, ecodes.EV_KEY, ev.code, ev.value)])
 
 
