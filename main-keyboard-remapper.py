@@ -23,6 +23,9 @@ class Remapper(key_remapper2.SimpleRemapper):
     def is_chrome(self):
         return self.get_active_window()[1].startswith("google-chrome")
 
+    def is_esc_pressed(self):
+        return self.get_in_key_state(ecodes.KEY_ESC) > 0
+
     def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]):
         for ev in events:
             if ev.type != ecodes.EV_KEY:
@@ -37,33 +40,33 @@ class Remapper(key_remapper2.SimpleRemapper):
             if ev.code == ecodes.KEY_F6 and self.is_chrome():
                 if ev.value == 1: self.press_key(ecodes.KEY_FORWARD)
                 continue
-
-
-
-
-
-
-
-
-
+            # ESC + space -> shift-space (scroll back)
+            if ev.code == ecodes.KEY_SPACE and self.is_chrome():
+                if ev.value in [1, 2]:
+                    if self.is_esc_pressed():
+                        self.reset_all_keys()
+                        self.press_key(ecodes.KEY_SPACE, 's')
+                    else:
+                        self.press_key(ecodes.KEY_SPACE)
+                continue
 
             # ESC + HOME -> CTRL+ATL+1 -> work.txt
             if ev.code == ecodes.KEY_HOME:
-                if ev.value == 1 and self.get_in_key_state(ecodes.KEY_ESC) > 0:
+                if ev.value == 1 and self.is_esc_pressed():
                     self.reset_all_keys()
                     self.press_key(ecodes.KEY_MINUS, 'ac')
                     continue
 
             # ESC + END -> CTRL+ATL+T -> terminal
             if ev.code == ecodes.KEY_END:
-                if ev.value == 1 and self.get_in_key_state(ecodes.KEY_ESC) > 0:
+                if ev.value == 1 and self.is_esc_pressed():
                     self.reset_all_keys()
                     self.press_key(ecodes.KEY_T, 'ac')
                     continue
 
             # ESC + DEL -> CTRL+ATL+1 -> chrome
             if ev.code == ecodes.KEY_DELETE:
-                if ev.value == 1 and self.get_in_key_state(ecodes.KEY_ESC) > 0:
+                if ev.value == 1 and self.is_esc_pressed():
                     self.reset_all_keys()
                     self.press_key(ecodes.KEY_C, 'ac')
                     continue
