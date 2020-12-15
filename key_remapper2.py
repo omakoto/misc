@@ -414,6 +414,7 @@ class SimpleRemapper(BaseRemapper ):
         self.__open_devices()
 
         gtk.main()
+        self.reset_all_keys()
 
 
 def _main(args, description="key remapper test"):
