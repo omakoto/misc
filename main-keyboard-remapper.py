@@ -34,11 +34,27 @@ class Remapper(key_remapper2.SimpleRemapper):
             # For chrome:
             #  F5 -> back
             #  F6 -> forward
+            #  F11 -> ctrl + pageup
+            #  F12 -> ctrl + pagedown
             if ev.code == ecodes.KEY_F5 and self.is_chrome():
                 if ev.value == 1: self.press_key(ecodes.KEY_BACK)
                 continue
             if ev.code == ecodes.KEY_F6 and self.is_chrome():
                 if ev.value == 1: self.press_key(ecodes.KEY_FORWARD)
+                continue
+            if ev.code == ecodes.KEY_F11 and self.is_chrome():
+                if self.check_modifiers('e'):
+                    self.reset_all_keys()
+                    if ev.value == 1: self.press_key(ecodes.KEY_PAGEUP, 'c')
+                    continue
+                if ev.value == 1: self.press_key(ev.code)
+                continue
+            if ev.code == ecodes.KEY_F12 and self.is_chrome():
+                if self.check_modifiers('e'):
+                    self.reset_all_keys()
+                    if ev.value == 1: self.press_key(ecodes.KEY_PAGEDOWN, 'c')
+                    continue
+                if ev.value == 1: self.press_key(ev.code)
                 continue
             # ESC + space -> shift-space (scroll back)
             if ev.code == ecodes.KEY_SPACE and self.is_chrome():
