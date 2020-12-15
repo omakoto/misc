@@ -43,24 +43,23 @@ class Remapper(key_remapper2.SimpleRemapper):
                 if ev.value == 1: self.press_key(ecodes.KEY_FORWARD)
                 continue
             if ev.code == ecodes.KEY_F11 and self.is_chrome():
-                if self.check_modifiers('e'):
-                    self.reset_all_keys()
-                    if ev.value == 1: self.press_key(ecodes.KEY_PAGEUP, 'c')
-                    continue
-                if ev.value == 1: self.press_key(ev.code)
+                if ev.value == 1:
+                    if self.is_esc_pressed():
+                        self.press_key(ecodes.KEY_PAGEUP, 'c')
+                    else:
+                        self.press_key(ev.code)
                 continue
             if ev.code == ecodes.KEY_F12 and self.is_chrome():
-                if self.check_modifiers('e'):
-                    self.reset_all_keys()
-                    if ev.value == 1: self.press_key(ecodes.KEY_PAGEDOWN, 'c')
-                    continue
-                if ev.value == 1: self.press_key(ev.code)
+                if ev.value == 1:
+                    if self.is_esc_pressed():
+                        self.press_key(ecodes.KEY_PAGEDOWN, 'c')
+                    else:
+                        self.press_key(ev.code)
                 continue
             # ESC + space -> shift-space (scroll back)
             if ev.code == ecodes.KEY_SPACE and self.is_chrome():
                 if ev.value in [1, 2]:
                     if self.is_esc_pressed():
-                        self.reset_all_keys()
                         self.press_key(ecodes.KEY_SPACE, 's')
                     else:
                         self.press_key(ecodes.KEY_SPACE)
@@ -69,21 +68,18 @@ class Remapper(key_remapper2.SimpleRemapper):
             # ESC + HOME -> CTRL+ATL+1 -> work.txt
             if ev.code == ecodes.KEY_HOME:
                 if ev.value == 1 and self.is_esc_pressed():
-                    self.reset_all_keys()
                     self.press_key(ecodes.KEY_MINUS, 'ac')
                     continue
 
             # ESC + END -> CTRL+ATL+T -> terminal
             if ev.code == ecodes.KEY_END:
                 if ev.value == 1 and self.is_esc_pressed():
-                    self.reset_all_keys()
                     self.press_key(ecodes.KEY_T, 'ac')
                     continue
 
             # ESC + DEL -> CTRL+ATL+1 -> chrome
             if ev.code == ecodes.KEY_DELETE:
                 if ev.value == 1 and self.is_esc_pressed():
-                    self.reset_all_keys()
                     self.press_key(ecodes.KEY_C, 'ac')
                     continue
 

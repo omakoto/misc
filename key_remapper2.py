@@ -314,9 +314,11 @@ class SimpleRemapper(BaseRemapper ):
 
         return True
 
-    def press_key(self, key: int, value: Union[int, str] =-1) -> None:
+    def press_key(self, key: int, value: Union[int, str] =-1, *, reset_all_keys=True) -> None:
         if debug:
             print(f'Press: f{evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 1)}')
+        if reset_all_keys:
+            self.reset_all_keys()
 
         if value == -1:
             self.uinput.write([
@@ -335,15 +337,15 @@ class SimpleRemapper(BaseRemapper ):
             shift = 's' in value
             win = 'w' in value
 
-            if alt: self.press_key(ecodes.KEY_LEFTALT, 1)
-            if ctrl: self.press_key(ecodes.KEY_LEFTCTRL, 1)
-            if shift: self.press_key(ecodes.KEY_LEFTSHIFT, 1)
-            if win: self.press_key(ecodes.KEY_LEFTMETA, 1)
-            self.press_key(key)
-            if win: self.press_key(ecodes.KEY_LEFTMETA, 0)
-            if shift: self.press_key(ecodes.KEY_LEFTSHIFT, 0)
-            if ctrl: self.press_key(ecodes.KEY_LEFTCTRL, 0)
-            if alt: self.press_key(ecodes.KEY_LEFTALT, 0)
+            if alt: self.press_key(ecodes.KEY_LEFTALT, 1, reset_all_keys=False)
+            if ctrl: self.press_key(ecodes.KEY_LEFTCTRL, 1, reset_all_keys=False)
+            if shift: self.press_key(ecodes.KEY_LEFTSHIFT, 1, reset_all_keys=False)
+            if win: self.press_key(ecodes.KEY_LEFTMETA, 1, reset_all_keys=False)
+            self.press_key(key, reset_all_keys=False)
+            if win: self.press_key(ecodes.KEY_LEFTMETA, 0, reset_all_keys=False)
+            if shift: self.press_key(ecodes.KEY_LEFTSHIFT, 0, reset_all_keys=False)
+            if ctrl: self.press_key(ecodes.KEY_LEFTCTRL, 0, reset_all_keys=False)
+            if alt: self.press_key(ecodes.KEY_LEFTALT, 0, reset_all_keys=False)
 
 
     def send_keys(self, keys: List[Tuple[int, int]]) -> None:
