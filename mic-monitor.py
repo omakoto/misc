@@ -39,12 +39,14 @@ def main(args):
     # mixer.setrec(0)
 
     while True:
-        polled = p.poll(-1)
-        # print(polled)
-        mixer = alsaaudio.Mixer(mixer_name)
+        events = p.poll()
+        mixer.handleevents()
+        print(f'Events: {events}')
+
+        # mixer = alsaaudio.Mixer(mixer_name)
         print(mixer.getrec())
         # print(mixer.getvolume())
-        time.sleep(1)
+        time.sleep(30)
 
 
 

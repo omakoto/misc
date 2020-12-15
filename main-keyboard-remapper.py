@@ -24,7 +24,7 @@ class Remapper(key_remapper2.SimpleRemapper):
         return self.get_active_window()[1].startswith("google-chrome")
 
     def is_esc_pressed(self):
-        return self.get_in_key_state(ecodes.KEY_ESC) > 0
+        return self.check_modifiers('e')
 
     def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]):
         for ev in events:
