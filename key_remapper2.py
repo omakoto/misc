@@ -317,10 +317,10 @@ class SimpleRemapper(BaseRemapper ):
     def press_key(self, key: int, value: Union[int, str] =-1, *, reset_all_keys=True) -> None:
         if debug:
             print(f'Press: f{evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 1)}')
-        if reset_all_keys:
-            self.reset_all_keys()
 
         if value == -1:
+            if reset_all_keys:
+                self.reset_all_keys()
             self.uinput.write([
                 evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 1),
                 evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 0),
@@ -332,6 +332,8 @@ class SimpleRemapper(BaseRemapper ):
             ])
             return
         if isinstance(value, str):
+            if reset_all_keys:
+                self.reset_all_keys()
             alt = 'a' in value
             ctrl = 'c' in value
             shift = 's' in value

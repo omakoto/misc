@@ -31,6 +31,11 @@ class Remapper(key_remapper2.SimpleRemapper):
             if ev.type != ecodes.EV_KEY:
                 continue
 
+            # Caps is also ctrl
+            if ev.code == ecodes.KEY_CAPSLOCK:
+                self.press_key(ecodes.KEY_LEFTCTRL, ev.value)
+                continue
+
             # For chrome:
             #  F5 -> back
             #  F6 -> forward
@@ -39,9 +44,11 @@ class Remapper(key_remapper2.SimpleRemapper):
             if ev.code == ecodes.KEY_F5 and self.is_chrome():
                 if ev.value == 1: self.press_key(ecodes.KEY_BACK)
                 continue
+
             if ev.code == ecodes.KEY_F6 and self.is_chrome():
                 if ev.value == 1: self.press_key(ecodes.KEY_FORWARD)
                 continue
+
             if ev.code == ecodes.KEY_F11 and self.is_chrome():
                 if ev.value == 1:
                     if self.is_esc_pressed():
@@ -62,7 +69,7 @@ class Remapper(key_remapper2.SimpleRemapper):
                     if self.is_esc_pressed():
                         self.press_key(ecodes.KEY_SPACE, 's')
                     else:
-                        self.press_key(ecodes.KEY_SPACE)
+                        self.press_key(ev.code)
                 continue
 
             # ESC + HOME -> CTRL+ATL+1 -> work.txt
