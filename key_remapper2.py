@@ -100,6 +100,22 @@ def die_on_exception(func):
 
     return wrapper
 
+
+class RemapperTrayIcon(tasktray.TaskTrayIcon):
+    def __init__(self, name, icon_path):
+        super().__init__(name, icon_path)
+
+    def _add_menu_items(self, menu):
+        item = gtk.MenuItem(f'Restart {self.name}')
+        item.connect('activate', self.restart)
+        menu.append(item)
+
+        super()._add_menu_items(menu)
+
+    def restart(self, source):
+        os.execv(sys.argv[0], sys.argv)
+
+
 class SimpleRemapper(BaseRemapper ):
     tray_icon: tasktray.TaskTrayIcon
     __devices: Dict[str, Tuple[evdev.InputDevice, int]]
@@ -135,7 +151,7 @@ class SimpleRemapper(BaseRemapper ):
         self.__notification.set_timeout(3000)
         self.__mode = 0
         self.__devices = {}
-        self.tray_icon = tasktray.QuittingTaskTrayIcon(self.remapper_name, self.remapper_icon)
+        self.tray_icon = RemapperTrayIcon(self.remapper_name, self.remapper_icon)
 
     def show_notification(self, message: str) -> None:
         if self.enable_debug: print(message)
