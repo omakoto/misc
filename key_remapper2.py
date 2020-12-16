@@ -89,6 +89,7 @@ class BaseRemapper(object):
         if debug:
             print('on_stop:')
 
+
 def die_on_exception(func):
     def wrapper(*args, **kwargs):
         try:
@@ -290,7 +291,7 @@ class SimpleRemapper(BaseRemapper ):
         else:
             self.on_device_not_found()
 
-    @die_on_exception
+    # @die_on_exception
     def __on_udev_event(self, udev_monitor: TextIO , condition):
         if udev_monitor.readline() in ['add', 'remove']:
             if debug:
@@ -311,7 +312,7 @@ class SimpleRemapper(BaseRemapper ):
             udev_monitor.readlines()
         return True
 
-    @die_on_exception
+    # @die_on_exception
     def __on_input_event(self, device: evdev.InputDevice, condition):
         events = []
         for ev in device.read():
@@ -322,7 +323,11 @@ class SimpleRemapper(BaseRemapper ):
             for ev in events:
                 print(f'-> Event: {ev}')
 
-        self.handle_events(device, events)
+        try:
+            self.handle_events(device, events)
+        except:
+            traceback.print_exc()
+            sys.exit(1)
 
         return True
 
