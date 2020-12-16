@@ -61,8 +61,8 @@ class SyncedUinput:
         # Release all pressed keys.
         with self.__lock:
             try:
-                for key in self.__key_states.keys():
-                    if self.__key_states[key] > 0:
+                for key, value in self.__key_states.items():
+                    if value > 0:
                         self.wrapped.write(ecodes.EV_KEY, key, 0)
                         self.wrapped.syn()
             except:
