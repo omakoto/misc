@@ -89,6 +89,16 @@ class BaseRemapper(object):
         if debug:
             print('on_stop:')
 
+def die_on_exception(func):
+    def wrapper(*args, **kwargs):
+        try:
+            func(*args, **kwargs)
+        except:
+            traceback.print_exc()
+            sys.exit(1)
+
+    return wrapper
+
 class SimpleRemapper(BaseRemapper ):
     tray_icon: tasktray.TaskTrayIcon
     __devices: Dict[str, Tuple[evdev.InputDevice, int]]
@@ -280,6 +290,7 @@ class SimpleRemapper(BaseRemapper ):
         else:
             self.on_device_not_found()
 
+    @die_on_exception
     def __on_udev_event(self, udev_monitor: TextIO , condition):
         if udev_monitor.readline() in ['add', 'remove']:
             if debug:
@@ -300,6 +311,7 @@ class SimpleRemapper(BaseRemapper ):
             udev_monitor.readlines()
         return True
 
+    @die_on_exception
     def __on_input_event(self, device: evdev.InputDevice, condition):
         events = []
         for ev in device.read():
@@ -413,8 +425,10 @@ class SimpleRemapper(BaseRemapper ):
 
         self.__open_devices()
 
-        gtk.main()
-        self.reset_all_keys()
+        try:
+            gtk.main()
+        finally:
+            self.reset_all_keys()
 
 
 def _main(args, description="key remapper test"):

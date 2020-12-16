@@ -53,9 +53,9 @@ class Remapper(key_remapper2.SimpleRemapper):
                 self.press_key(ecodes.KEY_PAGEUP, 'c')
                 continue
             if ev.code == ecodes.KEY_F12 and ev.value == 1 and self.is_chrome() and self.check_modifiers('e'):
-                self.press_key(ecodes.KEY_PAGEDOWN, 'c')
                 continue
-            
+                self.press_key(ecodes.KEY_PAGEDOWN, 'c')
+
             # ESC + space -> shift-space (scroll back)
             if ev.code == ecodes.KEY_SPACE and ev.value in [1, 2] and self.is_chrome() and self.check_modifiers('e'):
                 self.press_key(ecodes.KEY_SPACE, 's')
@@ -70,7 +70,7 @@ class Remapper(key_remapper2.SimpleRemapper):
             if ev.code == ecodes.KEY_END and ev.value == 1 and self.is_esc_pressed():
                 self.press_key(ecodes.KEY_T, 'ac')
                 continue
-
+            1 / 0
             # ESC + DEL -> CTRL+ATL+1 -> chrome
             if ev.code == ecodes.KEY_DELETE and ev.value == 1 and self.is_esc_pressed():
                 self.press_key(ecodes.KEY_C, 'ac')
