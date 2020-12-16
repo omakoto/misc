@@ -42,35 +42,28 @@ class Remapper(key_remapper2.SimpleRemapper):
             #  F11 -> ctrl + pageup
             #  F12 -> ctrl + pagedown
             if ev.code == ecodes.KEY_F5 and self.is_chrome():
-                if ev.value == 1: self.press_key(ecodes.KEY_BACK)
-                continue
+                if ev.value == 1 and self.check_modifiers(''):
+                    self.press_key(ecodes.KEY_BACK)
+                    continue
 
             if ev.code == ecodes.KEY_F6 and self.is_chrome():
-                if ev.value == 1: self.press_key(ecodes.KEY_FORWARD)
-                continue
+                if ev.value == 1 and self.check_modifiers(''):
+                    self.press_key(ecodes.KEY_FORWARD)
+                    continue
 
             if ev.code == ecodes.KEY_F11 and self.is_chrome():
-                if ev.value == 1:
-                    if self.is_esc_pressed():
-                        self.press_key(ecodes.KEY_PAGEUP, 'c')
-                    else:
-                        self.press_key(ev.code)
-                continue
+                if ev.value == 1 and self.check_modifiers('e'):
+                    self.press_key(ecodes.KEY_PAGEUP, 'c')
+                    continue
             if ev.code == ecodes.KEY_F12 and self.is_chrome():
-                if ev.value == 1:
-                    if self.is_esc_pressed():
-                        self.press_key(ecodes.KEY_PAGEDOWN, 'c')
-                    else:
-                        self.press_key(ev.code)
-                continue
+                if ev.value == 1 and self.check_modifiers('e'):
+                    self.press_key(ecodes.KEY_PAGEDOWN, 'c')
+                    continue
             # ESC + space -> shift-space (scroll back)
             if ev.code == ecodes.KEY_SPACE and self.is_chrome():
-                if ev.value in [1, 2]:
-                    if self.is_esc_pressed():
-                        self.press_key(ecodes.KEY_SPACE, 's')
-                    else:
-                        self.press_key(ev.code)
-                continue
+                if ev.value in [1, 2] and self.check_modifiers('e'):
+                    self.press_key(ecodes.KEY_SPACE, 's')
+                    continue
 
             # ESC + HOME -> CTRL+ATL+1 -> work.txt
             if ev.code == ecodes.KEY_HOME:
