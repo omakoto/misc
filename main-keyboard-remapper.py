@@ -70,7 +70,7 @@ class Remapper(key_remapper2.SimpleRemapper):
             if ev.code == ecodes.KEY_END and ev.value == 1 and self.is_esc_pressed():
                 self.press_key(ecodes.KEY_T, 'ac')
                 continue
-            1 / 0
+
             # ESC + DEL -> CTRL+ATL+1 -> chrome
             if ev.code == ecodes.KEY_DELETE and ev.value == 1 and self.is_esc_pressed():
                 self.press_key(ecodes.KEY_C, 'ac')
