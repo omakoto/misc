@@ -10,7 +10,7 @@ import key_remapper2
 
 NAME = "Main Keyboard Remapper"
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
-ICON = os.path.join(SCRIPT_PATH, '10key.png')
+ICON = os.path.join(SCRIPT_PATH, 'keyboard.png')
 
 DEFAULT_DEVICE_NAME = "^(AT Translated Set 2 keyboard|Topre Corporation Realforce)"
 
