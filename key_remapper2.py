@@ -136,6 +136,7 @@ class SimpleRemapper(BaseRemapper ):
     tray_icon: tasktray.TaskTrayIcon
     __devices: Dict[str, Tuple[evdev.InputDevice, int]]
     __orig_key_states: Dict[int, int] = collections.defaultdict(int)
+    __udev_monitor: Optional[TextIO]
 
     def __init__(self,
                  remapper_name: str,
@@ -168,6 +169,7 @@ class SimpleRemapper(BaseRemapper ):
         self.__mode = 0
         self.__devices = {}
         self.tray_icon = RemapperTrayIcon(self.remapper_name, self.remapper_icon)
+        self.__refresh_scheduled = False
 
     def show_notification(self, message: str) -> None:
         if self.enable_debug: print(message)
@@ -231,7 +233,7 @@ class SimpleRemapper(BaseRemapper ):
 
         self.on_arguments_parsed(args)
 
-    def __start_udev_monitor(self) -> TextIO:
+    def __start_udev_monitor(self):
         """Returns udev event names, such as 'add' and 'remove'.
         """
         pr, pw = os.pipe()
@@ -258,7 +260,7 @@ class SimpleRemapper(BaseRemapper ):
         th.setDaemon(True)
         th.start()
 
-        return reader
+        self.__udev_monitor = reader
 
     def __release_devices(self):
         if not self.__devices:
@@ -325,30 +327,45 @@ class SimpleRemapper(BaseRemapper ):
             tag = glib.io_add_watch(device, glib.IO_IN, self.__on_input_event)
             self.__devices[device.path] = [device, tag]
 
+        # We just opened the devices, so drain all udev monitor events.
+        if self.__udev_monitor:
+            # Drain all udev events.
+            self.__udev_monitor.readlines()
+
         if self.__devices:
             self.on_device_detected([t[0] for t in self.__devices.values()])
         else:
             self.on_device_not_found()
 
+    def __schedule_refresh_devices(self):
+        if self.__refresh_scheduled:
+            return
+        self.__refresh_scheduled = True
+
+        def call_refresh():
+            self.__refresh_scheduled = False
+            self.__open_devices()
+            return False
+
+        # Re-open the devices, but before that, wait a bit because udev sends multiple add events in a row.
+        # Also randomize the delay to avoid multiple instances of keymapper
+        # clients don't race.
+        glib.timeout_add(random.uniform(1, 2) * 1000, call_refresh)
+
     # @die_on_exception
     def __on_udev_event(self, udev_monitor: TextIO , condition):
-        if udev_monitor.readline() in ['add', 'remove']:
-            if debug:
-                print('# Udev device change detected.')
-                sys.stdout.flush()
+        refresh_devices = False
+        for event in udev_monitor.readlines(): # drain all the events
+            if event in ['add', 'remove']:
+                if debug:
+                    print('# Udev device change detected.')
+                    sys.stdout.flush()
+                refresh_devices = True
 
+        if refresh_devices:
             self.uinput.reset()
+            self.__schedule_refresh_devices()
 
-            # Wait a bit because udev sends multiple add events in a row.
-            # Also randomize the delay to avoid multiple instances of keymapper
-            # clients don't race.
-            time.sleep(random.uniform(1, 2))
-
-            # Re-init the device.
-            self.__open_devices()
-
-            # Drain all udev events.
-            udev_monitor.readlines()
         return True
 
     # @die_on_exception
@@ -500,8 +517,8 @@ class SimpleRemapper(BaseRemapper ):
             self.uinput = synced_uinput.SyncedUinput(uinput)
             add_at_exit(self.uinput.close)
 
-        udev_monitor = self.__start_udev_monitor()
-        glib.io_add_watch(udev_monitor, glib.IO_IN, self.__on_udev_event)
+        self.__start_udev_monitor()
+        glib.io_add_watch(self.__udev_monitor, glib.IO_IN, self.__on_udev_event)
 
         self.on_initialize()
 
