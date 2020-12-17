@@ -45,8 +45,9 @@ def main(args):
 
         # mixer = alsaaudio.Mixer(mixer_name)
         print(mixer.getrec())
+        # print(mixer.getmute())
         # print(mixer.getvolume())
-        time.sleep(30)
+        time.sleep(5)
 
 
 
