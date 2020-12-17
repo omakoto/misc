@@ -36,55 +36,50 @@ class Remapper(key_remapper2.SimpleRemapper):
             # For chrome: -----------------------------------------------------------------------------------
             #  F5 -> back
             #  F6 -> forward
-            if ev.code == ecodes.KEY_F5 and ev.value == 1 and self.is_chrome() and self.check_modifiers(''):
+            if self.matches_key(ev, ecodes.KEY_F5, 1, '') and self.is_chrome():
                 self.press_key(ecodes.KEY_BACK)
                 continue
 
-            if ev.code == ecodes.KEY_F6 and ev.value == 1 and self.is_chrome() and self.check_modifiers(''):
+            if self.matches_key(ev, ecodes.KEY_F6, 1, '') and self.is_chrome():
                 self.press_key(ecodes.KEY_FORWARD)
-                continue
-
-            # ESC + space -> shift-space (scroll back)
-            if ev.code == ecodes.KEY_SPACE and ev.value in [1, 2] and self.is_chrome() and self.check_modifiers('e'):
-                self.press_key(ecodes.KEY_SPACE, 's')
                 continue
 
             # Global ----------------------------------------------------------------------------------------
 
             # ESC + HOME -> CTRL+ATL+1 -> work.txt
-            if ev.code == ecodes.KEY_HOME and ev.value == 1 and self.check_modifiers('e'):
+            if self.matches_key(ev, ecodes.KEY_HOME, 1, 'e'):
                 self.press_key(ecodes.KEY_MINUS, 'ac')
                 continue
 
             # ESC + END -> CTRL+ATL+T -> terminal
-            if ev.code == ecodes.KEY_END and ev.value == 1 and self.check_modifiers('e'):
+            if self.matches_key(ev, ecodes.KEY_END, 1, 'e'):
                 self.press_key(ecodes.KEY_T, 'ac')
                 continue
 
             # ESC + DEL -> CTRL+ATL+1 -> chrome
-            if ev.code == ecodes.KEY_DELETE and ev.value == 1 and self.check_modifiers('e'):
+            if self.matches_key(ev, ecodes.KEY_DELETE, 1, 'e'):
                 self.press_key(ecodes.KEY_C, 'ac')
                 continue
 
             # ESC + Left/Right -> ATL+Left/Right
-            if ev.code == ecodes.KEY_LEFT and ev.value == 1 and self.check_modifiers('e'):
+            if self.matches_key(ev, ecodes.KEY_LEFT, 1, 'e'):
                 self.press_key(ecodes.KEY_LEFT, 'a')
                 continue
-            if ev.code == ecodes.KEY_RIGHT and ev.value == 1 and self.check_modifiers('e'):
+            if self.matches_key(ev, ecodes.KEY_RIGHT, 1, 'e'):
                 self.press_key(ecodes.KEY_RIGHT, 'a')
                 continue
 
-            # ESC + space -> page up. (for in-process browser, such as Markdown Preview in vs code)
-            if ev.code == ecodes.KEY_SPACE and ev.value in [1, 2] and self.check_modifiers('e'):
+            # ESC + space -> page up. (for chrome and also in-process browser, such as Markdown Preview in vs code)
+            if self.matches_key(ev, ecodes.KEY_SPACE, (1, 2), 'e'):
                 self.press_key(ecodes.KEY_PAGEUP)
                 continue
 
             #  ESC + F11 -> ctrl + pageup
             #  ESC + F12 -> ctrl + pagedown
-            if ev.code == ecodes.KEY_F11 and ev.value == 1 and self.check_modifiers('e'):
+            if self.matches_key(ev, ecodes.KEY_F11, 1, 'e'):
                 self.press_key(ecodes.KEY_PAGEUP, 'c')
                 continue
-            if ev.code == ecodes.KEY_F12 and ev.value == 1 and self.check_modifiers('e'):
+            if self.matches_key(ev, ecodes.KEY_F12, 1, 'e'):
                 self.press_key(ecodes.KEY_PAGEDOWN, 'c')
                 continue
 

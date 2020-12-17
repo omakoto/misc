@@ -443,17 +443,21 @@ class SimpleRemapper(BaseRemapper ):
 
         return True
 
-    def matches_key(self, ev: evdev.InputEvent, expected_key:int,
-                    expected_values:Union[int, Collection[int]], expected_modifiers:str=None) -> bool:
-        if expected_key != ev.code:
+    def matches_key(self,
+            ev:evdev.InputEvent,
+            expected_key:int,
+            expected_values:Union[int, Collection[int]],
+            expected_modifiers:Optional[str] = None) -> bool:
+        if ev.code != expected_key:
             return False
 
-        if isinstance(expected_values, int):
-            if ev.value != expected_values:
-                return False
-        elif isinstance(expected_values, Iterable):
-            if not ev.value in expected_values:
-                return False
+        if isinstance(expected_values, int) and ev.value != expected_values:
+            return False
+        elif isinstance(expected_values, Iterable) and ev.value not in expected_values:
+            return False
+
+        if expected_modifiers is None:
+            return True
 
         return self.check_modifiers(expected_modifiers)
 
