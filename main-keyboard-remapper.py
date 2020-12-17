@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 import os
 import sys
-from typing import List, Tuple
+from typing import List
 
 import evdev
 from evdev import ecodes, InputEvent
@@ -23,9 +23,6 @@ class Remapper(key_remapper2.SimpleRemapper):
     def is_chrome(self):
         return self.get_active_window()[1].startswith("google-chrome")
 
-    def is_esc_pressed(self):
-        return self.check_modifiers('e')
-
     def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]):
         for ev in events:
             if ev.type != ecodes.EV_KEY:
@@ -36,11 +33,9 @@ class Remapper(key_remapper2.SimpleRemapper):
                 self.press_key(ecodes.KEY_LEFTCTRL, ev.value)
                 continue
 
-            # For chrome:
+            # For chrome: -----------------------------------------------------------------------------------
             #  F5 -> back
             #  F6 -> forward
-            #  F11 -> ctrl + pageup
-            #  F12 -> ctrl + pagedown
             if ev.code == ecodes.KEY_F5 and ev.value == 1 and self.is_chrome() and self.check_modifiers(''):
                 self.press_key(ecodes.KEY_BACK)
                 continue
@@ -49,39 +44,48 @@ class Remapper(key_remapper2.SimpleRemapper):
                 self.press_key(ecodes.KEY_FORWARD)
                 continue
 
-            if ev.code == ecodes.KEY_F11 and ev.value == 1 and self.is_chrome() and self.check_modifiers('e'):
-                self.press_key(ecodes.KEY_PAGEUP, 'c')
-                continue
-            if ev.code == ecodes.KEY_F12 and ev.value == 1 and self.is_chrome() and self.check_modifiers('e'):
-                self.press_key(ecodes.KEY_PAGEDOWN, 'c')
-                continue
-
             # ESC + space -> shift-space (scroll back)
             if ev.code == ecodes.KEY_SPACE and ev.value in [1, 2] and self.is_chrome() and self.check_modifiers('e'):
                 self.press_key(ecodes.KEY_SPACE, 's')
                 continue
 
+            # Global ----------------------------------------------------------------------------------------
+
             # ESC + HOME -> CTRL+ATL+1 -> work.txt
-            if ev.code == ecodes.KEY_HOME and ev.value == 1 and self.is_esc_pressed():
+            if ev.code == ecodes.KEY_HOME and ev.value == 1 and self.check_modifiers('e'):
                 self.press_key(ecodes.KEY_MINUS, 'ac')
                 continue
 
             # ESC + END -> CTRL+ATL+T -> terminal
-            if ev.code == ecodes.KEY_END and ev.value == 1 and self.is_esc_pressed():
+            if ev.code == ecodes.KEY_END and ev.value == 1 and self.check_modifiers('e'):
                 self.press_key(ecodes.KEY_T, 'ac')
                 continue
 
             # ESC + DEL -> CTRL+ATL+1 -> chrome
-            if ev.code == ecodes.KEY_DELETE and ev.value == 1 and self.is_esc_pressed():
+            if ev.code == ecodes.KEY_DELETE and ev.value == 1 and self.check_modifiers('e'):
                 self.press_key(ecodes.KEY_C, 'ac')
                 continue
 
             # ESC + Left/Right -> ATL+Left/Right
-            if ev.code == ecodes.KEY_LEFT and ev.value == 1 and self.is_esc_pressed():
+            if ev.code == ecodes.KEY_LEFT and ev.value == 1 and self.check_modifiers('e'):
                 self.press_key(ecodes.KEY_LEFT, 'a')
                 continue
-            if ev.code == ecodes.KEY_RIGHT and ev.value == 1 and self.is_esc_pressed():
+            if ev.code == ecodes.KEY_RIGHT and ev.value == 1 and self.check_modifiers('e'):
                 self.press_key(ecodes.KEY_RIGHT, 'a')
+                continue
+
+            # ESC + space -> page up. (for in-process browser, such as Markdown Preview in vs code)
+            if ev.code == ecodes.KEY_SPACE and ev.value in [1, 2] and self.check_modifiers('e'):
+                self.press_key(ecodes.KEY_PAGEUP)
+                continue
+
+            #  ESC + F11 -> ctrl + pageup
+            #  ESC + F12 -> ctrl + pagedown
+            if ev.code == ecodes.KEY_F11 and ev.value == 1 and self.check_modifiers('e'):
+                self.press_key(ecodes.KEY_PAGEUP, 'c')
+                continue
+            if ev.code == ecodes.KEY_F12 and ev.value == 1 and self.check_modifiers('e'):
+                self.press_key(ecodes.KEY_PAGEDOWN, 'c')
                 continue
 
             self.uinput.write([InputEvent(0, 0, ecodes.EV_KEY, ev.code, ev.value)])

@@ -1,16 +1,14 @@
 #!/usr/bin/python3
 import argparse
-import asyncio
 import collections
 import os
 import random
 import re
-import selectors
 import sys
 import threading
 import time
 import traceback
-from typing import Optional, Dict, List, TextIO, cast, Tuple, Union
+from typing import Optional, Dict, List, TextIO, Tuple, Union, Collection, Iterable
 
 import evdev
 import gi
@@ -444,6 +442,20 @@ class SimpleRemapper(BaseRemapper ):
             return False
 
         return True
+
+    def matches_key(self, ev: evdev.InputEvent, expected_key:int,
+                    expected_values:Union[int, Collection[int]], expected_modifiers:str=None) -> bool:
+        if expected_key != ev.code:
+            return False
+
+        if isinstance(expected_values, int):
+            if ev.value != expected_values:
+                return False
+        elif isinstance(expected_values, Iterable):
+            if not ev.value in expected_values:
+                return False
+
+        return self.check_modifiers(expected_modifiers)
 
     def main(self, args):
         singleton.ensure_singleton(self.global_lock_name, debug=debug)
