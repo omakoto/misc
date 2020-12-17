@@ -31,14 +31,18 @@ is_muted() {
   return $(( $muted == 0 ))
 }
 
-#is_muted && echo 'muted'
-stdbuf -oL amixer sevents | stdbuf -oL sed -ne '2,/^Ready to listen/d; /^event/p' | while read n ; do
-  icon=$unmuted_icon
+get_mic_icon() {
   if is_muted ; then
-    icon=$muted_icon
+    echo $muted_icon
+  else
+    echo $unmuted_icon
   fi
-  echo "icon:$icon"
+}
+
+#is_muted && echo 'muted'
+stdbuf -oL amixer sevents | stdbuf -oL sed -ne '1,/^Ready to listen/d; /^event/p' | while read n ; do
+  echo "icon:$(get_mic_icon)"
 done | {
-  yad --notification --no-middle --image $unmuted_icon --text 'Mic Mute Indicator' --menu 'Quit!quit' --command '' --listen
+  yad --notification --no-middle --image $(get_mic_icon) --text 'Mic Mute Indicator' --menu 'Quit!quit' --command '' --listen
   pkill -P $$
 }
