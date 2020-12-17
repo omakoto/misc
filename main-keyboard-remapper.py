@@ -21,7 +21,9 @@ class Remapper(key_remapper2.SimpleRemapper):
         super().__init__(NAME, ICON, DEFAULT_DEVICE_NAME)
 
     def is_chrome(self):
-        return self.get_active_window()[1].startswith("google-chrome")
+        active_window = self.get_active_window()
+        cls = active_window[1]
+        return cls == "Google-chrome"
 
     def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]):
         is_thinkpad = device.name.startswith('AT')

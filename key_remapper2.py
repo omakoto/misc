@@ -196,12 +196,19 @@ class SimpleRemapper(BaseRemapper ):
     def on_arguments_parsed(self, args):
         pass
 
-    def get_active_window(self) -> Tuple[str, str]: # title, class
+    def get_active_window(self) -> Tuple[str, str, str]: # title, class_group_name, class_instance_name
+        # Note: use `wmctrl -lx` to list window classes.
+        # Example: For the following window,
+        # 0x03a00007  0 www.amazon.co.jp__kindle-dbs_library_manga.Google-chrome  x1c7u マンガ本棚
+        # This method returns:
+        # ('マンガ本棚', 'www.amazon.co.jp__kindle-dbs_library_manga', 'Google-chrome')
+        #
+        # See https://lazka.github.io/pgi-docs/Wnck-3.0/classes/Window.html for wnck
         screen = wnck.Screen.get_default()
         screen.force_update()
         w = screen.get_active_window()
 
-        return (w.get_name(), w.get_class_instance_name())
+        return (w.get_name(), w.get_class_group_name(), w.get_class_instance_name())
 
     def __parse_args(self, args):
         parser = argparse.ArgumentParser(description=self.remapper_name)
