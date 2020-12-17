@@ -376,6 +376,7 @@ class SimpleRemapper(BaseRemapper ):
             ])
             return
         if isinstance(value, int):
+            # Intentionally not resetting in this case.
             self.uinput.write([
                 evdev.InputEvent(0, 0, ecodes.EV_KEY, key, value),
             ])

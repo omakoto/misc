@@ -83,6 +83,24 @@ class Remapper(key_remapper2.SimpleRemapper):
                 self.press_key(ecodes.KEY_PAGEDOWN, 'c')
                 continue
 
+            if self.matches_key(ev, ecodes.KEY_F1, (1, 2), 'e'):
+                self.press_key(ecodes.KEY_PAGEUP)
+                continue
+            if self.matches_key(ev, ecodes.KEY_F2, (1, 2), 'e'):
+                self.press_key(ecodes.KEY_UP)
+                self.press_key(ecodes.KEY_UP)
+                self.press_key(ecodes.KEY_UP)
+                continue
+            if self.matches_key(ev, ecodes.KEY_F3, (1, 2), 'e'):
+                self.press_key(ecodes.KEY_DOWN)
+                self.press_key(ecodes.KEY_DOWN)
+                self.press_key(ecodes.KEY_DOWN)
+                continue
+            if self.matches_key(ev, ecodes.KEY_F4, (1, 2), 'e'):
+                self.press_key(ecodes.KEY_PAGEDOWN)
+                continue
+
+
             self.uinput.write([InputEvent(0, 0, ecodes.EV_KEY, ev.code, ev.value)])
 
 
