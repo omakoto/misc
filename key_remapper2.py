@@ -423,26 +423,37 @@ class SimpleRemapper(BaseRemapper ):
         win = 'w' in keys
         esc = 'e' in keys
 
-        if ((self.is_key_pressed(ecodes.KEY_LEFTALT) or self.is_key_pressed(ecodes.KEY_RIGHTALT))
-                != alt):
+        if (self.is_alt_pressed() != alt):
             return False
 
-        if ((self.is_key_pressed(ecodes.KEY_LEFTCTRL) or self.is_key_pressed(ecodes.KEY_RIGHTCTRL))
-                != ctrl):
+        if (self.is_ctrl_pressed() != ctrl):
             return False
 
-        if ((self.is_key_pressed(ecodes.KEY_LEFTSHIFT) or self.is_key_pressed(ecodes.KEY_RIGHTSHIFT))
-                != shift):
+        if (self.is_shift_pressed() != shift):
             return False
 
-        if ((self.is_key_pressed(ecodes.KEY_LEFTMETA) or self.is_key_pressed(ecodes.KEY_RIGHTMETA))
-                != win):
+        if (self.is_alt_pressed() != win):
             return False
 
-        if (self.is_key_pressed(ecodes.KEY_ESC) != esc):
+        if (self.is_esc_pressed() != esc):
             return False
 
         return True
+
+    def is_alt_pressed(self):
+        return self.is_key_pressed(ecodes.KEY_LEFTALT) or self.is_key_pressed(ecodes.KEY_RIGHTALT)
+
+    def is_ctrl_pressed(self):
+        return self.is_key_pressed(ecodes.KEY_LEFTCTRL) or self.is_key_pressed(ecodes.KEY_RIGHTCTRL)
+
+    def is_shift_pressed(self):
+        return self.is_key_pressed(ecodes.KEY_LEFTSHIFT) or self.is_key_pressed(ecodes.KEY_RIGHTSHIFT)
+
+    def is_alt_pressed(self):
+        return self.is_key_pressed(ecodes.KEY_LEFTMETA) or self.is_key_pressed(ecodes.KEY_RIGHTMETA)
+
+    def is_esc_pressed(self):
+        return self.is_key_pressed(ecodes.KEY_ESC)
 
     def matches_key(self,
             ev:evdev.InputEvent,

@@ -24,6 +24,7 @@ class Remapper(key_remapper2.SimpleRemapper):
         return self.get_active_window()[1].startswith("google-chrome")
 
     def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]):
+        is_thinkpad = device.name.startswith('AT')
         for ev in events:
             if ev.type != ecodes.EV_KEY:
                 continue
@@ -46,18 +47,18 @@ class Remapper(key_remapper2.SimpleRemapper):
 
             # Global ----------------------------------------------------------------------------------------
 
-            # ESC + HOME -> CTRL+ATL+1 -> work.txt
-            if self.matches_key(ev, ecodes.KEY_HOME, 1, 'e'):
+            # ESC + END -> CTRL+ATL+1 -> work.txt
+            if self.matches_key(ev, ecodes.KEY_END, 1, 'e'):
                 self.press_key(ecodes.KEY_MINUS, 'ac')
                 continue
 
-            # ESC + END -> CTRL+ATL+T -> terminal
-            if self.matches_key(ev, ecodes.KEY_END, 1, 'e'):
+            # ESC + HOME -> CTRL+ATL+T -> terminal
+            if self.matches_key(ev, ecodes.KEY_HOME, 1, 'e'):
                 self.press_key(ecodes.KEY_T, 'ac')
                 continue
 
-            # ESC + DEL -> CTRL+ATL+1 -> chrome
-            if self.matches_key(ev, ecodes.KEY_DELETE, 1, 'e'):
+            # ESC + ENTER -> CTRL+ATL+1 -> chrome
+            if self.matches_key(ev, ecodes.KEY_ENTER, 1, 'e'):
                 self.press_key(ecodes.KEY_C, 'ac')
                 continue
 
@@ -100,6 +101,16 @@ class Remapper(key_remapper2.SimpleRemapper):
                 self.press_key(ecodes.KEY_PAGEDOWN)
                 continue
 
+            # Thinkpad only:
+            # Ins -> pageup
+            # Del -> pagedown
+            # ESC+ins -> ins
+            # ESC+del -> del
+            if is_thinkpad:
+                if ev.code == ecodes.KEY_INSERT and not self.is_esc_pressed():
+                    ev.code = ecodes.KEY_PAGEUP
+                elif ev.code == ecodes.KEY_DELETE and not self.is_esc_pressed():
+                    ev.code = ecodes.KEY_PAGEDOWN
 
             self.uinput.write([InputEvent(0, 0, ecodes.EV_KEY, ev.code, ev.value)])
 
