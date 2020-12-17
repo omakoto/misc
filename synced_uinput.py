@@ -70,6 +70,12 @@ class SyncedUinput:
             finally:
                 self.__key_states.clear()
 
+    def close(self):
+        with self.__lock:
+            if self.wrapped:
+                self.wrapped.close()
+                self.wrapped = None
+
     def __str__(self) -> str:
         return f'SyncedUinput[{self.wrapped}]'
 

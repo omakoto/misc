@@ -34,6 +34,23 @@ quiet = False
 UINPUT_DEVICE_NAME_PREFIX = 'key-remapper-uinput-'
 UINPUT_DEVICE_NAME = f"{UINPUT_DEVICE_NAME_PREFIX}{int(time.time() * 1000) :020}-{random.randint(0, 1000000) :06}"
 
+_at_exists = []
+
+
+def add_at_exit(callback):
+    _at_exists.append(callback)
+
+
+def call_at_exists():
+    for callback in _at_exists:
+        callback()
+    _at_exists.clear()
+
+
+def exit(status_code):
+    call_at_exists()
+    sys.exit(status_code)
+
 
 class BaseRemapper(object):
     uinput: synced_uinput.SyncedUinput
@@ -96,7 +113,7 @@ def die_on_exception(func):
             func(*args, **kwargs)
         except:
             traceback.print_exc()
-            sys.exit(1)
+            exit(1)
 
     return wrapper
 
@@ -113,6 +130,7 @@ class RemapperTrayIcon(tasktray.TaskTrayIcon):
         super()._add_menu_items(menu)
 
     def restart(self, source):
+        call_at_exists()
         os.execv(sys.argv[0], sys.argv)
 
 
@@ -229,7 +247,7 @@ class SimpleRemapper(BaseRemapper ):
                     writer.flush()
             except:
                 traceback.print_exc()
-                sys.exit(1)
+                exit(1)
 
         th = threading.Thread(target=run)
         th.setDaemon(True)
@@ -343,7 +361,7 @@ class SimpleRemapper(BaseRemapper ):
             self.handle_events(device, events)
         except:
             traceback.print_exc()
-            sys.exit(1)
+            exit(1)
 
         return True
 
@@ -438,6 +456,7 @@ class SimpleRemapper(BaseRemapper ):
             uinput = UInput(name=UINPUT_DEVICE_NAME, events=self.uinput_events)
             if debug: print(f'# Uinput device name: {UINPUT_DEVICE_NAME}')
             self.uinput = synced_uinput.SyncedUinput(uinput)
+            add_at_exit(self.uinput.close)
 
         udev_monitor = self.__start_udev_monitor()
         glib.io_add_watch(udev_monitor, glib.IO_IN, self.__on_udev_event)
@@ -445,11 +464,14 @@ class SimpleRemapper(BaseRemapper ):
         self.on_initialize()
 
         self.__open_devices()
+        add_at_exit(self.__release_devices)
 
         try:
             gtk.main()
         finally:
             self.reset_all_keys()
+
+        exit(0)
 
 
 def _main(args, description="key remapper test"):
