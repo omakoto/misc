@@ -29,10 +29,12 @@ class Remapper(key_remapper2.SimpleRemapper):
             if ev.type != ecodes.EV_KEY:
                 continue
 
-            # Caps is also ctrl
-            if ev.code == ecodes.KEY_CAPSLOCK:
-                self.press_key(ecodes.KEY_LEFTCTRL, ev.value)
-                continue
+            # Thinkpad only: Use ins/del as pageup/down, unless CAPS is pressed.
+            if is_thinkpad:
+                if ev.code == ecodes.KEY_INSERT and not self.is_caps_pressed():
+                    ev.code = ecodes.KEY_PAGEUP
+                elif ev.code == ecodes.KEY_DELETE and not self.is_caps_pressed():
+                    ev.code = ecodes.KEY_PAGEDOWN
 
             # For chrome: -----------------------------------------------------------------------------------
             #  F5 -> back
@@ -75,25 +77,17 @@ class Remapper(key_remapper2.SimpleRemapper):
                 self.press_key(ecodes.KEY_PAGEUP)
                 continue
 
-            #  ESC + F11 -> ctrl + pageup
-            #  ESC + F12 -> ctrl + pagedown
-            if self.matches_key(ev, ecodes.KEY_F11, 1, 'e'):
+            #  ESC + Pageup -> ctrl + pageup
+            #  ESC + Pagedown -> ctrl + pagedown
+            if self.matches_key(ev, ecodes.KEY_PAGEUP, 1, 'e'):
                 self.press_key(ecodes.KEY_PAGEUP, 'c')
                 continue
-            if self.matches_key(ev, ecodes.KEY_F12, 1, 'e'):
+            if self.matches_key(ev, ecodes.KEY_PAGEDOWN, 1, 'e'):
                 self.press_key(ecodes.KEY_PAGEDOWN, 'c')
                 continue
 
-            # Thinkpad only:
-            # Ins -> pageup
-            # Del -> pagedown
-            # ESC+ins -> ins
-            # ESC+del -> del
-            if is_thinkpad:
-                if ev.code == ecodes.KEY_INSERT and not self.is_esc_pressed():
-                    ev.code = ecodes.KEY_PAGEUP
-                elif ev.code == ecodes.KEY_DELETE and not self.is_esc_pressed():
-                    ev.code = ecodes.KEY_PAGEDOWN
+            if ev.code == ecodes.KEY_CAPSLOCK:
+                continue # don't use capslock
 
             self.uinput.write([InputEvent(0, 0, ecodes.EV_KEY, ev.code, ev.value)])
 

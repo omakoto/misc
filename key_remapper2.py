@@ -422,20 +422,24 @@ class SimpleRemapper(BaseRemapper ):
         shift = 's' in keys
         win = 'w' in keys
         esc = 'e' in keys
+        caps = 'p' in keys
 
-        if (self.is_alt_pressed() != alt):
+        if self.is_alt_pressed() != alt:
             return False
 
-        if (self.is_ctrl_pressed() != ctrl):
+        if self.is_ctrl_pressed() != ctrl:
             return False
 
-        if (self.is_shift_pressed() != shift):
+        if self.is_shift_pressed() != shift:
             return False
 
-        if (self.is_alt_pressed() != win):
+        if self.is_win_pressed() != win:
             return False
 
-        if (self.is_esc_pressed() != esc):
+        if self.is_esc_pressed() != esc:
+            return False
+
+        if self.is_caps_pressed() != caps:
             return False
 
         return True
@@ -449,11 +453,14 @@ class SimpleRemapper(BaseRemapper ):
     def is_shift_pressed(self):
         return self.is_key_pressed(ecodes.KEY_LEFTSHIFT) or self.is_key_pressed(ecodes.KEY_RIGHTSHIFT)
 
-    def is_alt_pressed(self):
+    def is_win_pressed(self):
         return self.is_key_pressed(ecodes.KEY_LEFTMETA) or self.is_key_pressed(ecodes.KEY_RIGHTMETA)
 
     def is_esc_pressed(self):
         return self.is_key_pressed(ecodes.KEY_ESC)
+
+    def is_caps_pressed(self):
+        return self.is_key_pressed(ecodes.KEY_CAPSLOCK)
 
     def matches_key(self,
             ev:evdev.InputEvent,
