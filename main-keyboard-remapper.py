@@ -12,7 +12,7 @@ NAME = "Main Keyboard Remapper"
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 ICON = os.path.join(SCRIPT_PATH, 'keyboard.png')
 
-DEFAULT_DEVICE_NAME = "^(AT Translated Set 2 keyboard|Topre Corporation Realforce)"
+DEFAULT_DEVICE_NAME = "^(AT Translated Set 2 keyboard|Topre Corporation Realforce|P. I. Engineering XK-16 HID)"
 
 debug = False
 
@@ -31,6 +31,13 @@ class Remapper(key_remapper2.SimpleRemapper):
             return
 
         is_thinkpad = device.name.startswith('AT')
+        is_xkeys = device.name.startswith('P. I.')
+
+        # For x-keys. Convert to Shift+Ctrl+[number]
+        if is_xkeys:
+            if ecodes.KEY_1 <= ev.code <= ecodes.KEY_8 and ev.value == 1:
+                self.press_key(ecodes.KEY_DELETE, 'cs')
+            return
 
         # Thinkpad only: Use ins/del as pageup/down, unless CAPS is pressed.
         if is_thinkpad:

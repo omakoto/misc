@@ -110,30 +110,29 @@ class Remapper(key_remapper2.SimpleRemapper):
 
         self.show_notification(help, timeout_ms=10000)
 
-    def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]):
-        for ev in events:
-            if ev.type != ecodes.EV_KEY:
-                continue
-            if ev.code == ecodes.KEY_LEFTCTRL:
-                continue  # ignore it
-            if ev.value not in [0, 1]:
-                continue
+    def handle_event(self, device: evdev.InputDevice, ev: evdev.InputEvent):
+        if ev.type != ecodes.EV_KEY:
+            continue
+        if ev.code == ecodes.KEY_LEFTCTRL:
+            continue  # ignore it
+        if ev.value not in [0, 1]:
+            continue
 
-            key = self.get_current_mode()[ev.code][0]
-            if key == 0:
-                self.show_help()
-                continue
+        key = self.get_current_mode()[ev.code][0]
+        if key == 0:
+            self.show_help()
+            continue
 
-            if key <= 0:
-                self.__mode = -key - 1
-                self.show_help()
-                continue
+        if key <= 0:
+            self.__mode = -key - 1
+            self.show_help()
+            continue
 
-            half_toggle = (key & HALF_TOGGLE) != 0
-            key = key & ~HALF_TOGGLE
+        half_toggle = (key & HALF_TOGGLE) != 0
+        key = key & ~HALF_TOGGLE
 
-            if half_toggle or ev.value == 1:
-                self.press_key(key)
+        if half_toggle or ev.value == 1:
+            self.press_key(key)
 
     def on_device_detected(self, devices: List[evdev.InputDevice]):
         super().on_device_detected(devices)
