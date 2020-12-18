@@ -234,8 +234,6 @@ class SimpleRemapper(BaseRemapper ):
         self.on_arguments_parsed(args)
 
     def __start_udev_monitor(self):
-        """Returns udev event names, such as 'add' and 'remove'.
-        """
         pr, pw = os.pipe()
         os.set_blocking(pr, False)
         reader = os.fdopen(pr)
