@@ -23,7 +23,7 @@ unmuted_icon=microphone.png
 is_muted() {
   muted=0
   for name in "${MIXERS[@]}" ; do
-    if amixer sget $name 2>&1 | grep -q 'Front.*\[off\]' ; then
+    if amixer sget $name 2>&1 | grep -qP '^  (Front|Mono).*\[off\]' ; then
       muted=1
       break
     fi
