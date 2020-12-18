@@ -38,6 +38,12 @@ class Remapper(key_remapper2.SimpleRemapper):
                 elif ev.code == ecodes.KEY_DELETE and not self.is_caps_pressed():
                     ev.code = ecodes.KEY_PAGEDOWN
 
+            # Also shift/esc + backspace -> delete
+            if (self.matches_key(ev, ecodes.KEY_BACKSPACE, 1, 's') or
+                self.matches_key(ev, ecodes.KEY_BACKSPACE, 1, 'e')):
+                self.press_key(ecodes.KEY_DELETE)
+                continue
+
             # For chrome: -----------------------------------------------------------------------------------
             #  F5 -> back
             #  F6 -> forward
