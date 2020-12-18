@@ -33,9 +33,9 @@ KEY_LABELS = [
     "Button",
 ]
 
-MODE_1 = [-1, "Cursor mode"]
-MODE_2 = [-2, "Volume mode"]
-MODE_3 = [-3, "Scroll mode"]
+MODE_1 = [-1, "#Cursor mode"]
+MODE_2 = [-2, "#Volume mode"]
+MODE_3 = [-3, "#Scroll mode"]
 
 HALF_TOGGLE = 0x1_000_000
 
@@ -112,21 +112,21 @@ class Remapper(key_remapper2.SimpleRemapper):
 
     def handle_event(self, device: evdev.InputDevice, ev: evdev.InputEvent):
         if ev.type != ecodes.EV_KEY:
-            continue
+            return
         if ev.code == ecodes.KEY_LEFTCTRL:
-            continue  # ignore it
+            return  # ignore it
         if ev.value not in [0, 1]:
-            continue
+            return
 
         key = self.get_current_mode()[ev.code][0]
         if key == 0:
             self.show_help()
-            continue
+            return
 
         if key <= 0:
             self.__mode = -key - 1
             self.show_help()
-            continue
+            return
 
         half_toggle = (key & HALF_TOGGLE) != 0
         key = key & ~HALF_TOGGLE
