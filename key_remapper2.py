@@ -8,7 +8,7 @@ import sys
 import threading
 import time
 import traceback
-from typing import Optional, Dict, List, TextIO, Tuple, Union, Collection, Iterable
+from typing import Optional, Dict, List, TextIO, Tuple, Union, Collection, Iterable, Callable
 
 import evdev
 import gi
@@ -82,6 +82,16 @@ class BaseRemapper(object):
             print(f'on_initialize')
 
     def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]) -> None:
+        try:
+            for event in events:
+                try:
+                    self.handle_event(device, event)
+                except DoneEvent:
+                    pass
+        except DoneEvent:
+            pass
+
+    def handle_event(self, device: evdev.InputDevice, event: evdev.InputEvent) -> None:
         pass
 
     def on_device_detected(self, devices: List[evdev.InputDevice]):
@@ -131,6 +141,8 @@ class RemapperTrayIcon(tasktray.TaskTrayIcon):
         call_at_exists()
         os.execv(sys.argv[0], sys.argv)
 
+class DoneEvent(Exception):
+    pass
 
 class SimpleRemapper(BaseRemapper ):
     tray_icon: tasktray.TaskTrayIcon
@@ -385,7 +397,11 @@ class SimpleRemapper(BaseRemapper ):
 
         return True
 
-    def press_key(self, key: int, value: Union[int, str] =-1, *, reset_all_keys=True) -> None:
+    def press_key_and_done(self, key: int, value: Union[int, str] =-1, *, reset_all_keys=True) -> None:
+        self.press_key(key, value, reset_all_keys=reset_all_keys)
+        raise DoneEvent()
+
+    def press_key(self, key: int, value: Union[int, str] =-1, *, reset_all_keys=True, done=False) -> None:
         if debug:
             print(f'Press: f{evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 1)}')
 
@@ -396,14 +412,12 @@ class SimpleRemapper(BaseRemapper ):
                 evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 1),
                 evdev.InputEvent(0, 0, ecodes.EV_KEY, key, 0),
             ])
-            return
-        if isinstance(value, int):
+        elif isinstance(value, int):
             # Intentionally not resetting in this case.
             self.uinput.write([
                 evdev.InputEvent(0, 0, ecodes.EV_KEY, key, value),
             ])
-            return
-        if isinstance(value, str):
+        elif isinstance(value, str):
             if reset_all_keys:
                 self.reset_all_keys()
             alt = 'a' in value
@@ -420,7 +434,8 @@ class SimpleRemapper(BaseRemapper ):
             if shift: self.press_key(ecodes.KEY_LEFTSHIFT, 0, reset_all_keys=False)
             if ctrl: self.press_key(ecodes.KEY_LEFTCTRL, 0, reset_all_keys=False)
             if alt: self.press_key(ecodes.KEY_LEFTALT, 0, reset_all_keys=False)
-
+        if done:
+            raise DoneEvent()
 
     def send_keys(self, keys: List[Tuple[int, int]]) -> None:
         for k in keys:
@@ -488,7 +503,8 @@ class SimpleRemapper(BaseRemapper ):
             ev:evdev.InputEvent,
             expected_key:int,
             expected_values:Union[int, Collection[int]],
-            expected_modifiers:Optional[str] = None) -> bool:
+            expected_modifiers:Optional[str] = None,
+            predecate:Callable[[], bool] = None) -> bool:
         if ev.code != expected_key:
             return False
 
@@ -497,10 +513,13 @@ class SimpleRemapper(BaseRemapper ):
         elif isinstance(expected_values, Iterable) and ev.value not in expected_values:
             return False
 
-        if expected_modifiers is None:
-            return True
+        if expected_modifiers is not None and not self.check_modifiers(expected_modifiers):
+            return False
 
-        return self.check_modifiers(expected_modifiers)
+        if predecate and not predecate():
+            return False
+
+        return True
 
     def main(self, args):
         singleton.ensure_singleton(self.global_lock_name, debug=debug)
