@@ -49,18 +49,18 @@ class Remapper(key_remapper2.SimpleRemapper):
 
         # Global ----------------------------------------------------------------------------------------
 
-        # ESC + END -> CTRL+ATL+1 -> work.txt
-        if self.matches_key(ev, ecodes.KEY_END, 1, 'e'): self.press_key(ecodes.KEY_MINUS, 'ac', done=True)
+        # ESC + F11 -> CTRL+ATL+1 -> work.txt
+        if self.matches_key(ev, ecodes.KEY_F11, 1, 'e'): self.press_key(ecodes.KEY_MINUS, 'ac', done=True)
 
-        # ESC + HOME -> CTRL+ATL+T -> terminal
-        if self.matches_key(ev, ecodes.KEY_HOME, 1, 'e'): self.press_key(ecodes.KEY_T, 'ac', done=True)
+        # ESC + F12 -> CTRL+ATL+T -> terminal
+        if self.matches_key(ev, ecodes.KEY_F12, 1, 'e'): self.press_key(ecodes.KEY_T, 'ac', done=True)
 
         # ESC + ENTER -> CTRL+ATL+1 -> chrome
         if self.matches_key(ev, ecodes.KEY_ENTER, 1, 'e'): self.press_key(ecodes.KEY_C, 'ac', done=True)
 
-        # ESC + Left/Right -> ATL+Left/Right (back / forwward)
-        if self.matches_key(ev, ecodes.KEY_LEFT, 1, 'e'): self.press_key(ecodes.KEY_LEFT, 'a', done=True)
-        if self.matches_key(ev, ecodes.KEY_RIGHT, 1, 'e'): self.press_key(ecodes.KEY_RIGHT, 'a', done=True)
+        # ESC + home/end -> ATL+Left/Right (back / forwward)
+        if self.matches_key(ev, ecodes.KEY_HOME, 1, 'e'): self.press_key(ecodes.KEY_LEFT, 'a', done=True)
+        if self.matches_key(ev, ecodes.KEY_END, 1, 'e'): self.press_key(ecodes.KEY_RIGHT, 'a', done=True)
 
         # ESC + space -> page up. (for chrome and also in-process browser, such as Markdown Preview in vs code)
         if self.matches_key(ev, ecodes.KEY_SPACE, (1, 2), 'e'): self.press_key(ecodes.KEY_PAGEUP, done=True)
@@ -70,7 +70,7 @@ class Remapper(key_remapper2.SimpleRemapper):
         if self.matches_key(ev, ecodes.KEY_PAGEUP, 1, 'e'): self.press_key(ecodes.KEY_PAGEUP, 'c', done=True)
         if self.matches_key(ev, ecodes.KEY_PAGEDOWN, 1, 'e'): self.press_key(ecodes.KEY_PAGEDOWN, 'c', done=True)
 
-        # esc+ caps -> caps
+        # esc + caps -> caps
         if self.matches_key(ev, ecodes.KEY_CAPSLOCK, 1, 'ep'): self.press_key(ecodes.KEY_CAPSLOCK, done=True)
 
         # Don't use capslock

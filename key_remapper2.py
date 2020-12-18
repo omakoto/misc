@@ -177,15 +177,15 @@ class SimpleRemapper(BaseRemapper ):
         self.__quiet = force_quiet
         self.__notification = notify2.Notification(remapper_name, '')
         self.__notification.set_urgency(notify2.URGENCY_NORMAL)
-        self.__notification.set_timeout(3000)
         self.__mode = 0
         self.__devices = {}
         self.tray_icon = RemapperTrayIcon(self.remapper_name, self.remapper_icon)
         self.__refresh_scheduled = False
 
-    def show_notification(self, message: str) -> None:
+    def show_notification(self, message: str, timeout_ms=3000) -> None:
         if self.enable_debug: print(message)
         self.__notification.update(self.remapper_name, message)
+        self.__notification.set_timeout(timeout_ms)
         self.__notification.show()
 
     def on_device_detected(self, devices: List[evdev.InputDevice]):

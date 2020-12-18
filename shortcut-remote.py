@@ -108,7 +108,7 @@ class Remapper(key_remapper2.SimpleRemapper):
         if not self.force_quiet:
             print(help)
 
-        self.show_notification(help)
+        self.show_notification(help, timeout_ms=10000)
 
     def handle_events(self, device: evdev.InputDevice, events: List[evdev.InputEvent]):
         for ev in events:
