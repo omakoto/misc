@@ -1,0 +1,3 @@
+#!/bin/bash
+
+exec date '+%Y-%m-%d_%H-%M-%S'
