@@ -6,8 +6,10 @@ set -e
 . mutil.sh
 
 delay=0
+copy_image=0
 eval "$(bashgetopt '
-  d|delay          delay=3          # Delay 3 seconds
+d|delay          delay=3          # Delay 3 seconds
+i|copy-image     copy_image=1     # Copy the image to the clipboard
 ' "$@")"
 
 label=""
@@ -23,7 +25,12 @@ sleep $delay
 echo "Select a region and press CTRL+C to capture:"
 
 import "$out" # Using imagemagick # With imagemagic
-#xclip -selection clipboard -t image/png -i $out
-echo "$out" | xclip -r -selection clipboard -t text/plain
-INFO 'Captured into:' $out
-ee -qb ksnip -e $out
+
+if (( $copy_image )) ; then
+  xclip -selection clipboard -t image/png -i $out
+  notify-send -t 3 "Screenshot captured into clipboard"
+else
+  echo "$out" | xclip -r -selection clipboard -t text/plain
+  INFO 'Captured into:' $out
+  ee -qb ksnip -e $out
+fi
