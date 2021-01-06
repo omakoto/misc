@@ -44,5 +44,5 @@ stdbuf -oL amixer sevents | stdbuf -oL sed -ne '1,/^Ready to listen/d; /^event/p
   echo "icon:$(get_mic_icon)"
 done | {
   yad --notification --no-middle --image "$(get_mic_icon)" --text 'Mic Mute Indicator' --menu 'Quit!quit' --command '' --listen
-  pkill -P $$
+  pkill -P $$ # Kill self when yad finishes, which is when "quit" is selected.
 }
