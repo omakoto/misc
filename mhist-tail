@@ -4,6 +4,6 @@ if [[ "$1" != "-g" ]] ; then
   exec tailb -10000000 $MYHISTFILE
 else
   for f in ~/history/*/.myhist; do
-    tailb -10000000 "$f"
+    tailb -200000000 "$f"
   done
 fi
