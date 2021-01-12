@@ -20,7 +20,12 @@ fi
 
 out=$HOME/Downloads/screenshot-$(date8)${label}.png
 
-sleep $delay
+if (( $delay == 0 )) ; then
+  notify-send -t 3000 "Taking a screenshot..."
+else
+  notify-send -t 3000 "Taking a screenshot in $delay seconds..."
+  sleep $delay
+fi
 
 echo "Select a region and press CTRL+C to capture:"
 
@@ -28,9 +33,10 @@ import "$out" # Using imagemagick # With imagemagic
 
 if (( $copy_image )) ; then
   xclip -selection clipboard -t image/png -i $out
-  notify-send -t 3 "Screenshot captured into clipboard"
+  notify-send -t 3000 "Screenshot captured into clipboard"
 else
   echo "$out" | xclip -r -selection clipboard -t text/plain
   INFO 'Captured into:' $out
+  notify-send -t 3000 "Screenshot saved as $out"
   ee -qb ksnip -e $out
 fi
