@@ -76,7 +76,8 @@ if (( $newdoc )) ; then
 fi
 
 if (( $cbin )) ; then
-  opts="$opts --add $HOME/cbin"
+  # opts="$opts --add $HOME/cbin"
+  opts="$opts $HOME/cbin/workspace.code-workspace"
 fi
 
 if (( ${#args} == 0 && ${#files} == 0 )) ; then
