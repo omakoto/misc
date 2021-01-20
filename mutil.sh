@@ -581,9 +581,9 @@ function less() {
       "$@"
 }
 
-function qgit() {
-  qgit >/dev/null 2>&1 &
-}
+#function qgit() {
+#  qgit >/dev/null 2>&1 &
+#}
 
 function install-bashcomp() {
   for c in "$@"; do
