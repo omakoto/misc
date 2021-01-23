@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+nic=$(get-active-nic)
+addr=$(hostname -I)
+
+echo $addr
+# Or,
+# ip -N -4 -o -br a show $nic
