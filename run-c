@@ -1,0 +1,13 @@
+#!/bin/bash
+
+. mutil.sh
+
+src="$1"
+out="$1.tmp"
+shift
+
+if [[ "$src" -nt "$out" ]] ; then
+	ee cc "$src" "$@" -o "$out"
+fi
+
+"$out"
