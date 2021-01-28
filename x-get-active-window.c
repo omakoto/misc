@@ -38,6 +38,9 @@ unsigned char* get_string_property(char* property_name)
     status = XGetWindowProperty(display, window, filter_atom, 0, MAXSTR, False, AnyPropertyType,
                                 &actual_type, &actual_format, &nitems, &bytes_after, &prop);
     check_status(status, window);
+    printf("prop: %s\n", property_name);
+    // printf("type: %ld\n", actual_type);
+    printf("format: %d\n", actual_format);
     return prop;
 }
 
