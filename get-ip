@@ -4,7 +4,7 @@ set -e
 . mutil.sh
 
 nic=$(get-active-nic)
-addr=$(hostname -I)
+addr=$(hostname -I | awk '{print $1}')
 
 echo $addr
 # Or,
