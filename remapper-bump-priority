@@ -1,0 +1,3 @@
+#!/bin/bash
+
+sudo renice -n -5 -p $( pgrep -f '(keyboard-remapper|trackpoint-speedup|shortcut-remote-remapper|satechi-remapper)' )
