@@ -16,4 +16,4 @@ do_status() {
 }
 export -f do_status
 
-parallel --progress --eta -j 200% do_status ::: $dirs
+parallel --progress --eta -j 150% do_status ::: $dirs
