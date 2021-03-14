@@ -1,9 +1,9 @@
 #!/bin/bash
 
 if [[ "$1" != "-g" ]] ; then
-  exec tailb -10000000 $MYHISTFILE
+  exec tailb -30000000 $MYHISTFILE
 else
   for f in ~/history/*/.myhist; do
-    tailb -200000000 "$f"
+    tailb -500000000 "$f"
   done
 fi
