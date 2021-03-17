@@ -14,8 +14,8 @@ if iswsl ; then
 fi
 
 sf=1
-chrome_dpi="1.5"
-rdt_dpi=1.0
+chrome_dpi=""
+rdt_dpi=""
 
 case "$(hostname -s)" in
   omakoto-glaptop2) # Dell laptop.
