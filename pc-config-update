@@ -3,6 +3,10 @@
 # Change DPI related settings depending on the environment
 # Also update ~/.chromedpi too.
 
+
+exit 0 # Nothing to do on recent devices.
+
+
 set -e
 . mutil.sh
 
