@@ -4,7 +4,7 @@
 # Also update ~/.chromedpi too.
 
 
-exit 0 # Nothing to do on recent devices.
+# exit 0 # Nothing to do on recent devices.
 
 
 set -e

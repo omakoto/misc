@@ -163,11 +163,11 @@ for n in "${args[@]}" ; do
         ee -2 dpkg -c "$n" > "$f"
         ;;
       *.gif|*.png|*.webp|*.jpeg|*.jpg|*.mp4|*.pdf)
-        chrome "$n"
+        c "$n"
         continue
         ;;
       *.pdf)
-        chrome "$n"
+        c "$n"
         continue
         ;;
       *.json)
@@ -204,7 +204,7 @@ for n in "${args[@]}" ; do
           f="$n"
         elif [[ -d "$n" ]] || istext "$n"  ; then
           if [[ -f "$n" ]] && istext "$n" && has-ansi "$n" ; then
-            chrome "$n"
+            c "$n"
             continue
           fi
           f="$n"
