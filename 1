@@ -199,6 +199,9 @@ for n in "${args[@]}" ; do
       *.jar)
         f="$(jd-jar "$n")"
         ;;
+      *.apk)
+        f="$(apkext "$n")"
+        ;;
       *)
         if [[ ! -e "$n" ]] ; then
           f="$n"

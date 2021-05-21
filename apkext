@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+for n in "$@"; do
+	to="$n.ext"
+	check="$to/.check"
+	if [[ "$n" -nt "$check" ]] ; then
+		{
+			dex="$to/dexdump.txt"
+			manifest="$to/AndroidManifest.xml"
+
+			mkdir -p "$to"
+
+			echo "dexdump: $n > $dex"
+			dexdump -d -h "$n" > "$dex"
+
+			echo "dump manifest: $n > $manifest"
+			# apkanalyzer is in ~/Android/Sdk/cmdline-tools/latest/bin
+			# Download "Android SDK Command-line Tools (latest)" on SDK manager
+			apkanalyzer manifest print "$n" > "$manifest"
+
+			touch "$check"
+		} 1>&2
+	fi
+	echo "$to"
+done
