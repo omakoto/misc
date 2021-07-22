@@ -35,7 +35,7 @@ completed=$(
 
         if in-repo ; then
             repo-upstream | perl -pe 'print "[REPO-BRANCH] "'
-            repo-active-dirs | perl -pe 'print "[REPO-DIR] "'
+#            repo-active-dirs | perl -pe 'print "[REPO-DIR] "' # slow
         fi
 
         if in-git ; then
@@ -64,11 +64,11 @@ completed=$(
         # Filenames in recent logs
         zenlog-recent-files -d | global-unique | dir-slash | sed 's/^/[RECENT-FILE] /'
 
-        # Recent words in zenlog
-        zenlog-last-n-contents -R -n 10 | zenlog-recent-words.pl | global-unique | perl -pe 'print "[RECENT-WORD] "'
-
-        # Android modules
+        # Android build modules
         android-module-list -q | perl -pe 'print "[AND-MODULE] "'
+
+        # Android packages
+        android-list-apps -n | perl -pe 'print "[AND-PACKAGE] "'
 
         # Android device files
         bash-fzf-complete-current-token-android-helper "${token}"
@@ -81,6 +81,9 @@ completed=$(
 
         # Executable files.
         list-commands-in-path | perl -pe 'print "[EXE] "'
+
+        # Recent words in zenlog
+        zenlog-last-n-contents -R -n 10 | zenlog-recent-words.pl | global-unique | perl -pe 'print "[RECENT-WORD] "'
 
         # Local files files
         {
