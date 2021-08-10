@@ -1,0 +1,26 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+# Move to a window selected by fzf
+
+
+selected="$(wmctrl -l | perl -e '
+while (<>) {
+    chomp;
+    m!^(\S+) \s+ \S+ \s \S+ \s+ (.*)!x;
+    my $title = $2;
+
+    next if $title =~ /^Desktop$/;
+
+    print "$2\n";
+}
+' | sort --ignore-case | fzf)"
+
+if [[ "$selected" == "" ]] ; then
+    exit 1
+fi
+
+wmctrl -F -a "$selected"
+
