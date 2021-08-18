@@ -502,6 +502,13 @@ bash-disable-debug() {
   bash-enable-debug 0
 }
 
+bash-debug-run() {
+  set -x
+  "$@"
+  set +x
+}
+
+
 find-root-dir() {
   local dir="$1"
   local predicate="$2"

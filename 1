@@ -202,6 +202,10 @@ for n in "${args[@]}" ; do
       *.apk)
         f="$(apkext "$n")"
         ;;
+      *.gz|*.z)
+        f=$temp/${n##*/}-$$-zcat.txt
+        ee -2 zcat "$n" > "$f"
+        ;;
       *)
         if [[ ! -e "$n" ]] ; then
           f="$n"
