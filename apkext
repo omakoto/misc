@@ -14,7 +14,7 @@ for n in "$@"; do
 			mkdir -p "$to"
 
 			echo "dexdump: $n > $dex"
-			dexdump -d -h "$n" > "$dex"
+			dexdump -d -h "$n" > "$dex" || true
 
 			echo "dump manifest: $n > $manifest"
 			# apkanalyzer is in ~/Android/Sdk/cmdline-tools/latest/bin
