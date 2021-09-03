@@ -18,19 +18,15 @@ update() {
     EE_QUIET=$quiet ee xinput set-prop "$DEVICE" 'Coordinate Transformation Matrix' "$@"
 }
 
-monitor-sensor | perl -ne '
-BEGIN {$|=1}
-next unless /Has accelerometer|Accelerometer orientation changed/;
-/(normal|bottom-up|left-up|right-up)/ && print $1, "\n";
-' | while read -r o ; do
+monitor-sensor | while read -r o ; do
     case "$o" in
-    bottom-up)
+    *bottom-up*)
         update -1 0 1 0 -1 1 0 0 1;;
-    normal)
+    *normal*)
         update 1 0 0 0 1 0 0 0 1;;
-    right-up)
+    *right-up*)
         update 0 1 0 -1 0 1 0 0 1;;
-    left-up)
+    *left-up*)
         update 0 -1 1 1 0 0 0 0 1;;
     esac
     done
