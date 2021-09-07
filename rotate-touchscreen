@@ -29,5 +29,4 @@ monitor-sensor | while read -r o ; do
     *left-up*)
         update 0 -1 1 1 0 0 0 0 1;;
     esac
-    done
 done
