@@ -18,15 +18,17 @@ update() {
     EE_QUIET=$quiet ee xinput set-prop "$DEVICE" 'Coordinate Transformation Matrix' "$@"
 }
 
-monitor-sensor | while read -r o ; do
-    case "$o" in
-    *bottom-up*)
-        update -1 0 1 0 -1 1 0 0 1;;
-    *normal*)
-        update 1 0 0 0 1 0 0 0 1;;
-    *right-up*)
-        update 0 1 0 -1 0 1 0 0 1;;
-    *left-up*)
-        update 0 -1 1 1 0 0 0 0 1;;
-    esac
+while true ; do
+    monitor-sensor | while read -r o ; do
+        case "$o" in
+        *bottom-up*)
+            update -1 0 1 0 -1 1 0 0 1;;
+        *normal*)
+            update 1 0 0 0 1 0 0 0 1;;
+        *right-up*)
+            update 0 1 0 -1 0 1 0 0 1;;
+        *left-up*)
+            update 0 -1 1 1 0 0 0 0 1;;
+        esac
+    done
 done
