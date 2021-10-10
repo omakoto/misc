@@ -1,0 +1,34 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+usage() {
+    cat <<EOF
+
+  Wrapper around aseqdump
+
+  Usage: $0 DEVICE-NAME-PCRE
+
+  Available devices:
+EOF
+    aseqdump -l
+
+    exit 1
+}
+
+name="$*"
+
+if [[ "$name" == "" ]] ; then
+    usage
+fi
+
+port="$(aseqdump -l | grep -P "$name" | awk 'NR==1{print $1}')"
+if [[ "$port" == "" ]] ; then
+    echo "Devicee not found"
+    usage
+fi
+
+echo "Selected port: $port"
+
+ee aseqdump -p "$port"
