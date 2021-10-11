@@ -170,14 +170,16 @@ class Main:
 
 
     def _get_color(self, note):
-        h = 0
-        s = 0.1
+        MAX_H = 0.5
+        h = MAX_H - (MAX_H * note[1] / 127)
+        s = 0.6
         l = 1
         if note[0]:
             l = 1
         else:
             l = max(0, 1 - (self.t - note[2]) * DECAY)
-        # print(l)
+        if l <= 0:
+            return None
         rgb = colorsys.hsv_to_rgb(h, s, l)
         return (rgb[0] * 255, rgb[1] * 255, rgb[2] * 255)
 
@@ -203,6 +205,8 @@ class Main:
             bh = (h - vm - vm) * note[1] / 127
 
             color = self._get_color(note)
+            if not color:
+                continue
             # print(f'{i}: {bl} {bh}')
             # pygame.draw.rect(self.screen, (255, 255, 200), (bl, h - vm, bw, -bh))
             pygame.draw.rect(self.screen, color, (bl, h - vm - bh, bw, bh))
