@@ -81,8 +81,6 @@ def detect_input_device():
 # sys.exit(0)
 
 NOTES_COUNT = 128
-MIN_NOTE = 36
-MAX_NOTE = 84
 
 HORIZONTAL_MARGIN = 0.04  # Margin at each side
 VERTICAL_MARGIN = 0.06  # Margin at top and bottom
@@ -97,6 +95,8 @@ class Main:
         self.midi_input_id = midi_input_id
         self.screen = None
         self.initialized = False
+        self.min_note = 36
+        self.max_note = 84
 
         # notes = [[0 or 1, velocity, timestamp], ....]
         self.notes = [[0, 0, 0] for n in range(0, NOTES_COUNT)]
@@ -118,8 +118,8 @@ class Main:
 
         infoObject = pygame.display.Info()
 
-        screen_w = int(infoObject.current_w/2.5)
-        screen_h = int(infoObject.current_w/2.5)
+        screen_w = int(infoObject.current_w * 0.9)
+        screen_h = int(infoObject.current_w * 0.9)
 
         self.screen = pygame.display.set_mode([screen_w, screen_h], pygame.RESIZABLE)
 
@@ -151,6 +151,10 @@ class Main:
                         self.notes[event.data1][0] = 1
                         self.notes[event.data1][1] = event.data2
                         self.notes[event.data1][2] = self.t
+                        if event.data1 < self.min_note:
+                            self.min_note = event.data1
+                        elif event.data1 > self.max_note:
+                            self.max_note = event.data1
                     elif event.status == 128:  # Note off
                         self.notes[event.data1][0] = 0
                         self.notes[event.data1][2] = self.t
@@ -196,20 +200,21 @@ class Main:
         self.screen.fill((0, 0, 0))
 
         # bar width
-        bw = (w - hm - hm) / (MAX_NOTE - MIN_NOTE + 1) - SPACING
+        bw = (w - hm - hm) / (self.max_note - self.min_note + 1) - SPACING
 
         # Bars
-        for i in range(MIN_NOTE, MAX_NOTE + 1):
+        for i in range(self.min_note, self.max_note + 1):
             note = self.notes[i]
+            color = self._get_color(note)
+            if not color:
+                continue
+
             # bar left
-            bl = hm + (w - hm - hm) * (i - MIN_NOTE) / (MAX_NOTE - MIN_NOTE + 1)
+            bl = hm + (w - hm - hm) * (i - self.min_note) / (self.max_note - self.min_note + 1)
 
             # bar height
             bh = (h - vm - vm) * note[1] / 127
 
-            color = self._get_color(note)
-            if not color:
-                continue
             # print(f'{i}: {bl} {bh}')
             # pygame.draw.rect(self.screen, (255, 255, 200), (bl, h - vm, bw, -bh))
             pygame.draw.rect(self.screen, color, (bl, h - vm - bh, bw, bh))
