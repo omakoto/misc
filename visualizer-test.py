@@ -6,7 +6,8 @@ import os
 import pygame
 import pygame.midi
 from pprint import pprint
-
+import colorsys
+import math
 
 def print_device_info():
     for i in range(pygame.midi.get_count()):
@@ -85,6 +86,8 @@ VERTICAL_MARGIN = 0.06  # Margin at top and bottom
 SPACING = 0.01 # Space between each bar
 
 LINE_WIDTH = 4
+
+DECAY = 0.001
 
 class Main:
     def __init__(self, midi_input_id = None):
@@ -166,6 +169,18 @@ class Main:
             self._draw()
 
 
+    def _get_color(self, note):
+        h = 0
+        s = 1
+        l = 1
+        if note[0]:
+            l = 1
+        else:
+            l = max(0, 1 - (self.t - note[2]) * DECAY)
+        # print(l)
+        rgb = colorsys.hsv_to_rgb(h, s, l)
+        return (rgb[0] * 255, rgb[1] * 255, rgb[2] * 255)
+
     def _draw(self):
         w = self.screen.get_width()
         h = self.screen.get_height()
@@ -174,9 +189,6 @@ class Main:
 
         # Black background
         self.screen.fill((0, 0, 0))
-
-        # Base line
-        pygame.draw.rect(self.screen, (200, 255, 200), (hm, h - vm, w - hm * 2, 0), LINE_WIDTH)
 
         # bar width
         bw = (w - hm - hm) / (MAX_NOTE - MIN_NOTE + 1) - SPACING
@@ -189,11 +201,15 @@ class Main:
 
             # bar height
             bh = (h - vm - vm) * note[1] / 127
-            if note[0]:
-                # print(f'{i}: {bl} {bh}')
-                # pygame.draw.rect(self.screen, (255, 255, 200), (bl, h - vm, bw, -bh))
-                pygame.draw.rect(self.screen, (255, 255, 200), (bl, h - vm - bh, bw, bh))
 
+            color = self._get_color(note)
+            # print(f'{i}: {bl} {bh}')
+            # pygame.draw.rect(self.screen, (255, 255, 200), (bl, h - vm, bw, -bh))
+            pygame.draw.rect(self.screen, color, (bl, h - vm - bh, bw, bh))
+
+        # Base line
+        pygame.draw.rect(self.screen, (200, 255, 200),
+                         (hm, h - vm, w - hm * 2, 0), LINE_WIDTH)
 
         # Flip the display
         pygame.display.flip()
