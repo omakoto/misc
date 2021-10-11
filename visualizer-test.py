@@ -178,9 +178,22 @@ class Main:
         # Base line
         pygame.draw.rect(self.screen, (200, 255, 200), (hm, h - vm, w - hm * 2, 0), LINE_WIDTH)
 
+        # bar width
+        bw = (w - hm - hm) / (MAX_NOTE - MIN_NOTE + 1) - SPACING
+
         # Bars
         for i in range(MIN_NOTE, MAX_NOTE + 1):
             note = self.notes[i]
+            # bar left
+            bl = hm + (w - hm - hm) * (i - MIN_NOTE) / (MAX_NOTE - MIN_NOTE + 1)
+
+            # bar height
+            bh = (h - vm - vm) * note[1] / 127
+            if note[0]:
+                # print(f'{i}: {bl} {bh}')
+                # pygame.draw.rect(self.screen, (255, 255, 200), (bl, h - vm, bw, -bh))
+                pygame.draw.rect(self.screen, (255, 255, 200), (bl, h - vm - bh, bw, bh))
+
 
         # Flip the display
         pygame.display.flip()
