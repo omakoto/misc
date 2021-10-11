@@ -90,6 +90,9 @@ LINE_WIDTH = 4
 
 DECAY = 0.001
 
+MID_LINE_COLOR = (200, 200, 255)
+BASE_LINE_COLOR = (200, 255, 200)
+
 class Main:
     def __init__(self, midi_input_id = None):
         self.midi_input_id = midi_input_id
@@ -199,6 +202,7 @@ class Main:
         # Black background
         self.screen.fill((0, 0, 0))
 
+
         # bar width
         bw = (w - hm - hm) / (self.max_note - self.min_note + 1) - SPACING
 
@@ -219,9 +223,15 @@ class Main:
             # pygame.draw.rect(self.screen, (255, 255, 200), (bl, h - vm, bw, -bh))
             pygame.draw.rect(self.screen, color, (bl, h - vm - bh, bw, bh))
 
-        # Base line
-        pygame.draw.rect(self.screen, (200, 255, 200),
+        # Lines
+        pygame.draw.rect(self.screen, MID_LINE_COLOR,
+                         (hm, vm + (h - vm) * 0.5, w - hm * 2, 0), LINE_WIDTH)
+        pygame.draw.rect(self.screen, MID_LINE_COLOR,
+                         (hm, vm + (h - vm) * 0.25, w - hm * 2, 0), LINE_WIDTH)
+
+        pygame.draw.rect(self.screen, BASE_LINE_COLOR,
                          (hm, h - vm, w - hm * 2, 0), LINE_WIDTH)
+
 
         # Flip the display
         pygame.display.flip()
