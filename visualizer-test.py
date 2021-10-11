@@ -78,7 +78,11 @@ def detect_input_device():
 
 NOTES_COUNT = 128
 
+HORIZONTAL_MARGIN = 0.04  # Margin at each side
+VERTICAL_MARGIN = 0.06  # Margin at top and bottom
+SPACING = 0.01 # Space between each bar
 
+LINE_WIDTH = 4
 
 class Main:
     def __init__(self, midi_input_id = None):
@@ -86,8 +90,8 @@ class Main:
         self.screen = None
         self.initialized = False
 
-        # notes = [[0 or 1, velocity, timestamp], ....]
-        self.notes = [[0, 0, 0] for n in range(0, NOTES_COUNT)]
+        # notes = ((0 or 1, velocity, timestamp), ....)
+        self.notes = ((0, 0, 0) for n in range(0, NOTES_COUNT))
 
 
     def init(self):
@@ -165,8 +169,14 @@ class Main:
     def _draw(self):
         w = self.screen.get_width()
         h = self.screen.get_height()
+        hm = w * HORIZONTAL_MARGIN
+        vm = h * VERTICAL_MARGIN
 
+        # Black background
         self.screen.fill((0, 0, 0))
+
+        # Base line
+        pygame.draw.rect(self.screen, (200, 255, 200), (hm, h - vm, w - hm, h - vm), LINE_WIDTH)
 
         # Flip the display
         pygame.display.flip()
