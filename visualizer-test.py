@@ -171,7 +171,7 @@ class Main:
 
     def _get_color(self, note):
         h = 0
-        s = 1
+        s = 0.1
         l = 1
         if note[0]:
             l = 1
