@@ -77,6 +77,8 @@ def detect_input_device():
 # sys.exit(0)
 
 NOTES_COUNT = 128
+MIN_NOTE = 36
+MAX_NOTE = 84
 
 HORIZONTAL_MARGIN = 0.04  # Margin at each side
 VERTICAL_MARGIN = 0.06  # Margin at top and bottom
@@ -90,8 +92,8 @@ class Main:
         self.screen = None
         self.initialized = False
 
-        # notes = ((0 or 1, velocity, timestamp), ....)
-        self.notes = ((0, 0, 0) for n in range(0, NOTES_COUNT))
+        # notes = [[0 or 1, velocity, timestamp], ....]
+        self.notes = [[0, 0, 0] for n in range(0, NOTES_COUNT)]
 
 
     def init(self):
@@ -127,12 +129,10 @@ class Main:
 
 
     def run(self):
-        t = pygame.time.get_ticks()
-
         running = True
         while running:
 
-            t = pygame.time.get_ticks()
+            self.t = pygame.time.get_ticks()
 
             # Did the user click the window close button?
             for event in self.event_get():
@@ -144,10 +144,10 @@ class Main:
                     if event.status == 144: # Note on
                         self.notes[event.data1][0] = 1
                         self.notes[event.data1][1] = event.data2
-                        self.notes[event.data1][2] = t
+                        self.notes[event.data1][2] = self.t
                     elif event.status == 128:  # Note off
                         self.notes[event.data1][0] = 0
-                        self.notes[event.data1][2] = t
+                        self.notes[event.data1][2] = self.t
 
             if self.midi_in.poll():
                 midi_events = self.midi_in.read(10)
@@ -176,7 +176,11 @@ class Main:
         self.screen.fill((0, 0, 0))
 
         # Base line
-        pygame.draw.rect(self.screen, (200, 255, 200), (hm, h - vm, w - hm, h - vm), LINE_WIDTH)
+        pygame.draw.rect(self.screen, (200, 255, 200), (hm, h - vm, w - hm * 2, 0), LINE_WIDTH)
+
+        # Bars
+        for i in range(MIN_NOTE, MAX_NOTE + 1):
+            note = self.notes[i]
 
         # Flip the display
         pygame.display.flip()
