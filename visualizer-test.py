@@ -9,6 +9,9 @@ from pprint import pprint
 import colorsys
 import math
 
+DEBUG = False
+
+
 def print_device_info():
     for i in range(pygame.midi.get_count()):
         r = pygame.midi.get_device_info(i)
@@ -142,7 +145,7 @@ class Main:
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type in [pygame.midi.MIDIIN]:
-                    print(event)
+                    if DEBUG: print(event)
 
                     if event.status == 144: # Note on
                         self.notes[event.data1][0] = 1
