@@ -125,6 +125,7 @@ class Main:
         screen_h = int(infoObject.current_w * 0.9)
 
         self.screen = pygame.display.set_mode([screen_w, screen_h], pygame.RESIZABLE)
+        pygame.display.set_caption('Velocity Visualizer')
 
         self.initialized = True
         return self
