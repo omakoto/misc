@@ -1,3 +1,3 @@
 #!/bin/sh
 
-git merge-base HEAD $(repo-origin)
+git merge-base HEAD $(repo-upstream -q)
