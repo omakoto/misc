@@ -88,7 +88,7 @@ SPACING = 0.01 # Space between each bar
 
 LINE_WIDTH = 4
 
-DECAY = 0.001
+DECAY = 0.002
 
 MID_LINE_COLOR = (200, 200, 255)
 BASE_LINE_COLOR = (200, 255, 200)
@@ -187,7 +187,7 @@ class Main:
         if note[0]:
             l = 1
         else:
-            l = max(0, 1 - (self.t - note[2]) * DECAY)
+            l = max(0, 1 - (self.t - note[2] + 500) * DECAY)
         if l <= 0:
             return None
         rgb = colorsys.hsv_to_rgb(h, s, l)
