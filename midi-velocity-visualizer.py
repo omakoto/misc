@@ -98,8 +98,8 @@ class Main:
         self.midi_input_id = midi_input_id
         self.screen = None
         self.initialized = False
-        self.min_note = 36
-        self.max_note = 84
+        self.min_note = 21
+        self.max_note = 108
 
         # notes = [[0 or 1, velocity, timestamp], ....]
         self.notes = [[0, 0, 0] for n in range(0, NOTES_COUNT)]
