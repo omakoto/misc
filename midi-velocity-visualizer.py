@@ -82,8 +82,8 @@ def detect_input_device():
 
 NOTES_COUNT = 128
 
-HORIZONTAL_MARGIN = 0.04  # Margin at each side
-VERTICAL_MARGIN = 0.06  # Margin at top and bottom
+HORIZONTAL_MARGIN = 0.01  # Margin at each side
+VERTICAL_MARGIN = 0.01  # Margin at top and bottom
 SPACING = 0.01 # Space between each bar
 
 LINE_WIDTH = 4
@@ -92,6 +92,8 @@ DECAY = 0.002
 
 MID_LINE_COLOR = (200, 200, 255)
 BASE_LINE_COLOR = (200, 255, 200)
+
+BAR_RATIO = 1 - 1 / 1.6
 
 class Main:
     def __init__(self, midi_input_id = None):
@@ -150,25 +152,6 @@ class Main:
 
             self.t = pg.time.get_ticks()
 
-            # Did the user click the window close button?
-            for event in self.event_get():
-                if event.type == pg.QUIT:
-                    running = False
-                elif event.type in [pgm.MIDIIN]:
-                    if DEBUG: print(event)
-
-                    if event.status == 144: # Note on
-                        self.notes[event.data1][0] = 1
-                        self.notes[event.data1][1] = event.data2
-                        self.notes[event.data1][2] = self.t
-                        if event.data1 < self.min_note:
-                            self.min_note = event.data1
-                        elif event.data1 > self.max_note:
-                            self.max_note = event.data1
-                    elif event.status == 128:  # Note off
-                        self.notes[event.data1][0] = 0
-                        self.notes[event.data1][2] = self.t
-
             if self.midi_in.poll():
                 midi_events = self.midi_in.read(10)
                 # convert them into pygame events.
@@ -177,6 +160,33 @@ class Main:
 
                 for m_e in midi_evs:
                     self.event_post(m_e)
+
+            # Did the user click the window close button?
+            for event in self.event_get():
+                # pprint(event)
+                if event.type == pg.QUIT:
+                    running = False
+                elif event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
+                    running = False
+                elif event.type == pg.MOUSEBUTTONDOWN and event.button == 3:
+                    running = False
+                elif event.type in [pgm.MIDIIN]:
+                    if DEBUG: print(event)
+
+                    if event.status == 144: # Note on
+                        self.notes[event.data1][0] = 1
+                        self.notes[event.data1][1] = event.data2
+                        self.notes[event.data1][2] = self.t
+
+                        # Don't update the min / max notes dynamically
+                        # if event.data1 < self.min_note:
+                        #     self.min_note = event.data1
+                        # elif event.data1 > self.max_note:
+                        #     self.max_note = event.data1
+                    elif event.status == 128:  # Note off
+                        self.notes[event.data1][0] = 0
+                        self.notes[event.data1][2] = self.t
+
 
 # Key-on
 # <Event(32771-MidiIn {'status': 144, 'data1': 48, 'data2': 80, 'data3': 0, 'timestamp': 1111, 'vice_id': 3}) >
@@ -207,12 +217,15 @@ class Main:
         hm = w * HORIZONTAL_MARGIN
         vm = h * VERTICAL_MARGIN
 
+        # Available width and height
+        aw = w - hm * 2
+        ah = (h - vm * 2) * BAR_RATIO
+
         # Black background
         self.screen.fill((0, 0, 0))
 
-
         # bar width
-        bw = (w - hm - hm) / (self.max_note - self.min_note + 1) - SPACING
+        bw = aw / (self.max_note - self.min_note + 1) - SPACING
 
         # Bars
         for i in range(self.min_note, self.max_note + 1):
@@ -222,23 +235,22 @@ class Main:
                 continue
 
             # bar left
-            bl = hm + (w - hm - hm) * (i - self.min_note) / (self.max_note - self.min_note + 1)
+            bl = hm + aw * (i - self.min_note) / (self.max_note - self.min_note + 1)
 
             # bar height
-            bh = (h - vm - vm) * note[1] / 127
+            bh = ah * note[1] / 127
 
             # print(f'{i}: {bl} {bh}')
             # pg.draw.rect(self.screen, (255, 255, 200), (bl, h - vm, bw, -bh))
-            pg.draw.rect(self.screen, color, (bl, h - vm - bh, bw, bh))
+            pg.draw.rect(self.screen, color, (bl, vm + ah - bh, bw, bh))
 
         # Lines
         pg.draw.rect(self.screen, MID_LINE_COLOR,
-                         (hm, vm + (h - vm) * 0.5, w - hm * 2, 0), LINE_WIDTH)
+                         (hm, vm + ah * 0.5, w - hm * 2, 0), LINE_WIDTH)
         pg.draw.rect(self.screen, MID_LINE_COLOR,
-                         (hm, vm + (h - vm) * 0.25, w - hm * 2, 0), LINE_WIDTH)
-
+                         (hm, vm + ah * 0.25, w - hm * 2, 0), LINE_WIDTH)
         pg.draw.rect(self.screen, BASE_LINE_COLOR,
-                         (hm, h - vm, w - hm * 2, 0), LINE_WIDTH)
+                         (hm, vm + ah, w - hm * 2, 0), LINE_WIDTH)
 
 
         # Flip the display
