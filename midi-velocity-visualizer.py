@@ -3,8 +3,8 @@
 import sys
 import os
 
-import pygame
-import pygame.midi
+import pygame as pg
+import pygame.midi as pgm
 from pprint import pprint
 import colorsys
 import math
@@ -13,8 +13,8 @@ DEBUG = False
 
 
 def print_device_info():
-    for i in range(pygame.midi.get_count()):
-        r = pygame.midi.get_device_info(i)
+    for i in range(pgm.get_count()):
+        r = pgm.get_device_info(i)
         (interf, name, input, output, opened) = r
 
         in_out = ""
@@ -29,8 +29,8 @@ def print_device_info():
         )
 
 def detect_input_device():
-    for i in range(pygame.midi.get_count()):
-        r = pygame.midi.get_device_info(i)
+    for i in range(pgm.get_count()):
+        r = pgm.get_device_info(i)
         (interf, name, input, output, opened) = r
 
         if not input:
@@ -106,26 +106,32 @@ class Main:
 
 
     def init(self):
-        pygame.init()
-        pygame.midi.init()
+        pg.init()
+        pgm.init()
 
-        pygame.fastevent.init()
-        self.event_get = pygame.fastevent.get
-        self.event_post = pygame.fastevent.post
+        pg.fastevent.init()
+        self.event_get = pg.fastevent.get
+        self.event_post = pg.fastevent.post
 
         # print_device_info()
 
+        print(f'Available resolutions: {pg.display.list_modes()}')
         if not self.midi_input_id:
             self.midi_input_id = detect_input_device()
-        self.midi_in = pygame.midi.Input(self.midi_input_id)
+        self.midi_in = pgm.Input(self.midi_input_id)
 
-        infoObject = pygame.display.Info()
+        infoObject = pg.display.Info()
 
-        screen_w = int(infoObject.current_w * 0.9)
-        screen_h = int(infoObject.current_w * 0.9)
+        screen_w = infoObject.current_w
+        screen_h = infoObject.current_h
 
-        self.screen = pygame.display.set_mode([screen_w, screen_h], pygame.RESIZABLE)
-        pygame.display.set_caption('Velocity Visualizer')
+        # FULLSCREEN has this problem: https://github.com/pygame/pygame/issues/2538
+        # Using the workaround there.
+        self.screen = pg.display.set_mode([0, 0],
+                                    pg.NOFRAME | pg.DOUBLEBUF | pg.HWSURFACE)
+        pg.display.toggle_fullscreen()
+        pprint(self.screen)
+        pg.display.set_caption('Velocity Visualizer')
 
         self.initialized = True
         return self
@@ -134,21 +140,21 @@ class Main:
     def __del__(self):
         if self.initialized:
             del self.midi_in
-            pygame.midi.quit()
-            pygame.quit()
+            pgm.quit()
+            pg.quit()
 
 
     def run(self):
         running = True
         while running:
 
-            self.t = pygame.time.get_ticks()
+            self.t = pg.time.get_ticks()
 
             # Did the user click the window close button?
             for event in self.event_get():
-                if event.type == pygame.QUIT:
+                if event.type == pg.QUIT:
                     running = False
-                elif event.type in [pygame.midi.MIDIIN]:
+                elif event.type in [pgm.MIDIIN]:
                     if DEBUG: print(event)
 
                     if event.status == 144: # Note on
@@ -166,7 +172,7 @@ class Main:
             if self.midi_in.poll():
                 midi_events = self.midi_in.read(10)
                 # convert them into pygame events.
-                midi_evs = pygame.midi.midis2events(
+                midi_evs = pgm.midis2events(
                     midi_events, self.midi_in.device_id)
 
                 for m_e in midi_evs:
@@ -197,6 +203,7 @@ class Main:
     def _draw(self):
         w = self.screen.get_width()
         h = self.screen.get_height()
+        # print(f"{w} x {h}")
         hm = w * HORIZONTAL_MARGIN
         vm = h * VERTICAL_MARGIN
 
@@ -221,21 +228,21 @@ class Main:
             bh = (h - vm - vm) * note[1] / 127
 
             # print(f'{i}: {bl} {bh}')
-            # pygame.draw.rect(self.screen, (255, 255, 200), (bl, h - vm, bw, -bh))
-            pygame.draw.rect(self.screen, color, (bl, h - vm - bh, bw, bh))
+            # pg.draw.rect(self.screen, (255, 255, 200), (bl, h - vm, bw, -bh))
+            pg.draw.rect(self.screen, color, (bl, h - vm - bh, bw, bh))
 
         # Lines
-        pygame.draw.rect(self.screen, MID_LINE_COLOR,
+        pg.draw.rect(self.screen, MID_LINE_COLOR,
                          (hm, vm + (h - vm) * 0.5, w - hm * 2, 0), LINE_WIDTH)
-        pygame.draw.rect(self.screen, MID_LINE_COLOR,
+        pg.draw.rect(self.screen, MID_LINE_COLOR,
                          (hm, vm + (h - vm) * 0.25, w - hm * 2, 0), LINE_WIDTH)
 
-        pygame.draw.rect(self.screen, BASE_LINE_COLOR,
+        pg.draw.rect(self.screen, BASE_LINE_COLOR,
                          (hm, h - vm, w - hm * 2, 0), LINE_WIDTH)
 
 
         # Flip the display
-        pygame.display.flip()
+        pg.display.flip()
 
 
 def main():
