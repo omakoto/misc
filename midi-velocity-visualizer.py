@@ -95,7 +95,8 @@ BASE_LINE_COLOR = (200, 255, 200)
 
 BAR_RATIO = 1 - 1 / 1.6
 
-ROLL_SCROLL_TICKS = 4
+ROLL_SCROLL_TICKS = 1
+ROLL_SCROLL_AMOUNT = 4
 
 class Main:
     def __init__(self, midi_input_id = None):
@@ -131,8 +132,8 @@ class Main:
 
         # FULLSCREEN has this problem: https://github.com/pygame/pygame/issues/2538
         # Using the workaround there.
-        self.screen = pg.display.set_mode([1920, 1080],
-                                    pg.NOFRAME | pg.SCALED | pg.DOUBLEBUF | pg.HWSURFACE)
+        self.screen = pg.display.set_mode([0, 0],
+                                    pg.NOFRAME | pg.DOUBLEBUF | pg.HWSURFACE)
         pg.display.toggle_fullscreen()
         pprint(self.screen)
         pg.display.set_caption('Velocity Visualizer')
@@ -217,8 +218,8 @@ class Main:
             return
         self.roll_tick -= ROLL_SCROLL_TICKS
 
-        self.roll.blit(self.roll, (0, 1))
-        pg.draw.rect(self.roll, (0, 0, 0), (0, 0, self.w, 1))
+        self.roll.blit(self.roll, (0, ROLL_SCROLL_AMOUNT))
+        pg.draw.rect(self.roll, (0, 0, 0), (0, 0, self.w, ROLL_SCROLL_AMOUNT))
 
 
     def _get_color(self, note):
@@ -267,7 +268,7 @@ class Main:
             # print(f'{i}: {bl} {bh}')
             # pg.draw.rect(self.screen, (255, 255, 200), (bl, h - vm, bw, -bh))
             pg.draw.rect(self.screen, color, (bl, vm + ah - bh, bw, bh))
-            pg.draw.rect(self.roll, color, (bl, 0, bw, 1))
+            pg.draw.rect(self.roll, color, (bl, 0, bw, ROLL_SCROLL_AMOUNT))
 
         # Lines
         pg.draw.rect(self.screen, MID_LINE_COLOR,
