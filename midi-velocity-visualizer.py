@@ -95,7 +95,7 @@ BASE_LINE_COLOR = (200, 255, 200)
 
 BAR_RATIO = 1 - 1 / 1.6
 
-ROLL_SCROLL_TICKS = 1
+ROLL_SCROLL_TICKS = 4
 
 class Main:
     def __init__(self, midi_input_id = None):
@@ -131,14 +131,14 @@ class Main:
 
         # FULLSCREEN has this problem: https://github.com/pygame/pygame/issues/2538
         # Using the workaround there.
-        self.screen = pg.display.set_mode([0, 0],
-                                    pg.NOFRAME | pg.DOUBLEBUF | pg.HWSURFACE)
+        self.screen = pg.display.set_mode([1920, 1080],
+                                    pg.NOFRAME | pg.SCALED | pg.DOUBLEBUF | pg.HWSURFACE)
         pg.display.toggle_fullscreen()
         pprint(self.screen)
         pg.display.set_caption('Velocity Visualizer')
 
-        # self.w = self.screen.get_width()
-        # self.h = self.screen.get_height()
+        self.w = self.screen.get_width()
+        self.h = self.screen.get_height()
         # print(f"{w} x {h}")
         self.hm = self.w * HORIZONTAL_MARGIN
         self.vm = self.h * VERTICAL_MARGIN
