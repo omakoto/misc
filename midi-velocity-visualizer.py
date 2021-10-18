@@ -93,7 +93,7 @@ DECAY = 0.002
 MID_LINE_COLOR = (200, 200, 255)
 BASE_LINE_COLOR = (200, 255, 200)
 
-BAR_RATIO = 1 - 1 / 1.6
+BAR_RATIO = 0.3
 
 ROLL_SCROLL_TICKS = 1
 ROLL_SCROLL_AMOUNT = 4
@@ -169,6 +169,9 @@ class Main:
             self.roll_tick += self.t - last_t
             last_t = self.t
 
+            self.on = 0
+            self.off = 0
+
             if self.midi_in.poll():
                 midi_events = self.midi_in.read(10)
                 # convert them into pygame events.
@@ -191,6 +194,7 @@ class Main:
                     if DEBUG: print(event)
 
                     if event.status == 144: # Note on
+                        self.on += 1
                         self.notes[event.data1][0] = 1
                         self.notes[event.data1][1] = event.data2
                         self.notes[event.data1][2] = self.t
@@ -201,6 +205,7 @@ class Main:
                         # elif event.data1 > self.max_note:
                         #     self.max_note = event.data1
                     elif event.status == 128:  # Note off
+                        self.off += 1
                         self.notes[event.data1][0] = 0
                         self.notes[event.data1][2] = self.t
 
@@ -223,9 +228,9 @@ class Main:
 
 
     def _get_color(self, note):
-        MAX_H = 0.5
+        MAX_H = 0.4
         h = MAX_H - (MAX_H * note[1] / 127)
-        s = 0.6
+        s = 0.9
         l = 1
         if note[0]:
             l = 1
@@ -233,6 +238,13 @@ class Main:
             l = max(0, 1 - (self.t - note[2] + 500) * DECAY)
         if l <= 0:
             return None
+        rgb = colorsys.hsv_to_rgb(h, s, l)
+        return (rgb[0] * 255, rgb[1] * 255, rgb[2] * 255)
+
+    def _get_on_color(self, count):
+        h = max(0, 0.2 - count * 0.05)
+        s = min(1, 0.3 + 0.2 * count)
+        l = min(1, 0.4 + 0.15 * count)
         rgb = colorsys.hsv_to_rgb(h, s, l)
         return (rgb[0] * 255, rgb[1] * 255, rgb[2] * 255)
 
@@ -252,6 +264,13 @@ class Main:
         # bar width
         bw = aw / (self.max_note - self.min_note + 1) - SPACING
 
+        # on/off bar
+        # if self.off:
+        #     pg.draw.rect(self.roll, (10, 10, 50), (0, 0, aw, 1))
+        if self.on:
+            # c = min(255, 128 + self.on * 64)
+            pg.draw.rect(self.roll, self._get_on_color(self.on), (0, ROLL_SCROLL_AMOUNT - 1, aw, 1))
+
         # Bars
         for i in range(self.min_note, self.max_note + 1):
             note = self.notes[i]
@@ -269,6 +288,7 @@ class Main:
             # pg.draw.rect(self.screen, (255, 255, 200), (bl, h - vm, bw, -bh))
             pg.draw.rect(self.screen, color, (bl, vm + ah - bh, bw, bh))
             pg.draw.rect(self.roll, color, (bl, 0, bw, ROLL_SCROLL_AMOUNT))
+
 
         # Lines
         pg.draw.rect(self.screen, MID_LINE_COLOR,
