@@ -124,8 +124,8 @@ class Main:
 
         infoObject = pg.display.Info()
 
-        screen_w = infoObject.current_w
-        screen_h = infoObject.current_h
+        self.w = infoObject.current_w
+        self.h = infoObject.current_h
 
         # FULLSCREEN has this problem: https://github.com/pygame/pygame/issues/2538
         # Using the workaround there.
@@ -134,6 +134,16 @@ class Main:
         pg.display.toggle_fullscreen()
         pprint(self.screen)
         pg.display.set_caption('Velocity Visualizer')
+
+        # self.w = self.screen.get_width()
+        # self.h = self.screen.get_height()
+        # print(f"{w} x {h}")
+        self.hm = self.w * HORIZONTAL_MARGIN
+        self.vm = self.h * VERTICAL_MARGIN
+
+        print(int(self.w - self.hm * 2), int(self.h - self.vm * 2))
+        self.roll = pg.Surface((int(self.w - self.hm * 2), int(self.h - self.vm * 2)))
+        self.roll.fill((50, 50, 50))
 
         self.initialized = True
         return self
@@ -211,11 +221,10 @@ class Main:
         return (rgb[0] * 255, rgb[1] * 255, rgb[2] * 255)
 
     def _draw(self):
-        w = self.screen.get_width()
-        h = self.screen.get_height()
-        # print(f"{w} x {h}")
-        hm = w * HORIZONTAL_MARGIN
-        vm = h * VERTICAL_MARGIN
+        w = self.w
+        h = self.h
+        hm = self.hm
+        vm = self.vm
 
         # Available width and height
         aw = w - hm * 2
