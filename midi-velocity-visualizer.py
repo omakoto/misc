@@ -261,6 +261,8 @@ class Main:
         pg.draw.rect(self.screen, BASE_LINE_COLOR,
                          (hm, vm + ah, w - hm * 2, 0), LINE_WIDTH)
 
+        self.screen.blit(self.roll, (hm, vm + ah + LINE_WIDTH))
+
 
         # Flip the display
         pg.display.flip()
