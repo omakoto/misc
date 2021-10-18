@@ -95,6 +95,8 @@ BASE_LINE_COLOR = (200, 255, 200)
 
 BAR_RATIO = 1 - 1 / 1.6
 
+ROLL_SCROLL_TICKS = 1
+
 class Main:
     def __init__(self, midi_input_id = None):
         self.midi_input_id = midi_input_id
@@ -143,7 +145,8 @@ class Main:
 
         print(int(self.w - self.hm * 2), int(self.h - self.vm * 2))
         self.roll = pg.Surface((int(self.w - self.hm * 2), int(self.h - self.vm * 2)))
-        self.roll.fill((50, 50, 50))
+        self.roll.fill((0, 0, 0))
+        self.roll_tick = 0
 
         self.initialized = True
         return self
@@ -158,9 +161,12 @@ class Main:
 
     def run(self):
         running = True
+        last_t = pg.time.get_ticks()
         while running:
 
             self.t = pg.time.get_ticks()
+            self.roll_tick += self.t - last_t
+            last_t = self.t
 
             if self.midi_in.poll():
                 midi_events = self.midi_in.read(10)
@@ -202,8 +208,17 @@ class Main:
 # <Event(32771-MidiIn {'status': 144, 'data1': 48, 'data2': 80, 'data3': 0, 'timestamp': 1111, 'vice_id': 3}) >
 # Key-off
 # <Event(32771-MidiIn {'status': 128, 'data1': 48, 'data2': 0, 'data3': 0, 'timestamp': 1364, 'vice_id': 3}) >
+            self._maybe_scroll_roll()
 
             self._draw()
+
+    def _maybe_scroll_roll(self):
+        if self.roll_tick < ROLL_SCROLL_TICKS:
+            return
+        self.roll_tick -= ROLL_SCROLL_TICKS
+
+        self.roll.blit(self.roll, (0, 1))
+        pg.draw.rect(self.roll, (0, 0, 0), (0, 0, self.w, 1))
 
 
     def _get_color(self, note):
@@ -252,6 +267,7 @@ class Main:
             # print(f'{i}: {bl} {bh}')
             # pg.draw.rect(self.screen, (255, 255, 200), (bl, h - vm, bw, -bh))
             pg.draw.rect(self.screen, color, (bl, vm + ah - bh, bw, bh))
+            pg.draw.rect(self.roll, color, (bl, 0, bw, 1))
 
         # Lines
         pg.draw.rect(self.screen, MID_LINE_COLOR,
