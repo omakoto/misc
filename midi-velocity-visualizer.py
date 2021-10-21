@@ -228,6 +228,18 @@ class Main:
                 for m_e in midi_evs:
                     self.event_post(m_e)
 
+            if self.recorder.is_playing:
+                while True:
+                    ev = self.recorder.next_event(self.playing_t)
+                    if not ev:
+                        self.reset_midi_out()
+                        break
+                    if ev.status == 128: # note off...? do we need to special case it?
+                        self.midi_out.write([[[ev.status, ev.data1], 0]])
+                    else:
+                        self.midi_out.write([[[ev.status, ev.data1, ev.data2], 0]])
+                    self.event_post(ev)
+
             # Did the user click the window close button?
             for event in self.event_get():
                 # pprint(event)
@@ -284,19 +296,10 @@ class Main:
                         do_record = True
                         self.pedal = event.data2
 
-                    if do_record:
+                    if do_record and self.recorder.is_recording:
                         self.recorder.record(self.t, event)
 
-            if self.recorder.is_playing:
-                while True:
-                    ev = self.recorder.next_event(self.playing_t)
-                    if not ev:
-                        self.reset_midi_out()
-                        break
-                    if ev.status == 128: # note off...? do we need to special case it?
-                        self.midi_out.write([[[ev.status, ev.data1], 0]])
-                    else:
-                        self.midi_out.write([[[ev.status, ev.data1, ev.data2], 0]])
+
 
 # Key-on
 # <Event(32771-MidiIn {'status': 144, 'data1': 48, 'data2': 80, 'data3': 0, 'timestamp': 1111, 'vice_id': 3}) >
