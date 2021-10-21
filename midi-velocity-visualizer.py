@@ -142,11 +142,13 @@ class Main:
         self.min_note = 21
         self.max_note = 108
 
+        self.recorder = Recorder()
+        self.reset_notes()
+
+    def reset_notes(self):
         # notes = [[0 or 1, velocity, timestamp], ....]
         self.notes = [[0, 0, 0] for n in range(0, NOTES_COUNT)]
         self.pedal = 0
-
-        self.recorder = Recorder()
 
     def init(self):
         pg.init()
@@ -165,6 +167,7 @@ class Main:
             self.midi_output_id = detect_output_device()
         self.midi_in = pgm.Input(self.midi_input_id)
         self.midi_out = pgm.Output(self.midi_output_id)
+
 
         infoObject = pg.display.Info()
 
@@ -190,7 +193,10 @@ class Main:
         self.roll.fill((0, 0, 0))
         self.roll_tick = 0
 
+        self.reset_midi_out()
+
         self.initialized = True
+
         return self
 
 
@@ -201,7 +207,10 @@ class Main:
             pg.quit()
 
     def reset_midi_out(self):
-        self.midi_out.write_short(0xff)
+        self.midi_out.write_short(176, 123, 0) # All notes off
+        self.midi_out.write_short(176, 121, 0) # Reset all controllers
+        self.midi_out.write_short(255) # All reset
+        self.reset_notes()
 
     def run(self):
 
@@ -209,11 +218,14 @@ class Main:
 
         running = True
         last_t = pg.time.get_ticks()
+
+        paint_t = 0
         while running:
             self.t = pg.time.get_ticks()
             delta_t = self.t - last_t
             self.roll_tick += delta_t
             self.playing_t += delta_t
+            paint_t += delta_t
             last_t = self.t
 
             self.on = 0
@@ -232,12 +244,10 @@ class Main:
                 while True:
                     ev = self.recorder.next_event(self.playing_t)
                     if not ev:
-                        self.reset_midi_out()
+                        if not self.recorder.is_playing:
+                            self.reset_midi_out()
                         break
-                    if ev.status == 128: # note off...? do we need to special case it?
-                        self.midi_out.write([[[ev.status, ev.data1], 0]])
-                    else:
-                        self.midi_out.write([[[ev.status, ev.data1, ev.data2], 0]])
+                    self.midi_out.write([[[ev.status, ev.data1, ev.data2], 0]])
                     self.event_post(ev)
 
             # Did the user click the window close button?
@@ -305,9 +315,16 @@ class Main:
 # <Event(32771-MidiIn {'status': 144, 'data1': 48, 'data2': 80, 'data3': 0, 'timestamp': 1111, 'vice_id': 3}) >
 # Key-off
 # <Event(32771-MidiIn {'status': 128, 'data1': 48, 'data2': 0, 'data3': 0, 'timestamp': 1364, 'vice_id': 3}) >
+
+            if paint_t < 16:
+                continue
+            while paint_t >= 16:
+                paint_t -= 16
             self._maybe_scroll_roll()
 
             self._draw()
+
+        self.reset_midi_out()
 
     def _maybe_scroll_roll(self):
         if self.roll_tick < ROLL_SCROLL_TICKS:
