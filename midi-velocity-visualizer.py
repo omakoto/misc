@@ -39,10 +39,24 @@ def detect_input_device():
         if b'Midi Through' in name:
             continue
 
-        print(f'Using device #{i}: {name}')
+        print(f'Using input device #{i}: {name}')
         return i
 
     raise Exception('MIDI input device not found')
+
+def detect_output_device():
+    for i in range(pgm.get_count()):
+        r = pgm.get_device_info(i)
+        (interf, name, input, output, opened) = r
+
+        if not output:
+            continue
+
+        if b'Midi Through' in name:
+            continue
+
+        print(f'Using output device #{i}: {name}')
+        return i
 
 class Recorder:
     def __init__(self):
@@ -120,8 +134,9 @@ ROLL_SCROLL_TICKS = 1
 ROLL_SCROLL_AMOUNT = 4
 
 class Main:
-    def __init__(self, midi_input_id = None):
+    def __init__(self, midi_input_id = None, midi_output_id = None):
         self.midi_input_id = midi_input_id
+        self.midi_output_id = midi_output_id
         self.screen = None
         self.initialized = False
         self.min_note = 21
@@ -146,7 +161,10 @@ class Main:
         print(f'Available resolutions: {pg.display.list_modes()}')
         if not self.midi_input_id:
             self.midi_input_id = detect_input_device()
+        if not self.midi_output_id:
+            self.midi_output_id = detect_output_device()
         self.midi_in = pgm.Input(self.midi_input_id)
+        self.midi_out = pgm.Output(self.midi_output_id)
 
         infoObject = pg.display.Info()
 
@@ -189,12 +207,11 @@ class Main:
         running = True
         last_t = pg.time.get_ticks()
         while running:
-
             self.t = pg.time.get_ticks()
             delta_t = self.t - last_t
             self.roll_tick += delta_t
+            self.playing_t += delta_t
             last_t = self.t
-            # print(delta_t)
 
             self.on = 0
             self.off = 0
