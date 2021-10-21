@@ -412,8 +412,7 @@ class Main:
         if self.recorder.is_recording:
             pg.draw.circle(self.screen, (255, 64, 64), (30, 30), 20)
         elif self.recorder.is_playing:
-            # TODO: Change it to a triangle
-            pg.draw.circle(self.screen, (64, 255, 64), (30, 30), 20)
+            pg.draw.polygon(self.screen, (64, 255, 64), ((10, 10), (40, 30), (10, 50)))
 
         # Flip the display
         pg.display.flip()
