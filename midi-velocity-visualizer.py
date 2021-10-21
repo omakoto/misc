@@ -289,7 +289,7 @@ class Main:
             # print(f'{i}: {bl} {bh}')
             # pg.draw.rect(self.screen, (255, 255, 200), (bl, h - vm, bw, -bh))
             pg.draw.rect(self.screen, color, (bl, vm + ah - bh, bw, bh))
-            pg.draw.rect(self.roll, color, (bl, 0, bw, ROLL_SCROLL_AMOUNT))
+            pg.draw.rect(self.roll, color, (bl - hm, 0, bw, ROLL_SCROLL_AMOUNT))
 
 
         # Lines
@@ -300,7 +300,7 @@ class Main:
         pg.draw.rect(self.screen, BASE_LINE_COLOR,
                          (hm, vm + ah, w - hm * 2, 0), LINE_WIDTH)
 
-        self.screen.blit(self.roll, (0, vm + ah + LINE_WIDTH))
+        self.screen.blit(self.roll, (hm, vm + ah + LINE_WIDTH))
 
 
         # Flip the display
