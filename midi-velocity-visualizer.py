@@ -44,41 +44,64 @@ def detect_input_device():
 
     raise Exception('MIDI input device not found')
 
-# class Note:
-#     def __init__(self, ):
-#         self._velocity = 0
-#         self._timestamp = 0
+class Recorder:
+    def __init__(self):
+        self._events = []
+        self._current_index = 0
+        self._is_recording = False
+        self._is_playing = False
+        self._first_t = 0
 
-#     @property
-#     def velocity(self):
-#         return self._velocity
+    def start_recording(self):
+        if self.is_recording:
+            return
+        self._events = []
+        self._current_index = 0
+        self._is_recording = True
 
-#     @velocity.setter
-#     def velocity(self, value):
-#         self._velocity = value
+    def stop_recording(self):
+        if not self.is_recording:
+            return
+        self._is_recording = False
 
-#     @property
-#     def timestamp(self):
-#         return self._timestamp
+    def record(self, t, event):
+        if not self.is_recording:
+            return # not recording
+        if len(self._events) == 0:
+            # First event
+            self._first_t = t
+        self._events.append((t - self._first_t, event))
 
-#     @timestamp.setter
-#     def timestamp(self, value):
-#         self._timestamp = value
+    def start_playing(self, start_t):
+        self._is_playing = True
+        if start_t < 0:
+            start_t = 0
+        self._current_index = -1
+        for i in range(0, len(self._events)):
+            if self._events[i][0] >= start_t:
+                self._current_index = i
+                break
 
-#     def __repr__(self):
-#         return f'{self._velocity} @{self._timestamp}'
+    def stop_playing(self):
+        self._is_playing = False
 
+    def next_event(self, t):
+        if self._current_index < 0 or self._current_index >= len(self._events):
+            self._is_playing = False
+            return None
+        next_event = self._events[self._current_index]
+        if next_event[0] <= t:
+            self._current_index += 1
+            return next_event[1]
 
+    @property
+    def is_recording(self):
+        return self._is_recording
 
-# class Model:
-#     def __init__(self, ):
-#         self.notes = [Note() for n in range(0, NOTES_COUNT)]
+    @property
+    def is_playing(self):
+        return self._is_playing
 
-
-#     def dump(self):
-#         pprint(vars(self))
-# Model().dump()
-# sys.exit(0)
 
 NOTES_COUNT = 128
 
@@ -108,6 +131,7 @@ class Main:
         self.notes = [[0, 0, 0] for n in range(0, NOTES_COUNT)]
         self.pedal = 0
 
+        self.recorder = Recorder()
 
     def init(self):
         pg.init()
@@ -133,7 +157,7 @@ class Main:
         # Using the workaround there.
         self.screen = pg.display.set_mode([0, 0],
                                     pg.NOFRAME | pg.DOUBLEBUF | pg.HWSURFACE)
-        pg.display.toggle_fullscreen()
+        # pg.display.toggle_fullscreen()
         pprint(self.screen)
         pg.display.set_caption('Velocity Visualizer')
 
@@ -158,15 +182,19 @@ class Main:
             pgm.quit()
             pg.quit()
 
-
     def run(self):
+
+        self.playing_t = 0
+
         running = True
         last_t = pg.time.get_ticks()
         while running:
 
             self.t = pg.time.get_ticks()
-            self.roll_tick += self.t - last_t
+            delta_t = self.t - last_t
+            self.roll_tick += delta_t
             last_t = self.t
+            # print(delta_t)
 
             self.on = 0
             self.off = 0
@@ -187,12 +215,30 @@ class Main:
                     running = False
                 elif event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
                     running = False
+                elif event.type == pg.KEYDOWN and event.key == pg.K_r and not self.recorder.is_playing:
+                    if self.recorder.is_recording:
+                        self.recorder.stop_recording()
+                    else:
+                        self.recorder.start_recording()
+                elif event.type == pg.KEYDOWN and event.key == pg.K_LEFT and not self.recorder.is_recording:
+                    self.playing_t =- 500 # rewind 0.5 s
+                    self.recorder.start_playing(self.playing_t)
+                elif event.type == pg.KEYDOWN and event.key == pg.K_RIGHT and not self.recorder.is_recording:
+                    self.playing_t += 500 # fast forward 0.5 s
+                    self.recorder.start_playing(self.playing_t)
+                elif event.type == pg.KEYDOWN and event.key == pg.K_SPACE and not self.recorder.is_recording:
+                    if self.recorder.is_playing:
+                        self.recorder.stop_playing()
+                    else:
+                        self.recorder.start_playing(0)
                 elif event.type == pg.MOUSEBUTTONDOWN and event.button == 3:
                     running = False
                 elif event.type in [pgm.MIDIIN]:
                     if DEBUG: print(event)
 
+                    do_record = False
                     if event.status == 144: # Note on
+                        do_record = True
                         self.on += 1
                         self.notes[event.data1][0] = 1
                         self.notes[event.data1][1] = event.data2
@@ -204,12 +250,16 @@ class Main:
                         # elif event.data1 > self.max_note:
                         #     self.max_note = event.data1
                     elif event.status == 128:  # Note off
+                        do_record = True
                         self.off += 1
                         self.notes[event.data1][0] = 0
                         self.notes[event.data1][2] = self.t
                     elif event.status == 176 and event.data1 == 64: # pedal
+                        do_record = True
                         self.pedal = event.data2
 
+                    if do_record:
+                        self.recorder.record(self.t, event)
 
 # Key-on
 # <Event(32771-MidiIn {'status': 144, 'data1': 48, 'data2': 80, 'data3': 0, 'timestamp': 1111, 'vice_id': 3}) >
@@ -302,6 +352,11 @@ class Main:
 
         self.screen.blit(self.roll, (hm, vm + ah + LINE_WIDTH))
 
+        if self.recorder.is_recording:
+            pg.draw.circle(self.screen, (255, 64, 64), (30, 30), 20)
+        elif self.recorder.is_playing:
+            # TODO: Change it to a triangle
+            pg.draw.circle(self.screen, (64, 255, 64), (30, 30), 20)
 
         # Flip the display
         pg.display.flip()
