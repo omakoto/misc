@@ -9,7 +9,7 @@ from pprint import pprint
 import colorsys
 import math
 
-DEBUG = False
+DEBUG = False # or True
 
 
 def print_device_info():
@@ -106,6 +106,7 @@ class Main:
 
         # notes = [[0 or 1, velocity, timestamp], ....]
         self.notes = [[0, 0, 0] for n in range(0, NOTES_COUNT)]
+        self.pedal = 0
 
 
     def init(self):
@@ -206,6 +207,8 @@ class Main:
                         self.off += 1
                         self.notes[event.data1][0] = 0
                         self.notes[event.data1][2] = self.t
+                    elif event.status == 176 and event.data1 == 64: # pedal
+                        self.pedal = event.data2
 
 
 # Key-on
@@ -222,7 +225,7 @@ class Main:
         self.roll_tick -= ROLL_SCROLL_TICKS
 
         self.roll.blit(self.roll, (0, ROLL_SCROLL_AMOUNT))
-        pg.draw.rect(self.roll, (0, 0, 0), (0, 0, self.w, ROLL_SCROLL_AMOUNT))
+        pg.draw.rect(self.roll, self._get_pedal_color(self.pedal), (0, 0, self.w, ROLL_SCROLL_AMOUNT))
 
 
     def _get_color(self, note):
@@ -243,6 +246,9 @@ class Main:
         l = min(1, 0.4 + 0.2 * count)
         rgb = colorsys.hsv_to_rgb(h, s, l)
         return (rgb[0] * 255, rgb[1] * 255, rgb[2] * 255)
+
+    def _get_pedal_color(self, value):
+        return (0, 0, value)
 
     def _draw(self):
         w = self.w
