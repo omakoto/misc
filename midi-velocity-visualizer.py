@@ -228,15 +228,11 @@ class Main:
         pg.draw.rect(self.roll, self._get_pedal_color(self.pedal), (0, 0, self.w, ROLL_SCROLL_AMOUNT))
 
 
-    def _get_color(self, note):
+    def _get_color(self, vel):
         MAX_H = 0.4
-        h = MAX_H - (MAX_H * note[1] / 127)
+        h = MAX_H - (MAX_H * vel / 127)
         s = 0.9
-        l = 0
-        if note[0]:
-            l = 1
-        if l <= 0:
-            return None
+        l = 1
         rgb = colorsys.hsv_to_rgb(h, s, l)
         return (rgb[0] * 255, rgb[1] * 255, rgb[2] * 255)
 
@@ -276,7 +272,9 @@ class Main:
         # Bars
         for i in range(self.min_note, self.max_note + 1):
             note = self.notes[i]
-            color = self._get_color(note)
+            if not note[0]:
+                continue
+            color = self._get_color(note[1])
             if not color:
                 continue
 
@@ -293,9 +291,11 @@ class Main:
 
 
         # Lines
-        pg.draw.rect(self.screen, MID_LINE_COLOR,
+        pg.draw.rect(self.screen, self._get_color(32),
+                         (hm, vm + ah * 0.75, w - hm * 2, 0), LINE_WIDTH)
+        pg.draw.rect(self.screen, self._get_color(64),
                          (hm, vm + ah * 0.5, w - hm * 2, 0), LINE_WIDTH)
-        pg.draw.rect(self.screen, MID_LINE_COLOR,
+        pg.draw.rect(self.screen, self._get_color(96),
                          (hm, vm + ah * 0.25, w - hm * 2, 0), LINE_WIDTH)
         pg.draw.rect(self.screen, BASE_LINE_COLOR,
                          (hm, vm + ah, w - hm * 2, 0), LINE_WIDTH)
