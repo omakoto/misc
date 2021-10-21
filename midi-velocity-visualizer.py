@@ -200,6 +200,9 @@ class Main:
             pgm.quit()
             pg.quit()
 
+    def reset_midi_out(self):
+        self.midi_out.write_short(0xff)
+
     def run(self):
 
         self.playing_t = 0
@@ -239,15 +242,21 @@ class Main:
                         self.recorder.start_recording()
                 elif event.type == pg.KEYDOWN and event.key == pg.K_LEFT and not self.recorder.is_recording:
                     self.playing_t =- 500 # rewind 0.5 s
+
+                    self.reset_midi_out()
                     self.recorder.start_playing(self.playing_t)
                 elif event.type == pg.KEYDOWN and event.key == pg.K_RIGHT and not self.recorder.is_recording:
                     self.playing_t += 500 # fast forward 0.5 s
+
+                    self.reset_midi_out()
                     self.recorder.start_playing(self.playing_t)
                 elif event.type == pg.KEYDOWN and event.key == pg.K_SPACE and not self.recorder.is_recording:
+                    self.reset_midi_out()
                     if self.recorder.is_playing:
                         self.recorder.stop_playing()
                     else:
-                        self.recorder.start_playing(0)
+                        self.playing_t = 0
+                        self.recorder.start_playing(self.playing_t)
                 elif event.type == pg.MOUSEBUTTONDOWN and event.button == 3:
                     running = False
                 elif event.type in [pgm.MIDIIN]:
@@ -277,6 +286,17 @@ class Main:
 
                     if do_record:
                         self.recorder.record(self.t, event)
+
+            if self.recorder.is_playing:
+                while True:
+                    ev = self.recorder.next_event(self.playing_t)
+                    if not ev:
+                        self.reset_midi_out()
+                        break
+                    if ev.status == 128: # note off...? do we need to special case it?
+                        self.midi_out.write([[[ev.status, ev.data1], 0]])
+                    else:
+                        self.midi_out.write([[[ev.status, ev.data1, ev.data2], 0]])
 
 # Key-on
 # <Event(32771-MidiIn {'status': 144, 'data1': 48, 'data2': 80, 'data3': 0, 'timestamp': 1111, 'vice_id': 3}) >
