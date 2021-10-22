@@ -263,12 +263,12 @@ class Main:
                     else:
                         self.recorder.start_recording()
                 elif event.type == pg.KEYDOWN and event.key == pg.K_LEFT and not self.recorder.is_recording:
-                    self.playing_t -= 500 # rewind 0.5 s
+                    self.playing_t -= 1000
 
                     self.reset_midi_out()
                     self.recorder.start_playing(self.playing_t)
                 elif event.type == pg.KEYDOWN and event.key == pg.K_RIGHT and not self.recorder.is_recording:
-                    self.playing_t += 500 # fast forward 0.5 s
+                    self.playing_t += 1000
 
                     self.reset_midi_out()
                     self.recorder.start_playing(self.playing_t)
