@@ -353,7 +353,13 @@ class Main:
         return (rgb[0] * 255, rgb[1] * 255, rgb[2] * 255)
 
     def _get_pedal_color(self, value):
-        return (0, 0, value)
+        if value <= 10:
+            return [0, 0, 0]
+        h = 0.6 - (0.06 * value / 127)
+        s = 0.7
+        l = 0.2
+        rgb = colorsys.hsv_to_rgb(h, s, l)
+        return (rgb[0] * 255, rgb[1] * 255, rgb[2] * 255)
 
     def _draw(self):
         w = self.w
