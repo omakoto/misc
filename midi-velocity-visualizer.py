@@ -223,11 +223,13 @@ class Main:
         self.off = 0
 
         paint_t = 0
+        pausing = False
         while running:
             self.t = pg.time.get_ticks()
             delta_t = self.t - last_t
             self.roll_tick += delta_t
-            self.playing_t += delta_t
+            if not pausing:
+                self.playing_t += delta_t
             paint_t += delta_t
             last_t = self.t
 
@@ -272,6 +274,8 @@ class Main:
 
                     self.reset_midi_out()
                     self.recorder.start_playing(self.playing_t)
+                elif event.type == pg.KEYDOWN and event.key == pg.K_RETURN and self.recorder.is_playing:
+                    pausing = not pausing
                 elif event.type == pg.KEYDOWN and event.key == pg.K_SPACE and not self.recorder.is_recording:
                     self.reset_midi_out()
                     if self.recorder.is_playing:
