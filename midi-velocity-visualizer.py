@@ -400,8 +400,8 @@ class Main:
 
 
         # Lines # TODO clean up
-        pg.draw.rect(self.screen, self._get_color(128 * (1 - 0.68)),
-                         (hm, vm + ah * 0.68, w - hm * 2, 0), LINE_WIDTH)
+        pg.draw.rect(self.screen, self._get_color(128 * (1 - 0.70)),
+                         (hm, vm + ah * 0.70, w - hm * 2, 0), LINE_WIDTH)
         pg.draw.rect(self.screen, self._get_color(64),
                          (hm, vm + ah * 0.5, w - hm * 2, 0), LINE_WIDTH)
         pg.draw.rect(self.screen, self._get_color(96),
