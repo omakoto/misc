@@ -219,6 +219,9 @@ class Main:
         running = True
         last_t = pg.time.get_ticks()
 
+        self.on = 0
+        self.off = 0
+
         paint_t = 0
         while running:
             self.t = pg.time.get_ticks()
@@ -227,9 +230,6 @@ class Main:
             self.playing_t += delta_t
             paint_t += delta_t
             last_t = self.t
-
-            self.on = 0
-            self.off = 0
 
             if self.midi_in.poll():
                 midi_events = self.midi_in.read(10)
@@ -323,6 +323,8 @@ class Main:
             self._maybe_scroll_roll()
 
             self._draw()
+            self.on = 0
+            self.off = 0
 
         self.reset_midi_out()
 
@@ -397,9 +399,9 @@ class Main:
             pg.draw.rect(self.roll, color, (bl - hm, 0, bw, ROLL_SCROLL_AMOUNT))
 
 
-        # Lines
-        pg.draw.rect(self.screen, self._get_color(32),
-                         (hm, vm + ah * 0.75, w - hm * 2, 0), LINE_WIDTH)
+        # Lines # TODO clean up
+        pg.draw.rect(self.screen, self._get_color(128 * (1 - 0.68)),
+                         (hm, vm + ah * 0.68, w - hm * 2, 0), LINE_WIDTH)
         pg.draw.rect(self.screen, self._get_color(64),
                          (hm, vm + ah * 0.5, w - hm * 2, 0), LINE_WIDTH)
         pg.draw.rect(self.screen, self._get_color(96),
