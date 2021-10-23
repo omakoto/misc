@@ -221,6 +221,7 @@ class Main:
 
         self.on = 0
         self.off = 0
+        self.video_mute = False
 
         paint_t = 0
         pausing = False
@@ -259,6 +260,8 @@ class Main:
                     running = False
                 elif event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
                     running = False
+                elif event.type == pg.KEYDOWN and event.key == pg.K_F1:
+                    self.video_mute = not self.video_mute
                 elif event.type == pg.KEYDOWN and event.key == pg.K_r and not self.recorder.is_playing:
                     if self.recorder.is_recording:
                         self.recorder.stop_recording()
@@ -378,48 +381,50 @@ class Main:
         # Black background
         self.screen.fill((0, 0, 0))
 
-        # bar width
-        bw = aw / (self.max_note - self.min_note + 1) - SPACING
+        if not self.video_mute:
 
-        # on/off bar
-        # if self.off:
-        #     pg.draw.rect(self.roll, (10, 10, 50), (0, 0, aw, 1))
-        if self.on:
-            # c = min(255, 128 + self.on * 64)
-            pg.draw.rect(self.roll, self._get_on_color(self.on), (0, ROLL_SCROLL_AMOUNT - 1, aw, 1))
+            # bar width
+            bw = aw / (self.max_note - self.min_note + 1) - SPACING
 
-        # Bars
-        for i in range(self.min_note, self.max_note + 1):
-            note = self.notes[i]
-            if not note[0]:
-                continue
-            color = self._get_color(note[1])
-            if not color:
-                continue
+            # on/off bar
+            # if self.off:
+            #     pg.draw.rect(self.roll, (10, 10, 50), (0, 0, aw, 1))
+            if self.on:
+                # c = min(255, 128 + self.on * 64)
+                pg.draw.rect(self.roll, self._get_on_color(self.on), (0, ROLL_SCROLL_AMOUNT - 1, aw, 1))
 
-            # bar left
-            bl = hm + aw * (i - self.min_note) / (self.max_note - self.min_note + 1)
+            # Bars
+            for i in range(self.min_note, self.max_note + 1):
+                note = self.notes[i]
+                if not note[0]:
+                    continue
+                color = self._get_color(note[1])
+                if not color:
+                    continue
 
-            # bar height
-            bh = ah * note[1] / 127
+                # bar left
+                bl = hm + aw * (i - self.min_note) / (self.max_note - self.min_note + 1)
 
-            # print(f'{i}: {bl} {bh}')
-            # pg.draw.rect(self.screen, (255, 255, 200), (bl, h - vm, bw, -bh))
-            pg.draw.rect(self.screen, color, (bl, vm + ah - bh, bw, bh))
-            pg.draw.rect(self.roll, color, (bl - hm, 0, bw, ROLL_SCROLL_AMOUNT))
+                # bar height
+                bh = ah * note[1] / 127
+
+                # print(f'{i}: {bl} {bh}')
+                # pg.draw.rect(self.screen, (255, 255, 200), (bl, h - vm, bw, -bh))
+                pg.draw.rect(self.screen, color, (bl, vm + ah - bh, bw, bh))
+                pg.draw.rect(self.roll, color, (bl - hm, 0, bw, ROLL_SCROLL_AMOUNT))
 
 
-        # Lines # TODO clean up
-        pg.draw.rect(self.screen, self._get_color(128 * (1 - 0.70)),
-                         (hm, vm + ah * 0.70, w - hm * 2, 0), LINE_WIDTH)
-        pg.draw.rect(self.screen, self._get_color(64),
-                         (hm, vm + ah * 0.5, w - hm * 2, 0), LINE_WIDTH)
-        pg.draw.rect(self.screen, self._get_color(96),
-                         (hm, vm + ah * 0.25, w - hm * 2, 0), LINE_WIDTH)
-        pg.draw.rect(self.screen, BASE_LINE_COLOR,
-                         (hm, vm + ah, w - hm * 2, 0), LINE_WIDTH)
+            # Lines # TODO clean up
+            pg.draw.rect(self.screen, self._get_color(128 * (1 - 0.70)),
+                            (hm, vm + ah * 0.70, w - hm * 2, 0), LINE_WIDTH)
+            pg.draw.rect(self.screen, self._get_color(64),
+                            (hm, vm + ah * 0.5, w - hm * 2, 0), LINE_WIDTH)
+            pg.draw.rect(self.screen, self._get_color(96),
+                            (hm, vm + ah * 0.25, w - hm * 2, 0), LINE_WIDTH)
+            pg.draw.rect(self.screen, BASE_LINE_COLOR,
+                            (hm, vm + ah, w - hm * 2, 0), LINE_WIDTH)
 
-        self.screen.blit(self.roll, (hm, vm + ah + LINE_WIDTH))
+            self.screen.blit(self.roll, (hm, vm + ah + LINE_WIDTH))
 
         if self.recorder.is_recording:
             pg.draw.circle(self.screen, (255, 64, 64), (30, 30), 20)
