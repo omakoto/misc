@@ -182,8 +182,8 @@ class Main:
         pprint(self.screen)
         pg.display.set_caption('Velocity Visualizer')
 
-        icon = pygame.image.load(os.path.dirname(__file__) + '/piano.png')
-        pygame.display.set_icon(icon)
+        icon = pg.image.load(os.path.dirname(__file__) + '/piano.png')
+        pg.display.set_icon(icon)
 
         self.w = self.screen.get_width()
         self.h = self.screen.get_height()
