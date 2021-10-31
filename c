@@ -10,6 +10,7 @@ app=0
 profdir=""
 wait=0
 no_ibus=0
+maximized=0
 
 eval "$(bashgetopt -d 'Run Chrome' '
 p|profile=s  profdir=%      # specify profile directory name
@@ -17,6 +18,7 @@ a|app        app=1          # start as app
 w|wait       wait=1         # wait until all Chrome instances stop before starting
 c|corp       profdir=chrome-corp         # use the "corp" profile
 n|personal   profdir=chrome-personal     # use the "personal" profile
+m|maximized  maximized=1    # Start maximized
 no-ibus      no_ibus=1      # Disable ibus
 ' "$@")"
 
@@ -90,6 +92,10 @@ fi
 
 # This file is written by pc-config-update
 dpi=$(cat ~/.chromedpi 2>/dev/null || true)
+
+if (( $maximized )) ; then
+  params+=("--start-maximized")
+fi
 
 if [[ -n "$dpi" ]] ; then
   params+=("--force-device-scale-factor=$dpi")
