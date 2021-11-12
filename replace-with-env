@@ -6,13 +6,15 @@ while (defined(my $in = <>)) {
     chomp $in;
     print "$in\n";
 
-    for my $key (keys %ENV) {
-        next if $key =~ /^(:?PWD|OLDPWD)$/; # Not interesting.
+    if ($in =~ m!^/!) {
+        for my $key (keys %ENV) {
+            next if $key =~ /^(:?PWD|OLDPWD|MY_ANDROID_ROOT|ANDROID_X_BUILD_TOP)$/; # Not interesting.
 
-        my $val = $ENV{$key};
-        next if ($val eq "");
-        my $replaced = $in =~ s!^\Q$val\E!\${$key}!r;
+            my $val = $ENV{$key};
+            next if ($val eq "");
+            my $replaced = $in =~ s!^\Q$val\E!\${$key}!r;
 
-        print "$replaced\n" if $replaced ne $in;
+            print "$replaced\n" if $replaced ne $in;
+        }
     }
 }

@@ -25,6 +25,6 @@ echo "$files" | while read -r file; do
         echo "$full"
         continue
       fi
-    done
+    done | replace-with-env | global-unique | fzf -m -0 -1 --tac # | shescapes
   }
-done | replace-with-env | global-unique | fzf -m -0 -1 --tac # | shescapes
+done
