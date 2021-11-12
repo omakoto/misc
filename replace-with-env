@@ -1,0 +1,18 @@
+#!/usr/bin/perl -w
+
+use strict;
+
+while (defined(my $in = <>)) {
+    chomp $in;
+    print "$in\n";
+
+    for my $key (keys %ENV) {
+        next if $key =~ /^(:?PWD|OLDPWD)$/; # Not interesting.
+
+        my $val = $ENV{$key};
+        next if ($val eq "");
+        my $replaced = $in =~ s!^\Q$val\E!\${$key}!r;
+
+        print "$replaced\n" if $replaced ne $in;
+    }
+}

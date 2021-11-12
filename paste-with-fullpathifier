@@ -3,14 +3,18 @@
 # Read from the clipboard, and try to fullpathify tokens
 # using "recent-dirs", and use fzf to pick one(s)
 
+# Also, if there's an env bariable that maches the prefix, show that as a candidate too.
+
 set -e
 . mutil.sh
 
 files=$(cb | tr -s ' \t' '\n')
 
-{
-  recent-dirs | head -50 | while read -r dir ; do
-    echo "$files" | while read -r file; do
+echo "$files" | while read -r file; do
+  {
+    recent-dirs | head -50 | while read -r dir ; do
+      # Show original
+      echo "$file"
       if [[ "$file" = /* ]] ; then
         # fullpath, just print
         echo "$file"
@@ -19,7 +23,8 @@ files=$(cb | tr -s ' \t' '\n')
       full="$dir$file"
       if [[ -e "$full" ]] ; then
         echo "$full"
+        continue
       fi
     done
-  done
-} | global-unique | fzf -m -0 -1 | shescapes
+  }
+done | replace-with-env | global-unique | fzf -m -0 -1 --tac # | shescapes
