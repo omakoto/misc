@@ -8,13 +8,17 @@
 set -e
 . mutil.sh
 
-files=$(cb | tr -s ' \t' '\n')
+files=$(cb | perl -pe 's!\s+$!!' | tr -s ' \t' '\n')
+
+if [[ "$files" == "" ]] ;then
+  exit 0
+fi
 
 echo "$files" | while read -r file; do
   {
     recent-dirs | head -50 | while read -r dir ; do
       # Show original
-      echo "$file"
+      echo "$file (ORIGINAL)"
       if [[ "$file" = /* ]] ; then
         # fullpath, just print
         echo "$file"
@@ -25,6 +29,6 @@ echo "$files" | while read -r file; do
         echo "$full"
         continue
       fi
-    done | replace-with-env | global-unique | fzf -m -0 -1 --tac # | shescapes
+    done | global-unique | replace-with-env  | fzf -m -0 -1 --tac | sed -e 's/(ORIGINAL)$//'
   }
 done
