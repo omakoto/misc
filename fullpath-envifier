@@ -1,14 +1,21 @@
 #!/bin/bash
 
-# Read from the clipboard, and try to fullpathify tokens
-# using "recent-dirs", and use fzf to pick one(s)
-
+# Read a command line from the arguments, and try to fullpathify tokens
+# using "recent-dirs", and use fzf to pick one(s).
 # Also, if there's an env bariable that maches the prefix, show that as a candidate too.
 
 set -e
 . mutil.sh
 
-files=$(cb | perl -pe 's!\s+$!!' | tr -s ' \t' '\n')
+if [[ "$1" == "-c" ]] ; then
+  # Get the command line from the clipboard
+  files="$(cb)"
+  shift
+else
+  files="$*"
+fi
+
+files="$(echo "$files" | perl -pe 's!\s+$!!' | tr -s ' \t' '\n')"
 
 if [[ "$files" == "" ]] ;then
   exit 0
