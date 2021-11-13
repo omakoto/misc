@@ -35,4 +35,4 @@ echo "$files" | while read -r file; do
       done
     fi
   } | global-unique | replace-with-env | perl -pe 's!//+!/!g' | fzf -m -0 -1 --tac
-done
+done | xargs echo # combine to a single line
