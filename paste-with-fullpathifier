@@ -16,19 +16,23 @@ fi
 
 echo "$files" | while read -r file; do
   {
-    recent-dirs | head -50 | while read -r dir ; do
-      # Show original
-      echo "$file (ORIGINAL)"
-      if [[ "$file" = /* ]] ; then
-        # fullpath, just print
-        echo "$file"
-        continue
-      fi
-      full="$dir$file"
-      if [[ -e "$full" ]] ; then
-        echo "$full"
-        continue
-      fi
-    done | global-unique | replace-with-env  | fzf -m -0 -1 --tac | sed -e 's/(ORIGINAL)$//'
-  }
+    # Show original
+    echo "$file"
+    if [[ "$file" = /* ]] ; then
+      # fullpath, just print
+      # echo "$file"
+      :
+    else
+      recent-dirs | head -50 | while read -r dir ; do
+        if [[ "$dir" == / ]] ; then
+          continue
+        fi
+        full="$dir$file"
+        if [[ -e "$full" ]] ; then
+          echo "$full"
+          continue
+        fi
+      done
+    fi
+  } | global-unique | replace-with-env | perl -pe 's!//+!/!g' | fzf -m -0 -1 --tac
 done
