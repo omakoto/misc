@@ -13,6 +13,12 @@ class BytesReader:
     def __exit__(self, type, value, traceback):
         self.file.close()
 
+    def readI8(self):
+        v = self.readU8()
+        if v >= 0x80:
+            return v - 256
+        return v
+
     def readU8(self):
         return ord(self.file.read(1))
 
@@ -107,7 +113,7 @@ def parseFile(filename):
                         print(f'SMPTE Offset: {hr}:{mn:02}:{se:02}.{fr:03}.{ff:03}')
                         continue
                     if type == 0x59:
-                        sf= rd.readU8()
+                        sf= rd.readI8()
                         mi = rd.readU8()
                         print(f'Key signature: ', end='')
                         if sf == 0:
@@ -172,12 +178,6 @@ def parseFile(filename):
                     continue
 
                 print(f'    Unknown status byte! {status}')
-
-
-
-
-
-
 
 
 def main():
