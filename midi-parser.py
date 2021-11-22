@@ -48,16 +48,18 @@ def parseFile(filename):
         num_tracks = rd.readU16()
         ticks = rd.readU16()
 
-        print(f'MIDI Header: {signature:02x} {header_len} type={type} #tracks={num_tracks} ticks={ticks}')
+        print(f'MIDI Header: {signature:02x} length={header_len}b type={type} #tracks={num_tracks} ticks={ticks}')
 
         track = 0
 
         while True:
+            if track >= num_tracks:
+                break
             track += 1
             signature = rd.readU32()
             track_len = rd.readU32()
 
-            print(f'  Track #{track}: {signature:02x} {track_len}')
+            print(f'  Track #{track}: {signature:02x} length={track_len}b')
 
             last_status = 0
 
@@ -134,20 +136,24 @@ def parseFile(filename):
 
                 data1 = -1
                 if status >= 0x80:
-                    data1 = rd.readU()
+                    data1 = rd.readU8()
                 else:
                     # Running status
                     data1 = status
                     status = last_status
+
                 last_status = status
 
                 status_type = status & 0xf0
+                channel = status & 0x0f
+
+                print(f'(ch={channel}) ', end='')
 
                 if status_type == 0x80:
                     print(f'Note off: {data1} val={rd.readU8()}')
                     continue
                 if status_type == 0x90:
-                    print(f'Note on: {data1} val={rd.readU8()}')
+                    print(f'Note on : {data1} val={rd.readU8()}')
                     continue
                 if status_type == 0xa0:
                     print(f'After touch: {(data1 << 7) + rd.readU8()}')
