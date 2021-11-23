@@ -11,4 +11,4 @@ random.shuffle(all)
 # print(all)
 
 for i, q in enumerate(all):
-    print(f'{i + 1}: {q[0]} x {q[1]}')
+    print(f'{i + 1}: {q[0]} . {q[1]}')
