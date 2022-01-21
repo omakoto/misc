@@ -364,6 +364,10 @@ function showcommand() {
 wb() {
   ee adb wait-for-device
 
+  if adb shell getprop sys.boot_completed | grep -q '^1' ; then
+    return 0
+  fi
+
   echo -n "Waiting for device to boot up."
 
   while ! adb shell getprop sys.boot_completed | grep -q '^1' ; do
@@ -425,18 +429,20 @@ forever() {
   local stop_on_success=0
 
   local interval=1
+  local iteration=-1
 
   eval "$(getopt.pl '
   f|stop-on-failure stop_on_failure=1 # Stop when the command fails.
   s|stop-on-success stop_on_success=1 # Stop when the command succeeds.
   i|interval=i      interval=%        # Interval between execution, in seconds.
+  n|iteration=i     iteration=%       # Max number of executions.
   ' "$@")"
 
   i=1
 
   if [ "$*" == "" ] ; then
     echo "Command missing" 1>& 2
-    exit 1
+    exit 2
   fi
 
   while true; do
@@ -456,9 +462,12 @@ forever() {
     fi
     if (( $stop_on_failure )) && (( $rc != 0 )) ; then
       notify "Command failed:" "${@}"
-      return 0
+      return 1
     fi
     i=$(( i + 1 ))
+    if (( $iteration > 0 && $i >= $iteration )) ; then
+      return 0
+    fi
     sleep $interval
   done
 }
