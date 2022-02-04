@@ -1,0 +1,34 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+function usage() {
+    cat <<EOF
+
+$0: Copy git CLs from another dir.
+
+    Cherry-picks the local CLs in the target directory (i.e. {upstream}..HEAD)
+    to the current directory.
+
+Uasage: $0 FROM-DIR
+
+EOF
+    exit 1
+}
+
+from_dir="$1"
+if ! [[ -d "$from_dir" ]] ;then
+    usage
+fi
+
+to_dir="$PWD"
+
+function print_diff() {
+    (
+        ee -2 cd "$from_dir"
+        ee -2 git format-patch -k --stdout $(git upstream)..HEAD | cat
+    )
+}
+
+print_diff | ee -2 git am -3 -k
