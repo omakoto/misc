@@ -6,7 +6,7 @@ dirs=$(repo list | awk '{print $1}')
 
 do_status() {
   cd "$ANDROID_BUILD_TOP/$1" || return 1
-  local out="$(git -c color.status=always status -s 2>&1)"
+  local out="$(git -c color.status=always status -s | perl -pe 's!^(\s*\S*\s*) (\S.*)!$1$ENV{PWD}/$2!x')"
   if [[ -n "$out" ]] ; then
     echo
     echo $'\e[36;1m'"$(pwd)"$'\e[0m'
