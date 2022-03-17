@@ -14,12 +14,12 @@ for n in "$@"; do
 			mkdir -p "$to"
 
 			echo "dexdump: $n > $dex"
-			dexdump -d -h "$n" > "$dex" || true
+			ee -2 dexdump -d -h "$n" > "$dex" || true
 
 			echo "dump manifest: $n > $manifest"
 			# apkanalyzer is in ~/Android/Sdk/cmdline-tools/latest/bin
 			# Download "Android SDK Command-line Tools (latest)" on SDK manager
-			apkanalyzer manifest print "$n" > "$manifest"
+			ee -2 apkanalyzer manifest print "$n" > "$manifest"
 
 			touch "$check"
 		} 1>&2
