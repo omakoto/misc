@@ -2,6 +2,11 @@
 
 . mutil.sh
 
+if [[ "$CHROME_REMOTE_DESKTOP_SESSION" != "" ]] ; then
+  exit 0
+fi
+
+
 if [[ -n "$SSH_AGENT_PID" ]] ; then
   echo "SSH_AGENT_PID already set." 1>&2
 	exit 0
