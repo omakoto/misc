@@ -26,20 +26,17 @@ case "$(hostname -s)" in
     # ee $medir/dell-keymap-custom
     # dell-touchscreen-enable 1
     chrome_dpi="2.6"
-    rdt_dpi=1.5
     # sf=2
     ;;
   x1c7u|debian) # X1 carbon gen7 / vmware
     chrome_dpi=""
-    # sf=2
     ;;
   x1c5deb|x1g5) # X1 carbon gen5
     chrome_dpi=""
-    # sf=2
     ;;
   x1eu|omakoto3) # X1 extreme / P1 gen 2
     chrome_dpi=""
-    # sf=2
+    rdt_dpi="2"
     ;;
   surface) # Surface book 2, vmware
     chrome_dpi=""
@@ -50,6 +47,7 @@ esac
 if lsusb | grep -q '0853:0111' ; then # Topre keyboard.
   # $medir/dell-keymap-reset
   chrome_dpi=""
+  rdt_dpi=""
   sf=1
 fi
 
