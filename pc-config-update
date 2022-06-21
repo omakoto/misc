@@ -17,7 +17,7 @@ if iswsl ; then
   exit 0
 fi
 
-sf=0
+sf=1
 chrome_dpi=""
 rdt_dpi=""
 
@@ -48,7 +48,7 @@ if lsusb | grep -q '0853:0111' ; then # Topre keyboard.
   # $medir/dell-keymap-reset
   chrome_dpi=""
   rdt_dpi=""
-  sf=1
+  sf=2
   if hwinfo --monitor --short 2>/dev/null | grep -q B326HK ; then
     chrome_dpi="1.5"
   fi
