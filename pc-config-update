@@ -49,7 +49,7 @@ if lsusb | grep -q '0853:0111' ; then # Topre keyboard.
   chrome_dpi=""
   rdt_dpi=""
   sf=1
-  if hwinfo --monitor --short 2>/dev/null | grep -q B326HK ; then
+  if hwinfo --monitor --short 2>/dev/null | grep -q T32p-20 ; then
     chrome_dpi="1.5"
   fi
 fi
