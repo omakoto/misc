@@ -17,7 +17,7 @@ if iswsl ; then
   exit 0
 fi
 
-sf=0
+sf=2
 chrome_dpi=""
 rdt_dpi=""
 
@@ -40,7 +40,6 @@ case "$(hostname -s)" in
     ;;
   surface) # Surface book 2, vmware
     chrome_dpi=""
-    sf=2
     ;;
 esac
 

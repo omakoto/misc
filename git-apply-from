@@ -18,8 +18,8 @@ EOF
 fi
 
 (
-  ee cd "$target"
-  ee git diff HEAD@{u} > $patch
+  ee -2 cd "$target"
+  ee -2 git diff HEAD@{u} > $patch
 )
 
 ee git apply -3 $patch
