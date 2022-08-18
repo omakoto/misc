@@ -132,10 +132,11 @@ function INFO() {
     if [[ -n "$1" ]] ; then
         bcyan -n " $1"
     fi
-    shift
-    local msg="$*"
-    if [[ -n "$msg" ]] ; then
-        echo -n " $msg"
+    if shift ; then
+      local msg="$*"
+      if [[ -n "$msg" ]] ; then
+          echo -n " $msg"
+      fi
     fi
     echo
 }
@@ -143,10 +144,11 @@ function INFO() {
 function ERROR() {
     echo -n "${0##*/}: error: "
     bred -n "$1"
-    shift
-    local msg="$*"
-    if [[ -n "$msg" ]] ; then
-        echo -n " $msg"
+    if shift ; then
+      local msg="$*"
+      if [[ -n "$msg" ]] ; then
+          echo -n " $msg"
+      fi
     fi
     echo
 }
