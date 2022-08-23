@@ -1,0 +1,5 @@
+#!/bin/bash
+
+dir="${LOGDIR}$(date4 -s)"
+mkdir -p "$dir"
+echo "$dir"
