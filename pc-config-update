@@ -53,7 +53,13 @@ if lsusb | grep -q '0853:0111' ; then # Topre keyboard.
   fi
 fi
 
+# For cinnamon
 ee gsettings set org.cinnamon.desktop.interface scaling-factor $sf
+
+# For gnome
+ee gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "[{'Gdk/WindowScalingFactor', <$sf>}]"
+ee gsettings set org.gnome.desktop.interface scaling-factor $sf
+
 echo "$chrome_dpi" > ~/.chromedpi
 echo "$rdt_dpi" > ~/.remote-desktop-dpi
 
