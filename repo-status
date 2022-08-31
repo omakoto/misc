@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Run repo status, with GNU parallel
+
+
 cd ${ANDROID_BUILD_TOP?}
 
 dirs=$(repo list | awk '{print $1}')
