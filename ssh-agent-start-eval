@@ -10,10 +10,22 @@ if [[ $(hostname -s) == "omakoto-ct1" ]] ; then
 	exit 0
 fi
 
+is_ssh_setup() {
+	if [[ -n "$SSH_AUTH_SOCK" ]] ; then
+		if ! [[ -e "$SSH_AUTH_SOCK" ]] ; then
+			echo "SSH_AUTH_SOCK doesn't exist." 1>&2
+			return 1
+		fi
+	fi
 
+	if [[ -n "$SSH_AGENT_PID" ]] ; then
+		echo "SSH_AGENT_PID already set." 1>&2
+		return 0
+	fi
+	return 0
+}
 
-if [[ -n "$SSH_AGENT_PID" ]] ; then
-	echo "SSH_AGENT_PID already set." 1>&2
+if is_ssh_setup ; then
 	exit 0
 fi
 
