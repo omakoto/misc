@@ -41,6 +41,9 @@ case "$(hostname -s)" in
   surface) # Surface book 2, vmware
     chrome_dpi=""
     ;;
+  x1yoga) # X1 yoga, with gnome
+    chrome_dpi="2.5"
+    ;;
 esac
 
 if lsusb | grep -q '0853:0111' ; then # Topre keyboard.
