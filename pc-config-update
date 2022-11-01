@@ -51,7 +51,11 @@ if lsusb | grep -q '0853:0111' ; then # Topre keyboard.
   chrome_dpi=""
   rdt_dpi=""
   sf=1
-  if hwinfo --monitor --short 2>/dev/null | grep -q T32p-20 ; then
+  mon=/tmp/monitor.txt
+  hwinfo --monitor --short 2>/dev/null > $mon
+  if grep -q BDM4065 $mon ; then # Home monitor
+    chrome_dpi="1.2"
+  elif grep -q T32p-20 $mon ; then # Office monitor
     chrome_dpi="1.5"
   fi
 fi
