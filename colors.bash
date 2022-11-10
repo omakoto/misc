@@ -39,7 +39,7 @@ _do_color() {
   shift $(($OPTIND - 1))
 
   local use_color=0
-  if iscon || (( $force )) ; then
+  if iscon || (( $force )) || (( $FORCE_COLOR )) ; then
     use_color=1
   fi
 
