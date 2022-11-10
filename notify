@@ -40,6 +40,14 @@ if (( $print_to_term )); then
   } 1>&2
 fi
 
+echo -ne '\007'
+sleep 0.1
+echo -ne '\007'
+sleep 0.1
+echo -ne '\007'
+sleep 0.1
+echo -ne '\007'
+
 if (( $mobile )) ; then
   notify-mobile "$message"
 fi
