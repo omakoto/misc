@@ -1,9 +1,3 @@
-if ! type -p iscon >&/dev/null ; then
-    function iscon() {
-        [[ -t ${1:-1} ]]
-    }
-fi
-
 _do_color() {
   local color="$1"
   shift
@@ -15,8 +9,9 @@ _do_color() {
   local OPTIND
   local attributes=""
   local prefix="3"
+  local out=${COLOR_OUT:-1}
 
-  while getopts bihnfcGukx opt; do
+  while getopts bihnfcGukx2 opt; do
     case "$opt" in
       n) nl_opt="-n" ;;
       f) force=1 ;;
@@ -27,6 +22,7 @@ _do_color() {
       k) attributes="${attributes}5;" ;; # blink - slow
       x) attributes="${attributes}9;" ;; # crossed-out
       G) prefix="4" ;;
+      2) out=2 ;;
       h)
         echo "Options: -n [no newline] -f [force color] -c [don't reset color] -G [bg]  -b [bold/intense] -i [italic] -k [blink] -u [underline]" 1>&2
         ;;
@@ -39,27 +35,29 @@ _do_color() {
   shift $(($OPTIND - 1))
 
   local use_color=0
-  if iscon || (( $force )) || (( $FORCE_COLOR )) ; then
+  if [[ -t $out ]] || (( $force )) || (( $FORCE_COLOR )) ; then
     use_color=1
   fi
 
-  if (( $use_color )) ; then
-    if (( $color == -1 )) ; then
-      echo -ne "\e[0m"
-    else
-      echo -ne "\e[${attributes}${prefix}${color}m"
+  {
+    if (( $use_color )) ; then
+      if (( $color == -1 )) ; then
+        echo -ne "\e[0m"
+      else
+        echo -ne "\e[${attributes}${prefix}${color}m"
+      fi
     fi
-  fi
 
-  if (( $# == 0 )) ; then
-    return 0 # no argument, just start a color and finish.
-  else
-    echo $nl_opt "$@"
-  fi
+    if (( $# == 0 )) ; then
+      return 0 # no argument, just start a color and finish.
+    else
+      echo $nl_opt "$@"
+    fi
 
-  if (( ! $continuation && $use_color )) ; then
-    echo -ne '\e[0m'
-  fi
+    if (( ! $continuation && $use_color )) ; then
+      echo -ne '\e[0m'
+    fi
+  } >& $out
 }
 
 nocolor() {
