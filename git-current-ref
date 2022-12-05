@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -e
+
+export SUBDIRECTORY_OK=1
+. "$(git --exec-path)/git-sh-setup"
+
+require_work_tree_exists
+
+cd_to_toplevel
+
+HEAD=$(cat $(git rev-parse --git-dir)/HEAD)
+
+sed -e 's!^ref: *!!' -e 's!^refs/heads/!!' <<<$HEAD
+
+

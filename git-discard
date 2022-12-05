@@ -1,0 +1,39 @@
+#!/bin/bash
+
+set -e
+
+v=1
+
+export SUBDIRECTORY_OK=1
+. "$(git --exec-path)/git-sh-setup"
+
+if (( $# > 0 )) ; then
+  dirs="$@"
+else
+  dirs="."
+fi
+
+
+for dir in $dirs ; do
+  (
+      cd $dir
+    require_work_tree_exists
+    cd_to_toplevel
+
+    current_ref=$(git current-ref)
+
+    (( $v )) && echo $current_ref
+
+    work=temp-$(date8)-$$
+
+    git checkout -b $work
+    git add .
+    git commit -a -m 'To be discarded' && {
+        git tag $work $work
+        echo "Discarded changes are accessible with: $work"
+    }
+
+    git checkout $current_ref
+    git branch -D $work
+  )
+done

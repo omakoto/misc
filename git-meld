@@ -1,0 +1,121 @@
+#!/bin/bash
+
+#
+# Git environment.
+#
+PREFIX=$(git rev-parse --show-prefix)
+
+# Parse locate and remote commits to diff from command line.
+function parse_commits() {
+  # No parameters: diff working tree against HEAD.
+  LCOMMIT=""
+  RCOMMIT=""
+  function is_commit() {
+    if [ -z "$1" ]; then
+      return 2
+    fi
+    local type=$(git cat-file -t $1 2>/dev/null)
+    if [ $? == 0 -a "$type" == "commit" ]; then
+      return 0
+    fi
+    return 2
+  }
+  # One parameter: diff working tree against specified remote commit.
+  if $(is_commit $1); then
+    RCOMMIT="$1"
+    shift 1
+  fi
+  # Remote commit is perforce base.
+  if (($FLAGS_perforce)); then
+    LCOMMIT=$RCOMMIT
+    RCOMMIT=$(git5 status --base $LCOMMIT)
+  # Two parameters: diff local commit against remote commit.
+  elif $(is_commit $1); then
+    LCOMMIT="$1"
+    shift 1
+  fi
+  # Default remote  commit is HEAD.
+  RCOMMIT=${RCOMMIT:-HEAD}
+  # Save remaining arguments as PATH_FILTER.
+  PATH_FILTER="$*"
+}
+
+# Compute the list of changed files.
+function get_changed_files() {
+  FILES=$(git diff --name-only $LCOMMIT $RCOMMIT -- $PATH_FILTER)
+  echo "$FILES"
+  if [ -z "$FILES" ]; then
+    exit 0
+  fi
+}
+
+# Make temporary dir.
+function make_tmpdir() {
+  TMPDIR=$(mktemp -d --tmpdir git.meldXXXXXXX)
+  # trap "rm -rf $TMPDIR" EXIT
+  mkdir -p $TMPDIR/remote $TMPDIR/local
+}
+
+# Fetches file from git repository.
+function fetch_remote() {
+  local commit=$1
+  local file=$2
+  local tmpdir="$TMPDIR/$3"
+  TMP_FILE=/dev/null
+  if $(git cat-file -e "${commit}:${file}" 2>/dev/null); then
+    TMP_FILE="$(mktemp --tmpdir=$tmpdir XXXXXXXX)_$(basename $file)"
+    git show "${commit}:${file}" > $TMP_FILE
+  fi
+}
+# Fetches file local or from git repository
+function fetch_local() {
+  local file=$1
+  # Use local file when diff working tree.
+  if [ -z "$LCOMMIT" ]; then
+    TMP_FILE=${file:${#PREFIX}}
+    if [ ! -e "$TMP_FILE" ]; then
+      TMP_FILE=/dev/null
+    fi
+    return 0
+  fi
+  # Use local file when not changed compared to local commit.
+  echo "$LOCAL_CHANGES" | grep -q "$file"
+  if [ $? -ne 0 ]; then
+    TMP_FILE=${file:${#PREFIX}}
+    if [ ! -f $TMP_FILE ]
+    then
+      TMP_FILE=/dev/null
+    fi
+    return 0
+  fi
+  # Download to temporary dir
+  fetch_remote $LCOMMIT $file local
+}
+
+# Builds meld command.
+function build_meld_cmd() {
+  MELDCMD="meld"
+  # Prefer working tree version if has not changed since local commit.
+  if [ -n "$LCOMMIT" ]; then
+    LOCAL_CHANGES=$(git diff --name-only $LCOMMIT)
+  fi
+  # Create pairs.
+  for FILE in $FILES; do
+    # Base file
+    fetch_remote $RCOMMIT $FILE remote
+    RCOMMIT_FILE=$TMP_FILE
+    # Ref file
+    fetch_local $FILE
+    LCOMMIT_FILE=$TMP_FILE
+    # Extend meld cmd with file pair.
+    MELDCMD="$MELDCMD --diff $RCOMMIT_FILE $LCOMMIT_FILE"
+  done
+}
+
+parse_commits "$@"
+get_changed_files
+make_tmpdir
+build_meld_cmd
+
+echo "Running: $MELDCMD"
+$MELDCMD

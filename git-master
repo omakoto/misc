@@ -1,0 +1,22 @@
+#!/bin/bash
+
+set -e
+
+export SUBDIRECTORY_OK=1
+. "$(git --exec-path)/git-sh-setup"
+
+require_clean_work_tree "change branch"
+
+branch=''
+if git branch | grep -q '^..master$'; then
+  branch=master
+elif git branch | grep -q '^..main$'; then
+  branch=main
+elif in-repo ; then
+  branch="$(repo-upstream)"
+else
+  echo 'Branch (master|main) not found' 1>&2
+  exit 1
+fi
+
+exec git checkout "$branch"

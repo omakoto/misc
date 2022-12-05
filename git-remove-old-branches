@@ -1,0 +1,10 @@
+#!/bin/bash
+
+for b in $( git-branch | sed -ne 's/^  //;/^old-/p') ; do
+  echo -n "Delete $b (n/Y)? "
+  read y
+  if [ "$y" = "y" ]; then
+    git branch -D $b
+    echo "Branch $b deleted."
+  fi
+done

@@ -1,0 +1,8 @@
+#!/bin/sh
+
+base=$( repo-origin )
+
+for branch in $(git branch --merged | sed -e '\!^\*!d;s!^..!!;/^(no branch)$/d;/^old-/d'); do
+  echo -n "Branch $branch: "
+  git branch -d "$branch"
+done

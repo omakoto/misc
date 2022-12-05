@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -e
+
+#dryrun="echo "
+
+for b in $(git branch | sed -ne '/^  old\-/p') ; do
+  ts=$(git-show --format=%ci $b | head -1 | tr ' :' '_-')
+  tag=tag-$ts-$b
+  echo "$b -> $tag ..."
+
+  $dryrun git tag $tag $b
+  $dryrun git branch -D $b
+done

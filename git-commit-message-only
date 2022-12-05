@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+
+hash="$1"
+
+if [ -z "$hash" ]; then
+  echo "usage: $0 HASH" 1>&2
+  exit 2
+fi
+
+git-log "$hash^1..$hash" | sed -e '1,/^$/d' -e '/^ *Change-Id: /,$d' -e 's/^  *//'

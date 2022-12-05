@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -e
+
+# cb=$(git where)
+# if [[ -z "$cb" ]] ; then
+#   exit 1
+# fi
+# ret=$(git config --get branch.$cb.remote)/$(git config --get branch.$cb.merge)
+
+# if [[ "$ret" = "/" ]] ; then
+#   exit 1
+# else
+#   echo "$ret"
+# fi
+
+git rev-parse --abbrev-ref --symbolic-full-name @{u}

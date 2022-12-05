@@ -1,0 +1,19 @@
+#!/bin/bash
+# -*- shell-script -*-
+
+set -e
+
+LCOMMIT=$1
+RCOMMIT=$2
+
+FILES=$(git diff --name-only $LCOMMIT $RCOMMIT)
+
+echo $FILES
+
+
+
+
+
+
+
+

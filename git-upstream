@@ -1,0 +1,10 @@
+#!/bin/bash
+
+if in-repo ; then
+  if git branch | grep -q '^\* (HEAD detached' ; then
+    repo-upstream
+    exit 0
+  fi
+fi
+
+exec git rev-parse @{u} 2>/dev/null

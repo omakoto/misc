@@ -1,0 +1,35 @@
+#!/bin/bash
+
+set -e
+
+prefix="old-"
+ts=$(date '+%Y%m%d-%H%M%S')
+
+while getopts "p:" opt; do
+  case "$opt" in
+    p)
+      prefix=${OPTARG}-
+      ;;
+    *)
+      exit 2
+      ;;
+  esac
+done
+shift $(($OPTIND - 1))
+
+while true ; do
+  b="$1"
+  if [[ "$b" == "" ]] ; then
+    exit 0
+  fi
+  to="$prefix$b"
+  tag="tag-old-${ts}-$b"
+  echo "$b -> $to ($tag)"
+  git tag "$tag" "$b"
+#  git branch -m "$b" "$to"
+  git branch -D "$b"
+  shift
+done
+
+
+

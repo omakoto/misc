@@ -1,0 +1,7 @@
+#!/bin/bash
+
+set -e
+
+. mutil.sh
+
+git ignored | xargs ee git unignore

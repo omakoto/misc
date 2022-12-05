@@ -1,0 +1,26 @@
+#!/bin/bash
+
+test "$(git rev-parse --is-inside-work-tree 2>/dev/null)" = true || exit 0
+
+echo -n '('
+if [[ -n "$(git status --porcelain 2>&1)" ]] ; then
+  echo -en "\e[0;31mtree dirty\\e[0m"
+else
+  echo -en "tree clean"
+fi
+
+upstream=$(git upstream)
+if [[ -n "$upstream" ]] ; then
+
+  echo -n ' - '
+
+  git diff --quiet $upstream
+  rc=$?
+
+  if (( $rc )) ; then
+    echo -en "\e[0;31mlocal dirty\\e[0m"
+  else
+    echo -en "local clean"
+  fi
+fi
+echo -n ')'

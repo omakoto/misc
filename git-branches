@@ -1,0 +1,27 @@
+#!/bin/bash
+
+set -e
+
+unset c
+c=""
+less=""
+git_color_opt=""
+if [[ -t 1 ]] ; then
+  c="1"
+  git_color_opt="--color"
+fi
+
+function main {
+  for b in $(git-branch | sed -e 's!^..!!'); do
+    if [[ -n "$c" ]] ; then
+      echo -n -e "\033[0;32m"
+    fi
+    echo "=== $b ==="
+    if [[ -n "$c" ]] ; then
+      echo -n -e "\033[0m"
+    fi
+    git show --name-only $git_color_opt "$b"
+  done
+}
+
+main | page

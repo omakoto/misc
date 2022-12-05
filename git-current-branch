@@ -1,0 +1,5 @@
+#!/bin/bash
+
+git describe --contains --all HEAD 2>/dev/null
+exit 0
+#git branch --no-color 2>/dev/null | sed -ne '/no branch/d; s/^\* //p;'

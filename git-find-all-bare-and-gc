@@ -1,0 +1,12 @@
+#!/bin/bash
+
+#set -e
+
+. mutil.sh
+
+find . -type d -name '*.git' | while read dir ; do
+    (
+        ee cd $dir
+        git gc --aggressive
+    )
+done
