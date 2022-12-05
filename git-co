@@ -1,0 +1,22 @@
+#!/bin/bash
+
+. mutil.sh
+
+root=$(git root)
+cd "$root"
+
+print_description() {
+    INFO "Message was:"
+    cat ".git/COMMIT_EDITMSG"
+}
+
+trap print_description EXIT
+
+git commit "${@}"
+rc=$?
+
+INFO "Git commit finished with status $rc"
+
+# print_description
+
+exit $?
