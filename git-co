@@ -5,16 +5,26 @@
 root=$(git root)
 cd "$root"
 
+file=".git/COMMIT_EDITMSG"
+
 histfile="$HOME/cbin/temp/git-messages/$(date '+%Y-%m-%d/git-message-%H-%M-%S').txt"
 
+pre_hash="$(sha1sum "$file")"
+
+
 print_description() {
-    INFO "Message was:"
-    cat ".git/COMMIT_EDITMSG"
+    COLOR_OUT=2 INFO "Message was:"
+    cat "$file"
 
-    # Also copy to temp folder
-    mkdir -p "${histfile%/*}"
-    ee cp ".git/COMMIT_EDITMSG" "$histfile"
+    post_hash="$(sha1sum "$file")"
 
+    if [[ "$pre_hash" == "$post_hash" ]] ; then
+        COLOR_OUT=2 INFO "Message not changed."
+    else
+        # Also copy to temp folder
+        mkdir -p "${histfile%/*}"
+        ee cp "$file" "$histfile"
+    fi
 }
 
 trap print_description EXIT
