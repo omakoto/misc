@@ -5,9 +5,16 @@
 root=$(git root)
 cd "$root"
 
+histfile="$HOME/cbin/temp/git-messages/$(date '+%Y-%m-%d/git-message-%H-%M-%S').txt"
+
 print_description() {
     INFO "Message was:"
     cat ".git/COMMIT_EDITMSG"
+
+    # Also copy to temp folder
+    mkdir -p "${histfile%/*}"
+    ee cp ".git/COMMIT_EDITMSG" "$histfile"
+
 }
 
 trap print_description EXIT
