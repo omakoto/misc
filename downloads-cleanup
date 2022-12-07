@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+list_downloads() {
+    find "$HOME/Downloads/" -maxdepth 1 -ctime +1
+}
+
