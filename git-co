@@ -2,6 +2,8 @@
 
 . mutil.sh
 
+in-git -e || exit 2
+
 root=$(git root)
 cd "$root"
 
@@ -9,14 +11,19 @@ file=".git/COMMIT_EDITMSG"
 
 histfile="$HOME/cbin/temp/git-messages/$(date '+%Y-%m-%d/git-message-%H-%M-%S').txt"
 
-pre_hash="$(sha1sum "$file")"
+pre_hash="$(sha1sum "$file" 2>/dev/null)"
 
 
 print_description() {
+    if ! [[ -e "$file" ]] ; then
+        COLOR_OUT=2 INFO "No message file found."
+        return
+    fi
+
     COLOR_OUT=2 INFO "Message was:"
     cat "$file"
 
-    post_hash="$(sha1sum "$file")"
+    post_hash="$(sha1sum "$file" 2>/dev/null)"
 
     if [[ "$pre_hash" == "$post_hash" ]] ; then
         COLOR_OUT=2 INFO "Message not changed."
