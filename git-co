@@ -23,19 +23,20 @@ print_description() {
     commit="$(show_commit)"
 
     if [[ "$pre_commit" == "$post_commit" ]] ; then
-        COLOR_OUT=2 bred "No commit made. The draft message was:"
+        echo "" 1>&2
+        COLOR_OUT=2 byellow "No commit made. The draft message was:"
 
         # It may be that git was interrupted. So let's print the draft file.
         cat "$(git rev-parse --git-dir)/COMMIT_EDITMSG"
 
     else
-        COLOR_OUT=2 INFO "Message was:"
+        COLOR_OUT=2 bgreen INFO "Message was:"
         echo "$commit"
 
         # Also copy to temp folder
         mkdir -p "${histfile%/*}"
         echo "$commit" > "$histfile"
-        COLOR_OUT=2 INFO "Message copied to: "$histfile""
+        COLOR_OUT=2 bgreen "Message copied to: "$histfile""
     fi
 }
 
@@ -44,8 +45,6 @@ trap print_description EXIT
 git commit "${@}"
 rc=$?
 
-INFO "Git commit finished with status $rc"
-
-# print_description
+# bcyan "Git commit finished with status $rc"
 
 exit $?
