@@ -7,7 +7,7 @@ in-git -e || exit 2
 root=$(git root)
 cd "$root"
 
-file=".git/COMMIT_EDITMSG"
+file="$(git rev-parse --git-dir)/COMMIT_EDITMSG"
 
 histfile="$HOME/cbin/temp/git-messages/$(date '+%Y-%m-%d/git-message-%H-%M-%S').txt"
 
