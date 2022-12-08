@@ -30,13 +30,13 @@ print_description() {
         cat "$(git rev-parse --git-dir)/COMMIT_EDITMSG"
 
     else
-        COLOR_OUT=2 bgreen INFO "Message was:"
+        COLOR_OUT=2 bgreen "Message was:"
         echo "$commit"
 
         # Also copy to temp folder
         mkdir -p "${histfile%/*}"
         echo "$commit" > "$histfile"
-        COLOR_OUT=2 bgreen "Message copied to: "$histfile""
+        COLOR_OUT=2 bcyan "Message copied to: "$histfile""
     fi
 }
 
