@@ -5,4 +5,5 @@
 find $HOME/cbin/temp/ -name 'git-message-*.txt'  | sort -r | while read -r file ; do
     echo "## $file"
     cat "$file"
+    echo
 done | hl '^##.*' '@bgreen' '^#.*' '@byellow' | less-if-long
