@@ -12,25 +12,26 @@ histfile="$HOME/cbin/temp/git-messages/$(date '+%Y-%m-%d/git-message-%H-%M-%S').
 pre_commit="$(git rev-parse HEAD 2>/dev/null)"
 
 show_commit() {
-    git show --no-patch
+    echo "# Directory: $(pwd)"
+    echo "# Branch: $(git current-branch)"
+    git show --no-patch | sed -e 's/^/# /; s/^#     //' # Remove the extra spaces in the message
 }
 
 print_description() {
     post_commit="$(git rev-parse HEAD 2>/dev/null)"
 
+    commit="$(show_commit)"
+
+    COLOR_OUT=2 INFO "Message was:"
+    echo "$commit"
+
     if [[ "$pre_commit" == "$post_commit" ]] ; then
         COLOR_OUT=2 INFO "No commit made."
     else
-        COLOR_OUT=2 INFO "Message was:"
-        show_commit
 
         # Also copy to temp folder
         mkdir -p "${histfile%/*}"
-        {
-            echo "# Directory: $(pwd)"
-            echo "# Branch: $(git current-branch)"
-            show_commit | sed -e 's/^/# /; s/^#     //' # Remove the extra spaces in the message
-        } > "$histfile"
+        echo "$commit" > "$histfile"
         COLOR_OUT=2 INFO "Message copied to: "$histfile""
     fi
 }
