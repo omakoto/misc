@@ -14,7 +14,7 @@ pre_commit="$(git rev-parse HEAD 2>/dev/null)"
 show_commit() {
     echo "# Directory: $(pwd)"
     echo "# Branch: $(git current-branch)"
-    git show --no-patch | sed -e 's/^/# /; s/^#     //' # Remove the extra spaces in the message
+    git -c color.ui=always show --compact-summary | perl -pe 'print "# " if (1..3); s/^    //'
 }
 
 print_description() {
