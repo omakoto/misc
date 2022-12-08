@@ -22,12 +22,15 @@ print_description() {
 
     commit="$(show_commit)"
 
-    COLOR_OUT=2 INFO "Message was:"
-    echo "$commit"
-
     if [[ "$pre_commit" == "$post_commit" ]] ; then
-        COLOR_OUT=2 INFO "No commit made."
+        COLOR_OUT=2 bred "No commit made. The draft message was:"
+
+        # It may be that git was interrupted. So let's print the draft file.
+        cat "$(git rev-parse --git-dir)/COMMIT_EDITMSG"
+
     else
+        COLOR_OUT=2 INFO "Message was:"
+        echo "$commit"
 
         # Also copy to temp folder
         mkdir -p "${histfile%/*}"
