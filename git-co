@@ -30,7 +30,10 @@ print_description() {
     else
         # Also copy to temp folder
         mkdir -p "${histfile%/*}"
-        ee cp "$file" "$histfile"
+        {
+            echo "# Directory: $(pwd)"
+            cat "$file"
+        } > "$histfile"
     fi
 }
 
