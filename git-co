@@ -7,33 +7,31 @@ in-git -e || exit 2
 root=$(git root)
 cd "$root"
 
-file="$(git rev-parse --git-dir)/COMMIT_EDITMSG"
-
 histfile="$HOME/cbin/temp/git-messages/$(date '+%Y-%m-%d/git-message-%H-%M-%S').txt"
 
-pre_hash="$(sha1sum "$file" 2>/dev/null)"
+pre_commit="$(git rev-parse HEAD 2>/dev/null)"
 
+show_commit() {
+    git show --no-patch
+}
 
 print_description() {
-    if ! [[ -e "$file" ]] ; then
-        COLOR_OUT=2 INFO "No message file found."
-        return
-    fi
+    post_commit="$(git rev-parse HEAD 2>/dev/null)"
 
-    COLOR_OUT=2 INFO "Message was:"
-    cat "$file"
-
-    post_hash="$(sha1sum "$file" 2>/dev/null)"
-
-    if [[ "$pre_hash" == "$post_hash" ]] ; then
-        COLOR_OUT=2 INFO "Message not changed."
+    if [[ "$pre_commit" == "$post_commit" ]] ; then
+        COLOR_OUT=2 INFO "No commit made."
     else
+        COLOR_OUT=2 INFO "Message was:"
+        show_commit
+
         # Also copy to temp folder
         mkdir -p "${histfile%/*}"
         {
             echo "# Directory: $(pwd)"
-            cat "$file"
+            echo "# Branch: $(git current-branch)"
+            show_commit | sed -e 's/^/# /; s/^#     //' # Remove the extra spaces in the message
         } > "$histfile"
+        COLOR_OUT=2 INFO "Message copied to: "$histfile""
     fi
 }
 

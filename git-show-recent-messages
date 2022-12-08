@@ -1,0 +1,8 @@
+#!/bin/bash
+
+. mutil.sh
+
+find $HOME/cbin/temp/ -name 'git-message-*.txt'  | sort -r | while read -r file ; do
+    echo "## $file"
+    cat "$file"
+done | hl '^##.*' '@bgreen' '^#.*' '@byellow' | less-if-long
