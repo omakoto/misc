@@ -64,6 +64,8 @@ if lsusb | grep -q '0853:0111' ; then # Topre keyboard.
   fi
 fi
 
+ms-arc-mouse-natural-scroll.sh 
+
 # For cinnamon
 ee gsettings set org.cinnamon.desktop.interface scaling-factor $sf
 
