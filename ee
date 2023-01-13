@@ -2,5 +2,4 @@
 
 . mutil.sh
 
-fixcon
-ee -2 "$@" </dev/null |& highlighter-tests
+ee -2 "$@" # </dev/null |& highlighter-tests
