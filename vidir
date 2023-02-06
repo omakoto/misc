@@ -2,7 +2,7 @@
 use strict;
 use warnings FATAL => 'all';
 use utf8;
-use open qw(:std :utf8);
+#use open qw(:std :utf8);
 #use encoding 'utf8';
 
 use vars qw($VERSION);
@@ -63,6 +63,12 @@ for my $item(@ARGV) {
 }
 
 @sorted = (sort(@directories), sort(@files));
+
+# for my $f ( @ARGV ) {
+#   print "$f\n";
+# }
+
+# exit 9;
 
 if (grep(/[[:cntrl:]]/, @sorted)) {
   die "$0: control characters in filenames are not supported\n";
