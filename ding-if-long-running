@@ -5,12 +5,12 @@ set -e
 
 _last_command_duration="$1"
 
-if (( $_last_command_duration < 60 )) ; then
+if (( "$_last_command_duration" < 60 )) ; then
   exit 0
 fi
 
-if (( $(xprintidle) / 1000 < ( 5 * 60) )) ; then
-  exit 0
-fi
+# if (( $(xprintidle) / 1000 < ( 5 * 60) )) ; then
+#   exit 0
+# fi
 
 notify -mv "Command finished"
