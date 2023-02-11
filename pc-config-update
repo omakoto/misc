@@ -22,6 +22,9 @@ chrome_dpi=""
 rdt_dpi=""
 
 case "$(hostname -s)" in
+  nuc)
+    exit 0 # Do nothing for NUC
+    ;;
   omakoto-glaptop2) # Dell laptop.
     # ee $medir/dell-keymap-custom
     # dell-touchscreen-enable 1
