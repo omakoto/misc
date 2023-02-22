@@ -9,8 +9,13 @@ if (( "$_last_command_duration" < 60 )) ; then
   exit 0
 fi
 
-# if (( $(xprintidle) / 1000 < ( 5 * 60) )) ; then
-#   exit 0
-# fi
+idle="$(xprintidle 2>/dev/null)"
+
+
+if -n "$idle" ; then
+  if (( "$idle" / 1000 < ( 5 * 60) )) ; then
+    exit 0
+  fi
+fi
 
 notify -mv "Command finished"
