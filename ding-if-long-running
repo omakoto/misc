@@ -12,7 +12,7 @@ fi
 idle="$(xprintidle 2>/dev/null)"
 
 
-if -n "$idle" ; then
+if [[ -n "$idle" ]]; then
   if (( "$idle" / 1000 < ( 5 * 60) )) ; then
     exit 0
   fi
