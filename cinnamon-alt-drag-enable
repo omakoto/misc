@@ -6,4 +6,5 @@ if (( "${1:-1}" != 0 )) ; then
     value="'<Alt>'"
 fi
 
-dconf write /org/cinnamon/desktop/wm/preferences/mouse-button-modifier "$value"
+ee dconf write /org/gnome/desktop/wm/preferences/mouse-button-modifier "$value"
+ee dconf write /org/cinnamon/desktop/wm/preferences/mouse-button-modifier "$value"
