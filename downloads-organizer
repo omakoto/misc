@@ -8,9 +8,13 @@ import time
 VERBOSE = False
 PREFIX = '%archive_'
 
-def date(s):
+def yyyymmdd(s):
     lt = time.localtime(s)
     return '%04d/%02d/%02d' % lt[0:3]
+
+def yyyymm(s):
+    lt = time.localtime(s)
+    return '%04d_%02d' % lt[0:2]
 
 def v(message):
     if VERBOSE:
@@ -27,7 +31,7 @@ def main(args):
 
     print(f'Cleaning up {target} ...')
 
-    v(f'Now: {date(now)}')
+    v(f'Now: {yyyymmdd(now)}')
 
     for file in sorted(os.listdir(".")):
         if file.startswith(PREFIX):
@@ -36,12 +40,12 @@ def main(args):
         t = stat.st_mtime
         age = (now - t) / (24 * 60 * 60)
 
-        v('%s %6d %s' % (date(t), age, file))
+        v('%s %6d %s' % (yyyymmdd(t), age, file))
 
         if age < threshold:
             continue
 
-        to = PREFIX + date(t)
+        to = PREFIX + yyyymm(t)
         if not os.path.isdir(to):
             v(f'Making {to}...')
             os.makedirs(to)
