@@ -1,0 +1,7 @@
+#!/bin/bash
+
+if [[ "$1" == "-s" ]] ; then
+    date '+%Y-%m-%d'
+else
+    date '+%Y%m%d'
+fi

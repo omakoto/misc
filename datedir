@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -e
+
+prefix="${1:-/tmp/}"
+
+dir="$prefix/$(date '+%Y/%m/%d')"
+
+mkdir -p "$dir"
+ln -sfn "$dir" "$prefix/TODAY"
+ln -sfn "$prefix/$(date '+%Y/%m')" "$prefix/THISMONTH"
+ln -sfn "$prefix/$(date '+%Y/%m/%d' -d "1 day ago")" "$prefix/YESTERDAY"
+
+echo "$dir"

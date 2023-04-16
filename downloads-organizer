@@ -1,0 +1,57 @@
+#!/usr/bin/python3
+
+import os
+import shutil
+import sys
+import time
+
+VERBOSE = False
+PREFIX = '%archive_'
+
+def date(s):
+    lt = time.localtime(s)
+    return '%04d/%02d/%02d' % lt[0:3]
+
+def v(message):
+    if VERBOSE:
+        print(message)
+
+def main(args):
+    target = f'{os.environ["HOME"]}/Downloads/'
+    threshold = 30 # Archive files this old
+
+    os.chdir(target)
+
+    now = time.time()
+
+
+    print(f'Cleaning up {target} ...')
+
+    v(f'Now: {date(now)}')
+
+    for file in sorted(os.listdir(".")):
+        if file.startswith(PREFIX):
+            continue
+        stat = os.stat(file)
+        t = stat.st_mtime
+        age = (now - t) / (24 * 60 * 60)
+
+        v('%s %6d %s' % (date(t), age, file))
+
+        if age < threshold:
+            continue
+
+        to = PREFIX + date(t)
+        if not os.path.isdir(to):
+            v(f'Making {to}...')
+            os.makedirs(to)
+        
+        shutil.move(file, to)
+        print(f'  Archived: {file} -> {to}')
+
+    print('Done')
+
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])
