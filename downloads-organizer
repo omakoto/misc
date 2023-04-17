@@ -16,6 +16,10 @@ def yyyymm(s):
     lt = time.localtime(s)
     return '%04d_%02d' % lt[0:2]
 
+def yyyy(s):
+    lt = time.localtime(s)
+    return '%04d' % lt[0]
+
 def v(message):
     if VERBOSE:
         print(message)
@@ -45,7 +49,7 @@ def main(args):
         if age < threshold:
             continue
 
-        to = PREFIX + yyyymm(t)
+        to = PREFIX + yyyy(t)
         if not os.path.isdir(to):
             v(f'Making {to}...')
             os.makedirs(to)
