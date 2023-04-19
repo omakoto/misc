@@ -1,0 +1,14 @@
+#!/bin/bash
+
+size="${1:-13}"
+
+ee() {
+    echo "$*"
+    "$@"
+}
+
+# For gnome 3
+ee dconf write /org/gnome/desktop/interface/font-name "'Cantarell $size'"
+ee dconf write /org/gnome/desktop/interface/document-font-name "'Cantarell $size'"
+ee dconf write /org/gnome/desktop/interface/monospace-font-name "'Monospace $size'"
+ee dconf write /org/gnome/desktop/wm/preferences/titlebar-font "'Cantarell Bold $size'"

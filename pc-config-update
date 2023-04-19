@@ -20,6 +20,7 @@ fi
 sf=2
 chrome_dpi=""
 rdt_dpi=""
+font_size="" # Default
 
 case "$(hostname -s)" in
   nuc|omakoto-ct1)
@@ -62,6 +63,7 @@ if lsusb | grep -q '0853:0111' ; then # Topre keyboard.
   hwinfo --monitor --short 2>/dev/null > $mon
   if grep -q BDM4065 $mon ; then # Home monitor
     chrome_dpi="1.2"
+    font_size=11
   elif grep -q T32p-20 $mon ; then # Office monitor
     chrome_dpi="1.5"
   fi
@@ -75,6 +77,9 @@ ee gsettings set org.cinnamon.desktop.interface scaling-factor $sf
 # For gnome
 ee gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "[{'Gdk/WindowScalingFactor', <$sf>}]"
 ee gsettings set org.gnome.desktop.interface scaling-factor $sf
+
+$HOME/cbin/misc/linux-update-fonts $font_size
+
 
 echo "$chrome_dpi" > ~/.chromedpi
 echo "$rdt_dpi" > ~/.remote-desktop-dpi
