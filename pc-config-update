@@ -61,8 +61,11 @@ if lsusb | grep -q '0853:0111' ; then # Topre keyboard.
   sf=1
   mon=/tmp/monitor.txt
   hwinfo --monitor --short 2>/dev/null > $mon
-  if grep -q BDM4065 $mon ; then # Home monitor
+  if grep -q BDM4065 $mon ; then # Home monitor 40"
     chrome_dpi="1.2"
+    font_size=11
+  elif grep -q CG437K $mon ; then # Home monitor 43"
+    chrome_dpi="1"
     font_size=11
   elif grep -q T32p-20 $mon ; then # Office monitor
     chrome_dpi="1.5"
