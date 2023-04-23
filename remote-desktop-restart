@@ -1,0 +1,3 @@
+#!/bin/bash
+
+ee sudo systemctl start chrome-remote-desktop@$USER
