@@ -1,4 +1,4 @@
 #!/bin/bash
 
 # gnome-terminal --geometry 160x40 -- sudo dmesg -Tw
-ee sudo xterm -fa 'Monospace' -fs 10 -g 300x50 -e dmesg -Tw
+ee bash -c 'sudo xterm -fa Monospace -fs 10 -g 300x50 -e dmesg -Tw &'
