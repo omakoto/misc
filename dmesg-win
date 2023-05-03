@@ -1,4 +1,9 @@
 #!/bin/bash
 
+
+if find-window '^dmesg$' ; then
+  exit 0
+fi
+
 # gnome-terminal --geometry 160x40 -- sudo dmesg -Tw
 ee sudo bash -c 'xterm -fa Monospace -fs 10 -g 300x50 -e dmesg -Tw &'

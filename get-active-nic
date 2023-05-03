@@ -2,4 +2,4 @@
 
 # Print the first default nic.
 
-route -n | awk '(NR==3){print $8}'
+route -n | grep -v tun | awk '(NR==3){print $8}'
