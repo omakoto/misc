@@ -55,7 +55,7 @@ case "$(hostname -s)" in
     ;;
 esac
 
-if lsusb | grep -q '0853:0111' ; then # Topre keyboard.
+if lsusb | grep -q -P '(0853:0111|K120)' ; then # Topre keyboard.
   # $medir/dell-keymap-reset
   chrome_dpi=""
   rdt_dpi=""
@@ -69,7 +69,7 @@ if lsusb | grep -q '0853:0111' ; then # Topre keyboard.
     chrome_dpi="1.1"
     font_size=12
     # sound_device='alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__hw_sofhdadsp_3__sink'
-  elif grep -q T32p-20 $mon ; then # Office monitor
+  elif grep -q -P '(T32p-20|U3223QE)' $mon ; then # Office monitor
     chrome_dpi="1.5"
   fi
 fi
