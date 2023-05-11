@@ -34,6 +34,7 @@ import "$out" # Using imagemagick # With imagemagic
 if (( $copy_image )) ; then
   xclip -selection clipboard -t image/png -i $out
   notify-send -t 3000 "Screenshot captured into clipboard"
+  ee -qb ksnip -e $out
 else
   echo "$out" | xclip -r -selection clipboard -t text/plain
   INFO 'Captured into:' $out

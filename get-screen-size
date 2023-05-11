@@ -1,0 +1,9 @@
+#!/bin/bash
+
+xdpyinfo | perl -ne '
+if (/dimensions:/) {
+    $_ =~ /(\d+)x(\d+)/;
+    ($w, $h) = ($1, $2);
+    print "WIDTH=$w\nHEIGHT=$h\n";
+}
+'
