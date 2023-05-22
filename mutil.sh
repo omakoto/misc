@@ -761,3 +761,7 @@ function ramtmp() {
     return 1
   fi
 }
+
+nobuf() {
+  stdbuf -i0 -o0 -e0 "$@"
+}
