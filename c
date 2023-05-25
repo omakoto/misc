@@ -73,7 +73,7 @@ params+=("--force-color-profile=srgb")
 
 if [[ -n "$profdir" ]]; then
   if ! [[ "$profdir" =~ / ]] ; then
-    profdir="$HOME/.config/$profdir"
+    profdir="$(readlink -f $HOME/.config/$profdir)"
   fi
   profdir="$(readlink -m "$profdir")"
   profdir="$(l2w "$profdir")"
@@ -87,7 +87,7 @@ if [[ -n "$profdir" ]]; then
   # if ! [[ -d "$profdir/" ]] ; then
   #   mkdir -p "$profdir"
   # fi
-  params+=("--profile-directory=Default")
+  # params+=("--profile-directory=Default")
 fi
 
 # This file is written by pc-config-update
