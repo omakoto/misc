@@ -6,6 +6,8 @@ set -e
 url="$1"
 out="$(pwd)/$(date8 -s)"
 
+UA="Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/114.0"
+
 usage() {
     cat <<'EOF'
 
@@ -33,6 +35,6 @@ INFO "Domain:" "$domain"
 ee mkdir -p "$out"
 ee cd "$out"
 
-ee wget --recursive --no-clobber --page-requisites --html-extension --convert-links --domains "$domain" --no-parent "$url"
+ee wget --recursive --span-hosts --no-clobber --page-requisites --html-extension --convert-links --domains "$domain" --user-agent="$UA" --no-parent "$url"
 
 INFO "Page saved to $out"
