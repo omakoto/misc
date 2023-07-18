@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# shows x11 or wayland -- doesn't work well on NX / cloudtop? has too many sessions.
+# loginctl show-session $(loginctl | grep $(whoami) | awk '{print $1}') -p Type | sed -e 's!^Type=!!'
+
+echo $XDG_SESSION_TYPE
