@@ -24,7 +24,7 @@ font_size="" # Default
 sound_device=""
 
 case "$(hostname -s)" in
-  nuc|omakoto-ct1)
+  nuc|omakoto-ct*)
     exit 0 # Do nothing for NUC
     ;;
   omakoto-glaptop2) # Dell laptop.
