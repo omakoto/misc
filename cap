@@ -20,24 +20,30 @@ fi
 
 out=$HOME/Downloads/screenshot-$(date8)${label}.png
 
+not() {
+  notify-send -t 1000 "$@"
+}
+
+
 if (( $delay == 0 )) ; then
-  notify-send -t 3000 "Taking a screenshot..."
+  not "Taking a screenshot..."
 else
-  notify-send -t 3000 "Taking a screenshot in $delay seconds..."
+  not "Taking a screenshot in $delay seconds..."
   sleep $delay
 fi
 
 echo "Select a region and press CTRL+C to capture:"
 
-import "$out" # Using imagemagick # With imagemagic
+# import "$out" # Using imagemagick # With imagemagic
+gnome-screenshot -a -f "$out" || not "Failed to capture a screenshot. (not under gnome?)"
 
 if (( $copy_image )) ; then
   xclip -selection clipboard -t image/png -i $out
-  notify-send -t 3000 "Screenshot captured into clipboard"
+  not "Screenshot captured into clipboard"
   ee -qb ksnip -e $out
 else
   echo "$out" | xclip -r -selection clipboard -t text/plain
   INFO 'Captured into:' $out
-  notify-send -t 3000 "Screenshot saved as $out"
+  not "Screenshot saved as $out"
   ee -qb ksnip -e $out
 fi
