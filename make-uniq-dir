@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -e
+
+i=1
+
+while true; do
+    dir=$(printf %03d $i)
+    if ! [[ -e $dir ]] ;then
+        mkdir -p $dir
+        echo $(readlink -f $dir)
+        exit 0
+    fi
+    i=$(( $i + 1 ))
+done

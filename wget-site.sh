@@ -4,7 +4,7 @@ set -e
 . mutil.sh
 
 url="$1"
-out="$(pwd)/$(date8 -s)"
+out="$(make-uniq-dir)"
 
 UA="Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/114.0"
 
