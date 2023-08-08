@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# Take PIDs from the command line, and print the command line of these proceses.
+#
+# Example: show-commandline $(pgrep java)
+
+split_tokens_with_colon() {
+    local indent="$1"
+    local arg="$2"
+    local suffix="$3"
+
+    echo "$indent\$(perl -e 'print join(\":\", @ARGV)' \\"
+
+    echo "$arg:" | while IFS='' read -r -d : token; do
+        printf "%s  %q%s\n" "$indent" "$token" ' \'
+    done
+    echo "$indent)$suffix"
+
+    return 0
+}
+
+
+for pid in "${@}"; do
+    echo "# Pid: $pid"
+    indent=""
+    
+    tokens=()
+    while IFS= read -r -d $'\0' token; do
+        tokens+=("$token")
+    done < /proc/$pid/cmdline
+
+    last_index=$(( ${#tokens[@]} - 1 ))
+    i=-1
+    indent=""
+    for token in "${tokens[@]}"; do
+        i=$(( i + 1 ))
+        suffix=''
+        if (( $i < $last_index )) ; then
+            suffix=' \'
+        fi
+        # If the token contains a :, then special case it...
+        if [[ "$token" =~ : ]] ; then
+            split_tokens_with_colon "$indent" "$token" "$suffix"
+        else
+            printf "%s%q%s\n" "$indent" "$token" "$suffix"
+        fi
+        indent="  "
+    done
+done
