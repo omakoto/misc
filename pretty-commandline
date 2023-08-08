@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# Print the command line arguments, one in each line.
+# If an argument contains ':'s, split it further.
+
+
+# If an argument contains a ':', we break it down further.
+maybe_split_tokens_with_colon() {
+    local indent="$1"
+    local arg="$2"
+    local suffix="$3"
+
+    if ! [[ "$token" =~ : ]] ; then
+        return 1
+    fi
+
+    echo "$indent\$(perl -e '$,=\":\"; print @ARGV' -- \\"
+
+    echo "$arg:" | while IFS='' read -r -d : token; do
+        printf "%s  %q%s\n" "$indent" "$token" ' \'
+    done
+    echo "$indent)$suffix"
+
+    return 0
+}
+
+last_index=$(( $# - 1 ))
+
+
+i=-1
+indent=""
+for token in "${@}"; do
+    i=$(( i + 1 ))
+    suffix=''
+    if (( $i < $last_index )) ; then
+        suffix=' \'
+    fi
+    # If the token contains a :, then special case it...
+    if maybe_split_tokens_with_colon "$indent" "$token" "$suffix" ; then
+        :
+    else
+        printf "%s%q%s\n" "$indent" "$token" "$suffix"
+    fi
+    indent="  "
+done
