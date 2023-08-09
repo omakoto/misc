@@ -17,6 +17,9 @@ maybe_split_tokens_with_colon() {
     echo "$indent\$(perl -e '$,=\":\"; print @ARGV' -- \\"
 
     echo "$arg:" | while IFS='' read -r -d : token; do
+        if ! [[ "$token" = -* ]] ; then
+            echo -n "  " # Extra indent for non-flag args
+        fi
         printf "%s  %q%s\n" "$indent" "$token" ' \'
     done
     echo "$indent)$suffix"
@@ -39,6 +42,9 @@ for token in "${@}"; do
     if maybe_split_tokens_with_colon "$indent" "$token" "$suffix" ; then
         :
     else
+        if ! [[ "$token" = -* ]] ; then
+            echo -n "  " # Extra indent for non-flag args
+        fi
         printf "%s%q%s\n" "$indent" "$token" "$suffix"
     fi
     indent="  "
