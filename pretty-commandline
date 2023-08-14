@@ -10,8 +10,9 @@ maybe_split_tokens_with_colon() {
     local arg="$2"
     local suffix="$3"
 
-    # Do it only if the argument has two or more colons.
-    if ! [[ "$token" =~ :.*: ]] ; then
+    # Do it only if an argument seems to have a full path 
+    # after a colon.
+    if ! [[ "$token" =~ :/[a-zA-Z] ]] ; then
         return 1
     fi
 

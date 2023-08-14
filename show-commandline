@@ -14,5 +14,21 @@ for pid in "${@}"; do
         tokens+=("$token")
     done < /proc/$pid/cmdline
 
+    envs=()
+    while IFS= read -r -d $'\0' token; do
+        envs+=("$token")
+    done < /proc/$pid/environ
+
+    for env in "${envs[@]}" ; do
+        name="${env%%=*}"
+        value="${env#*=}"
+        if [[ "${!name}" == "$value" ]]; then
+            #echo -n "# "
+            continue
+        fi
+
+        printf "export %s=%q\n" "$name" "$value"
+    done
+    echo
     pretty-commandline "${tokens[@]}"
 done
