@@ -6,58 +6,79 @@ set -e
 help() {
     cat <<'EOF'
 
-  file-foreach.sh [OPTIONS] FILES -- COMMAND [COMMAND-ARGS...]
+    file-foreach.sh [OPTIONS] COMMAND [COMMAND-ARGS...] -- FILES
 
-    COMMAND-ARGS may contain %i %o for input and output filenames.
-       %o is set to "%i.out"
+        COMMAND-ARGS may contain %i %o for input and output filenames.
+            %o is set to "%i.out"
 
-    -d: dry run
-    -i: In-place edit
 EOF
 }
 
-dry=0
-inplace=0
-suffix=".out"
+export DRY=0
+export INPLACE=0
+export SUFFIX=".out"
 
-eval "$(bashgetopt -u usage '
-  d|dry           dry=1                    # Dry run
-  i|suffix        inplace=1; suffix=.bak   # Inplace 
+parallel=0
+parallel_opts="-j 100%"
+
+eval "$(bashgetopt -u help '
+  d|DRY                   DRY=1                          # Dry run
+  i|suffix                INPLACE=1; SUFFIX=.bak         # In-place edit
+  p|parallel              parallel=1                     # Use GNU parallel
+  o|parallel-options=s    parallel=1;parallel_opts=%     # Use GNU parallel with given options
 ' "$@")"
 
-EE="ee -2"
-if (( $dry )) ; then
+export EE="ee -2"
+if (( $DRY )) ; then
     EE="$EE -d"
 fi
 
-files=()
+command=()
 
 while (( $# > 0 )); do
     if [[ "$1" == "--" ]] ; then
         break
     fi
-    files+=("$1")
+    temp=($1)
+    if (( "${#temp[*]}" > 1 )) ; then
+        # Wait, this won't detect leading and trailing whitespace...
+        echo "Command may not contain whitespace." 1>&2
+        exit 1
+    fi
+
+    command+=("$1")
     shift
 done
 
-if [[ "$1" != -- ]] ; then
+if (( $# == 0 )) ; then
     help
     exit 1
 fi
 
-shift # Remove "--"
+shift # Remove ":::"
 
-command=("${@}")
+files=("${@}")
 
 INFO "Command: " "${command[*]}"
 INFO "Fils:" "${files[*]}"
 
-for file in "${files[@]}"; do
-    bak="$file$suffix"
+if (( $parallel )) ; then
+    echo "Running with GNU Parallel, options=$parallel_opts"
+fi
+
+# For parallel, we need to exrpot command -- so if the command contains whitespace
+# it'll misbehave...
+export COMMAND="${command[@]}"
+
+doit() {
+    local file="$1"
+
+    echo "Processing $file..." 1>&2
+    bak="$file$SUFFIX"
     
     in="$file"
     out="$bak"
-    if (( $inplace )) ; then
+    if (( $INPLACE )) ; then
         $EE cp -p "$file" "$bak"
 
         in="$bak"
@@ -66,7 +87,7 @@ for file in "${files[@]}"; do
 
 
     c=()
-    for arg in "${command[@]}"; do
+    for arg in $COMMAND; do
         arg="${arg//%%/%-%-}"
         arg="${arg//%i/$in}"
         arg="${arg//%o/$out}"
@@ -75,5 +96,16 @@ for file in "${files[@]}"; do
     done
 
     $EE "${c[@]}"
+}
 
-done
+export -f doit
+
+export FORCE_COLOR=1
+
+if (( $parallel )) ; then
+    ee parallel --progress --eta $parallel_opts doit {} ::: "${files[@]}"
+else
+    for file in "${files[@]}"; do
+        doit "$file"
+    done
+fi
