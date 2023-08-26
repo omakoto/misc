@@ -6,27 +6,24 @@ set -e
 help() {
     cat <<'EOF'
 
-  file-inplace-apply.sh [OPTIONS] FILES -- COMMAND [COMMAND-ARGS...]
+  file-foreach.sh [OPTIONS] FILES -- COMMAND [COMMAND-ARGS...]
 
-    COMMAND-ARGS may contain: %i %o for input and output filenames.
+    COMMAND-ARGS may contain %i %o for input and output filenames.
+       %o is set to "%i.out"
 
     -d: dry run
-    -i SUFFIX: back up file suffix
+    -i: In-place edit
 EOF
 }
 
 dry=0
-suffix=".bak"
+inplace=0
+suffix=".out"
 
 eval "$(bashgetopt -u usage '
-  d|dry           dry=1            # Dry run
-  i|suffix=s      suffix=%         # Backup suffix
+  d|dry           dry=1                    # Dry run
+  i|suffix        inplace=1; suffix=.bak   # Inplace 
 ' "$@")"
-
-if [[ "$suffix" == "" ]] ; then
-    help
-    exit 1
-fi
 
 EE="ee -2"
 if (( $dry )) ; then
@@ -56,18 +53,27 @@ INFO "Command: " "${command[*]}"
 INFO "Fils:" "${files[*]}"
 
 for file in "${files[@]}"; do
-    to="$file$suffix"
-    $EE cp -p "$file" "$to"
+    bak="$file$suffix"
+    
+    in="$file"
+    out="$bak"
+    if (( $inplace )) ; then
+        $EE cp -p "$file" "$bak"
+
+        in="$bak"
+        out="$file"
+    fi
+
 
     c=()
     for arg in "${command[@]}"; do
         arg="${arg//%%/%-%-}"
-        arg="${arg//%i/$to}"
-        arg="${arg//%o/$i}"
+        arg="${arg//%i/$in}"
+        arg="${arg//%o/$out}"
         arg="${arg//%-%-/%%}"
         c+=("$arg")
     done
 
-    $EE echo "${c[@]}"
+    $EE "${c[@]}"
 
 done
