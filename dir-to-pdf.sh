@@ -8,6 +8,7 @@ shopt -s nullglob
 ok=0
 
 for dir in "${@}" ; do
+    dir=$(echo "$dir" | sed -e 's!//*$!!')
     echo "# Processing $dir ..."
     files=( $(echo "$dir"/*.{jpg,jpeg,png} | sort -V) )
     for file in "${files[@]}"; do
