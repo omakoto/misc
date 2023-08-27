@@ -39,9 +39,10 @@ while (( $# > 0 )); do
     if [[ "$1" == "--" ]] ; then
         break
     fi
+
+    # Make sure it doesn't contain any whitespace.
     temp=($1)
-    if (( "${#temp[*]}" > 1 )) ; then
-        # Wait, this won't detect leading and trailing whitespace...
+    if [[ "${temp[0]}" != "$1" ]] ; then
         echo "Command may not contain whitespace." 1>&2
         exit 1
     fi
@@ -55,7 +56,7 @@ if (( $# == 0 )) ; then
     exit 1
 fi
 
-shift # Remove ":::"
+shift # Remove "--"
 
 files=("${@}")
 
