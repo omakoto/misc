@@ -173,7 +173,7 @@ for n in "${args[@]}" ; do
       *.json)
         if (( $pretty )) ; then
           f=$temp/${n##*/}-$$-pretty.json
-          jsonpretty < "$n" > "$f"
+          json_pp < "$n" > "$f"
           chmod -w "$f"
         else
           f="$n"
