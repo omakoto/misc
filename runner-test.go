@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/omakoto/go-common/src/cmdchain"
 	"github.com/omakoto/go-common/src/runner"
 )
@@ -15,6 +16,6 @@ func main() {
 	//cmd.MustRunAndWait()
 	// fmt.Printf("%s", cmd.MustRunAndGetString())
 	cmd.MustRunAndStreamStrings(func(s string) {
-		fmt.Printf("%s", s)
+		fmt.Printf("%s\n", s)
 	})
 }
