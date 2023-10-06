@@ -40,13 +40,6 @@ while (( $# > 0 )); do
         break
     fi
 
-    # Make sure it doesn't contain any whitespace.
-    temp=($1)
-    if [[ "${temp[0]}" != "$1" ]] ; then
-        echo "Command may not contain whitespace." 1>&2
-        exit 1
-    fi
-
     command+=("$1")
     shift
 done
@@ -67,9 +60,8 @@ if (( $parallel )) ; then
     echo "Running with GNU Parallel, options=$parallel_opts"
 fi
 
-# For parallel, we need to exrpot command -- so if the command contains whitespace
-# it'll misbehave...
-export COMMAND="${command[@]}"
+# Export an array with whitespace preserved...
+export array_exported="$(printf '%q ' "${command[@]}")" and
 
 doit() {
     local file="$1"
@@ -86,9 +78,10 @@ doit() {
         out="$file"
     fi
 
+    typeset -a "command=($array_exported)"
 
     c=()
-    for arg in $COMMAND; do
+    for arg in "${command[@]}"; do
         arg="${arg//%%/%-%-}"
         arg="${arg//%i/$in}"
         arg="${arg//%o/$out}"
