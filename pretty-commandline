@@ -12,7 +12,11 @@ maybe_split_tokens_with_colon() {
 
     # Do it only if an argument seems to have a full path 
     # after a colon.
-    if ! [[ "$token" =~ :/[a-zA-Z] ]] ; then
+#    if ! [[ "$token" =~ :/[a-zA-Z] ]] ; then
+#        return 1
+#    fi
+
+    if ! [[ "$token" =~ : ]] ; then
         return 1
     fi
 

@@ -765,3 +765,8 @@ function ramtmp() {
 nobuf() {
   stdbuf -i0 -o0 -e0 "$@"
 }
+
+# Run something in $ANDROID_BUILD_TOP
+AT() {
+  cd "$ANDROID_BUILD_TOP" && "$@"
+}
