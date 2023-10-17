@@ -1,0 +1,7 @@
+#!/bin/bash
+
+log=/tmp/tee-auto-$(date8).log
+
+tee $log
+
+echo "Logged to $log"

@@ -270,7 +270,7 @@ echo-and-exec() {
       T|time           time=1             # Run with /usr/bin/time -v. (command always runs as a child)
       ' "$@")"
 
-  if (( $DRYRUN )) || (( $DRY )) || (( $EE_DRY )) ; then
+  if (( $dry )) || (( $DRYRUN )) || (( $DRY )) || (( $EE_DRY )) ; then
     dry=1
     dry_opts=dry-run
   fi
@@ -764,4 +764,9 @@ function ramtmp() {
 
 nobuf() {
   stdbuf -i0 -o0 -e0 "$@"
+}
+
+# Run something in $ANDROID_BUILD_TOP
+AT() {
+  cd "$ANDROID_BUILD_TOP" && "$@"
 }

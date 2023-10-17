@@ -57,9 +57,9 @@ esac
 
 if lsusb | grep -q -P '(0853:0111|K120)' ; then # Topre keyboard.
   # $medir/dell-keymap-reset
-  #chrome_dpi=""
-  #rdt_dpi=""
-  #sf=1
+  chrome_dpi=""
+  rdt_dpi=""
+  sf=1
   mon=/tmp/monitor.txt
   hwinfo --monitor --short 2>/dev/null > $mon
   if grep -q BDM4065 $mon ; then # Home monitor 40"

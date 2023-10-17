@@ -10,16 +10,25 @@ maybe_split_tokens_with_colon() {
     local arg="$2"
     local suffix="$3"
 
+    # Do it only if an argument seems to have a full path 
+    # after a colon.
+#    if ! [[ "$token" =~ :/[a-zA-Z] ]] ; then
+#        return 1
+#    fi
+
     if ! [[ "$token" =~ : ]] ; then
         return 1
     fi
 
-    echo "$indent\$(perl -e '$,=\":\"; print @ARGV' -- \\"
+    echo "$indent  \"\$(perl -e '$,=\":\"; print @ARGV' -- \\"
 
     echo "$arg:" | while IFS='' read -r -d : token; do
+        if ! [[ "$token" = -* ]] ; then
+            echo -n "  " # Extra indent for non-flag args
+        fi
         printf "%s  %q%s\n" "$indent" "$token" ' \'
     done
-    echo "$indent)$suffix"
+    echo "$indent  )\"$suffix"
 
     return 0
 }
@@ -39,6 +48,9 @@ for token in "${@}"; do
     if maybe_split_tokens_with_colon "$indent" "$token" "$suffix" ; then
         :
     else
+        if (( $i > 0 )) && ! [[ "$token" = -* ]] ; then
+            echo -n "  " # Extra indent for non-flag args
+        fi
         printf "%s%q%s\n" "$indent" "$token" "$suffix"
     fi
     indent="  "
