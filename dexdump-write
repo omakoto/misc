@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -e
+
+if [[ $# == 0 ]] ; then
+    echo "Usage: dexdump-write DEX-FILE ..." 1>&2
+    exit 1
+fi
+
+echo "Dumping $* ..."
+out="$1-dump.txt"
+if [[ "$out" -nt "$f" ]] ; then
+    echo "  $out is up-to-date."
+    continue
+fi
+ee -2 dexdump -d -h "$@" > "$out" || true
+echo "Wrote to $out"
