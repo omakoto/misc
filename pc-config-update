@@ -17,6 +17,12 @@ if iswsl ; then
   exit 0
 fi
 
+force=0
+if [[ "$1" == "-f" ]] ; then
+  force=1
+fi
+
+
 sf=2
 chrome_dpi=""
 rdt_dpi=""
@@ -24,8 +30,17 @@ font_size="" # Default
 sound_device=""
 
 case "$(hostname -s)" in
-  nuc|omakoto-ct*)
+  nuc)
     exit 0 # Do nothing for NUC
+    ;;
+  omakoto-ct*)
+    # sf=1
+    if ! (( $force )) ; then
+      echo "Skipping pc-config-update on cloudtop. Use [pc-c  onfig-update -f] to force run it." 1>&2
+      exit 0
+    fi
+    chrome_dpi="1.2"
+    sf=1
     ;;
   omakoto-glaptop2) # Dell laptop.
     # ee $medir/dell-keymap-custom
@@ -82,6 +97,7 @@ ms-arc-mouse-natural-scroll.sh
 ee gsettings set org.cinnamon.desktop.interface scaling-factor $sf
 
 # For gnome
+# This actully isn't enough as of 2023-11-01, TODO Figure it out.
 ee gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "[{'Gdk/WindowScalingFactor', <$sf>}]"
 ee gsettings set org.gnome.desktop.interface scaling-factor $sf
 
