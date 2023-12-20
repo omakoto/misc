@@ -2,4 +2,11 @@
 
 . mutil.sh
 
-ee java $(java-debug-opts) "$@"
+OPTS=""
+
+# F10 to toggle ALT_MODE
+if ! (( $ALT_MODE )) ; then
+    OPTS=$(java-debug-opts)
+fi
+
+ee java $OPTS "$@"
