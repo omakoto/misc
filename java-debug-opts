@@ -1,5 +1,5 @@
 #!/bin/bash
 
 port=${1:-8000}
-echo "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=$port"
+echo "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:$port"
 echo "Debug port: $port" 1>&2
