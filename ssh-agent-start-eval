@@ -4,6 +4,7 @@
 
 if [[ "$SSH_AUTH_SOCK" != "" ]] ; then
 	echo "SSH_AUTH_SOCK already set ($SSH_AUTH_SOCK)" 1>&2
+	exit 0
 fi
 
 if uname -a | grep -q rodete ; then
