@@ -1,0 +1,27 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+
+ensure_name_available() {
+    local orig="$1" # original name
+    local gen="$2" # the index that we want to make sure available
+
+    if ! [[ -e "$orig.$gen" ]] ; then
+        return 0
+    fi
+    local next=$(( $gen + 1 ))
+    ensure_name_available "$orig" $next
+    ee mv "$orig.$gen" "$orig.$next"
+}
+
+for f in "${@}" ; do
+    if ! [[ -e "$f" ]] ; then
+        echo "Warning: $f not found. Cannot create a backup." 1>&2
+        continue
+    fi
+    echo "Backing up $f ..."
+    ensure_name_available "$f" 1
+    ee cp "$f" "$f.1"
+done
