@@ -1,3 +1,21 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+src="$1"
+
+
+
+
+
+
+
+
+
+
+
+
 echo "not done"
 
 # #!/bin/bash
