@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+dir="$1"
+
+if ! [[ -d "$dir" ]] ; then
+    echo "Usage: ${0##*/} DIRECTORY (which must containn *.iml)" 1>&2
+    exit 1
+fi
+
+cd "$dir"
+
+file="@idea-project-$(date8).tgz"
+
+if [[ -e "$file" ]] ; then
+    create-generational-backup "$file"
+fi
+
+ee tar cvf "$file" *.iml .idea/
+
+INFO "Created:" "$(hostname -f):$(readlink -e "$dir/$file")"

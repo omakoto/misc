@@ -19,9 +19,9 @@ fi
 
 (
   ee -2 cd "$target"
-  ee -2 git diff HEAD@{u} > $patch
+  ee -2 git format-patch --stdout HEAD@{u}...HEAD > $patch
 )
 
-ee git apply -3 $patch
+ee git am --3way $patch
 
 rm -f $patch

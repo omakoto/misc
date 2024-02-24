@@ -5,6 +5,12 @@
 
 cd ${ANDROID_BUILD_TOP?}
 
+if (( $# > 0 )) ; then
+  echo "Invalid argument(s)." 1>&2
+  exit 1
+fi
+
+
 dirs=$(repo list | awk '{print $1}')
 
 do_status() {

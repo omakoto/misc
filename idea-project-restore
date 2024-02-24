@@ -1,0 +1,35 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+src="$1"
+
+if [[ "$src" == "" ]] ; then
+    echo "Usage: ${0##*/} PROJECT.tgz" 1>&2
+    exit 1
+fi
+
+path="${src##*:}"
+host=""
+if [[ "$src" =~ : ]] ; then
+    host="${0%:*}"
+fi
+local_tgz="${src##*/}"
+
+INFO "Backing up local project if exists..."
+idea-project-backup . || true
+
+if [[ "$host" == "" ]] || [[ "$host" == "$(hostname -f)" ]] ; then
+    INFO "Copying $path to $local_tgz"...
+    ee cp "$path" "$local_tgz"
+else
+    INFO "Copying $host:$path to $local_tgz"...
+    ee scp "$host:$path" "$local_tgz"
+fi
+
+ee rm -fr *.iml .idea
+
+ee tar xvf "$local_tgz"
+
+INFO "Success"

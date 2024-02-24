@@ -1,0 +1,14 @@
+#!/bin/bash
+
+. mutil.sh
+
+OPTS=""
+
+# Alt+ENTER to set ALT_MODE
+if (( $ALT_MODE )) ; then
+    OPTS=$(java-debug-opts)
+else
+    yellow "[Run with ATL+ENTER to enable the debugger]" 1>&2
+fi
+
+ee java $OPTS "$@"
