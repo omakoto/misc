@@ -42,7 +42,14 @@ case "$(hostname -s)" in
     chrome_dpi="1.2"
     sf=1
     ;;
-  omakoto-glaptop2) # Dell laptop.
+
+  dell-vm*) # Dell windows desktop
+    chrome_dpi="1.1"
+    font_size=12
+    sf=1
+    ;;
+
+  omakoto-glaptop2)
     # ee $medir/dell-keymap-custom
     # dell-touchscreen-enable 1
     chrome_dpi="2.6"
