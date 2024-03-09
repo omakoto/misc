@@ -48,7 +48,7 @@ case "$(hostname -s)" in
     chrome_dpi="2.6"
     # sf=2
     ;;
-  x1nano-u|x1nano2|x1u-2024)
+  x1nano-u|x1nano*|x1u-2024)
     sf=1
     chrome_dpi="1.5"
     ;;
