@@ -46,24 +46,20 @@ for i in range(232, 256):
 p("\n")
 
 p("\n[256 Colors] (index / RGB)\n")
-for b in range(0, 6):
-    for r in range(0, 6):
+for r in range(0, 6):
+    for mode in [0, 2]:
         for g in range(0, 6):
-            c = 16 + (r * 36) + (g * 6) + b
-            p(f"\x1b[38;5;15m")
-            p(f"\x1b[48;5;{c}m")
-            p(f" {c:3d}")
-            reset()
-        p(" ")
-    p("\n")
-    for r in range(0, 6):
-        for g in range(0, 6):
-            c = 16 + (r * 36) + (g * 6) + b
-            p(f"\x1b[38;5;15m")
-            p(f"\x1b[48;5;{c}m")
-            p(f" {r}{g}{b}")
-            reset()
-        p(" ")
-    p("\n")
+            for b in range(0, 6):
+                c = 16 + (r * 36) + (g * 6) + b
+                fg = 15 if g < 3 else 0
+                p(f"\x1b[38;5;{fg}m")
+                p(f"\x1b[48;5;{c}m")
+                if mode == 0:
+                    p(f" {c:3d}")
+                else:
+                    p(f" {r}{g}{b}")
+                reset()
+            p(" ")
+        p("\n")
     p("\n")
 p("\n")
