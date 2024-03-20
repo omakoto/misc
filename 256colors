@@ -1,0 +1,69 @@
+#!/usr/bin/python
+
+# Reference: https://en.wikipedia.org/wiki/ANSI_escape_code
+
+RESET = "\x1b[0m"
+
+def p(value):
+    print(value, end="")
+
+def reset():
+    p(RESET)
+
+def print_basic_colors(extra=""):
+    for bg in range(16):
+        for fg in range(16):
+            p(f"\x1b[48;5;{bg}m")
+            p(f"\x1b[38;5;{fg}m")
+            p(extra)
+            p(f"{bg:2d};{fg:2d}")
+            reset()
+            p(" ")
+        p("\n")
+
+
+p("[Normal colors]\n")
+print_basic_colors()
+
+p("\n[Bold]\n")
+print_basic_colors("\x1b[1m")
+
+p("\n[Gray scale] (index / scale)\n")
+for i in range(232, 256):
+    p(f"\x1b[38;5;15m")
+    p(f"\x1b[48;5;{i}m")
+    p(f"{i:3d}")
+    reset()
+    p(" ")
+p("\n")
+for i in range(232, 256):
+    s = i - 232
+    p(f"\x1b[38;5;15m")
+    p(f"\x1b[48;5;{i}m")
+    p(f"{s:3d}")
+    reset()
+    p(" ")
+p("\n")
+
+p("\n[256 Colors] (index / RGB)\n")
+for b in range(0, 6):
+    for r in range(0, 6):
+        for g in range(0, 6):
+            c = 16 + (r * 36) + (g * 6) + b
+            p(f"\x1b[38;5;15m")
+            p(f"\x1b[48;5;{c}m")
+            p(f" {c:3d}")
+            reset()
+        p(" ")
+    p("\n")
+    for r in range(0, 6):
+        for g in range(0, 6):
+            c = 16 + (r * 36) + (g * 6) + b
+            p(f"\x1b[38;5;15m")
+            p(f"\x1b[48;5;{c}m")
+            p(f" {r}{g}{b}")
+            reset()
+        p(" ")
+    p("\n")
+    p("\n")
+p("\n")

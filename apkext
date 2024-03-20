@@ -4,7 +4,7 @@ set -e
 . mutil.sh
 
 for n in "$@"; do
-	to="$n.ext"
+	to="$n.apkext"
 	check="$to/.check"
 	if [[ "$n" -nt "$check" ]] ; then
 		{
@@ -17,9 +17,14 @@ for n in "$@"; do
 			ee -2 dexdump -d -h "$n" > "$dex" || true
 
 			echo "dump manifest: $n > $manifest"
-			# apkanalyzer is in ~/Android/Sdk/cmdline-tools/latest/bin
-			# Download "Android SDK Command-line Tools (latest)" on SDK manager
-			ee -2 apkanalyzer manifest print "$n" > "$manifest"
+
+			# It doesn't work, so just use aapt
+			# # apkanalyzer is in ~/Android/Sdk/tools/bin
+			# # (old: apkanalyzer is in ~/Android/Sdk/cmdline-tools/latest/bin)
+			# # Download "Android SDK Command-line Tools (latest)" on SDK manager
+			# ee -2 apkanalyzer manifest print "$n" > "$manifest"
+
+			aapt2 dump xmltree --file AndroidManifest.xml "$n" > "$manifest"
 
 			touch "$check"
 		} 1>&2
