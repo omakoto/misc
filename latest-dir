@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -e
+
+# usage:
+#  latest-dir DIR-NAME/
+#
+#  print the child directory with the most recent timeestamp
+
+dir="$1"
+
+for child in $(ls -cd "$dir/"*); do
+    if [[ -d "$child" ]] ;then
+        echo "$child/"
+        exit 0
+    fi
+done
+
+exit 1
