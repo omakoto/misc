@@ -110,6 +110,7 @@ ee gsettings set org.gnome.desktop.interface scaling-factor $sf
 
 $HOME/cbin/misc/linux-update-fonts $font_size
 
+trackpoint-speedup.sh
 
 echo "$chrome_dpi" > ~/.chromedpi
 echo "$rdt_dpi" > ~/.remote-desktop-dpi
