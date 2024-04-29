@@ -15,7 +15,7 @@ sub tokenize {
 
   $line =~ s![^$ENV{FILE_RE_CHARS}]! !go;
   for my $tok (split /\s+/, $line) {
-    if (isfile($tok)) {
+    if (length($tok) > 2 && isfile($tok)) {
       my $text = -T $tok;
       if ($text_only && !$text) {
         next;
