@@ -1,0 +1,28 @@
+#!/bin/bash
+
+. minit.sh
+
+if [[ "$1" == "-p" ]]; then
+    shift
+    dir="${1:-$PWD}"
+    cd $dir
+    while [[ "$dir" != "/" ]] ;do
+        if [[ -f "$DIR_LABEL_FILE" ]]; then
+            cat "$DIR_LABEL_FILE"
+        fi
+        cd ..
+        dir=$PWD
+    done
+    exit 0
+fi
+
+label="$*"
+
+target="$ANDROID_BUILD_TOP"
+
+if [[ "$target" == "" ]] || ! [[ -d "$target" ]] ; then
+    echo "Target dir not found" 1>2
+    exit 1
+fi
+
+echo "$label" > "$target/$DIR_LABEL_FILE"
