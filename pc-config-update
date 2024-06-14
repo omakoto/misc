@@ -88,6 +88,14 @@ if lsusb | grep -q -P '(0853:0111|K120)' ; then # Topre keyboard.
     chrome_dpi="1.2"
     font_size=13
     sf=1
+  elif grep -q LNVTabExtreme $mon ; then # Lenovo tab extreme
+    chrome_dpi="1.3"
+    font_size=13
+    sf=1
+  elif grep -q "CSOT T3 LCD Monitor" $mon ; then # 18.5" FHD portable (bought in Japan)
+    chrome_dpi="1"
+    font_size=11
+    sf=1
   elif grep -q CG437K $mon ; then # Home monitor 43"
     chrome_dpi="1.1"
     font_size=12
