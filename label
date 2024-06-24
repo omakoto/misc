@@ -2,7 +2,7 @@
 
 . minit.sh
 
-if [[ "$1" == "-p" ]]; then
+if (( $# > 0 )) && [[ "$1" == "-p" ]]; then
     shift
     dir="${1:-$PWD}"
     cd $dir
@@ -18,7 +18,7 @@ fi
 
 label="$*"
 
-target="$ANDROID_BUILD_TOP"
+target="${ANDROID_BUILD_TOP:-}"
 
 if [[ "$target" == "" ]] || ! [[ -d "$target" ]] ; then
     echo "Target dir not found" 1>2
