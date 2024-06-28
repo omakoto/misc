@@ -140,7 +140,8 @@ function INFO() {
 }
 
 function ERROR() {
-    echo -n "${0##*/}: error: "
+    echo -n "${0##*/}:"
+    bred -n " [error] "
     bred -n "$1"
     if shift ; then
       local msg="$*"
@@ -152,9 +153,12 @@ function ERROR() {
 }
 
 function WARN() {
-    echo -n "${0##*/}: warn: "
+    echo -n "${0##*/}:"
+    byellow -n " [warning] "
     byellow -n "$1"
+    shift
     if [[ -n "$2" ]] ; then
+        shift
         byellow -n " $2"
     fi
     local msg="$*"
