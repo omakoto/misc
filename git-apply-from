@@ -4,7 +4,7 @@ set -e
 . mutil.sh
 
 target="$1"
-patch=/tmp/$$.patch
+patch=$(mktemp /tmp/XXXXXXXX.patch)
 
 if ! [[ -d "$target" ]] ; then
   cat <<'EOF'
@@ -24,4 +24,4 @@ fi
 
 ee git am --3way $patch
 
-rm -f $patch
+# rm -f $patch
