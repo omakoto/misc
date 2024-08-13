@@ -4,6 +4,7 @@ set -e
 . mutil.sh
 
 target="$1"
+branch="${2:-HEAD}"
 patch=$(mktemp /tmp/XXXXXXXX.patch)
 
 if ! [[ -d "$target" ]] ; then
@@ -19,7 +20,7 @@ fi
 
 (
   ee -2 cd "$target"
-  ee -2 git format-patch --stdout HEAD@{u}...HEAD > $patch
+  ee -2 git format-patch --stdout "$branch"@{u}.."$branch" > $patch
 )
 
 ee git am --3way $patch
