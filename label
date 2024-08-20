@@ -5,7 +5,7 @@
 if (( $# > 0 )) && [[ "$1" == "-p" ]]; then
     shift
     dir="${1:-$PWD}"
-    cd $dir
+    cd "$dir"
     while [[ "$dir" != "/" ]] ;do
         if [[ -f "$DIR_LABEL_FILE" ]]; then
             cat "$DIR_LABEL_FILE"
