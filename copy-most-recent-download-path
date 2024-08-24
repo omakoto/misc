@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+dir=$HOME/Downloads
+cd $dir
+
+while read -r f ; do
+    if [[ -f "$f" ]] ;then
+        res="$dir/$f"
+        echo "$res" | xclip -r -selection clipboard
+        notify-send -t 1000 "Copied '$res' in clibboard"
+
+        exit 0
+    fi
+done < <( ls -c )
+
+echo "No files in $dir" 1>&2
+exit 1

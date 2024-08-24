@@ -40,10 +40,9 @@ gnome-screenshot -a -f "$out" || not "Failed to capture a screenshot. (not under
 if (( $copy_image )) ; then
   xclip -selection clipboard -t image/png -i $out
   not "Screenshot captured into clipboard"
-  ee -qb ksnip -e $out
 else
-  echo "$out" | xclip -r -selection clipboard -t text/plain
+  echo "$out" | xclip -r -selection clipboard
   INFO 'Captured into:' $out
   not "Screenshot saved as $out"
-  ee -qb ksnip -e $out
 fi
+ee -qb ksnip -e $out
