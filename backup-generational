@@ -1,0 +1,36 @@
+#!/bin/bash
+
+. mutil.sh
+
+set -e
+
+shift_backup() {
+    local base="$1"
+
+    local n=0
+    while [[ -e "$base.$n" ]]; do
+        n=$(( n + 1 ))
+    done
+
+    # "$base.$n" doesn't exist here
+
+    while (( n > 0 )) ; do
+        ee mv "$base.$(( n - 1 ))" "$base.$n"
+        n=$(( n - 1 ))
+    done
+    return 0
+}
+
+
+
+for f in "${@}" ; do
+    echo "Backing up $f"
+
+    shift_backup "$f.bak"
+
+    if [[ -e "$f.bak" ]] ; then
+        ee mv "$f.bak" "$f.bak.0"
+    fi
+
+    ee cp -p "$f" "$f.bak"
+done
