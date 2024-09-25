@@ -19,8 +19,14 @@ EOF
 fi
 
 (
-  ee -2 cd "$target"
-  ee -2 git format-patch --stdout "$branch"@{u}.."$branch" > $patch
+  ee -2 builtin cd "$target"
+  if [[ -n "$(git status -s)" ]] ; then
+    echo 'Directory dirty'
+    git status
+    exit 3
+  else
+    ee -2 git format-patch --stdout "$branch"@{u}.."$branch" > $patch
+  fi
 )
 
 ee git am --3way $patch
