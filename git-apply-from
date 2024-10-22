@@ -26,6 +26,7 @@ fi
     exit 3
   else
     ee -2 git format-patch --stdout "$branch"@{u}.."$branch" > $patch
+    echo "Patch created at: $patch"
   fi
 )
 
