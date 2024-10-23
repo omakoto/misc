@@ -119,11 +119,10 @@ if false ; then
 
   $HOME/cbin/misc/linux-update-fonts $font_size
 
+  echo "Updated DPI settings."
+else
   chrome_dpi=1
   rdt_dpi=1
-
-  echo "Updated DPI settings."
-
 fi
 
 echo "$chrome_dpi" > ~/.chromedpi
