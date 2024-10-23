@@ -108,22 +108,28 @@ fi
 
 ms-arc-mouse-natural-scroll.sh
 
-# For cinnamon
-ee gsettings set org.cinnamon.desktop.interface scaling-factor $sf
+if false ; then
+  # For cinnamon
+  ee gsettings set org.cinnamon.desktop.interface scaling-factor $sf
 
-# For gnome
-# This actully isn't enough as of 2023-11-01, TODO Figure it out.
-ee gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "[{'Gdk/WindowScalingFactor', <$sf>}]"
-ee gsettings set org.gnome.desktop.interface scaling-factor $sf
+  # For gnome
+  # This actully isn't enough as of 2023-11-01, TODO Figure it out.
+  ee gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "[{'Gdk/WindowScalingFactor', <$sf>}]"
+  ee gsettings set org.gnome.desktop.interface scaling-factor $sf
 
-$HOME/cbin/misc/linux-update-fonts $font_size
+  $HOME/cbin/misc/linux-update-fonts $font_size
 
-trackpoint-speedup.sh
+  chrome_dpi=1
+  rdt_dpi=1
+
+  echo "Updated DPI settings."
+
+fi
 
 echo "$chrome_dpi" > ~/.chromedpi
 echo "$rdt_dpi" > ~/.remote-desktop-dpi
 
-echo "Updated DPI settings."
+trackpoint-speedup.sh
 
 
 if [[ "$sound_device" != "" ]] ; then
