@@ -69,7 +69,7 @@ fi
 # build the parameters.
 
 params=()
-params+=("--force-color-profile=srgb")
+# params+=("--force-color-profile=srgb")
 
 if [[ -n "$profdir" ]]; then
   if ! [[ "$profdir" =~ / ]] ; then
