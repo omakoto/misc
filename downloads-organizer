@@ -49,7 +49,7 @@ def main(args):
         if age < threshold:
             continue
 
-        to = PREFIX + yyyy(t)
+        to = PREFIX + yyyymmdd(t)
         if not os.path.isdir(to):
             v(f'Making {to}...')
             os.makedirs(to)
