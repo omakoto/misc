@@ -3,14 +3,14 @@ import math
 import re
 
 
-from matplotlib import pyplot as plt
-import numpy as np
-import pandas as pd
-from pandas import Series, DataFrame
+# from matplotlib import pyplot as plt
+# import numpy as np
+# import pandas as pd
+# from pandas import Series, DataFrame
 
-from IPython.display import display as d
+# from IPython.display import display as d
 
-from calc import show_result as p
+# from calc import show_result as p
 
 def ts():
     from tensorflow import keras
