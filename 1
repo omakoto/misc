@@ -122,11 +122,16 @@ function resolve_file() {
     return 0
   fi
   {
-    echo "[NEW] $PWD/$n"
+    echo "[NEW] ./$n"
     for path in $(paths-to-root "$PWD") $(recent-dirs | head -20) ; do
-      f="$path$n"
+      local f="$path$n"
       if [[ -e "$f" ]] ; then
-        echo "      $f"
+        local rel=$(realpath -s --relative-to="$PWD" "$f")
+        if [[ "$rel" =~ ^\.\. ]]; then
+          echo "      $f"
+        else
+          echo "      ./$rel"
+        fi
       fi
     done
   } | global-unique | fzf -1 | sed -e 's/^[^ ]*  *//'
