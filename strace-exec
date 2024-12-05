@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Run command with strace and to show exec* syscalls.
+
+log=/tmp/strace-exec-$(date '+%Y%m%d-%H%M%S').log
+
+args=(-f -tt  -v -e signal=none -e t=/^exec)
+
+args+=(--decode-pids=comm)
+
+
+echo "Log file: file://$log"
+echo ''
+
+strace "${args[@]}" -o "$log" "$@"
+
+echo ''
+echo "Log file: file://$log"
