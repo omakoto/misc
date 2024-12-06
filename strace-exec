@@ -16,6 +16,7 @@ run_with_strace() {
     local args=(-f -ttt  -v -e signal=none -e t=execve)
 
     args+=(--decode-pids=comm)
+    args+=(-s 256)
 
     strace "${args[@]}" -o "$log" "$@"
 }
@@ -37,7 +38,7 @@ if (m!^(\d+)\S+ (\S+) (execve\(.*)!) {
     print STDERR $1, "\n";
     print $comma;
     print qq!{"ts": $ts, "pid": 0, "tid": "$tid", "ph": "B", "name": "$command"}\n!;
-} elsif (m!^(\d+) (\S+) (\+\+\+ exited)!) {
+} elsif (m!^(\d+)\S+ (\S+) (\+\+\+ exited)!) {
     my ($ts, $tid) = ($2 / 1000.0, $1);
     print $comma;
     print qq!{"ts": $ts, "pid": 0, "tid": "$tid", "ph": "E"}\n!;
