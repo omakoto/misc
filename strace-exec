@@ -1,18 +1,65 @@
 #!/bin/bash
 
-# Run command with strace and to show exec* syscalls.
+# Run command with strace and to show exec* syscalls, and convert to a chrome
+# trace json file.
+# File format: http://docs/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySUs
 
-log=/tmp/strace-exec-$(date '+%Y%m%d-%H%M%S').log
+timestamp="$(date '+%Y%m%d-%H%M%S')"
+strace_log=/tmp/strace-exec-$timestamp.log
+trace=/tmp/strace-exec-$timestamp-trace.json.gz
 
-args=(-f -tt  -v -e signal=none -e t=/^exec)
+run_with_strace() {
+    local log="$1"
+    shift
+    local command=("$@")
 
-args+=(--decode-pids=comm)
+    local args=(-f -ttt  -v -e signal=none -e t=execve)
 
+    args+=(--decode-pids=comm)
 
-echo "Log file: file://$log"
+    strace "${args[@]}" -o "$log" "$@"
+}
+
+convert_to_trace() {
+    local strace="$1"
+    local trace="$2"
+
+    {
+        echo '['
+        perl -ne "$(cat <<'__EOF__'
+#line 28
+BEGIN {
+    my $comma = "";
+}
+if (m!^(\d+)\S+ (\S+) (execve\(.*)!) {
+    my ($ts, $tid) = ($2 / 1000.0, $1);
+    my $command = $3 =~ s!["\\]!\\\1"!gr;
+    print STDERR $1, "\n";
+    print $comma;
+    print qq!{"ts": $ts, "pid": 0, "tid": "$tid", "ph": "B", "name": "$command"}\n!;
+} elsif (m!^(\d+) (\S+) (\+\+\+ exited)!) {
+    my ($ts, $tid) = ($2 / 1000.0, $1);
+    print $comma;
+    print qq!{"ts": $ts, "pid": 0, "tid": "$tid", "ph": "E"}\n!;
+} else {
+    next;
+}
+$comma = ",";
+
+__EOF__
+)" "$strace"
+        echo ']'
+    } | gzip > "$trace"
+}
+
+echo "Log file: file://$strace_log"
+echo "Trace file: file://$trace"
 echo ''
 
-strace "${args[@]}" -o "$log" "$@"
+run_with_strace "$strace_log" "$@"
 
-echo ''
-echo "Log file: file://$log"
+convert_to_trace "$strace_log" "$trace"
+
+echo "Log file: file://$strace_log"
+echo "Trace file: file://$trace"
+trace2html "$trace"
