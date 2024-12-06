@@ -16,7 +16,7 @@ run_with_strace() {
     local args=(-f -ttt  -v -e signal=none -e t=execve)
 
     args+=(--decode-pids=comm)
-    args+=(-s 256)
+    args+=(-s 1024)
 
     strace "${args[@]}" -o "$log" "$@"
 }
