@@ -1,6 +1,8 @@
 #!/usr/bin/perl
 use strict;
 
+$| = 1; # auto flush
+
 my %lines = ();
 
 while (<>) {
