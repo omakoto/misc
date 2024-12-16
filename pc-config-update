@@ -36,7 +36,7 @@ case "$(hostname -s)" in
   omakoto-ct*)
     # sf=1
     if ! (( $force )) ; then
-      echo "Skipping pc-config-update on cloudtop. Use [pc-c  onfig-update -f] to force run it." 1>&2
+      echo "Skipping pc-config-update on cloudtop. Use [pc-config-update -f] to force run it." 1>&2
       exit 0
     fi
     chrome_dpi="1.2"
