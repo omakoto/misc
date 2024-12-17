@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# touch files recursively
+
+timestamp="$(date)"
+
+echo "Touchr: now=$timestamp" 1>&2
+
+for path in "$@"; do
+    echo "$path" 1>&2
+    if ! [[ -d "$path" ]] ; then
+        echo "$path"
+    else
+        find "$path" -type f
+    fi
+done | xargs touch -d "$timestamp"
+
