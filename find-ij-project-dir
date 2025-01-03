@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -e
+
+cd "${1?Specifiy directory}"
+
+while true ; do
+    if [[ -d .idea ]] ; then
+        echo "$PWD"
+        exit 0
+    fi
+    cd ..
+    if [[ "$PWD" == / ]] ; then
+        exit 1
+    fi
+done
