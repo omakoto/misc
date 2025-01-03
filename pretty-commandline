@@ -20,7 +20,7 @@ maybe_split_tokens_with_colon() {
         return 1
     fi
 
-    echo "$indent  \"\$(perl -e '$,=\":\"; print @ARGV' -- \\"
+    echo "$indent  \"\$(bash -c 'IFS=: ; echo \"\$*\"' -- \\"
 
     echo "$arg:" | while IFS='' read -r -d : token; do
         if ! [[ "$token" = -* ]] ; then
