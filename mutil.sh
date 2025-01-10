@@ -770,3 +770,20 @@ nobuf() {
 AT() {
   cd "$ANDROID_BUILD_TOP" && "$@"
 }
+
+# Un the command only in ALT_MODE
+do-if-alt() {
+  if (( $ALT_MODE )) ; then
+    "$@"
+  else
+    return 0
+  fi
+}
+
+do-unless-alt() {
+  if ! (( $ALT_MODE )) ; then
+    "$@"
+  else
+    return 0
+  fi
+}
