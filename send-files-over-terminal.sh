@@ -17,6 +17,7 @@ target=("$@")
 rm -f "$content_file"
 
 cat >>"$content_file" <<'__EOF__'
+function __gen_files() {
 which uudecode || sudo apt install -y sharutils &&
 /bin/bash <<'__END_OF_SEND_FILES_SHAR__' &&
 __EOF__
@@ -28,6 +29,8 @@ ee -2 shar "${target[@]}" >>"$content_file"
 cat >>"$content_file" <<'__EOF__'
 __END_OF_SEND_FILES_SHAR__
 echo "File(s) created successfully."
+}
+__gen_files && unset -f __gen_files
 __EOF__
 
 cb < "$content_file"
