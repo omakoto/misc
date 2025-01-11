@@ -32,5 +32,5 @@ __EOF__
 
 cb < "$content_file"
 
-echo "Now, paste from the clipboard onto a terminal on another machine."
+echo "Now, paste from the clipboard onto a terminal on another PC."
 

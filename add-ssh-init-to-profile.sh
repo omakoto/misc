@@ -35,3 +35,5 @@ echo "ssh-agent initialized."
 
 __EOF__
 __END_OF_OUTER_SCRIPT__
+
+echo 'Script copied. Now paste from the clipboard onto a terminal on another PC.'
