@@ -1,0 +1,7 @@
+#!/usr/bin/perl
+
+# Print file modifiction time of the given files.
+
+for my $file (@ARGV) {
+    print($file, " ", (stat($file))[9], "\n");
+}
