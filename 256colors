@@ -16,19 +16,21 @@ def print_basic_colors(extra=""):
             p(f"\x1b[48;5;{bg}m")
             p(f"\x1b[38;5;{fg}m")
             p(extra)
-            p(f"{bg:2d}/{fg:2d}")
+            p(f"{fg:2d}/{bg:2d}")
             reset()
             p(" ")
         p("\n")
 
+p("Reference: https://en.wikipedia.org/wiki/ANSI_escape_code\n")
 
-p("[Normal colors]\n")
+
+p("[Normal colors] \\e[38;5;${fg-index}m \\e[48;5;${bg-index}m\n")
 print_basic_colors()
 
-p("\n[Bold]\n")
+p("\n[Bold] \\e[1m\n")
 print_basic_colors("\x1b[1m")
 
-p("\n[Gray scale] (index / scale)\n")
+p("\n[Gray scale] (index / scale) \\e[38;5;${bg-index}m \\e[38;5;${bg-index}m\n")
 for i in range(232, 256):
     p(f"\x1b[38;5;15m")
     p(f"\x1b[48;5;{i}m")
@@ -45,7 +47,7 @@ for i in range(232, 256):
     p(" ")
 p("\n")
 
-p("\n[256 Colors] (index / RGB)\n")
+p("\n[256 Colors] (index / RGB)  \\e[38;5;${fg-index}m \\e[48;5;${bg-index}m\n")
 for r in range(0, 6):
     for mode in [0, 2]:
         for g in range(0, 6):

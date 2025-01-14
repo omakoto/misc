@@ -1,20 +1,51 @@
 _reloaded_time=$(ramtmp)/$$-reload.tmp
 _reload_needed=$(ramtmp)/reload-needed.tmp
+_reload_rc_files_fingerprints=""
 
 trap 'rm -f "$_reloaded_time"' EXIT
 
 _use_signal_to_reload=0
 
-reload_rc() {
-  bgreen "Reloading .bashrc..."
-  time source ~/.bashrc
-  touch "$_reloaded_time"
-  bgreen "Reloaded .bashrc."
+_main_rc_files="
+$HOME/cbin/makotorc
+$HOME/cbin/interactive-setup.bash
+$HOME/cbin/interactivefuncs.bash
+$HOME/cbin/prompt.bash
+$HOME/cbin/dot_bash_profile
+$HOME/cbin/abin/android-commands.bash
+$HOME/cbin/android-commands-pub.sh
+$HOME/cbin/misc/rc-reload.bash
+"
+
+_rc_file_fingerprint() {
+    echo $(file-fingerprints $_main_rc_files)
 }
 
-# Call it in PROMPT_COMMAND
-reload_rc_if_changed() {
+_update_rc_file_fingerprint() {
+    _reload_rc_files_fingerprints="$(_rc_file_fingerprint)"
+}
+
+rc_files_changed() {
+    [[ "$_reload_rc_files_fingerprints" != "$(_rc_file_fingerprint)" ]]
+}
+
+reload_rc() {
+    bgreen "Reloading .bashrc..."
+    time source ~/.bashrc
+    touch "$_reloaded_time"
+    _update_rc_file_fingerprint
+    bgreen "Reloaded .bashrc."
+}
+
+_reload_needed() {
     if [[ "$_reloaded_time" -ot "$_reload_needed" ]] ; then
+        return 0
+    return 1
+}
+
+# Call it in PROMPT_COMMAND?
+reload_rc_if_changed() {
+    if _reload_needed ; then
         reload_rc
     fi
 }
