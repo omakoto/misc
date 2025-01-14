@@ -40,6 +40,7 @@ reload_rc() {
 _reload_needed() {
     if [[ "$_reloaded_time" -ot "$_reload_needed" ]] ; then
         return 0
+    fi
     return 1
 }
 
@@ -74,3 +75,4 @@ rc() {
 (( $_use_signal_to_reload )) && trap reload_rc QUIT
 
 touch $_reloaded_time
+_update_rc_file_fingerprint
