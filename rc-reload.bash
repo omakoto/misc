@@ -44,7 +44,6 @@ _reload_needed() {
     return 1
 }
 
-# Call it in PROMPT_COMMAND?
 reload_rc_if_changed() {
     if _reload_needed ; then
         reload_rc
