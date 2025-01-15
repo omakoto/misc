@@ -14,11 +14,11 @@ $HOME/cbin/prompt.bash
 $HOME/cbin/dot_bash_profile
 $HOME/cbin/abin/android-commands.bash
 $HOME/cbin/android-commands-pub.sh
-$HOME/cbin/misc/rc-reload.bash
+$BASH_SOURCE
 "
 
 _rc_file_fingerprint() {
-    echo $(file-fingerprints $_main_rc_files)
+    echo $(md5sum $_main_rc_files)
 }
 
 _update_rc_file_fingerprint() {
