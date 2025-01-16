@@ -59,7 +59,7 @@ case "$(hostname -s)" in
     sf=1
     chrome_dpi="1.5"
     ;;
-  x1c7u|debian) # X1 carbon gen7 / vmware
+  x1c7u|debian|x1gen12u) # X1 carbon gen7 / vmware
     chrome_dpi=""
     ;;
   x1c5deb|x1g5) # X1 carbon gen5
@@ -108,22 +108,22 @@ fi
 
 ms-arc-mouse-natural-scroll.sh
 
-if false ; then
-  # For cinnamon
-  ee gsettings set org.cinnamon.desktop.interface scaling-factor $sf
+# if false ; then
+#   # For cinnamon
+#   ee gsettings set org.cinnamon.desktop.interface scaling-factor $sf
 
-  # For gnome
-  # This actully isn't enough as of 2023-11-01, TODO Figure it out.
-  ee gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "[{'Gdk/WindowScalingFactor', <$sf>}]"
-  ee gsettings set org.gnome.desktop.interface scaling-factor $sf
+#   # For gnome
+#   # This actully isn't enough as of 2023-11-01, TODO Figure it out.
+#   ee gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "[{'Gdk/WindowScalingFactor', <$sf>}]"
+#   ee gsettings set org.gnome.desktop.interface scaling-factor $sf
 
-  $HOME/cbin/misc/linux-update-fonts $font_size
+#   $HOME/cbin/misc/linux-update-fonts $font_size
 
-  echo "Updated DPI settings."
-else
-  chrome_dpi=1
-  rdt_dpi=1
-fi
+#   echo "Updated DPI settings."
+# else
+#   #chrome_dpi=1
+#   rdt_dpi=1
+# fi
 
 echo "$chrome_dpi" > ~/.chromedpi
 echo "$rdt_dpi" > ~/.remote-desktop-dpi
