@@ -57,7 +57,7 @@ case "$(hostname -s)" in
     ;;
   x1nano-u|x1nano*|x1u-2024|x1nanou3)
     sf=1
-    chrome_dpi="1.5"
+    # chrome_dpi="1.5"
     ;;
   x1c7u|debian|x1gen12u) # X1 carbon gen7 / vmware
     chrome_dpi=""
