@@ -487,7 +487,10 @@ bg-start() {
   fi
   local BG_OUT=${BG_OUT:-/dev/null}
   echo "Starting: $*" >>"$BG_OUT"
-  ( nohup "$@" </dev/null >>"$BG_OUT" 2>&1 & )
+  ( 
+    nohup "$@" >>"$BG_OUT" 2>&1 
+    notify-send "Done: $*"
+  ) </dev/null 2>&1 &
 }
 
 function zenlog-nolog-out() {
