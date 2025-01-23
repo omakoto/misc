@@ -485,12 +485,22 @@ bg-start() {
     "$@"
     return $?
   fi
+  local notify_end=0
+  if [[ "$1" == "-n" ]] ; then
+    notify_end=1
+    shift
+  fi
+
   local BG_OUT=${BG_OUT:-/dev/null}
   echo "Starting: $*" >>"$BG_OUT"
   ( 
-    nohup "$@" >>"$BG_OUT" 2>&1 
-    notify-send "Done: $*"
-  ) </dev/null 2>&1 &
+    (
+      nohup "$@" >>"$BG_OUT" 2>&1 
+      if (( $notify_end )) ; then
+        notify-send "Done: $*"
+      fi
+    ) &
+  ) </dev/null >&/dev/null
 }
 
 function zenlog-nolog-out() {
