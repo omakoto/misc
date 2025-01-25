@@ -106,7 +106,7 @@ if lsusb | grep -q -P '(0853:0111|K120|REALFORCE)' ; then # Topre keyboard.
   fi
 fi
 
-ms-arc-mouse-natural-scroll.sh
+# ms-arc-mouse-natural-scroll.sh
 
 # if false ; then
 #   # For cinnamon
