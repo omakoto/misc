@@ -123,18 +123,18 @@ function resolve_file() {
   fi
   {
     echo "[NEW] ./$n"
-    for path in $(paths-to-root "$PWD") $(recent-dirs | head -20) ; do
+    for path in $(paths-to-root "$PWD") $(recent-dirs | head -30) ; do
       local f="$path$n"
       if [[ -e "$f" ]] ; then
         local rel=$(realpath -s --relative-to="$PWD" "$f")
         if [[ "$rel" =~ ^\.\. ]]; then
-          echo "      $f"
+          echo $'      \e[48;5;9m'"$path"$'\e[0m'"$n"
         else
           echo "      ./$rel"
         fi
       fi
     done
-  } | global-unique | fzf -1 | sed -e 's/^[^ ]*  *//'
+  } | global-unique | fzf --ansi -1 | ansi-remove| sed -e 's/^[^ ]*  *//'
   return 0
 }
 

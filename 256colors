@@ -23,6 +23,9 @@ def print_basic_colors(extra=""):
 
 p("Reference: https://en.wikipedia.org/wiki/ANSI_escape_code\n")
 
+p("\n")
+p("Reset: \\e[0m\n")
+p("\n")
 
 p("[Normal colors] \\e[38;5;${fg-index}m \\e[48;5;${bg-index}m\n")
 print_basic_colors()
