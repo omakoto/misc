@@ -1,0 +1,4 @@
+#!/bin/bash
+
+
+cargo install --git https://github.com/omakoto/keyremapper-rs.git --example evsniff
