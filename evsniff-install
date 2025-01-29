@@ -1,4 +1,7 @@
 #!/bin/bash
 
+# This is the rust version
+#ee cargo install --git https://github.com/omakoto/keyremapper-rs.git --example evsniff
 
-cargo install --git https://github.com/omakoto/keyremapper-rs.git --example evsniff
+# Go version
+ee go install -v github.com/omakoto/evsniff-go/cmd/...@latest
