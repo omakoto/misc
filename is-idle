@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# is-idle returns TRUE if the UI idle time is larger than $1 (default 60 seconds) in seconds.
+
+threshold=${1:-60}
+
+idle=0
+if is-wayland ; then
+    idle=$(dbus-send --print-reply --dest=org.gnome.Mutter.IdleMonitor /org/gnome/Mutter/IdleMonitor/Core org.gnome.Mutter.IdleMonitor.GetIdletime |
+        sed -ne 's/^ *uint64 *//p')
+#
+#method return time=1738534501.032118 sender=:1.34 -> destination=:1.1194 serial=23252 reply_serial=2
+#   uint64 27
+
+else
+    idle="$(xprintidle)"
+fi
+
+(( "${idle:-0}" >= ( "$threshold" * 1000) ))
