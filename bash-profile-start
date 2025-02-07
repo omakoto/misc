@@ -24,9 +24,11 @@ profile-restart() {
     echo "@@PROFILE-RESTART@@"
 }
 
-PS4='+$EPOCHREALTIME: '
+PS4='+: '
 exec 9> >(
 perl -p <(cat <<'__END_OF_SCRIPT__'
+
+use Time::HiRes qw(time);
 
 BEGIN {
     $start = -1;
@@ -37,12 +39,12 @@ if (m!\@\@PROFILE-RESTART\@\@!) {
     $start = -1;
 }
 
-if (m!^\++([\d\.]+)\:!) {
-    $time = $1;
+if (m!^\++\: !) {
+    $time = time()  ;
     if ($start < 0) {
         $start = $time;
     }
-    printf("%.6f / %.6f : ", $time - $start, $time - $last);
+    printf("%.6f   +%.6f : ", $time - $start, $time - $last);
     $last = $time;
 }
 
