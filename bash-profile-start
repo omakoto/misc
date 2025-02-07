@@ -20,6 +20,10 @@ profile-stop() {
     set +x
 }
 
+profile-restart() {
+    echo "@@PROFILE-RESTART@@"
+}
+
 PS4='+$EPOCHREALTIME: '
 exec 9> >(
 perl -p <(cat <<'__END_OF_SCRIPT__'
@@ -27,6 +31,10 @@ perl -p <(cat <<'__END_OF_SCRIPT__'
 BEGIN {
     $start = -1;
     $last = 0;
+}
+
+if (m!^\@\@PROFILE-RESTART\@\@!) {
+    $start = -1;
 }
 
 if (m!^\++([\d\.]+)\:!) {
