@@ -1,0 +1,46 @@
+# Run it with .
+
+set +x
+
+my_name="${0##*/}"
+if [[ "$my_name" == bash-profile-start ]] ; then
+    echo "Use \`. $my_name\` instead."
+    exit 1
+fi
+
+# Enable -x, and process the trace output with perl and calculate
+# the timestamp delta and prints it.
+
+cat <<'EOF'
+Profiling started. Use `profile-stop` to stop.
+
+EOF
+
+profile-stop() {
+    set +x
+}
+
+PS4='+$EPOCHREALTIME: '
+exec 9> >(
+perl -p <(cat <<'__END_OF_SCRIPT__'
+
+BEGIN {
+    $start = -1;
+    $last = 0;
+}
+
+if (m!^\++([\d\.]+)\:!) {
+    $time = $1;
+    if ($start < 0) {
+        $start = $time;
+    }
+    printf("%.6f / %.6f : ", $time - $start, $time - $last);
+    $last = $time;
+}
+
+
+__END_OF_SCRIPT__
+))
+BASH_XTRACEFD=9
+
+set -x # Print command line before executing
