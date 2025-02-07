@@ -33,7 +33,7 @@ BEGIN {
     $last = 0;
 }
 
-if (m!^\@\@PROFILE-RESTART\@\@!) {
+if (m!\@\@PROFILE-RESTART\@\@!) {
     $start = -1;
 }
 
