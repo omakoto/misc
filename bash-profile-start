@@ -5,14 +5,15 @@ set +x
 my_name="${0##*/}"
 if [[ "$my_name" == bash-profile-start ]] ; then
     echo "Use \`. $my_name\` instead."
-    exit 1
+#    exit 1
 fi
 
 # Enable -x, and process the trace output with perl and calculate
 # the timestamp delta and prints it.
 
 cat <<'EOF'
-Profiling started. Use `profile-stop` to stop.
+
+** Profiling started. Use `profile-stop` to stop **
 
 EOF
 
@@ -25,9 +26,9 @@ profile-restart() {
 }
 
 PS4='+: '
-exec 9> >(
-perl -p <(cat <<'__END_OF_SCRIPT__'
 
+read -r -d '' S <<'__END_OF_SCRIPT__'
+#line 31
 use Time::HiRes qw(time);
 
 BEGIN {
@@ -47,10 +48,12 @@ if (m!^\++\: !) {
     printf("%.6f   +%.6f : ", $time - $start, $time - $last);
     $last = $time;
 }
-
-
 __END_OF_SCRIPT__
-))
+
+#echo "$S"
+# perl -pe "$S"
+
+exec 9> >( perl -pe "$S" )
 BASH_XTRACEFD=9
 
 set -x # Print command line before executing
