@@ -33,27 +33,41 @@ use Time::HiRes qw(time);
 
 BEGIN {
     $start = -1;
-    $last = 0;
+    $last = -1;
+    $command = "";
+    $nest = "";
 }
 
 if (m!\@\@PROFILE-RESTART\@\@!) {
     $start = -1;
+    $last = -1;
 }
 
-if (m!^\++\: !) {
-    $time = time()  ;
+if (m!^(\++\:) (.*)!s) {
+    $c1 = $1;
+    $c2 = $2;
+
+    $time = time();
     if ($start < 0) {
         $start = $time;
     }
-    printf("%.6f   +%.6f : ", $time - $start, $time - $last);
+    if ($last < 0) {
+        $last = $time;
+    }
+    printf("%.6f   +%.6f: $nest $command", $time - $last, $time - $start);
     $last = $time;
+
+    $nest = $c1;
+    $command = $c2;
+} else {
+    $command .= $_;
 }
 __END_OF_SCRIPT__
 
 #echo "$S"
 # perl -pe "$S"
 
-exec 9> >( perl -pe "$S" )
+exec 9> >( perl -ne "$S" )
 BASH_XTRACEFD=9
 
 set -x # Print command line before executing
