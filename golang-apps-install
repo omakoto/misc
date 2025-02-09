@@ -1,0 +1,5 @@
+#!/bin/bash
+
+. mutil.sh
+
+ee go install -v github.com/omakoto/evsniff-go/cmd/evsniff@latest

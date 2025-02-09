@@ -4,4 +4,4 @@
 #ee cargo install --git https://github.com/omakoto/keyremapper-rs.git --example evsniff
 
 # Go version
-ee go install -v github.com/omakoto/evsniff-go/cmd/evsniff@latest
+golang-apps-install
