@@ -5,7 +5,7 @@ set +x
 my_name="${0##*/}"
 if [[ "$my_name" == bash-profile-start ]] ; then
     echo "Use \`. $my_name\` instead."
-#    exit 1
+    exit 1
 fi
 
 # Enable -x, and process the trace output with perl and calculate
