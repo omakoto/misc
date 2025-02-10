@@ -13,7 +13,6 @@ $HOME/cbin/interactivefuncs.bash
 $HOME/cbin/prompt.bash
 $HOME/cbin/dot_bash_profile
 $HOME/cbin/abin/android-commands.bash
-$HOME/cbin/android-commands-pub.sh
 $BASH_SOURCE
 "
 
