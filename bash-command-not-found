@@ -7,7 +7,7 @@ function command_not_found_handle() {
 function command_not_found_handle_raw() {
     local command="$1"
 
-    local me="[command_not_found_handle in $BASH_SOURCE] "
+    local me="[command_not_found_handle] "
 
     # Auto git checkout.
     if is-git-branch "$command" ; then
@@ -27,6 +27,6 @@ function command_not_found_handle_raw() {
         return $?
     fi
 
-    echo "bash: $command: command not found. (update $BASH_SOURCE to add a handler)"
+    echo "bash: $command: command not found. (update file://$BASH_SOURCE to add a handler)"
     return 127
 }
