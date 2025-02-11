@@ -1,0 +1,28 @@
+#!/bin/bash
+
+SCRIPT="${0##*/}"
+
+set -e
+
+rc=0
+
+for f in "$@"; do
+    if [[ "$f" =~ \.htmlx?$ ]] ; then
+        out="${f%x}"
+        in="${out%.html}"
+    else
+        in="$f"
+        out="$f.html"
+    fi
+    if ! [[ -f "$in" ]] ; then
+        echo "$SCRIPT: $in doesn't exist" 1>&2
+        rc=1
+        continue
+    fi
+    if [[ "$in" -nt "$out" ]] ; then
+        ee a2h "$in" > "$out"
+    fi
+    c "$out"
+done
+
+exit $rc
