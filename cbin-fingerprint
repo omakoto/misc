@@ -43,8 +43,10 @@ update() {
     if ! cbin-has-no-local-changes ; then
         INFO "Local change detected. Updating $fingerprint_file"
         date > $fingerprint_file
+        return 0
+    else
+        return 1
     fi
-    return 0
 }
 
 case "$subcommand" in
