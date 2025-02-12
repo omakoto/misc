@@ -1,0 +1,32 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+fingerprint_file="cbin-fingerprint.dat"
+fingerprint_local="$HOME/cbin/misc/$fingerprint_file"
+fingerprint_remote="https://raw.githubusercontent.com/omakoto/misc/refs/heads/master/$fingerprint_file"
+
+subcommand="$1"
+
+status() {
+    local remote=(curl "$fingerprint_remote")
+    [[ "$remote" == "$(cat $fingerprint_local)" ]]
+}
+
+update() {
+    if ! cbin-is-uptodate ; then
+        INFO "Change detected. Updating $fingerprint_file"
+        date > $fingerprint_file
+    fi
+    return 0
+}
+
+case "$subcommand" in
+status|"") status ;;
+update) update ;;
+*)
+    echo "Unknown subcommand: $subcommand" 1>&2
+    exit 1
+    ;;
+esac
