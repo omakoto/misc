@@ -45,6 +45,7 @@ update() {
         date > $fingerprint_file
         return 0
     else
+        INFO "No local change detected."
         return 1
     fi
 }
