@@ -10,7 +10,8 @@ fingerprint_remote="https://raw.githubusercontent.com/omakoto/misc/refs/heads/ma
 subcommand="$1"
 
 status() {
-    local remote=(curl "$fingerprint_remote")
+    local remote="$(curl -s "$fingerprint_remote")"
+    local loc="$(cat $fingerprint_local)"
     [[ "$remote" == "$(cat $fingerprint_local)" ]]
 }
 

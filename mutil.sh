@@ -5,8 +5,10 @@
 # fails if called by non-bash
 
 _interactive=0
+eeii="" # ee-if-interactive
 if [[ "$-" == *i* ]] ; then
   _interactive=1
+  eeii=ee
 fi
 
 _is_wsl=0
