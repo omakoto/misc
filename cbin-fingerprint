@@ -16,7 +16,11 @@ fingerprint_remote="https://raw.githubusercontent.com/omakoto/misc/refs/heads/ma
 subcommand="$1"
 
 status() {
-    local remote="$(curl -s "$fingerprint_remote")"
+    local ee=""
+    if (( $verbose )) ; then
+        ee="ee -2"
+    fi
+    local remote="$($ee curl -s "${fingerprint_remote}?$RANDOM")"
     local loc="$(cat $fingerprint_local)"
     if (( $verbose )); then
         INFO "Remote:" "$remote"
