@@ -27,16 +27,21 @@ status() {
         INFO "Local: " "$loc"
     fi
     if [[ "$remote" == "$(cat $fingerprint_local)" ]]; then
-        INFO "cbin is up-to-date"
+        INFO "cbin fingerprint is up-to-date"
+        return 0
     else
         # bmagenta "*** cbin needs pulling ***"
         notify -t "cbin checker" "*** cbin needs pulling ***"
+        return 1
     fi
 }
 
 update() {
-    if ! cbin-is-uptodate ; then
-        INFO "Change detected. Updating $fingerprint_file"
+    if ! status ; then
+        return 2
+    fi
+    if ! cbin-has-no-local-changes ; then
+        INFO "Local change detected. Updating $fingerprint_file"
         date > $fingerprint_file
     fi
     return 0
