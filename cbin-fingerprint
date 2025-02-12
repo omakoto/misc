@@ -3,6 +3,12 @@
 set -e
 . mutil.sh
 
+verbose=0
+
+eval "$(bashgetopt '
+v|verbose          verbose=1       # Make verbose
+' "$@")"
+
 fingerprint_file="cbin-fingerprint.dat"
 fingerprint_local="$HOME/cbin/misc/$fingerprint_file"
 fingerprint_remote="https://raw.githubusercontent.com/omakoto/misc/refs/heads/master/$fingerprint_file"
@@ -12,6 +18,10 @@ subcommand="$1"
 status() {
     local remote="$(curl -s "$fingerprint_remote")"
     local loc="$(cat $fingerprint_local)"
+    if (( $verbose )); then
+        INFO "Remote:" "$remote"
+        INFO "Local: " "$loc"
+    fi
     if [[ "$remote" == "$(cat $fingerprint_local)" ]]; then
         INFO "cbin is up-to-date"
     else
