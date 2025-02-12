@@ -12,7 +12,12 @@ subcommand="$1"
 status() {
     local remote="$(curl -s "$fingerprint_remote")"
     local loc="$(cat $fingerprint_local)"
-    [[ "$remote" == "$(cat $fingerprint_local)" ]]
+    if [[ "$remote" == "$(cat $fingerprint_local)" ]]; then
+        INFO "cbin is up-to-date"
+    else
+        # bmagenta "*** cbin needs pulling ***"
+        notify -t "cbin checker" "*** cbin needs pulling ***"
+    fi
 }
 
 update() {
