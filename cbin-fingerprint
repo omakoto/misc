@@ -27,7 +27,7 @@ status() {
         INFO "Local: " "$loc"
     fi
     if [[ "$remote" == "$(cat $fingerprint_local)" ]]; then
-        INFO "cbin fingerprint is up-to-date"
+        INFO "cbin fingerprint is up-to-date -- nothing to sync down."
         return 0
     else
         # bmagenta "*** cbin needs pulling ***"
