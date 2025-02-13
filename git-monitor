@@ -1,0 +1,13 @@
+#!/bin/bash
+
+in=/tmp/git-monitor-in
+out=/tmp/git-monitor
+
+while getopts "i:o:" opt; do
+    case "$opt" in
+    i) in="$OPTARG" ;;
+    o) out="$OPTARG" ;;
+    *) exit 1 ;;
+    esac
+done
+shift $(($OPTIND - 1))
