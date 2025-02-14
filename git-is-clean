@@ -13,8 +13,8 @@ check() {
     local dir="$1"
     cd "$dir"
     if ! git rev-parse --is-inside-work-tree >&/dev/null ; then
-      echo "$dir is not in a git tree" 1>&2
-      return 3
+        echo "$dir is not in a git tree" 1>&2
+        return 3
     fi
     if [[ -n "$(git status --porcelain 2>&1)" ]] ; then
         echo "$dir contains uncommit files" 1>&2
