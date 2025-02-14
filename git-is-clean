@@ -1,5 +1,14 @@
 #!/bin/bash
 
+quiet=0
+if [[ "$1" == "-q" ]] ; then
+    quiet=1
+fi
+
+if (( $quiet )) ; then
+    exec 2>/dev/null
+fi
+
 check() {
     local dir="$1"
     cd "$dir"
