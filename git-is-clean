@@ -23,7 +23,7 @@ check() {
 
     upstream="$(git upstream)"
 
-    if ! git diff --quiet "$upstream"; then
+    if ! git diff --quiet "$upstream"...HEAD; then
         echo "$dir contains local changes" 1>&2
         return 1
     fi
