@@ -1,65 +1,65 @@
-#!/bin/bash
+# #!/bin/bash
 
-#nohup ./myscript 0<&- &>/dev/null &
+# #nohup ./myscript 0<&- &>/dev/null &
 
-set -e
-. mutil.sh
+# set -e
+# . mutil.sh
 
-SCRIPT="${0##*/}"
-SCRIPT_DIR="${0%/*}"
-PID_FILE=/tmp/${SCRIPT}-pid.txt
+# SCRIPT="${0##*/}"
+# SCRIPT_DIR="${0%/*}"
+# PID_FILE=/tmp/${SCRIPT}-pid.txt
 
-in=/tmp/git-monitor-in
-out=/tmp/git-monitor
-min_interval=$(( 60 ))
-poll_interval=$(( 5 * 60 ))
-verbose=1
-daemon=0
+# in=/tmp/git-monitor-in
+# out=/tmp/git-monitor
+# min_interval=$(( 60 ))
+# poll_interval=$(( 5 * 60 ))
+# verbose=1
+# daemon=0
 
-orig_args=("$@")
+# orig_args=("$@")
 
-while getopts "i:o:m:p:vd" opt; do
-    case "$opt" in
-    i) in="$OPTARG" ;;
-    o) out="$OPTARG" ;;
-    m) min_interval="$OPTARG" ;;
-    p) poll_interval="$OPTARG" ;;
-    v) verbose=1 ;;
-    d) daemon=1 ;;
-    *) exit 1 ;;
-esac
-done
-shift $(($OPTIND - 1))
+# while getopts "i:o:m:p:vd" opt; do
+#     case "$opt" in
+#     i) in="$OPTARG" ;;
+#     o) out="$OPTARG" ;;
+#     m) min_interval="$OPTARG" ;;
+#     p) poll_interval="$OPTARG" ;;
+#     v) verbose=1 ;;
+#     d) daemon=1 ;;
+#     *) exit 1 ;;
+# esac
+# done
+# shift $(($OPTIND - 1))
 
-check_running() {
-    if ! [[ -r "$PID_FILE" ]] ; then
-        return 0
-    fi 
-    local prev_pid="$(cat $PID_FILE 2>/dev/null)"
-    local f=/proc/$prev_pid/stat
-    if ! [[ -r "$f" ]] ; then
-        return 0
-    fi 
-    local stat
-    cat $f
-    readarray -t -d ' ' stat < $f
-    declare -p stat
-    if [[ "${stat[1]}" == "($SCRIPT)" ]] ; then
-        return 1
-    fi
-    return 0
-}
+# check_running() {
+#     if ! [[ -r "$PID_FILE" ]] ; then
+#         return 0
+#     fi 
+#     local prev_pid="$(cat $PID_FILE 2>/dev/null)"
+#     local f=/proc/$prev_pid/stat
+#     if ! [[ -r "$f" ]] ; then
+#         return 0
+#     fi 
+#     local stat
+#     cat $f
+#     readarray -t -d ' ' stat < $f
+#     declare -p stat
+#     if [[ "${stat[1]}" == "($SCRIPT)" ]] ; then
+#         return 1
+#     fi
+#     return 0
+# }
 
-if ! check_running; then
-    echo "$SCRIPT: Already running" 1>&2
-    exit 1
-fi
-if (( $verbose )) ; then
-    echo "Daemon started. PID=$$"
-fi
-echo $$ > $PID_FILE
-sleep 6000
-exit $?
+# if ! check_running; then
+#     echo "$SCRIPT: Already running" 1>&2
+#     exit 1
+# fi
+# if (( $verbose )) ; then
+#     echo "Daemon started. PID=$$"
+# fi
+# echo $$ > $PID_FILE
+# sleep 6000
+# exit $?
 
 
 
