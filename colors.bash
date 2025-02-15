@@ -41,7 +41,7 @@ _do_color() {
 
   {
     if (( $use_color )) ; then
-      if (( $color == -1 )) ; then
+      if [[ $color == "" ]] ; then
         echo -ne "\e[0m"
       else
         echo -ne "\e[${attributes}${prefix}${color}m"
@@ -61,7 +61,7 @@ _do_color() {
 }
 
 nocolor() {
-  _do_color -1 "$@"
+  _do_color "" "$@"
 }
 
 black() {
@@ -96,6 +96,10 @@ white() {
   _do_color 7 "$@"
 }
 
+gray() {
+  _do_color "8;5;8" "$@"
+}
+
 bred() {
   _do_color 1 -b "$@"
 }
@@ -122,6 +126,10 @@ bcyan() {
 
 bwhite() {
   _do_color 7 -b "$@"
+}
+
+function DEBUG() {
+  gray "$*"
 }
 
 function INFO() {
