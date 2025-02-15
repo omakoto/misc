@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+set +m # no job finish message
+
+delay="$1"
+shift
+
+(
+    sleep "$delay"
+    "$@"
+)&
