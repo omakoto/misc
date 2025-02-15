@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Like echo, but inserts a new line before the current line,
+# and prints on that line.
+
+echo -n $'\e[1S' # Scroll up. The whole screen scrolls up, but the cursor won't move.
+
+echo -n $'\e7' # Save cursor pos
+
+echo -n $'\e[1A' # Cursor up
+echo -n $'\e[1L' # Insert blank line
+
+echo -n "$*"
+
+echo -n $'\e8' # Restore cursor pos
+
