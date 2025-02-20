@@ -1,5 +1,6 @@
 #!/bin/bash
 
-. mutil.sh
+# . mutil.sh
+# ee go install -v github.com/omakoto/evsniff-go/cmd/evsniff@latest
 
-ee go install -v github.com/omakoto/evsniff-go/cmd/evsniff@latest
+golang-update
