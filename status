@@ -39,7 +39,7 @@ exec > ${CURRENT_TTY:?}
 status() {
     local msg="$*"
 
-    # reset current margin
+    # reset current margin before (possible) scrolling.
     echo -n $'\e7' # save cursor pos
     echo -n $'\e[0;'$LINES$'r' # no margin
     echo -n $'\e8' # restore cursor pos
@@ -52,15 +52,17 @@ status() {
     # fi
 
     # Make sure the cursor isn't at the bottom line.
-    echo $'\n\e[2A' # move cursor down, scroll if needed. Then move up.
-
     echo -n $'\e7' # save cursor pos
+    echo -n $'\n' # move cursor down, scroll if needed.
+    echo -n $'\e8\e[1A' # restore the cursor pos, and move cursor up to cancel \n.
+    #echo -n $'\e8' # restore the cursor pos, and move cursor up to cancel \n.
+
+    echo -n $'\e7' # save cursor pos because set margin moves it.
     echo -n $'\e[0;'$(( $LINES - 1))$'r' # Set bottom margin
 
     echo -n $'\e['$(( $LINES ))$';1H' # Move to the bottom line and
     echo -n $'\e[0K' # erase the line
-    
-    echo -n "$msg" # then echo the message
+    echo -n "$msg" # then print the message
 
     echo -n $'\e8' # restore cursor pos
 }
