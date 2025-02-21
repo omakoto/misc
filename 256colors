@@ -22,6 +22,8 @@ def print_basic_colors(extra=""):
 p("Reference: https://en.wikipedia.org/wiki/ANSI_escape_code\n")
 p("Reference: https://xtermjs.org/docs/api/vtfeatures/\n")
 p("Reference: https://gist.github.com/ConnerWill/d4b6c776b509add763e17f9f113fd25b\n")
+p("\nGnome-terminal simulates Xterm, which simulates VT102 and VT220.\n")
+p("Reference: https://terminals-wiki.org/wiki/index.php/DEC_VT220\n")
 
 p("\n")
 p("Reset: \\e[0m (or \\x1b[0m)\n")
