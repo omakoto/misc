@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# Reserve the bottom line on terminal as a "status" line.
+
+set -e
+
+# Update $COLUMNS/$LINES
+# shopt -s checkwinsize # This is enabled by default
+cat /dev/null # Need to run an external command to get  $COLUMNS/$LINES updated.
+
+# CURRENT_TTY is set by makotorc.
+exec > ${CURRENT_TTY:?}
+
+# # Get cursor position.
+# pos() {
+#     local CURPOS
+#     read -sdR -p $'\E[6n' CURPOS #<>$CURRENT_TTY
+#     CURPOS=${CURPOS#*[} # Strip decoration characters <ESC>[
+#     echo "${CURPOS}"    # Return position in "row;col" format
+# }
+
+# row() {
+#     local COL
+#     local ROW
+#     IFS=';' read -sdR -p $'\E[6n' ROW COL
+#     echo "${ROW#*[}"
+# }
+
+# col() {
+#     local COL
+#     local ROW
+#     IFS=';' read -sdR -p $'\E[6n' ROW COL
+#     echo "${COL}"
+# }
+# #echo "$(col) x $(row) / $COLUMNS x $LINES"
+# #tput lines
+# #exit 0
+
+status() {
+    local msg="$*"
+
+    # reset current margin
+    echo -n $'\e7' # save cursor pos
+    echo -n $'\e[0;'$LINES$'r' # no margin
+    echo -n $'\e8' # restore cursor pos
+
+    # # if we're in the bottom line, scroll up.
+    # # (but if we couldn't get current row, skip it)
+    # local r=$(row)
+    # if (( ${r:-0} == $LINES )); then
+    #     echo -n $'\e[1S\e[1A' # scroll up + move cursor up
+    # fi
+
+    # Make sure the cursor isn't at the bottom line.
+    echo $'\n\e[2A' # move cursor down, scroll if needed. Then move up.
+
+    echo -n $'\e7' # save cursor pos
+    echo -n $'\e[0;'$(( $LINES - 1))$'r' # Set bottom margin
+
+    echo -n $'\e['$(( $LINES ))$';1H' # Move to the bottom line and
+    echo -n $'\e[0K' # erase the line
+    
+    echo -n "$msg" # then echo the message
+
+    echo -n $'\e8' # restore cursor pos
+}
+
+status "$*"
