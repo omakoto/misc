@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# xprintidle equivalent but supports wayland too.
+# Prints idle time in milliseconds
+
+exec 2>/dev/null
+
+idle=0
+
+if is-wayland ; then
+    idle=$(dbus-send --print-reply --dest=org.gnome.Mutter.IdleMonitor /org/gnome/Mutter/IdleMonitor/Core org.gnome.Mutter.IdleMonitor.GetIdletime |
+        sed -ne 's/^ *uint64 *//p')
+else
+    idle="$(xprintidle)"
+fi
+
+if [[ "$1" == "-s" ]]; then
+    idle=$(( "$idle" / 1000))
+fi
+
+
+echo "$idle"
