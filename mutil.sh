@@ -802,3 +802,11 @@ do-unless-alt() {
     return 0
   fi
 }
+
+record_last_activity_time() {
+  touch $LAST_ACTIVITY_FILE
+}
+
+last_activity_age_sec() {
+  fileage -s $LAST_ACTIVITY_FILE
+}
