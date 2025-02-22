@@ -4,6 +4,19 @@
 
 set -e
 
+mode=d
+if [[ "$1" == "-s" ]] ; then
+    shift
+    mode=s
+fi
+
 fdate=$(date +%s -r "${1?Missing argument}")
 
-echo $(( ($(date +%s) - $fdate ) / 86400 ))
+if [[ "$mode" == "d" ]] ; then
+    echo $(( ($(date +%s) - $fdate ) / 86400 ))
+elif [[ "$mode" == "s" ]] ; then
+    echo $(( ($(date +%s) - $fdate ) )) # seconds
+else
+    echo "invalid mode $mode" 1>&2
+    exit 1
+fi
