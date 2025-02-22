@@ -11,30 +11,36 @@ cat /dev/null # Need to run an external command to get  $COLUMNS/$LINES updated.
 # CURRENT_TTY is set by makotorc.
 exec > ${CURRENT_TTY:?}
 
-# # Get cursor position.
-# pos() {
-#     local CURPOS
-#     read -sdR -p $'\E[6n' CURPOS #<>$CURRENT_TTY
-#     CURPOS=${CURPOS#*[} # Strip decoration characters <ESC>[
-#     echo "${CURPOS}"    # Return position in "row;col" format
-# }
+# If STDIN is terminal, then we're in the FG and can get the cursor pos.
+fg=0
+if [[ -t 0 ]] ; then
+    fg=1
+fi
 
-# row() {
-#     local COL
-#     local ROW
-#     IFS=';' read -sdR -p $'\E[6n' ROW COL
-#     echo "${ROW#*[}"
-# }
+# Get cursor position.
+pos() {
+    local CURPOS
+    read -sdR -p $'\E[6n' CURPOS #<>$CURRENT_TTY
+    CURPOS=${CURPOS#*[} # Strip decoration characters <ESC>[
+    echo "${CURPOS}"    # Return position in "row;col" format
+}
 
-# col() {
-#     local COL
-#     local ROW
-#     IFS=';' read -sdR -p $'\E[6n' ROW COL
-#     echo "${COL}"
-# }
-# #echo "$(col) x $(row) / $COLUMNS x $LINES"
-# #tput lines
-# #exit 0
+row() {
+    local COL
+    local ROW
+    IFS=';' read -sdR -p $'\E[6n' ROW COL
+    echo "${ROW#*[}"
+}
+
+col() {
+    local COL
+    local ROW
+    IFS=';' read -sdR -p $'\E[6n' ROW COL
+    echo "${COL}"
+}
+#echo "$(col) x $(row) / $COLUMNS x $LINES"
+#tput lines
+#exit 0
 
 status() {
     local msg="$*"
@@ -44,18 +50,23 @@ status() {
     echo -n $'\e[0;'$LINES$'r' # no margin
     echo -n $'\e8' # restore cursor pos
 
-    # # if we're in the bottom line, scroll up.
-    # # (but if we couldn't get current row, skip it)
-    # local r=$(row)
-    # if (( ${r:-0} == $LINES )); then
-    #     echo -n $'\e[1S\e[1A' # scroll up + move cursor up
-    # fi
+    # if we're in the bottom line, scroll up.
+    # Buf if we're in the BG, we can't get the cursor position, so skip it
+    # and hope prompt took care of it.
+    if (( $fg )) ; then
+        local r=$(row)
+        if (( ${r:-0} == $LINES )); then
+            echo -n $'\e[1S\e[1A' # scroll up + move cursor up
+        fi
+    fi
 
-    # Make sure the cursor isn't at the bottom line.
-    echo -n $'\e7' # save cursor pos
-    echo -n $'\n' # move cursor down, scroll if needed.
-    echo -n $'\e8\e[1A' # restore the cursor pos, and move cursor up to cancel \n.
-    #echo -n $'\e8' # restore the cursor pos, and move cursor up to cancel \n.
+    # This was an attempt to make sure the cursor isn't in the bottom line,
+    # without checking the cursor position, but it didn't work as expected.
+    # # Make sure the cursor isn't at the bottom line.
+    # echo -n $'\e7' # save cursor pos
+    # echo -n $'\n' # move cursor down, scroll if needed.
+    # echo -n $'\e8\e[1A' # restore the cursor pos, and move cursor up to cancel \n.
+    # #echo -n $'\e8' # restore the cursor pos, and move cursor up to cancel \n.
 
     echo -n $'\e7' # save cursor pos because set margin moves it.
     echo -n $'\e[0;'$(( $LINES - 1))$'r' # Set bottom margin
