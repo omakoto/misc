@@ -10,7 +10,14 @@ if [[ "$1" == "-s" ]] ; then
     mode=s
 fi
 
-fdate=$(date +%s -r "${1?Missing argument}")
+file="${1?Missing argument}"
+
+if ! [[ -f "$file" ]] ; then
+    echo 999999999
+    exit 0
+fi
+
+fdate=$(date +%s -r "$file")
 
 if [[ "$mode" == "d" ]] ; then
     echo $(( ($(date +%s) - $fdate ) / 86400 ))
