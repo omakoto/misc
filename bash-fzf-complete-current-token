@@ -80,6 +80,9 @@ EOF
         #   )
         # fi
 
+        # Recent directories
+        recent-dirs -n 50 -z | perl -ne 'chomp; print "[RECENT-DIR] ", $_, "/\n"'
+
         # Filenames in recent logs
         zenlog-recent-files -d | global-unique | head -100 | dir-slash | sed 's/^/[RECENT-FILE] /'
 
@@ -93,9 +96,6 @@ EOF
 
         # Git tags
 #        git tag | perl -pe 'print "[GIT-TAG] "'
-
-        # Recent directories
-        recent-dirs | head -100 | perl -ne 'chomp; print "[RECENT-DIR] ", $_, "/\n"'
 
         # Executable files.
 #        list-commands-in-path | perl -pe 'print "[EXE] "'
