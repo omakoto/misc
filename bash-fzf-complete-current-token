@@ -36,93 +36,41 @@ completed=$(
         env | sed -e 's!^![ENV] $!; s!=.*!!'
 
       else
-        if in-git ; then
-          # Git branches
-          git branch | sed -n '/^..(/d; s/^. /[GIT-BRANCH] /p;'
-        fi
+        cat <(
+          if in-git ; then
+            # Git branches
+            git branch | sed -n '/^..(/d; s/^. /[GIT-BRANCH] /p;'
+          fi
+        )
 
-        if [[ "$ANDROID_BUILD_TOP" ]] ; then
-          cat <<'EOF' | sed -e 's/^/[ANDROID-ENV] /'
-$ANDROID_BUILD_TOP/
+        (
+          if [[ "$ANDROID_BUILD_TOP" ]] ; then
+            cat <<'EOF'
 $ANDROID_BUILD_TOP/build/soong/
 $ANDROID_BUILD_TOP/cts/
 $ANDROID_BUILD_TOP/frameworks/base/
 $ANDROID_BUILD_TOP/out/
 $ANDROID_BUILD_TOP/out/soong/.intermediates/
 $ANDROID_HOST_OUT/
-$OUT/
 EOF
-        fi
-
-#        if in-repo ; then
-#            repo-upstream | perl -pe 'print "[REPO-BRANCH] "'
-#            repo-active-dirs | perl -pe 'print "[REPO-DIR] "' # slow
-#        fi
-
-        # if in-git ; then
-        #   (
-        #     cd "$gitroot"
-        #     # Git changed files
-        #     git status -s |
-        #         perl -pe "
-        #         s!^\s* (A|\?\?) \s*![GIT-CHANGED-ADD] $gitroot/!ix;
-        #         s!^\s* D \s*![GIT-CHANGED-DEL] $gitroot/!ix;
-        #         s!^\s* M \s*![GIT-CHANGED-MOD] $gitroot/!ix;
-        #         " | sort
-
-        #     # Repo changed files
-        #     rp -qR |
-        #         perl -pe "
-        #         s!^\s* A\S* \s*![REPO-CHANGED-ADD] $gitroot/!ix;
-        #         s!^\s* D\S* \s*![REPO-CHANGED-DEL] $gitroot/!ix;
-        #         s!^\s* M\S* \s*![REPO-CHANGED-MOD] $gitroot/!ix;
-        #         s!^\s* T\S* \s*![REPO-CHANGED-CHN] $gitroot/!ix;
-        #         s!^\s* C\S* \s*![REPO-CHANGED-CPY] $gitroot/!ix;
-        #         " | sort
-        #   )
-        # fi
+          fi
+          env | sed -e 's/=.*//'
+        ) | global-unique | sed -e 's/^/[ENV] /'
 
         # Recent directories
-        recent-dirs -n 50 -z | perl -ne 'chomp; print "[RECENT-DIR] ", $_, "/\n"'
+        timeout 1 cat <(
+          recent-dirs -n 50 -z | perl -ne 'chomp; print "[RECENT-DIR] ", $_, "/\n"'
+        )
 
         # Filenames in recent logs
-        zenlog-recent-files -d | global-unique | head -100 | dir-slash | sed 's/^/[RECENT-FILE] /'
-
-        # Android build modules
-        # TODO This needs to switch to jq
-#       android-module-list -q | perl -pe 'print "[AND-MODULE] "'
-
-
-        # Android device files
-#        bash-fzf-complete-current-token-android-helper "${token}"
-
-        # Git tags
-#        git tag | perl -pe 'print "[GIT-TAG] "'
-
-        # Executable files.
-#        list-commands-in-path | perl -pe 'print "[EXE] "'
+        timeout 0.5 cat <(
+          zenlog-recent-files -d | global-unique | head -100 | dir-slash | sed 's/^/[RECENT-FILE] /'
+        )
 
         # Recent words in zenlog
-        zenlog-last-n-contents -R -n 10 | zenlog-recent-words.pl | global-unique | head -1000 | perl -pe 'print "[RECENT-WORD] "'
-
-        # Android packages
-        # Too slow, disabled for now
-        # android-list-apps -n | perl -pe 'print "[AND-PACKAGE] "'
-
-        # Local files files
-        # {
-        #     if [[ -z "$token" ]]; then
-        #         ffind
-        #     else
-        #         for tok in "$token"*; do
-        #           if [[ -f "$tok" ]] ; then
-        #             echo "$tok"
-        #           else
-        #             ffind "$tok"
-        #           fi
-        #         done
-        #     fi
-        # } | dir-slash | perl -pe 'print "[LOCAL-FILE] "'
+        timeout 0.5 cat <(
+          zenlog-last-n-contents -R -n 5 | zenlog-recent-words.pl | global-unique | head -1000 | perl -pe 'print "[RECENT-WORD] "'
+        )
       fi
     } 2>/dev/null |
     nobuf tr -s / /|
