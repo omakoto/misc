@@ -55,7 +55,7 @@ $ANDROID_HOST_OUT/
 EOF
           fi
           env | sed -e 's/=.*//'
-        ) | global-unique | sed -e 's/^/[ENV] /'
+        ) | global-unique | sed -e 's/^/[ENV] $/'
 
         # Recent directories
         timeout 1 cat <(
