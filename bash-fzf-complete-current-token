@@ -10,15 +10,25 @@ a|adb adb=1 # Complete with android device files.
 
 token="$(sh-get-current-token -f)"
 
-env_expansion=0
-shescapes=shescapes
 
-if [[ "$token" = \$* ]] ; then
-  env_expansion=1
-  shescapes=cat
-fi
+# gitroot="$(git rev-parse --show-toplevel 2>/dev/null)"
 
-gitroot="$(git rev-parse --show-toplevel 2>/dev/null)"
+candidate_files() {
+  (
+    if [[ "$token" == "" ]] ; then
+      command ls
+    else
+      echo "$token"* | tr ' ' '\n'
+    fi
+  ) | sort | while read -r n; do
+    echo -n "[FILES] $n"
+    if [[ -d "$n" ]] ; then
+      echo "/"
+    else
+      echo ''
+    fi
+  done
+}
 
 maybe_escape() {
   word="$(cat)"
@@ -31,16 +41,20 @@ maybe_escape() {
 
 completed=$(
     {
-      if (( $env_expansion )) ; then
-        # Env names.
-        env | sed -e 's!^![ENV] $!; s!=.*!!'
-
-      else
         cat <(
           if in-git ; then
             # Git branches
             git branch | sed -n '/^..(/d; s/^. /[GIT-BRANCH] /p;'
           fi
+        )
+
+        timeout 1 cat <(
+          candidate_files
+        )
+
+        # Recent directories
+        timeout 1 cat <(
+          recent-dirs -n 50 -z | perl -ne 'chomp; print "[RECENT-DIR] ", $_, "/\n"'
         )
 
         (
@@ -57,11 +71,6 @@ EOF
           env | sed -e 's/=.*//' | sort
         ) | global-unique | sed -e 's/^/[ENV] $/'
 
-        # Recent directories
-        timeout 1 cat <(
-          recent-dirs -n 50 -z | perl -ne 'chomp; print "[RECENT-DIR] ", $_, "/\n"'
-        )
-
         # Filenames in recent logs
         timeout 0.5 cat <(
           zenlog-recent-files -d | global-unique | head -100 | dir-slash | sed 's/^/[RECENT-FILE] /'
@@ -71,7 +80,6 @@ EOF
         timeout 0.5 cat <(
           zenlog-last-n-contents -R -n 5 | zenlog-recent-words.pl | global-unique | head -1000 | perl -pe 'print "[RECENT-WORD] "'
         )
-      fi
     } 2>/dev/null |
     nobuf tr -s / /|
     nobuf tee /tmp/fzf-in.txt |
