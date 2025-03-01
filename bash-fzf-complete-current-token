@@ -54,7 +54,7 @@ $ANDROID_BUILD_TOP/out/soong/.intermediates/
 $ANDROID_HOST_OUT/
 EOF
           fi
-          env | sed -e 's/=.*//'
+          env | sed -e 's/=.*//' | sort
         ) | global-unique | sed -e 's/^/[ENV] $/'
 
         # Recent directories
