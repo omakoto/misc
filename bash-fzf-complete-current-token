@@ -8,17 +8,19 @@ eval "$(getopt.pl -Nx '
 a|adb adb=1 # Complete with android device files.
 ' "$@")"
 
-token="$(sh-get-current-token -f)"
+export token="$(sh-get-current-token -f)"
 
 
 # gitroot="$(git rev-parse --show-toplevel 2>/dev/null)"
 
 candidate_files() {
   (
+    shopt -s nullglob
+
     if [[ "$token" == "" ]] ; then
       command ls
     else
-      echo "$token"* | tr ' ' '\n'
+      command ls -d "${token}"*
     fi
   ) | sort | while read -r n; do
     echo -n "[FILES] $n"
