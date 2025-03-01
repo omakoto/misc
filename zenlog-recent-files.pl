@@ -30,7 +30,7 @@ while (<>) {
   chomp;
   if (/^Running\: (.*)/) {
     # Special case for command lines from "ee".
-    print "$1\n";
+    #print "$1\n";
     tokenize $1;
   } else {
     tokenize $_;

@@ -41,7 +41,8 @@ completed=$(
           git branch | sed -n '/^..(/d; s/^. /[GIT-BRANCH] /p;'
         fi
 
-        cat <<'EOF' | sed -e 's/^/[ANDROID-ENV] /'
+        if [[ "$ANDROID_BUILD_TOP" ]] ; then
+          cat <<'EOF' | sed -e 's/^/[ANDROID-ENV] /'
 $ANDROID_BUILD_TOP/
 $ANDROID_BUILD_TOP/build/soong/
 $ANDROID_BUILD_TOP/cts/
@@ -51,6 +52,7 @@ $ANDROID_BUILD_TOP/out/soong/.intermediates/
 $ANDROID_HOST_OUT/
 $OUT/
 EOF
+        fi
 
 #        if in-repo ; then
 #            repo-upstream | perl -pe 'print "[REPO-BRANCH] "'
