@@ -18,6 +18,10 @@ expand() {
   echo "$*"
 }
 
+s() {
+  sort -i -d -g
+}
+
 candidate_files() {
   (
     shopt -s nullglob
@@ -52,7 +56,7 @@ completed=$(
         cat <(
           if in-git ; then
             # Git branches
-            git branch | sed -n '/^..(/d; s/^. /[GIT-BRANCH] /p;'
+            git branch | s | sed -n '/^..(/d; s/^. /[GIT-BRANCH] /p;'
           fi
         )
 
@@ -62,7 +66,7 @@ completed=$(
 
         # Recent directories
         timeout 1 cat <(
-          recent-dirs -n 50 -z | perl -ne 'chomp; print "[RECENT-DIR] ", $_, "/\n"'
+          recent-dirs -n 50 -z | s | perl -ne 'chomp; print "[RECENT-DIR] ", $_, "/\n"'
         )
 
         (
@@ -76,17 +80,17 @@ $ANDROID_BUILD_TOP/out/soong/.intermediates/
 $ANDROID_HOST_OUT/
 EOF
           fi
-          env | sed -e 's/=.*//' | sort
+          env | sed -e 's/=.*//' | s
         ) | global-unique | perl -pe 'print "[ENV] "'
 
         # Filenames in recent logs
         timeout 0.5 cat <(
-          zenlog-recent-files -d | global-unique | head -100 | dir-slash | perl -pe 'print "[RECENT-file] "'
+          zenlog-recent-files -d | global-unique | head -100 | s | dir-slash | perl -pe 'print "[RECENT-file] "'
         )
 
         # Recent words in zenlog
         timeout 0.5 cat <(
-          zenlog-last-n-contents -R -n 5 | zenlog-recent-words.pl | global-unique | head -1000 | perl -pe 'print "[RECENT-WORD] "'
+          zenlog-last-n-contents -R -n 5 | zenlog-recent-words.pl | global-unique | head -1000 | s | perl -pe 'print "[RECENT-WORD] "'
         )
     } 2>/dev/null |
     nobuf tr -s / /|
