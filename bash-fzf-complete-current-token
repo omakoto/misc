@@ -19,7 +19,7 @@ expand() {
 }
 
 s() {
-  sort -i -d -g
+  sort -g
 }
 
 candidate_files() {
