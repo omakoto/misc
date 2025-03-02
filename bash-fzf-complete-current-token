@@ -95,7 +95,7 @@ EOF
     } 2>/dev/null |
     nobuf tr -s / /|
     nobuf tee /tmp/fzf-in.txt |
-    fzf -q "$token" -m --preview='preview-file {2..}' |
+    fzf -1 -q "$token" -m --preview='preview-file {2..}' |
       perl -pe 's!^\S+\s*!!; s!^.*\{\{\s*(.*?)\s*\}\}.*$!\1!' |
       maybe_escape |
       add-backslash-except-for-last
