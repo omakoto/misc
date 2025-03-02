@@ -81,7 +81,7 @@ $ANDROID_HOST_OUT/
 EOF
           fi
           env | sed -e 's/=.*//' | s
-        ) | global-unique | perl -pe 'print "[ENV] "'
+        ) | global-unique | perl -pe 'print "[ENV] \$"'
 
         # Filenames in recent logs
         cat <(
