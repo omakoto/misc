@@ -77,11 +77,11 @@ $ANDROID_HOST_OUT/
 EOF
           fi
           env | sed -e 's/=.*//' | sort
-        ) | global-unique | sed -e 's/^/[ENV] $/'
+        ) | global-unique | perl -pe 'print "[ENV] "'
 
         # Filenames in recent logs
         timeout 0.5 cat <(
-          zenlog-recent-files -d | global-unique | head -100 | dir-slash | sed 's/^/[RECENT-FILE] /'
+          zenlog-recent-files -d | global-unique | head -100 | dir-slash | perl -pe 'print "[RECENT-file] "'
         )
 
         # Recent words in zenlog

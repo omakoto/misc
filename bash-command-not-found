@@ -16,6 +16,12 @@ function command_not_found_handle_raw() {
         return $?
     fi
 
+# Doesn't work -- bash won't call it if the command contains /s.
+#    if [[ "$command" =~ ^(https?|file):// ]]; then
+#        c "$command"
+#        return 0
+#    fi
+
 #    # Try to add +x, but it doesn't work because this hook isn't called.
 #    if x "$command" ; then
 #        return 0
