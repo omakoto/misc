@@ -22,7 +22,7 @@ candidate_files() {
   (
     shopt -s nullglob
 
-    if [[ "$token" == "" ]] ; then
+    if ! [[ "$token" =~ / ]] ; then
       command ls
     else
       local dir="$(dirname "$token"x)"
