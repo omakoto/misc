@@ -13,6 +13,11 @@ export token="$(sh-get-current-token -f)"
 
 # gitroot="$(git rev-parse --show-toplevel 2>/dev/null)"
 
+expand() {
+  local IFS=$'\n'
+  echo "$*"
+}
+
 candidate_files() {
   (
     shopt -s nullglob
@@ -20,7 +25,8 @@ candidate_files() {
     if [[ "$token" == "" ]] ; then
       command ls
     else
-      command ls -d "${token}"*
+      local dir="$(dirname "$token"x)"
+      expand "$dir"/*
     fi
   ) | sort | while read -r n; do
     echo -n "[FILES] $n"
