@@ -8,10 +8,17 @@ eval "$(getopt.pl -Nx '
 a|adb adb=1 # Complete with android device files.
 ' "$@")"
 
-export token="$(sh-get-current-token -f)"
+test=0
+if [[ -t 1 ]] ; then
+  test=1
+fi
 
+if (( $test )) ; then
+  export token="$1"
+else
+  export token="$(sh-get-current-token -f)"
+fi
 
-# gitroot="$(git rev-parse --show-toplevel 2>/dev/null)"
 
 expand() {
   local IFS=$'\n'
@@ -43,12 +50,24 @@ candidate_files() {
 }
 
 maybe_escape() {
-  word="$(cat)"
-  if [[ "$word" =~ ^\$ ]] ; then
-    echo "$word"
-  else
-    shescape "$word"
-  fi
+  while read -r word ; do
+    if [[ "$word" =~ ^\$ ]] ; then
+      echo "$word"
+    else
+      shescape "$word"
+    fi
+  done
+}
+
+maybe_add_space() {
+  while read -r word ; do
+    echo -n "$word"
+    if [[ -f "$word" ]] ; then
+      echo " "
+    else
+      echo
+    fi
+  done
 }
 
 completed=$(
@@ -98,9 +117,14 @@ EOF
     fzf -1 -q "$token" -m --preview='preview-file {2..}' |
       perl -pe 's!^\S+\s*!!; s!^.*\{\{\s*(.*?)\s*\}\}.*$!\1!' |
       maybe_escape |
+      maybe_add_space |
       add-backslash-except-for-last
 )
 
 if [[ -n "$completed" ]] ; then
-  sh-replace-current-token "$completed"
+  if (( $test )) ; then
+    echo "'$completed'"
+  else
+    sh-replace-current-token "$completed"
+  fi
 fi
