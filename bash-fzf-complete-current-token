@@ -129,6 +129,8 @@ completed=$(
 $ANDROID_BUILD_TOP/build/soong/
 $ANDROID_BUILD_TOP/cts/
 $ANDROID_BUILD_TOP/frameworks/base/
+$ANDROID_BUILD_TOP/frameworks/base/ravenwood/
+$ANDROID_BUILD_TOP/frameworks/base/ravenwood/scripts/
 $ANDROID_BUILD_TOP/out/
 $ANDROID_BUILD_TOP/out/soong/.intermediates/
 $ANDROID_HOST_OUT/
