@@ -123,19 +123,30 @@ completed=$(
           timeout 0.5 recent-dirs -n 50 -z | cap 50
         )
 
-        print '[ENV] $' <(
-          if [[ "$ANDROID_BUILD_TOP" ]] ; then
-            cat <<'EOF'
-$ANDROID_BUILD_TOP/build/soong/
-$ANDROID_BUILD_TOP/cts/
-$ANDROID_BUILD_TOP/frameworks/base/
-$ANDROID_BUILD_TOP/frameworks/base/ravenwood/
-$ANDROID_BUILD_TOP/frameworks/base/ravenwood/scripts/
-$ANDROID_BUILD_TOP/out/
-$ANDROID_BUILD_TOP/out/soong/.intermediates/
-$ANDROID_HOST_OUT/
+        if [[ "$ANDROID_BUILD_TOP" ]] ; then
+          print '[ABT] $' <<'EOF'
+ANDROID_BUILD_TOP/build/soong/
+ANDROID_BUILD_TOP/build/make/
+ANDROID_BUILD_TOP/cts/
+ANDROID_BUILD_TOP/frameworks/
+ANDROID_BUILD_TOP/frameworks/base/
+ANDROID_BUILD_TOP/frameworks/base/ravenwood/
+ANDROID_BUILD_TOP/frameworks/base/ravenwood/scripts/
+ANDROID_BUILD_TOP/frameworks/base/ravenwood/tools/hoststubgen/
+ANDROID_BUILD_TOP/frameworks/base/ravenwood/tools/hoststubgen/test-tiny-framework
+ANDROID_BUILD_TOP/out/
+ANDROID_BUILD_TOP/out/soong/.intermediates/
+ANDROID_BUILD_TOP/out/soong/.intermediates/frameworks/
+ANDROID_BUILD_TOP/out/soong/.intermediates/frameworks/base/
+ANDROID_BUILD_TOP/out/soong/.intermediates/frameworks/base/ravenwood
+ANDROID_BUILD_TOP/out/soong/.intermediates/frameworks/base/ravenwood/run-ravenwood-tests.sh -s
+ANDROID_HOST_OUT/
+ANDROID_HOST_OUT/testcases/
+ANDROID_HOST_OUT/testcases/ravenwood-runtime/
 EOF
-          fi
+        fi
+
+        print '[ENV] $' <(
           env | sed -e 's/=.*//' | s
         )
 
