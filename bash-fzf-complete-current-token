@@ -67,6 +67,8 @@ maybe_escape() {
   while read -r word ; do
     if [[ "$word" =~ ^\$ ]] ; then
       echo "$word"
+    elif [[ "$word" =~ \#verbatim$ ]] ; then
+      echo "${word%#verbatim}"
     else
       shescape "$word"
     fi
