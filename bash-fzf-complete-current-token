@@ -132,6 +132,7 @@ ANDROID_BUILD_TOP/frameworks/
 ANDROID_BUILD_TOP/frameworks/base/
 ANDROID_BUILD_TOP/frameworks/base/ravenwood/
 ANDROID_BUILD_TOP/frameworks/base/ravenwood/scripts/
+ANDROID_BUILD_TOP/frameworks/base/ravenwood/scripts/run-ravenwood-tests.sh -s
 ANDROID_BUILD_TOP/frameworks/base/ravenwood/tools/hoststubgen/
 ANDROID_BUILD_TOP/frameworks/base/ravenwood/tools/hoststubgen/test-tiny-framework
 ANDROID_BUILD_TOP/out/
@@ -139,7 +140,6 @@ ANDROID_BUILD_TOP/out/soong/.intermediates/
 ANDROID_BUILD_TOP/out/soong/.intermediates/frameworks/
 ANDROID_BUILD_TOP/out/soong/.intermediates/frameworks/base/
 ANDROID_BUILD_TOP/out/soong/.intermediates/frameworks/base/ravenwood
-ANDROID_BUILD_TOP/out/soong/.intermediates/frameworks/base/ravenwood/run-ravenwood-tests.sh -s
 ANDROID_HOST_OUT/
 ANDROID_HOST_OUT/testcases/
 ANDROID_HOST_OUT/testcases/ravenwood-runtime/
