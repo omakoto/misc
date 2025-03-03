@@ -17,7 +17,7 @@ $BASH_SOURCE
 "
 
 _rc_file_fingerprint() {
-    echo $(md5sum $_main_rc_files)
+    echo $(sha1sum $_main_rc_files)
 }
 
 _update_rc_file_fingerprint() {
