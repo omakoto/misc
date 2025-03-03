@@ -23,6 +23,14 @@ s() {
   sort -g
 }
 
+get_dir() {
+  if [[ -d "$token" ]] ; then
+    echo "$token"
+  else
+    echo "$(dirname "$token")"
+  fi
+}
+
 candidate_files() {
   (
     shopt -s nullglob
@@ -30,7 +38,7 @@ candidate_files() {
     if ! [[ "$token" =~ / ]] ; then
       command ls
     else
-      local dir="$(dirname "$token"x)"
+      local dir="$(get_dir)"
       expand "$dir"/*
     fi
   ) | sort | while read -r n; do
@@ -45,11 +53,12 @@ candidate_files() {
 
 bfs_files() {
   {
+    opts="-nocolor -maxdepth 4"
     if ! [[ "$token" =~ / ]] ; then
-      timeout 0.1 bfs -nocolor | sed -e 's!^\./!!'
+      timeout 0.1 bfs $opts | sed -e 's!^\./!!'
     else
-      local dir="$(dirname "$token"/x)"
-      timeout 0.1 bfs -nocolor "$dir"
+      local dir="$(get_dir)"
+      timeout 0.1 bfs $opts "$dir"
     fi
   } 2>/dev/null
 }
@@ -109,16 +118,16 @@ EOF
 
         # Filenames in recent logs
         cat <(
-          ztimeout 0.5 enlog-recent-files -d | global-unique | head -100 | s | dir-slash | perl -pe 'print "[RECENT-file] "'
+          ztimeout 0.3 enlog-recent-files -d | global-unique | head -100 | s | dir-slash | perl -pe 'print "[RECENT-file] "'
         )
 
         # Recent words in zenlog
         cat <(
-          timeout 0.5 zenlog-last-n-contents -R -n 5 | zenlog-recent-words.pl | global-unique | head -1000 | s | perl -pe 'print "[RECENT-WORD] "'
+          timeout 0.3 zenlog-last-n-contents -R -n 5 | zenlog-recent-words.pl | global-unique | head -1000 | s | perl -pe 'print "[RECENT-WORD] "'
         )
 
         # Breath-first files
-        cat <(bfs_files| s | perl -pe 'print "[BFS-FILE] "')
+        cat <(bfs_files| s | perl -pe 'print "[BFS] "')
     } 2>/dev/null |
     nobuf tr -s / /|
     nobuf tee /tmp/fzf-in.txt |
