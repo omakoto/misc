@@ -53,7 +53,7 @@ candidate_files() {
 
 bfs_files() {
   {
-    opts="-nocolor -maxdepth 4"
+    opts="-nocolor -maxdepth 4 -name .git -prune -o -name e2etests -prune -o -print "
     if ! [[ "$token" =~ / ]] ; then
       timeout 0.1 bfs $opts | sed -e 's!^\./!!'
     else
