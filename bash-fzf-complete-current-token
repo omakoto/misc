@@ -42,23 +42,23 @@ candidate_files() {
       expand "$dir"/*
     fi
   ) | sort | while read -r n; do
-    echo -n "[FILES] $n"
     if [[ -d "$n" ]] ; then
-      echo "/"
+      echo "$n/"
     else
-      echo ''
+      echo "$n"
     fi
   done
 }
 
 bfs_files() {
   {
-    opts="-nocolor -maxdepth 4 -name .git -prune -o -name e2etests -prune -o -print "
+    local timeout=0.2
+    local opts="-nocolor -maxdepth 6 -name .git -prune -o -name e2etests -prune -o -print "
     if ! [[ "$token" =~ / ]] ; then
-      timeout 0.1 bfs $opts | sed -e 's!^\./!!'
+      timeout $timeout bfs $opts | sed -e 's!^\./!!'
     else
       local dir="$(get_dir)"
-      timeout 0.1 bfs $opts "$dir"
+      timeout $timeout bfs $opts "$dir"
     fi
   } 2>/dev/null
 }
@@ -84,25 +84,36 @@ maybe_add_space() {
   done
 }
 
+print() {
+  local prefix="$1"
+  shift
+  timeout 1 perl -pe "print '$prefix'" "$@"
+}
+
+cap() {
+  local n="$1"
+  head -n "$n" | global-unique | s
+}
+
 completed=$(
     {
-        cat <(
+        print "[GIT-BRANCH] " <(
           if in-git ; then
             # Git branches
-            git branch | s | sed -n '/^..(/d; s/^. /[GIT-BRANCH] /p;'
+            git branch | s | sed -n '/^..(/d; s/^. //p;'
           fi
         )
 
-        timeout 1 cat <(
+        print "[FILES] " <(
           candidate_files
         )
 
         # Recent directories
-        cat <(
-          timeout 0.5 recent-dirs -n 50 -z | s | perl -ne 'chomp; print "[RECENT-DIR] ", $_, "/\n"'
+        print "[RECENT-DIR] " <(
+          timeout 0.5 recent-dirs -n 50 -z | cap 50
         )
 
-        (
+        print '[ENV] $' <(
           if [[ "$ANDROID_BUILD_TOP" ]] ; then
             cat <<'EOF'
 $ANDROID_BUILD_TOP/build/soong/
@@ -114,20 +125,22 @@ $ANDROID_HOST_OUT/
 EOF
           fi
           env | sed -e 's/=.*//' | s
-        ) | global-unique | perl -pe 'print "[ENV] \$"'
+        )
 
         # Filenames in recent logs
-        cat <(
-          ztimeout 0.3 enlog-recent-files -d | global-unique | head -100 | s | dir-slash | perl -pe 'print "[RECENT-file] "'
+        print '[RECENT-FILE] ' <(
+          timeout 0.3 zenlog-recent-files -d | cap 500 | dir-slash
         )
 
         # Recent words in zenlog
-        cat <(
-          timeout 0.3 zenlog-last-n-contents -R -n 5 | zenlog-recent-words.pl | global-unique | head -1000 | s | perl -pe 'print "[RECENT-WORD] "'
+        print '[RECENT-WORD] ' <(
+          timeout 0.3 zenlog-last-n-contents -R -n 5 | zenlog-recent-words.pl | cap 5000
         )
 
         # Breath-first files
-        cat <(bfs_files| s | perl -pe 'print "[BFS] "')
+        print '[BFS] ' <(
+          bfs_files | cap 5000
+        )
     } 2>/dev/null |
     nobuf tr -s / /|
     nobuf tee /tmp/fzf-in.txt |
