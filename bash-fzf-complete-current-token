@@ -20,7 +20,7 @@ expand() {
 }
 
 s() {
-  sort -g
+  sort --ignore-case
 }
 
 get_dir() {
@@ -36,7 +36,7 @@ candidate_files() {
     shopt -s nullglob
 
     if ! [[ "$token" =~ / ]] ; then
-      command ls
+      command ls -A
     else
       local dir="$(get_dir)"
       expand "$dir"/*
