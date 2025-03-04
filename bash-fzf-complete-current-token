@@ -118,11 +118,6 @@ completed=$(
           candidate_files
         )
 
-        # Recent directories
-        print "[RECENT-DIR] " <(
-          timeout 0.5 recent-dirs -n 50 -z | cap 50
-        )
-
         if [[ "$ANDROID_BUILD_TOP" ]] ; then
           print '[ABT] $' <<'EOF'
 ANDROID_BUILD_TOP/build/soong/
@@ -148,6 +143,11 @@ EOF
 
         print '[ENV] $' <(
           env | sed -e 's/=.*//' | s
+        )
+
+        # Recent directories
+        print "[RECENT-DIR] " <(
+          timeout 0.5 recent-dirs -n 50 -z | cap 50
         )
 
         # Filenames in recent logs
