@@ -152,12 +152,12 @@ EOF
 
         # Filenames in recent logs
         print '[RECENT-FILE] ' <(
-          timeout 0.3 zenlog-recent-files -d | cap 500 | dir-slash
+          timeout 0.3 zenlog-recent-files -d | cap 1000 | dir-slash
         )
 
         # Recent words in zenlog
         print '[RECENT-WORD] ' <(
-          timeout 0.3 zenlog-last-n-contents -R -n 5 | zenlog-recent-words.pl | cap 5000
+          timeout 0.3 zenlog-last-n-contents -R -n 5 | zenlog-recent-words.pl | cap 20000
         )
 
         # Breath-first files
