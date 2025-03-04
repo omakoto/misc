@@ -1,5 +1,11 @@
 #!/bin/bash
 
+(git difftool -d "$@" &)
+
+exit 0
+
+# the followign is the legacy script
+
 #
 # Git environment.
 #
