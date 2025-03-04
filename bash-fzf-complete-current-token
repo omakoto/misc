@@ -61,7 +61,7 @@ candidate_files() {
 bfs_files() {
   {
     local timeout=0.2
-    local opts="-nocolor -maxdepth 6 -name .git -prune -o -name e2etests -prune -o -print "
+    local opts="-nocolor -maxdepth 6 -name .git -prune -o -name e2etests -prune -o -name .cache -prune -o -print "
     if ! [[ "$token" =~ / ]] ; then
       timeout $timeout bfs $opts | sed -e 's!^\./!!'
     else
@@ -70,6 +70,25 @@ bfs_files() {
     fi
   } 2>/dev/null
 }
+
+modules() {
+  local mod="$OUT/module-info.json"
+  local cache="$OUT/module-info-modules.cache.tmp"
+  local tmp="$OUT/module-info.tmp"
+
+  if ! [[ -f "$mod" ]] ; then
+    return 0
+  fi
+
+  if [[ "$mod" -nt "$cache" ]] ; then
+    (
+      rm -f "$cache" "$tmp"
+      (jq -r 'to_entries[] | .key' "$mod" | s > "$tmp") && mv "$tmp" "$cache"
+    )
+  fi
+  cat "$cache"
+}
+
 
 maybe_escape() {
   while read -r word ; do
@@ -164,6 +183,12 @@ EOF
         print '[BFS] ' <(
           bfs_files | cap 5000
         )
+
+        # Soong modules
+        print '[MODULES] ' <(
+          modules
+        )
+
     } 2>/dev/null |
     nobuf tr -s / /|
     nobuf tee /tmp/fzf-in.txt |
