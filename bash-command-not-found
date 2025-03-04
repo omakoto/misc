@@ -4,15 +4,16 @@ function command_not_found_handle() {
     command_not_found_handle_raw "$@"
 }
 
+function command_not_found_handle_raw_ee() {
+    ee -m "[command_not_found_handle] Running" "$@"
+}
+
 function command_not_found_handle_raw() {
     local command="$1"
 
-    local me="[command_not_found_handle] "
-
     # Auto git checkout.
     if is-git-branch "$command" ; then
-        byellow "$me -- git checkout $command"
-        ee git checkout "$command"
+        command_not_found_handle_raw_ee git checkout "$command"
         return $?
     fi
 
@@ -27,9 +28,14 @@ function command_not_found_handle_raw() {
 #        return 0
 #    fi
 
+    if [[ "$(type -t "@$command")" == function ]] ; then
+        command_not_found_handle_raw_ee "@$command"
+        return $?
+    fi
+
+
     if [[ "$command" =~ ^test[A-Z] ]] ; then
-        byellow "$me -- running \"$command\" with \`a\`"
-        a "$command"
+        command_not_found_handle_raw_ee a "$command"
         return $?
     fi
 
