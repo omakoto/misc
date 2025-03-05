@@ -1,3 +1,19 @@
 #!/bin/bash
 
+# Wait for a key press.
+#
+# After a key is pressed, it waits for a little bit and consumes stdin,
+# in case the key is a special key and generates multiple
+# characters. (e.g. a cursor key.)
+
 read -n 1 -s
+
+(
+    sleep 0.2
+    kill -int $$
+)&
+while read -n 1 -s; do
+    :
+done
+
+wait
