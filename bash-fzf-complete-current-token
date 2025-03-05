@@ -202,13 +202,13 @@ soong_modules() {
 
 completed=$({
     cat \
-      <(frequent_words) \
       <(git_branches) \
       <(files) \
       <(android_env) \
       <(envs) \
       <(recent_dirs) \
       <(recent_files) \
+      <(frequent_words) \
       <(recent_words) \
       <(bfs) \
       <(soong_modules)

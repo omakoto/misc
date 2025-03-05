@@ -1,0 +1,3 @@
+#!/bin/bash
+
+read -n 1 -s
