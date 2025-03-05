@@ -106,25 +106,25 @@ android_env() {
   if [[ "$ANDROID_BUILD_TOP" == "" ]] ; then
     return
   fi
-  print '[ABT] $' <<'EOF'
-ANDROID_BUILD_TOP/build/soong/
-ANDROID_BUILD_TOP/build/make/
-ANDROID_BUILD_TOP/cts/
-ANDROID_BUILD_TOP/frameworks/
-ANDROID_BUILD_TOP/frameworks/base/
-ANDROID_BUILD_TOP/frameworks/base/ravenwood/
-ANDROID_BUILD_TOP/frameworks/base/ravenwood/scripts/
-ANDROID_BUILD_TOP/frameworks/base/ravenwood/scripts/run-ravenwood-tests.sh -s
-ANDROID_BUILD_TOP/frameworks/base/ravenwood/tools/hoststubgen/
-ANDROID_BUILD_TOP/frameworks/base/ravenwood/tools/hoststubgen/test-tiny-framework
-ANDROID_BUILD_TOP/out/
-ANDROID_BUILD_TOP/out/soong/.intermediates/
-ANDROID_BUILD_TOP/out/soong/.intermediates/frameworks/
-ANDROID_BUILD_TOP/out/soong/.intermediates/frameworks/base/
-ANDROID_BUILD_TOP/out/soong/.intermediates/frameworks/base/ravenwood
-ANDROID_HOST_OUT/
-ANDROID_HOST_OUT/testcases/
-ANDROID_HOST_OUT/testcases/ravenwood-runtime/
+  print '[ABT] ' <<'EOF'
+$ANDROID_BUILD_TOP/build/soong/
+$ANDROID_BUILD_TOP/build/make/
+$ANDROID_BUILD_TOP/cts/
+$ANDROID_BUILD_TOP/frameworks/
+$ANDROID_BUILD_TOP/frameworks/base/
+$ANDROID_BUILD_TOP/frameworks/base/ravenwood/
+$ANDROID_BUILD_TOP/frameworks/base/ravenwood/scripts/
+$ANDROID_BUILD_TOP/frameworks/base/ravenwood/scripts/run-ravenwood-tests.sh -s
+$ANDROID_BUILD_TOP/frameworks/base/ravenwood/tools/hoststubgen/
+$ANDROID_BUILD_TOP/frameworks/base/ravenwood/tools/hoststubgen/test-tiny-framework
+$ANDROID_BUILD_TOP/out/
+$ANDROID_BUILD_TOP/out/soong/.intermediates/
+$ANDROID_BUILD_TOP/out/soong/.intermediates/frameworks/
+$ANDROID_BUILD_TOP/out/soong/.intermediates/frameworks/base/
+$ANDROID_BUILD_TOP/out/soong/.intermediates/frameworks/base/ravenwood
+$ANDROID_HOST_OUT/
+$ANDROID_HOST_OUT/testcases/
+$ANDROID_HOST_OUT/testcases/ravenwood-runtime/
 EOF
 }
 
@@ -143,6 +143,12 @@ recent_dirs() {
 recent_files() {
   print '[RECENT-FILE] ' <(
     timeout 0.3 zenlog-recent-files -d | cap 1000 | dir-slash
+  )
+}
+
+recent_words() {
+  print '[RECENT-WORD] ' <(
+    timeout 0.3 zenlog-last-n-contents -R -n 5 | zenlog-recent-words.pl | cap 20000
   )
 }
 
@@ -191,7 +197,15 @@ soong_modules() {
 }
 
 completed=$({
-    cat <(git_branches) <(files) <(android_env) <(envs) <(recent_dirs) <(recent_files) <(bfs) <(soong_modules)
+    cat <(git_branches) \
+      <(files) \
+      <(android_env) \
+      <(envs) \
+      <(recent_dirs) \
+      <(recent_files) \
+      <(recent_words) \
+      <(bfs) \
+      <(soong_modules)
   } |
     fzf -1 -q "$token" -m --preview='preview-file {2..}' |
       perl -pe 's!^\S+\s*!!;' |
