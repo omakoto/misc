@@ -71,7 +71,7 @@ bfs_files() {
   } 2>/dev/null
 }
 
-modules() {
+soong_modules() {
   local mod="$OUT/module-info.json"
   local cache="$OUT/module-info-modules.cache.tmp"
   local tmp="$OUT/module-info.tmp"
@@ -181,19 +181,17 @@ EOF
 
         # Breath-first files
         print '[BFS] ' <(
-          bfs_files | cap 5000
+          bfs_files | cap 10000
         )
 
         # Soong modules
         print '[MODULES] ' <(
-          modules
+          soong_modules
         )
 
     } 2>/dev/null |
-    nobuf tr -s / /|
-    nobuf tee /tmp/fzf-in.txt |
     fzf -1 -q "$token" -m --preview='preview-file {2..}' |
-      perl -pe 's!^\S+\s*!!; s!^.*\{\{\s*(.*?)\s*\}\}.*$!\1!' |
+      perl -pe 's!^\S+\s*!!;' |
       maybe_escape |
       maybe_add_space |
       add-backslash-except-for-last
