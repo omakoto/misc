@@ -58,38 +58,6 @@ candidate_files() {
   done
 }
 
-bfs_files() {
-  {
-    local timeout=0.2
-    local opts="-nocolor -maxdepth 6 -name .git -prune -o -name e2etests -prune -o -name .cache -prune -o -print "
-    if ! [[ "$token" =~ / ]] ; then
-      timeout $timeout bfs $opts | sed -e 's!^\./!!'
-    else
-      local dir="$(get_dir)"
-      timeout $timeout bfs $opts "$dir"
-    fi
-  } 2>/dev/null
-}
-
-soong_modules() {
-  local mod="$OUT/module-info.json"
-  local cache="$OUT/module-info-modules.cache.tmp"
-  local tmp="$OUT/module-info.tmp"
-
-  if ! [[ -f "$mod" ]] ; then
-    return 0
-  fi
-
-  if [[ "$mod" -nt "$cache" ]] ; then
-    (
-      rm -f "$cache" "$tmp"
-      (jq -r 'to_entries[] | .key' "$mod" | s > "$tmp") && mv "$tmp" "$cache"
-    )
-  fi
-  cat "$cache"
-}
-
-
 maybe_escape() {
   while read -r word ; do
     if [[ "$word" =~ ^\$ ]] ; then
@@ -124,21 +92,21 @@ cap() {
   global-unique | clean | head -n "$n" | s
 }
 
-completed=$(
-    {
-        print "[GIT-BRANCH] " <(
-          if in-git ; then
-            # Git branches
-            git branch | s | sed -n '/^..(/d; s/^. //p;'
-          fi
-        )
+git_branches() {
+  if in-git ; then
+    git branch | s | sed -n '/^..(/d; s/^. //p;' | print "[GIT-BRANCH] "
+  fi
+}
 
-        print "[FILES] " <(
-          candidate_files
-        )
+files() {
+  print "[FILES] " <(candidate_files)
+}
 
-        if [[ "$ANDROID_BUILD_TOP" ]] ; then
-          print '[ABT] $' <<'EOF'
+android_env() {
+  if [[ "$ANDROID_BUILD_TOP" == "" ]] ; then
+    return
+  fi
+  print '[ABT] $' <<'EOF'
 ANDROID_BUILD_TOP/build/soong/
 ANDROID_BUILD_TOP/build/make/
 ANDROID_BUILD_TOP/cts/
@@ -158,38 +126,73 @@ ANDROID_HOST_OUT/
 ANDROID_HOST_OUT/testcases/
 ANDROID_HOST_OUT/testcases/ravenwood-runtime/
 EOF
-        fi
+}
 
-        print '[ENV] $' <(
-          env | sed -e 's/=.*//' | s
-        )
+envs() {
+  print '[ENV] $' <(
+    env | sed -e 's/=.*//' | s
+  )
+}
 
-        # Recent directories
-        print "[RECENT-DIR] " <(
-          timeout 0.5 recent-dirs -n 50 -z | cap 50
-        )
+recent_dirs() {
+  print "[RECENT-DIR] " <(
+    timeout 0.5 recent-dirs -n 50 -z | cap 50
+  )
+}
 
-        # Filenames in recent logs
-        print '[RECENT-FILE] ' <(
-          timeout 0.3 zenlog-recent-files -d | cap 1000 | dir-slash
-        )
+recent_files() {
+  print '[RECENT-FILE] ' <(
+    timeout 0.3 zenlog-recent-files -d | cap 1000 | dir-slash
+  )
+}
 
-        # Recent words in zenlog
-        print '[RECENT-WORD] ' <(
-          timeout 0.3 zenlog-last-n-contents -R -n 5 | zenlog-recent-words.pl | cap 20000
-        )
 
-        # Breath-first files
-        print '[BFS] ' <(
-          bfs_files | cap 10000
-        )
+bfs_inner() {
+  {
+    local timeout=0.2
+    local opts="-nocolor -maxdepth 6 -name .git -prune -o -name e2etests -prune -o -name .cache -prune -o -print "
+    if ! [[ "$token" =~ / ]] ; then
+      timeout $timeout bfs $opts | sed -e 's!^\./!!'
+    else
+      local dir="$(get_dir)"
+      timeout $timeout bfs $opts "$dir"
+    fi
+  } 2>/dev/null
+}
 
-        # Soong modules
-        print '[MODULES] ' <(
-          soong_modules
-        )
+bfs() {
+  print '[BFS] ' <(
+    bfs_inner | cap 10000
+  )
+}
 
-    } 2>/dev/null |
+soong_modules_inner() {
+  local mod="$OUT/module-info.json"
+  local cache="$OUT/module-info-modules.cache.tmp"
+  local tmp="$OUT/module-info.tmp"
+
+  if ! [[ -f "$mod" ]] ; then
+    return 0
+  fi
+
+  if [[ "$mod" -nt "$cache" ]] ; then
+    rm -f "$cache" "$tmp"
+    {
+      jq -r 'to_entries[] | .key' "$mod" | s > "$tmp"
+    } && mv "$tmp" "$cache"
+  fi
+  cat "$cache"
+}
+
+soong_modules() {
+  print '[MODULES] ' <(
+    soong_modules_inner
+  )
+}
+
+completed=$({
+    cat <(git_branches) <(files) <(android_env) <(envs) <(recent_dirs) <(recent_files) <(bfs) <(soong_modules)
+  } |
     fzf -1 -q "$token" -m --preview='preview-file {2..}' |
       perl -pe 's!^\S+\s*!!;' |
       maybe_escape |
