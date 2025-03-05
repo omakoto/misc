@@ -92,6 +92,10 @@ cap() {
   global-unique | clean | head -n "$n" | s
 }
 
+frequent_words() {
+  print "[FREQ] " ~/cbin/00-frequent-words.txt
+}
+
 git_branches() {
   if in-git ; then
     git branch | s | sed -n '/^..(/d; s/^. //p;' | print "[GIT-BRANCH] "
@@ -197,7 +201,9 @@ soong_modules() {
 }
 
 completed=$({
-    cat <(git_branches) \
+    cat \
+      <(frequent_words) \
+      <(git_branches) \
       <(files) \
       <(android_env) \
       <(envs) \
