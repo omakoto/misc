@@ -11,7 +11,7 @@ echo -n $'\e]0;[[ WAITING FOR KEY PRESS ]]\007'
 read -n 1 -s
 
 (
-    sleep 0.2
+    sleep 0.1
     kill -int $$
 )&
 while read -n 1 -s; do
