@@ -6,7 +6,7 @@
 # in case the key is a special key and generates multiple
 # characters. (e.g. a cursor key.)
 
-echo -n $'\e]0;[[ WAITING FOR KEY PRESS ]]\007'
+# echo -n $'\e]0;[[ WAITING FOR KEY PRESS ]]\007'
 
 read -n 1 -s
 
