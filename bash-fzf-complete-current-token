@@ -144,6 +144,16 @@ recent_dirs() {
   )
 }
 
+# recent_urls() {
+#   print "[$2] " <(
+#     timeout 0.1 zenlog-last-n-contents -R -n $1 | perl -ne '
+#       while (m! ( (?: file | https? ) \:\/\/ [^ \) ] + ) !xg) {
+#         print $1, "\n"
+#       }
+#     ' | cap 100
+#   )
+# }
+
 recent_files() {
   print "[$2] " <(
     timeout 0.3 zenlog-recent-files -d -n $1 | cap 1000 | dir-slash
@@ -199,6 +209,24 @@ soong_modules() {
     soong_modules_inner
   )
 }
+
+# export FZF_DEFAULT_OPTS="--color=bg+:4,header:2 --no-mouse --no-sort --algo=v1 -e"\
+# " --bind='ctrl-y:abort,"\
+# "home:execute(wait-for-key),"\
+# "ctrl-g:ignore,"\
+# "alt-1:execute-silent(fzf-1 {+}),"\
+# "alt-o:execute-silent(fzf-o {+}),"\
+# "alt-i:execute-silent(fzf-io {+}),"\
+# "alt-c:execute-silent(fzf-copy-args {+}),"\
+# "alt-m:execute-silent(imv {+}),"\
+# "ctrl-f:preview-page-down,ctrl-r:preview-page-up,ctrl-b:preview-page-up,"\
+# "ctrl-k:kill-line'"\
+# " --preview-window=top"\
+# " --header 'Home: flip screen  Alt+1: open with 1  Alt+o: open with o Atl+i: open with ij  Alt+c: copy  Alt+m: imv  Ctrl+f/r: preview scroll'"
+
+# need to replace {+} to {+2..}
+
+export FZF_DEFAULT_OPTS="$(perl -pe 's!\{.*?\}!{+2..}!g' <<<"$FZF_DEFAULT_OPTS")"
 
 completed=$({
     cat \
