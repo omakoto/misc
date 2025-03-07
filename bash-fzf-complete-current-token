@@ -145,14 +145,14 @@ recent_dirs() {
 }
 
 recent_files() {
-  print '[RECENT-FILE] ' <(
-    timeout 0.3 zenlog-recent-files -d | cap 1000 | dir-slash
+  print "[$2] " <(
+    timeout 0.3 zenlog-recent-files -d -n $1 | cap 1000 | dir-slash
   )
 }
 
 recent_words() {
-  print '[RECENT-WORD] ' <(
-    timeout 0.3 zenlog-last-n-contents -R -n 5 | zenlog-recent-words.pl | cap 20000
+  print "[$2] " <(
+    timeout 0.3 zenlog-last-n-contents -R -n $1 | zenlog-recent-words.pl | cap 20000
   )
 }
 
@@ -203,13 +203,15 @@ soong_modules() {
 completed=$({
     cat \
       <(git_branches) \
+      <(recent_files 1 LAST-FILES) \
+      <(recent_words 1 LAST-WORDS) \
       <(files) \
       <(android_env) \
       <(envs) \
       <(recent_dirs) \
-      <(recent_files) \
       <(frequent_words) \
-      <(recent_words) \
+      <(recent_files 5 RECENT-FILES) \
+      <(recent_words 5 RECENT-WORDS) \
       <(bfs) \
       <(soong_modules)
   } |
