@@ -171,7 +171,15 @@ bfs_inner() {
 
 bfs() {
   print '[BFS] ' <(
-    bfs_inner | cap 10000
+    bfs_inner | cap 10000 | {
+      while read -r n ; do
+        if [[ -d "$n" ]] ; then
+          echo "$n/"
+        else
+          echo "$n"
+        fi
+      done
+    }
   )
 }
 
