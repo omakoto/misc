@@ -89,7 +89,7 @@ android_env() {
   if [[ "$ANDROID_BUILD_TOP" == "" ]] ; then
     return
   fi
-  print '[ABT] ' <<'EOF'
+  print '[ABT]# ' <<'EOF'
 $ANDROID_BUILD_TOP/build/soong/
 $ANDROID_BUILD_TOP/build/make/
 $ANDROID_BUILD_TOP/cts/
@@ -112,7 +112,7 @@ EOF
 }
 
 envs() {
-  print '[ENV] $' <(
+  print '[ENV]# $' <(
     env | sed -e 's/=.*//' | s
   )
 }
@@ -140,10 +140,10 @@ recent_files() {
 }
 
 recent_ee() {
-  print "[$2] " <(
+  print "[$2]# " <(
     timeout 0.1 zenlog-last-n-contents -R -n $1 | perl -ne '
       while (m! (?: ^Running: (.*) ) !xg) {
-        print $1, " #verbatim\n"
+        print $1, "\n"
       }
     ' | cap 100
   )
@@ -212,22 +212,19 @@ filter() {
     elif [[ -e "$line" ]] ; then
       echo "${prefix} "$'\e[38;5;14m'"${line}"$reset
     
-    elif [[ "$prefix" == "[ENV]" ]] ; then
+    elif [[ "$prefix" =~ \[ENV ]] ; then
       echo "${prefix} "$'\e[38;5;11m'"${line}"$reset
     else
-      line="${line/%#verbatim/$gray#verbatim}"
-      echo "${prefix} ${line}"$reset
+      echo "${prefix} ${line}"
     fi
   done
 }
 
 
 maybe_escape() {
-  while read -r word ; do
-    if [[ "$word" =~ ^\$ ]] ; then
-      echo "$word"
-    elif [[ "$word" =~ \#verbatim$ ]] ; then
-      echo "${word%#verbatim}"
+  while read -r prefix word ; do
+    if [[ "$prefix" =~ \#$ ]] ; then
+      echo "${word}"
     
     # Special case, assume already escaped, e.g. it's an ee output
     elif [[ "$word" =~ ^\' ]] && [[ "$word" =~ \'$ ]] ; then
@@ -285,7 +282,6 @@ completed=$({
   } | filter |
     fzf --ansi -1 -q "$token" -m --preview='preview-file {2..}' |
       perl -pe 's!^\S+\s*!!;' |
-      maybe_escape |
       maybe_add_space |
       add-backslash-except-for-last
 )
