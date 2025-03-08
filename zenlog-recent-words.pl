@@ -46,12 +46,6 @@ sub tokenize {
 
 while (<>) {
   chomp;
-  if (/^ (?:[0-9\.\s]+\s+)? (?:Running|Test) (?:\s[0-9\-]+)? \:\s*(.*)/x) {
-    # Special case for command lines from "ee".
-    print "$1 #verbatim\n";
-    tokenize $1;
-  } else {
-    tokenize $_;
-  }
+  tokenize $_;
 }
 
