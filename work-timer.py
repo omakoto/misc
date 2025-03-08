@@ -46,7 +46,7 @@ def do_timer(n, duration, rest):
     do_timer_1(f"[\x1b[38;5;13;1mWORK\x1b[0m {n}] ", duration, True)
 
     if rest > 0:
-        do_timer_1(f"[\x1b[38;5;10;1mREST\x1b[0m {n}] ", rest, False)
+        do_timer_1(f"[\x1b[38;5;10;1mREST\x1b[0m] ", rest, False)
 
 
 def main(args):
