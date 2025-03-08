@@ -215,9 +215,9 @@ soong_modules() {
 filter() {
   while read -r prefix line ; do
     if [[ -d "$line" ]] ; then
-      if ! [[ "$line" =~ /$ ]]; then
-        line="$line/"
-      fi
+      #if ! [[ "$line" =~ /$ ]]; then
+      #  line="$line/"
+      #fi
       echo "${prefix} "$'\e[38;5;10m'"${line}"$'\e[0m'
     
     elif [[ -e "$line" ]] ; then
