@@ -212,6 +212,25 @@ soong_modules() {
   )
 }
 
+filter() {
+  while read -r prefix line ; do
+    if [[ -d "$line" ]] ; then
+      if ! [[ "$line" =~ /$ ]]; then
+        line="$line/"
+      fi
+      echo "${prefix} "$'\e[38;5;10m'"${line}"$'\e[0m'
+    
+    elif [[ -e "$line" ]] ; then
+      echo "${prefix} "$'\e[38;5;14m'"${line}"$'\e[0m'
+    
+    elif [[ "$prefix" == "[ENV]" ]] ; then
+      echo "${prefix} "$'\e[38;5;13m'"${line}"$'\e[0m'
+    else
+      echo "${prefix} ${line}"
+    fi
+  done
+}
+
 # export FZF_DEFAULT_OPTS="--color=bg+:4,header:2 --no-mouse --no-sort --algo=v1 -e"\
 # " --bind='ctrl-y:abort,"\
 # "home:execute(wait-for-key),"\
@@ -244,8 +263,8 @@ completed=$({
       <(recent_words 5 RECENT-WORDS) \
       <(bfs) \
       <(soong_modules)
-  } |
-    fzf -1 -q "$token" -m --preview='preview-file {2..}' |
+  } | filter |
+    fzf --ansi -1 -q "$token" -m --preview='preview-file {2..}' |
       perl -pe 's!^\S+\s*!!;' |
       maybe_escape |
       maybe_add_space |
