@@ -220,8 +220,15 @@ filter() {
     elif [[ -e "$line" ]] ; then
       echo "${prefix} "$'\e[38;5;14m'"${line}"$reset
     
-    elif [[ "$prefix" =~ \[ENV ]] ; then
+    elif [[ "$prefix" =~ ^\[ENV ]] ; then
+      echo "${prefix} "$'\e[38;5;10m'"${line}"$reset
+
+    elif [[ "$prefix" =~ ^\[RUNN ]] ; then
       echo "${prefix} "$'\e[38;5;11m'"${line}"$reset
+
+    elif [[ "$line" =~ ^\'?(file|https?):// ]] ; then
+      echo "${prefix} "$'\e[38;5;11;3m'"${line}"$reset
+
     else
       echo "${prefix} ${line}"
     fi
