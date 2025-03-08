@@ -1,5 +1,7 @@
 #!/bin/bash
 
+. ~/cbin/common_rc
+
 . mutil.sh
 
 test=0
@@ -231,8 +233,8 @@ export FZF_DEFAULT_OPTS="$(perl -pe 's!\{.*?\}!{+2..}!g' <<<"$FZF_DEFAULT_OPTS")
 completed=$({
     cat \
       <(git_branches) \
-      <(recent_files 1 LAST-FILES) \
-      <(recent_words 1 LAST-WORDS) \
+      <(recent_files 2 LAST-FILES) \
+      <(recent_words 2 LAST-WORDS) \
       <(files) \
       <(android_env) \
       <(envs) \
