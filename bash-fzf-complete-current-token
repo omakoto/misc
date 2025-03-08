@@ -218,13 +218,13 @@ filter() {
       #if ! [[ "$line" =~ /$ ]]; then
       #  line="$line/"
       #fi
-      echo "${prefix} "$'\e[38;5;10m'"${line}"$'\e[0m'
+      echo "${prefix} "$'\e[38;5;13m'"${line}"$'\e[0m'
     
     elif [[ -e "$line" ]] ; then
       echo "${prefix} "$'\e[38;5;14m'"${line}"$'\e[0m'
     
     elif [[ "$prefix" == "[ENV]" ]] ; then
-      echo "${prefix} "$'\e[38;5;13m'"${line}"$'\e[0m'
+      echo "${prefix} "$'\e[38;5;11m'"${line}"$'\e[0m'
     else
       echo "${prefix} ${line}"
     fi
