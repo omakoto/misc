@@ -119,7 +119,7 @@ envs() {
 
 recent_dirs() {
   print "[RECENT-DIR] " <(
-    timeout 0.5 recent-dirs -n 50 -z | cap 50
+    timeout 0.2 recent-dirs -n 50 -z | cap 50
   )
 }
 
@@ -135,13 +135,13 @@ recent_dirs() {
 
 recent_files() {
   print "[$2] " <(
-    timeout 0.3 zenlog-recent-files -d -n $1 | cap 1000 | dir-slash
+    timeout 0.2 zenlog-recent-files -d -n $1 | cap 1000 | dir-slash
   )
 }
 
 recent_ee() {
   print "[$2]# " <(
-    timeout 0.1 zenlog-last-n-contents -R -n $1 | perl -ne '
+    timeout 0.2 zenlog-last-n-contents -R -n $1 | perl -ne '
       while (m! (?: ^Running: (.*) ) !xg) {
         print $1, "\n"
       }
@@ -151,10 +151,9 @@ recent_ee() {
 
 recent_words() {
   print "[$2] " <(
-    timeout 0.3 zenlog-last-n-contents -R -n $1 | zenlog-recent-words.pl | cap 20000
+    timeout 0.2 zenlog-last-n-contents -R -n $1 | zenlog-recent-words.pl | cap 20000
   )
 }
-
 
 bfs_inner() {
   {
@@ -279,21 +278,23 @@ maybe_add_space() {
 
 export FZF_DEFAULT_OPTS="$(perl -pe 's!\{.*?\}!{+2..}!g' <<<"$FZF_DEFAULT_OPTS")"
 
+#      <(recent_files 5 RECENT-FILES) \
+#      <(recent_words 5 RECENT-WORDS) \
+
 completed=$({
     cat \
       <(git_branches) \
-      <(recent_files 2 LAST-FILES) \
+      <(frequent_words) \
       <(recent_words 2 LAST-WORDS) \
       <(recent_ee 2 RUNNING) \
+      <(recent_files 2 LAST-FILES) \
       <(files) \
       <(android_env) \
       <(envs) \
       <(recent_dirs) \
-      <(frequent_words) \
-      <(recent_files 5 RECENT-FILES) \
-      <(recent_words 5 RECENT-WORDS) \
+      <(soong_modules) \
       <(bfs) \
-      <(soong_modules)
+      /dev/null
   } | filter |
     fzf --ansi -1 -q "$token" -m --preview='preview-file {2..}' |
       perl -pe 's!^\S+\s*!!;' |
