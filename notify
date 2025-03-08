@@ -47,8 +47,6 @@ sleep 0.1
 echo -ne '\007'
 sleep 0.1
 echo -ne '\007'
-sleep 0.1
-echo -ne '\007'
 
 if (( $mobile )) ; then
   notify-mobile "$message"
