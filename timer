@@ -6,19 +6,21 @@ import time
 
 
 def usage():
-    print("Usage: work-timer.py REP DURATION [REST]")
+    print("Usage: work-timer.py DURATION [REP] [REST]")
 
 
 def parse_args(args):
-    if len(args) < 2:
+    if len(args) < 1:
         usage()
         sys.exit(1)
-    
-    rep = int(args[0])
-    duration = int(args[1])
+
+    duration = int(args[0])
+    rep = 1
     rest = 3
     if len(args) >= 3:
         rest = int(args[2])
+    if len(args) >= 2:
+        rep = int(args[1])
 
     return [rep, duration, rest]
 
@@ -61,4 +63,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    try:
+        main(sys.argv[1:])
+    except KeyboardInterrupt:
+        pass
