@@ -51,13 +51,7 @@ candidate_files() {
       local dir="$(get_dir)"
       expand "$dir"/*
     fi
-  ) | sort | while read -r n; do
-    if [[ -d "$n" ]] ; then
-      echo "$n/"
-    else
-      echo "$n"
-    fi
-  done
+  ) | sort | dir_slash
 }
 
 print() {
@@ -80,6 +74,18 @@ git_branches() {
     git branch | s | sed -n '/^..(/d; s/^. //p;' | print "[GIT-BRANCH] "
   fi
 }
+
+dir_slash() {
+  perl -ne '
+#line 86
+  chomp;
+
+  $s = -d ? "/" : "";
+
+  print($_, $s, "\n");
+  '
+}
+
 
 files() {
   print "[FILES] " <(candidate_files)
@@ -170,15 +176,7 @@ bfs_inner() {
 
 bfs() {
   print '[BFS] ' <(
-    bfs_inner | cap 10000 | {
-      while read -r n ; do
-        if [[ -d "$n" ]] ; then
-          echo "$n/"
-        else
-          echo "$n"
-        fi
-      done
-    }
+    bfs_inner | cap 20000 | dir_slash
   )
 }
 
@@ -206,14 +204,12 @@ soong_modules() {
   )
 }
 
-gray=$'\e[38;5;8m'
-reset=$'\e[0m'
-filter() {
+filter_bash() {
+  local gray=$'\e[38;5;8m'
+  local reset=$'\e[0m'
+
   while read -r prefix line ; do
     if [[ -d "$line" ]] ; then
-      #if ! [[ "$line" =~ /$ ]]; then
-      #  line="$line/"
-      #fi
       echo "${prefix} "$'\e[38;5;13m'"${line}"$reset
     
     elif [[ -e "$line" ]] ; then
@@ -232,6 +228,37 @@ filter() {
       echo "${prefix} ${line}"
     fi
   done
+}
+
+filter() {
+  perl -ne '
+#line 236
+
+  chomp;
+  ($p, $v) = split(/ /, $_, 2);
+
+  my $c = "";
+
+
+  if (-d $v) {
+    $c = "\e[38;5;13m";
+
+  } elsif (-e $v) {
+    $c = "\e[38;5;14m";
+
+  } elsif ($p =~ /^\[ENV/) {
+    $c = "\e[38;5;10m";
+
+  } elsif ($p =~ /^\[RUN/) {
+    $c = "\e[38;5;11m";
+
+  } elsif ($v =~ /^ \x27? (?: file | https? ) \:\/\/ /x) { # x27 == single quote
+    $c = "\e[38;5;11m";
+
+  }
+
+  print($p, " ", $c, $v, "\x1b[0m\n");
+'
 }
 
 
