@@ -1,6 +1,7 @@
 #!/bin/bash
 
-. ~/cbin/common_rc
+
+. ~/cbin/common_rc -q
 
 . mutil.sh
 
