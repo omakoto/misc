@@ -1,9 +1,17 @@
 #!/bin/bash
 
 quiet=0
-if [[ "$1" == "-q" ]] ; then
-    quiet=1
-fi
+check_upstream=1
+verbose=0
+while getopts "qUv" opt; do
+    case "$opt" in
+    q) quiet=1 ;;
+    U) check_upstream=0 ;;
+    v) verbose=1 ;;
+    *) exit 1 ;;
+    esac
+done
+shift $(($OPTIND - 1))
 
 if (( $quiet )) ; then
     exec 2>/dev/null
@@ -21,11 +29,13 @@ check() {
         return 2
     fi
 
-    upstream="$(git upstream)"
+    if (( $check_upstream )) ; then
+        upstream="$(git upstream)"
 
-    if ! git diff --quiet "$upstream"...HEAD; then
-        echo "$dir contains local changes" 1>&2
-        return 1
+        if ! git diff --quiet "$upstream"...HEAD; then
+            echo "$dir contains local changes" 1>&2
+            return 1
+        fi
     fi
     if (( $verbose )) ; then
         echo "$dir is clean" 1>&2

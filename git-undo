@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Git undo
+#
+# Revert the specified files to the upstream version
+#
+
+
+set -e
+. mutil.sh
+
+if ! git-is-clean -U ; then # No upsteam check
+    exit 1
+fi
+
+# top="$(git top)"
+#
+# if [[ "$top" == "" ]] ; then
+#     exit 1
+# fi
+
+if (( $# == 0 )) ; then
+    echo "git undo [FILE...] # Revert files to the upstream version" 1>&2
+    exit 1
+fi
+
+upstream="$(git rev-parse @{u})"
+INFO "Upstream:" "$upstream"
+
+
+# Collect target files
+
+INFO "Collecting target files..."
+
+files=()
+for f in "$@" ; do
+    rel="$(realpath -s --relative-to="$PWD" "$f")"
+    echo "  $rel"
+    files+=( "$rel" )
+done
+
+INFO "Creating backup tag..."
+tag="temp-$(date8)"
+ee git tag "$tag"
+
+ee git checkout "$upstream" "${files[@]}"
+
