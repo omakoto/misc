@@ -1,0 +1,3 @@
+#!/bin/bash
+
+ee realpath -s --relative-to="$PWD" "$@"
