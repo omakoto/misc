@@ -45,6 +45,7 @@ def beep():
     p("\x07")
 
 def do_timer_1(prefix, duration, need_headsup_beeps):
+    beep()
     for i in range(duration, -1, -1):
         p(f"\r\x1b[K{prefix}{i}")
         if i == 0:
@@ -57,7 +58,6 @@ def do_timer_1(prefix, duration, need_headsup_beeps):
     p("\n")
 
 def do_timer(n, duration, rest):
-    beep()
     do_timer_1(f"[\x1b[38;5;13;1mWORK\x1b[0m {n}] ", duration, True)
 
     if rest > 0:
@@ -66,17 +66,21 @@ def do_timer(n, duration, rest):
 
 def main(args):
     [rep, duration, rest] = parse_args(args)
-    print(f"Rep={rep}  Duration={duration}  Rest={rest}")
+    if rep > 1:
+        print(f"Rep={rep}  Duration={duration}  Rest={rest}")
 
     if rep == 1:
         do_timer_1("[\x1b[38;5;13;1mTIMER\x1b[0m] ", duration, True)
-        return
+    else:
+        for i in range(rep, 0, -1):
+            r = rest
+            if i == 1:
+                r = 0
+            do_timer(i, duration, r)
 
-    for i in range(rep, 0, -1):
-        r = rest
-        if i == 1:
-            r = 0
-        do_timer(i, duration, r)
+    for i in range(3):
+        beep()
+        time.sleep(0.2)
 
 
 if __name__ == "__main__":
