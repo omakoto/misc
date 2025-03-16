@@ -16,6 +16,6 @@ func main() {
 	//cmd.MustRunAndWait()
 	// fmt.Printf("%s", cmd.MustRunAndGetString())
 	cmd.MustRunAndStreamStrings(func(s string) {
-		fmt.Printf("%s\n", s)
+		fmt.Printf("%s", s)
 	})
 }
