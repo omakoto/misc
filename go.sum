@@ -4,3 +4,5 @@ github.com/omakoto/go-common v0.0.0-20230901040506-e79678a485ab h1:a/vUEDUAOCMz/
 github.com/omakoto/go-common v0.0.0-20230901040506-e79678a485ab/go.mod h1:33iyO6RlE/+eLlQBAl93805GO3uXXNbci17UuGG/fhs=
 github.com/omakoto/go-common v0.0.0-20230902035603-21df9c899086 h1:IfTQh5C/N5NzlfsLCKEa/V7eq8Z9wnv4sX1RAilHjzE=
 github.com/omakoto/go-common v0.0.0-20230902035603-21df9c899086/go.mod h1:PTXHLjhhbm2AqU2T10tH1YQrKh6JWG+31pX2Mijz0t8=
+github.com/omakoto/go-common v0.0.0-20250214015219-e0712e527757 h1:AzbN8xU61swrcTYPjZhkzJNWRTaVxqn7e6qAuDRm2NU=
+github.com/omakoto/go-common v0.0.0-20250214015219-e0712e527757/go.mod h1:79jtLB8yi647+nptKL2Zf2y6zhJAT1ta16hdzi+3RLw=
