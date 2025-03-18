@@ -1,0 +1,5 @@
+#!/bin/sh
+
+export GO_RUNNER_SKIP_GEN=1
+
+exec go run "${0%/*}"/timergo/timer.go "${@}"
