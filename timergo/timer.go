@@ -89,9 +89,10 @@ func doTimer(n int, duration int, rest int) {
 }
 
 func main() {
+	args := os.Args[1:]
 	runner.GenWrapper(runner.Options{WrapperPath: "../timer"})
 
-	rep, duration, rest := parseArgs(os.Args[1:])
+	rep, duration, rest := parseArgs(args)
 	if rep > 1 {
 		p("Rep=%d  Duration=%d  Rest=%d\n", rep, duration, rest)
 	}
