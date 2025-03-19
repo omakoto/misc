@@ -1,8 +1,10 @@
 #!/bin/bash
 
+set -e
 export GO_RUNNER_SKIP_GEN=1
 
-script="${0%/*}/timergo/timer.go"
+cd "${0%/*}"
+script="./timergo/timer.go"
 
 if (( $RUNNER_SHOW_MAIN )) ; then
     echo "$(readlink -f "$script")"
