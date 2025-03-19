@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# Select lines, 
+
+set -e
+
+# Select the line
+line="$( zenlog-last-n-contents -n 3 | tac | fzf -m )"
+
+tokenize() {
+    local line="$1"
+    {
+        # Whole line
+        echo "$line"
+
+        # Special case: "Running: "...
+        echo "$line" | sed -ne 's!^Running: !!p'
+
+        # Each token
+        echo "$line" | tr -s ' ' '\n' 
+    } | grep -v '^$' | fzf -1 -m | tr -s '\n' ' '
+}
+
+
+echo "$( tokenize "$line" ) "
