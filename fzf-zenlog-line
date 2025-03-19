@@ -5,20 +5,20 @@
 set -e
 
 # Select the line
-line="$( zenlog-last-n-contents -n 3 | tac | fzf -m )"
+line="$( zenlog-last-n-contents -n 10 | tac | fzf -m )"
 
 tokenize() {
     local line="$1"
     {
-        # Whole line
-        echo "$line"
+        # Each token
+        echo "$line" | tr -s ' ' '\n' 
 
         # Special case: "Running: "...
         echo "$line" | sed -ne 's!^Running: !!p'
 
-        # Each token
-        echo "$line" | tr -s ' ' '\n' 
-    } | grep -v '^$' | fzf -1 -m | tr -s '\n' ' '
+        # Whole line
+        echo "$line"
+    } | grep -v '^$' | fzf -1 -m --tac | tr -s '\n' ' '
 }
 
 
