@@ -5,7 +5,11 @@
 set -e
 
 # Select the line
-line="$( zenlog-last-n-contents -n 10 | tac | fzf -m )"
+line="$( 
+    zenlog-last-n-contents -n 10 |
+    tac |
+    fzf -m
+)"
 
 tokenize() {
     local line="$1"
