@@ -165,7 +165,7 @@ recent_words() {
 bfs_inner() {
   {
     local timeout=0.2
-    local opts="-nocolor -maxdepth 6 -name .git -prune -o -name e2etests -prune -o -name .cache -prune -o -print "
+    local opts="-nocolor -maxdepth 6 -name .git -prune -o -name e2etests -prune -o -name .cache -prune -o -name zenlog.log -prune -o -print "
     if ! [[ "$token" =~ / ]] ; then
       timeout $timeout bfs $opts | sed -e 's!^\./!!'
     else
