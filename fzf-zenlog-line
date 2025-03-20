@@ -11,7 +11,7 @@ tokenize() {
     local line="$1"
     {
         # Each token
-        echo "$line" | tr -s ' ' '\n' 
+        echo "$line" | perl -pe 's!\s+!\n!g'
 
         # Special case: "Running: "...
         echo "$line" | sed -ne 's!^Running: !!p'
