@@ -6,9 +6,9 @@ set -e
 
 # Select the line
 line="$( 
-    zenlog-last-n-contents -n 10 |
+    zenlog-last-n-contents -r -n 10 |
     tac |
-    fzf -m
+    fzf -m --ansi
 )"
 
 tokenize() {
