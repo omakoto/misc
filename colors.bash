@@ -40,23 +40,25 @@ _do_color() {
   fi
 
   {
+    local reset=""
     if (( $use_color )) ; then
       if [[ $color == "" ]] ; then
         echo -ne "\e[0m"
       else
         echo -ne "\e[${attributes}${prefix}${color}m"
+        reset=$'\e[0m'
       fi
     fi
 
     if (( $# == 0 )) ; then
       return 0 # no argument, just start a color and finish.
     else
-      echo $nl_opt "$@"
+      echo $nl_opt "$@""$reset"
     fi
 
-    if (( ! $continuation && $use_color )) ; then
-      echo -ne '\e[0m'
-    fi
+    # if (( ! $continuation && $use_color )) ; then
+    #   echo -ne '\e[0m'
+    # fi
   } >& $out
 }
 

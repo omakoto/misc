@@ -5,14 +5,19 @@
 set -e
 
 remove_cr_lines() {
-    perl -pe 's# (^ | (?<= [ \r \n ] ) ) [^ \r \n ]*? \r (?! \n ) ##gx ; s#\r\n#\n#g'
+    cat
+
+    # Hmm, tried to remove the lines ending with a CR, but it didn't work well.
+    #perl -pe 's# (^ | (?<= [ \r \n ] ) ) [^ \r \n ]*? \r (?! \n ) ##gx'
+    #perl -pe 's! \x0d\x0a ! \x0a !gx'
+    #perl -pe 's# (^ | (?<= [ \r \n ] ) ) [^ \r \n ]*? \r (?! \n ) ##gx ; s# \r\n # \n #gx'
 #    perl -pe 's! (?<= [ \r \n ] )  [^ \r \n ]*? \r !!gx'
 #    perl -pe 's! \r !!gx'
 }
 
-# actual="$(echo -n $'xxx\r\nBBB\rccc\r\nDDD\rEEE\rfff\r\n' | remove_cr_lines)" && echo "$actual"
+#actual="$(echo -n $'xxx\r\nBBB\rccc\r\nDDD\rEEE\rfff\r\n' | remove_cr_lines)" && echo "$actual" | hd
 
-# exit 9
+#exit 9
 
 # Select the line
 line="$( 
