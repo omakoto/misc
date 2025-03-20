@@ -308,6 +308,10 @@ maybe_add_space() {
 
 export FZF_DEFAULT_OPTS="$(perl -pe 's!\{.*?\}!{+2..}!g' <<<"$FZF_DEFAULT_OPTS")"
 
+      # <(recent_words 2 LAST-WORDS) \
+      # <(recent_ee 2 RUNNING) \
+      # <(recent_files 2 LAST-FILES) \
+
 #      <(recent_files 5 RECENT-FILES) \
 #      <(recent_words 5 RECENT-WORDS) \
 
@@ -315,9 +319,6 @@ completed=$({
     cat \
       <(git_branches) \
       <(frequent_words) \
-      <(recent_words 2 LAST-WORDS) \
-      <(recent_ee 2 RUNNING) \
-      <(recent_files 2 LAST-FILES) \
       <(files) \
       <(android_env) \
       <(envs) \
