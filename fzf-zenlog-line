@@ -4,12 +4,27 @@
 
 set -e
 
+remove_cr_lines() {
+    perl -pe 's# (^ | (?<= [ \r \n ] ) ) [^ \r \n ]*? \r (?! \n ) ##gx ; s#\r\n#\n#g'
+#    perl -pe 's! (?<= [ \r \n ] )  [^ \r \n ]*? \r !!gx'
+#    perl -pe 's! \r !!gx'
+}
+
+# actual="$(echo -n $'xxx\r\nBBB\rccc\r\nDDD\rEEE\rfff\r\n' | remove_cr_lines)" && echo "$actual"
+
+# exit 9
+
 # Select the line
 line="$( 
     zenlog-last-n-contents -r -n 10 |
+    remove_cr_lines |
     tac |
     fzf -m --ansi
 )"
+
+if [[ "$line" == "" ]] ; then
+    exit 1
+fi
 
 tokenize() {
     local line="$1"
