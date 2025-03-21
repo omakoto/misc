@@ -7,7 +7,7 @@ while (defined(my $in = <>)) {
     print "$in\n";
 
     if ($in =~ m!^/!) {
-        for my $key (keys %ENV) {
+        for my $key (sort keys %ENV) {
             next if $key =~ /^(:?PWD|OLDPWD|MY_ANDROID_ROOT|ANDROID_X_BUILD_TOP)$/; # Not interesting.
 
             my $val = $ENV{$key};

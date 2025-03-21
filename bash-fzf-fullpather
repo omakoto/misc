@@ -1,0 +1,49 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+tokens=("$@")
+
+# First, select the tokens to replace
+select_tokens() {
+    local tokens=("$@")
+    local t
+    local i=0
+
+    for t in "${tokens[@]}" ; do
+        echo "$i" "$t"
+        i=$(( $i + 1 ))
+    done | fzf --tac --multi | cut -f 1 -d ' '
+}
+
+selected=( $(select_tokens "${tokens[@]}") )
+
+# Then, for each selected tokens, try fullpathfy / envify
+
+for i in "${selected[@]}" ; do
+    t="${tokens[$i]}"
+    replaced="$({
+        # Show the original
+        echo "$t"
+
+        # If it's a relpath, show the abspath
+        if [[ "$t" =~ ^/ ]] ; then
+            abs="$t"
+        elif [[ -e "$t" ]] ; then
+            abs=$(realpath -s "$t")
+            echo "$abs"
+        fi
+
+        # If we have an abspath, try replacing with env
+        if [[ "$abs" != "" ]] ; then
+            replace-with-env <<< "$abs" | tac
+        fi
+    } | global-unique | fzf -1)"
+
+    if [[ "$replaced" != "" ]] ; then
+        tokens[$i]="$replaced"
+    fi
+done
+
+echo "${tokens[@]}"
