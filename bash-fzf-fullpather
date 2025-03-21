@@ -14,12 +14,21 @@ select_tokens() {
     for t in "${tokens[@]}" ; do
         echo "$i" "$t"
         i=$(( $i + 1 ))
-    done | fzf --tac --multi | cut -f 1 -d ' '
+    done | fzf --tac --multi --with-nth=2.. | cut -f 1 -d ' '
 }
 
 selected=( $(select_tokens "${tokens[@]}") )
 
 # Then, for each selected tokens, try fullpathfy / envify
+
+# helper
+recent_dirs=""
+get_recent_dirs() {
+    if [[ "$recent_dirs" == "" ]] ; then
+        recent_dirs="$(recent-dirs -n 20)"
+    fi
+    echo $recent_dirs
+}
 
 for i in "${selected[@]}" ; do
     t="${tokens[$i]}"
@@ -39,6 +48,16 @@ for i in "${selected[@]}" ; do
         if [[ "$abs" != "" ]] ; then
             replace-with-env <<< "$abs" | tac
         fi
+
+        # If the token doesn't exist as a file, then see if it exists in any recent dirs
+        if ! [[ -e "$t" ]] ; then
+            for rd in $(get_recent_dirs); do
+                if [[ -e "$rd$t" ]] ; then
+                    realpath -s "$rd$t"
+                fi
+            done
+        fi
+
     } | global-unique | fzf -1)"
 
     if [[ "$replaced" != "" ]] ; then
