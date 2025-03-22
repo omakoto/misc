@@ -3,11 +3,11 @@
 set -e
 . mutil.sh
 
+# TODO: Maybe use sh-split-words instead for correctness
 tokens=("$@")
 
 # First, select the tokens to replace
 select_tokens() {
-    local tokens=("$@")
     local t
     local i=0
 
@@ -17,27 +17,25 @@ select_tokens() {
     done | fzf --tac --multi --with-nth=2.. | cut -f 1 -d ' '
 }
 
-selected=( $(select_tokens "${tokens[@]}") )
 
 # Then, for each selected tokens, try fullpathfy / envify
 
 # helper
-recent_dirs=""
+recent_dirs_cache=""
 get_recent_dirs() {
-    if [[ "$recent_dirs" == "" ]] ; then
-        recent_dirs="$(recent-dirs -n 20)"
+    if [[ "$recent_dirs_cache" == "" ]] ; then
+        recent_dirs_cache="$(recent-dirs -n 20)"
     fi
-    echo $recent_dirs
+    echo $recent_dirs_cache
 }
 
 col() {
     hl ' #.*' '@333' '\$\{.*?\}' '@253'
 }
 
-set +e
-for i in "${selected[@]}" ; do
-    t="${tokens[$i]}"
-    replaced="$({
+list_candidates() {
+    local t="$1"
+    {
         # Show the original
         echo "$t # Original"
 
@@ -62,12 +60,62 @@ for i in "${selected[@]}" ; do
                 fi
             done
         fi
+    } | global-unique
+}
 
-    } | global-unique | col | fzf -1 --ansi | sed -e 's! #.*$!!')"
 
-    if [[ "$replaced" != "" ]] ; then
-        tokens[$i]="$replaced"
-    fi
-done
+rewrite_tokens() {
+    set +e
+    for i in "${selected[@]}" ; do
+        t="${tokens[$i]}"
+        replaced="$(list_candidates "$t" | col | fzf --ansi | sed -e 's! #.*$!!')"
 
-echo "${tokens[@]}"
+        if [[ "$replaced" != "" ]] ; then
+            tokens[$i]="$replaced"
+        fi
+    done
+}
+
+fzf_mode() {
+    selected=( $(select_tokens "${tokens[@]}" | sort -n) )
+    rewrite_tokens
+    echo "${tokens[@]}"
+}
+
+editor_mode() {
+    local tmp="/tmp/$$-rewrite.txt"
+    for t in "${tokens[@]}" ; do
+        list_candidates "$t" | sed -e '2,$s/^/#/'
+        echo ""
+    done > "$tmp"
+
+    EE_QUIET=1 1w "$tmp"
+
+    after="$(perl -ne '
+#line 94
+BEGIN {
+    @all = ();
+}
+
+chomp;
+
+s/ \# .* $ //x;     # Remove commented out lines
+s/\s+$//; # remove trailing spaces
+
+next if /^ \s* $/x; # Skip empty lines
+
+push @all, $_;
+
+END {
+    print((join " ", @all));
+}
+
+' "$tmp")"
+    echo "$after"
+}
+
+if (( $EDITOR_MODE )) ; then
+    editor_mode
+else
+    fzf_mode
+fi
