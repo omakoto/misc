@@ -96,7 +96,8 @@ android_env() {
   if [[ "$ANDROID_BUILD_TOP" == "" ]] ; then
     return
   fi
-  print '[ABT]# ' <<'EOF'
+  print '[ENV]# ' <<'EOF'
+$ANDROID_BUILD_TOP/
 $ANDROID_BUILD_TOP/build/soong/
 $ANDROID_BUILD_TOP/build/make/
 $ANDROID_BUILD_TOP/cts/
@@ -207,32 +208,6 @@ soong_modules() {
   )
 }
 
-filter_bash() {
-  local gray=$'\e[38;5;8m'
-  local reset=$'\e[0m'
-
-  while read -r prefix line ; do
-    if [[ -d "$line" ]] ; then
-      echo "${prefix} "$'\e[38;5;13m'"${line}"$reset
-    
-    elif [[ -e "$line" ]] ; then
-      echo "${prefix} "$'\e[38;5;14m'"${line}"$reset
-    
-    elif [[ "$prefix" =~ ^\[ENV ]] ; then
-      echo "${prefix} "$'\e[38;5;10m'"${line}"$reset
-
-    elif [[ "$prefix" =~ ^\[RUNN ]] ; then
-      echo "${prefix} "$'\e[38;5;11m'"${line}"$reset
-
-    elif [[ "$line" =~ ^\'?(file|https?):// ]] ; then
-      echo "${prefix} "$'\e[38;5;11;3m'"${line}"$reset
-
-    else
-      echo "${prefix} ${line}"
-    fi
-  done
-}
-
 filter() {
   perl -ne '
 #line 236
@@ -249,9 +224,6 @@ filter() {
   } elsif (-e $v) {
     $c = "\e[38;5;14m";
 
-  } elsif ($p =~ /^\[ENV/) {
-    $c = "\e[38;5;10m";
-
   } elsif ($p =~ /^\[RUN/) {
     $c = "\e[38;5;11m";
 
@@ -259,6 +231,10 @@ filter() {
     $c = "\e[38;5;11m";
 
   }
+
+  # Highlight env vars (e.g. $XXX_YYY)
+  $v =~ s/ (\$\w+) /\e[38;5;10m\1\x1b[0m/gx;
+
 
   print($p, " ", $c, $v, "\x1b[0m\n");
 '
@@ -319,10 +295,10 @@ completed=$({
     cat \
       <(git_branches) \
       <(frequent_words) \
-      <(files) \
       <(android_env) \
       <(envs) \
       <(recent_dirs) \
+      <(files) \
       <(soong_modules) \
       <(bfs) \
       /dev/null
