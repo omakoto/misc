@@ -86,6 +86,7 @@ editor_mode() {
     local tmp="/tmp/$$-rewrite.txt"
     {
         echo "#PWD: $PWD"
+        echo
         for t in "${tokens[@]}" ; do
             list_candidates "$t" | sed -e '2,$s/^/#/'
             echo ""
