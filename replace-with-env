@@ -4,7 +4,7 @@ use strict;
 
 while (defined(my $in = <>)) {
     chomp $in;
-    print "$in\n";
+#    print "$in\n";
 
     if ($in =~ m!^/!) {
         for my $key (sort keys %ENV) {
