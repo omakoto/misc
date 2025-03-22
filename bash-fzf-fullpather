@@ -84,10 +84,13 @@ fzf_mode() {
 
 editor_mode() {
     local tmp="/tmp/$$-rewrite.txt"
-    for t in "${tokens[@]}" ; do
-        list_candidates "$t" | sed -e '2,$s/^/#/'
-        echo ""
-    done > "$tmp"
+    {
+        echo "#PWD: $PWD"
+        for t in "${tokens[@]}" ; do
+            list_candidates "$t" | sed -e '2,$s/^/#/'
+            echo ""
+        done
+    } > "$tmp"
 
     EE_QUIET=1 1w "$tmp"
 
