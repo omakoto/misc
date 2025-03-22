@@ -30,19 +30,23 @@ get_recent_dirs() {
     echo $recent_dirs
 }
 
+col() {
+    hl ' #.*' '@333' '\$\{.*?\}' '@253'
+}
+
 set +e
 for i in "${selected[@]}" ; do
     t="${tokens[$i]}"
     replaced="$({
         # Show the original
-        echo "$t"
+        echo "$t # Original"
 
         # If it's a relpath, show the abspath
         if [[ "$t" =~ ^/ ]] ; then
             abs="$t"
         elif [[ -e "$t" ]] ; then
             abs=$(realpath -s "$t")
-            echo "$abs"
+            echo "$abs # Absolute path"
         fi
 
         # If we have an abspath, try replacing with env
@@ -54,12 +58,12 @@ for i in "${selected[@]}" ; do
         if ! [[ -e "$t" ]] ; then
             for rd in $(get_recent_dirs); do
                 if [[ -e "$rd$t" ]] ; then
-                    realpath -s "$rd$t"
+                    echo "$(realpath -s "$rd$t") # Relative from $rd"
                 fi
             done
         fi
 
-    } | global-unique | fzf -1)"
+    } | global-unique | col | fzf -1 --ansi | sed -e 's! #.*$!!')"
 
     if [[ "$replaced" != "" ]] ; then
         tokens[$i]="$replaced"
