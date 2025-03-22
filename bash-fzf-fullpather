@@ -30,6 +30,7 @@ get_recent_dirs() {
     echo $recent_dirs
 }
 
+set +e
 for i in "${selected[@]}" ; do
     t="${tokens[$i]}"
     replaced="$({
