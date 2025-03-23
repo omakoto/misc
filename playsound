@@ -1,0 +1,3 @@
+#!/bin/bash
+
+(ffplay  -v 0 -nodisp -autoexit "${1:?missing argument}" >/dev/null &)
