@@ -2,7 +2,25 @@
 
 . mutil.sh
 
-find $HOME/cbin/temp/ -name 'git-message-*.txt'  | sort -r | while read -r file ; do
+name_only=0
+while getopts "n" opt; do
+    case "$opt" in
+    n) name_only=1 ;; # Only show log filenames
+    *) exit 1 ;;
+    esac
+done
+shift $(($OPTIND - 1))
+
+list_files() {
+    find $HOME/cbin/temp/ -name 'git-message-*.txt'  | sort -r
+}
+
+if (( $name_only )) ; then
+    list_files
+    exit 0
+fi
+
+list_files | while read -r file ; do
     echo "## $file"
     cat "$file"
     echo
