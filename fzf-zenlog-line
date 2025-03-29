@@ -3,6 +3,7 @@
 # Select lines, 
 
 set -e
+. mutil.sh
 
 remove_cr_lines() {
     perl -pe 's# (^ | (?<= [ \r \n ] )) [^\r\n]* \r (?! \n )  ##xg; s!\r\n!\n!xg  '
@@ -27,19 +28,23 @@ fi
 tokenize() {
     local line="$1"
     {
-        echo "$line" | perl -ne '
-#line 38
+        split="$( perl -ne '
+#line 31
 
 # Split by space and print in each line
 s!\s+!\n!g and print $_;
 
 # EE command line
 s!^Running: !! && print;
-'
+' <<<"$line" )"
+        if [[ "$line" != "$split" ]]; then
+            echo "$split"
+            gray -f -- '--------'
+        fi
 
         # Whole line(s)
         echo "$line"
-    } | grep -v '^$' | fzf -1 -m --tac | tr -s '\n' ' '
+    } | grep -v '^$' | fzf --ansi -1 -m --tac | tr -s '\n' ' '
 }
 
 
