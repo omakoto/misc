@@ -27,15 +27,30 @@ fi
 
 tokenize() {
     local line="$1"
+
+    # Remove unnecessary line start tokens
+    line="$( perl -pe '
+#line 33
+
+s!^Running: !!; # EE marker
+
+s!^ \$\s+ !!x; # Prompt 
+
+' <<<"$line" )"
+
     {
         split="$( perl -ne '
-#line 32
+#line 43
+
+# EE command line
+$orig = $_;
+
+# Remove "obvious" line start tokens
+s!^ ([a-zA-Z]|\?\?) \s+ !!x; #git markers
 
 # Split by space and print in each line
 $a = s!\s+!\n!gr and print $a;
 
-# EE command line
-s!^Running: !! and print;
 ' <<<"$line" )"
         if [[ "$line" != "$split" ]]; then
             echo "$split"
