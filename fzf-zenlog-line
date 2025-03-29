@@ -32,14 +32,10 @@ tokenize() {
 #line 32
 
 # Split by space and print in each line
-if ($a = s!\s+!\n!gr) {
-    print $a;
-}
+$a = s!\s+!\n!gr and print $a;
 
 # EE command line
-if ($a = s!^Running: !!r) {
-    print $a;
-}
+s!^Running: !! and print;
 ' <<<"$line" )"
         if [[ "$line" != "$split" ]]; then
             echo "$split"
