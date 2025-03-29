@@ -37,7 +37,7 @@ $a = s!\s+!\n!gr and print $a;
 # EE command line
 s!^Running: !! and print;
 ' <<<"$line" )"
-        if [[ "$line" != "$split" ]]; then
+        if [[ "$split" != "" ]] && [[ "$line" != "$split" ]] ; then
             echo "$split"
             gray -f -- '--------'
         fi
