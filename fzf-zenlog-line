@@ -18,7 +18,8 @@ line="$(
     zenlog-last-n-contents -r -n 20 |
     remove_cr_lines |
     tac |
-    fzf -m --ansi
+    fzf -m --ansi |
+    perl -pe 's/^\s+//'
 )"
 
 if [[ "$line" == "" ]] ; then
@@ -42,7 +43,6 @@ s!^ \$\s+ !!x; # Prompt
         split="$( perl -ne '
 #line 43
 
-# EE command line
 $orig = $_;
 
 # Remove "obvious" line start tokens
@@ -52,7 +52,7 @@ s!^ ([a-zA-Z]|\?\?) \s+ !!x; #git markers
 $a = s!\s+!\n!gr and print $a;
 
 ' <<<"$line" )"
-        if [[ "$line" != "$split" ]]; then
+        if [[ "$split" != "" ]] && [[ "$line" != "$split" ]] ; then
             echo "$split"
             gray -f -- '--------'
         fi
