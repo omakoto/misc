@@ -29,13 +29,17 @@ tokenize() {
     local line="$1"
     {
         split="$( perl -ne '
-#line 31
+#line 32
 
 # Split by space and print in each line
-s!\s+!\n!g and print $_;
+if ($a = s!\s+!\n!gr) {
+    print $a;
+}
 
 # EE command line
-s!^Running: !! && print;
+if ($a = s!^Running: !!r) {
+    print $a;
+}
 ' <<<"$line" )"
         if [[ "$line" != "$split" ]]; then
             echo "$split"
