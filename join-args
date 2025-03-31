@@ -1,0 +1,8 @@
+#!/usr/bin/perl
+
+# Use the first arg as a separator, and join the remaining args.
+
+my $sep = shift;
+
+print join($sep, @ARGV);
+print "\n";

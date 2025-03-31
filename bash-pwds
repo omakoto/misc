@@ -1,37 +1,11 @@
-#!/usr/bin/perl
+#!/bin/bash
 
-# Using /proc/, find all "bash -l" processes, and print their current
-# directories.
+set -e
+. mutil.sh
 
+cd "${MY_BASH_PWDS:?}"
 
-use 5.036;
-use POSIX;
-
-my $uid = getuid();
-
-my %all = ();
-
-opendir(my $dh, "/proc/") or die "Can't open /proc: $!";
-while (defined(my $pid = readdir $dh)) {
-    my $dir = "/proc/$pid";
-    my $diruid = (stat $dir)[4];
-    next unless $uid == $diruid;
-
-    # print $dir, ", ", $diruid, "\n";
-
-    # print "/proc/$pid/\n";
-
-    open(my $fh, '<', "/proc/$pid/cmdline") or next;
-    my $cmdline = do { local $/; <$fh> };
-    $cmdline =~ tr!\x00! !;
-    $cmdline =~ s!^.*/!!;
-    if ($cmdline eq "bash -l ") {
-        my $dir = readlink("/proc/$pid/cwd");
-        $all{$dir} = $dir;
-    }
-}
-closedir $dh;
-
-for my $dir (sort keys %all) {
-    print($dir, "\n");
-}
+pids="$(join-args , $(bash-pids))"
+for f in $( ls -t $(eval echo "{$pids}.txt")  2>/dev/null ) ; do
+    cat $f
+done
