@@ -1,0 +1,37 @@
+#!/usr/bin/perl
+
+# Using /proc/, find all "bash -l" processes, and print their current
+# directories.
+
+
+use 5.036;
+use POSIX;
+
+my $uid = getuid();
+
+my %all = ();
+
+opendir(my $dh, "/proc/") or die "Can't open /proc: $!";
+while (defined(my $pid = readdir $dh)) {
+    my $dir = "/proc/$pid";
+    my $diruid = (stat $dir)[4];
+    next unless $uid == $diruid;
+
+    # print $dir, ", ", $diruid, "\n";
+
+    # print "/proc/$pid/\n";
+
+    open(my $fh, '<', "/proc/$pid/cmdline") or next;
+    my $cmdline = do { local $/; <$fh> };
+    $cmdline =~ tr!\x00! !;
+    $cmdline =~ s!^.*/!!;
+    if ($cmdline eq "bash -l ") {
+        my $dir = readlink("/proc/$pid/cwd");
+        $all{$dir} = $dir;
+    }
+}
+closedir $dh;
+
+for my $dir (sort keys %all) {
+    print($dir, "\n");
+}
