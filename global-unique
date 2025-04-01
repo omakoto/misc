@@ -1,11 +1,23 @@
 #!/usr/bin/perl
+
 use strict;
+use Getopt::Std;
+
+my %opts = ();
+
+getopt('i:', \my %opts);
+
+my $ignore_re = $opts{i};
 
 $| = 1; # auto flush
 
 my %lines = ();
 
 while (<>) {
+    if (/$ignore_re/o) {
+        print;
+        next;
+    }
     next if exists $lines{$_};
     print;
     $lines{$_} = 1;
