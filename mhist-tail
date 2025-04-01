@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [[ "$1" != "-g" ]] ; then
-  exec tailb -30000000 $MYHISTFILE
+  exec tailb -5000000 $MYHISTFILE
 else
   for f in ~/history/*/.myhist; do
     tailb -500000000 "$f"
