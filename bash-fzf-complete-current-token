@@ -127,7 +127,7 @@ envs() {
 
 recent_dirs() {
   print "[RECENT-DIR] " <(
-    timeout 0.2 recent-dirs -n 50 -z
+    timeout 0.5 recent-dirs -n 50 -z
   )
 }
 
