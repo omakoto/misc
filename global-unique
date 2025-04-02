@@ -14,7 +14,7 @@ $| = 1; # auto flush
 my %lines = ();
 
 while (<>) {
-    if (/$ignore_re/o) {
+    if ((defined $ignore_re) && (/$ignore_re/o)) {
         print;
         next;
     }

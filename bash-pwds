@@ -11,4 +11,4 @@ pids="$(join-args , $(bash-pids))"
 # List their "pwd" files and sort by timestamp (-t), then cat them.
 for f in $( ls -t $(eval echo "{$pids}.txt")  2>/dev/null ) ; do
     cat $f
-done
+done | global-unique

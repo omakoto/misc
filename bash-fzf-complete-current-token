@@ -291,14 +291,16 @@ export FZF_DEFAULT_OPTS="$(perl -pe 's!\{.*?\}!{+2..}!g' <<<"$FZF_DEFAULT_OPTS")
 #      <(recent_files 5 RECENT-FILES) \
 #      <(recent_words 5 RECENT-WORDS) \
 
+#      <(frequent_words) \
+
+#      <(files) \
+
 completed=$({
     cat \
       <(git_branches) \
-      <(frequent_words) \
       <(android_env) \
-      <(envs) \
       <(recent_dirs) \
-      <(files) \
+      <(envs) \
       <(soong_modules) \
       <(bfs) \
       /dev/null
