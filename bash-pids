@@ -13,7 +13,7 @@ opendir(my $dh, "/proc/") or die "Can't open /proc: $!";
 while (defined(my $pid = readdir $dh)) {
     my $dir = "/proc/$pid";
     my $diruid = (stat $dir)[4];
-    next unless $uid == $diruid;
+    next unless defined($diruid) && ($uid == $diruid);
 
     open(my $fh, '<', "/proc/$pid/cmdline") or next;
     my $cmdline = do { local $/; <$fh> };
