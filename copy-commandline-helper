@@ -1,23 +1,23 @@
 #!/bin/bash
 
 selected=$(select-menu \
-'1: Copy last zenlog output w/o command' \
-'2: Copy last zenlog output w/ command' \
-'3: Copy current command line' \
-'4: Copy current dir' \
+'C: Copy last zenlog output w/o command' \
+'F: Copy last zenlog output w/ command' \
+'L: Copy current command line' \
+'D: Copy current dir' \
 )
 
 case "$selected" in
-    1)
+    C)
         zenlog-last-n-contents -n 1 -t -c
         ;;
-    2)
+    F)
         zenlog-last-n-contents -n 1 -c
         ;;
-    3)
+    L)
         echo "$READLINE_LINE" | cb -D '[Copied current commandline to clipboard]'
         ;;
-    4)
+    D)
         echo "$PWD" | cb -D '[Copied current dir to clipboard]'
         ;;
     *)
