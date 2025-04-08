@@ -21,6 +21,11 @@ fi
 bar="$(gray -f -- '--------')"
 export bar
 
+col() {
+    local c=$1
+    awk '{ print $'$c'}'
+}
+
 tokenize() {
     local line="$1"
 
@@ -35,6 +40,16 @@ s!^ \$\s+ !!x; # Prompt
 ' <<<"$line" )"
 
     {
+        # Show vertical lines
+        if (( "$(wc -l <<<"$line")" > 1 )); then
+            for i in $(seq 1 9); do
+                echo -n "$(col $i <<< "$line")"
+                echo -n ' '
+                echo
+                echo $bar
+            done
+        fi
+
         split="$( perl -ne '
 #line 39
 
