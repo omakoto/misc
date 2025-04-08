@@ -4,6 +4,7 @@ selected=$(select-menu \
 '1: Copy last zenlog output w/o command' \
 '2: Copy last zenlog output w/ command' \
 '3: Copy current command line' \
+'4: Copy current dir' \
 )
 
 case "$selected" in
@@ -15,6 +16,9 @@ case "$selected" in
         ;;
     3)
         echo "$READLINE_LINE" | cb -D '[Copied current commandline to clipboard]'
+        ;;
+    4)
+        echo "$PWD" | cb -D '[Copied current dir to clipboard]'
         ;;
     *)
         exit 1
