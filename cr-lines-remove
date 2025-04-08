@@ -1,0 +1,11 @@
+#!/usr/bin/perl -p
+
+# Remove lines ending with a CR
+
+s{
+(^ | (?<= [ \r \n ] )) # Line start 
+[^\r\n]*               # Something that's not CR nor LF
+\r (?! \n )            # CR not followed by LF
+}{}xg;
+
+s!\r\n!\n!g; # Convert CRLF to LF

@@ -5,18 +5,10 @@
 set -e
 . mutil.sh
 
-remove_cr_lines() {
-    perl -pe 's# (^ | (?<= [ \r \n ] )) [^\r\n]* \r (?! \n )  ##xg; s!\r\n!\n!xg  '
-}
-
-#actual="$(echo -n $'xxx\r\nBBB\rccc\r\nDDD\rEEE\rfff\r\n' | remove_cr_lines)" && echo "$actual" | hd
-
-#exit 9
-
 # Select the line
 line="$( 
     zenlog-last-n-contents -r -n 20 |
-    remove_cr_lines |
+    cr-lines-remove |
     tac |
     fzf -m --ansi |
     perl -pe 's/^\s+//'
