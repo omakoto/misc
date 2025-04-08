@@ -127,7 +127,7 @@ envs() {
 
 recent_dirs() {
   print "[RECENT-DIR] " <(
-    timeout 0.5 recent-dirs -n 50 -z
+    timeout 0.2 recent-dirs -n 50 -z
   )
 }
 
@@ -182,29 +182,28 @@ bfs() {
   )
 }
 
-soong_modules_inner() {
-  allmod 2>/dev/null
+# soong_modules_inner() {
+#   # local mod="$OUT/module-info.json"
+#   # local cache="$OUT/module-info-modules.cache.tmp"
+#   # local tmp="$OUT/module-info.tmp"
 
-  # local mod="$OUT/module-info.json"
-  # local cache="$OUT/module-info-modules.cache.tmp"
-  # local tmp="$OUT/module-info.tmp"
+#   # if ! [[ -f "$mod" ]] ; then
+#   #   return 0
+#   # fi
 
-  # if ! [[ -f "$mod" ]] ; then
-  #   return 0
-  # fi
-
-  # if [[ "$mod" -nt "$cache" ]] ; then
-  #   rm -f "$cache" "$tmp"
-  #   {
-  #     jq -r 'to_entries[] | .key' "$mod" | s > "$tmp"
-  #   } && mv "$tmp" "$cache"
-  # fi
-  # cat "$cache"
-}
+#   # if [[ "$mod" -nt "$cache" ]] ; then
+#   #   rm -f "$cache" "$tmp"
+#   #   {
+#   #     jq -r 'to_entries[] | .key' "$mod" | s > "$tmp"
+#   #   } && mv "$tmp" "$cache"
+#   # fi
+#   # cat "$cache"
+# }
 
 soong_modules() {
   print '[MODULES] ' <(
-    soong_modules_inner
+    allmod 2>/dev/null
+    # soong_modules_inner
   )
 }
 
@@ -295,6 +294,8 @@ export FZF_DEFAULT_OPTS="$(perl -pe 's!\{.*?\}!{+2..}!g' <<<"$FZF_DEFAULT_OPTS")
 
 #      <(files) \
 
+#      <(bfs) \
+
 completed=$({
     cat \
       <(git_branches) \
@@ -302,7 +303,6 @@ completed=$({
       <(recent_dirs) \
       <(envs) \
       <(soong_modules) \
-      <(bfs) \
       /dev/null
   } | filter |
     fzf --ansi -1 -q "$token" -m --preview='preview-file {2..}' |

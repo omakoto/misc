@@ -47,7 +47,7 @@ list_candidates() {
         if [[ "$t" =~ ^/ ]] ; then
             abs="$t"
         elif [[ -e "$t" ]] ; then
-            abs=$(realpath -s "$t")
+            abs=$(realpath -s -- "$t")
             echo "$abs # Absolute path"
         fi
 
@@ -60,7 +60,7 @@ list_candidates() {
         if ! [[ -e "$t" ]] ; then
             for rd in $(get_recent_dirs); do
                 if [[ -e "$rd$t" ]] ; then
-                    echo "$(realpath -s "$rd$t") # Relative from $rd"
+                    echo "$(realpath -s -- "$rd$t") # Relative from $rd"
                 fi
             done
         fi
