@@ -1,0 +1,8 @@
+#!/bin/bash
+
+(
+    IFS=$'\n'
+    echo "$*"
+) |
+hl '#.*$' '@333' |
+fzf -1 --ansi | sed -e 's/:.*//'
