@@ -15,9 +15,17 @@
 #         exit 1
 # esac
 
+args=()
+for i in $(seq 1 9) ; do
+    args+=(--bind)
+    args+=("$i:pos($i)+accept")
+done
+
+# echo "${args[@]}" ; exit 9
+
 (
     IFS=$'\n'
     echo "$*"
 ) |
 hl '#.*$' '@333' |
-fzf -1 --ansi | sed -e 's/:.*//'
+fzf -1 --ansi "${args[@]}" | sed -e 's/:.*//'
