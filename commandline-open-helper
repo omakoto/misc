@@ -1,0 +1,25 @@
+#!/bin/bash
+
+selected=$(select-menu \
+'D: Open current dir in editor' \
+'L: Run ls on current dir' \
+'N: Paste onto new file' \
+'U: Open recent URL' \
+)
+
+case "$selected" in
+    D)
+        1 .
+        ;;
+    L)
+        ls -F --color=auto .
+        ;;
+    N)
+        paste-on-new-file
+        ;;
+    U)
+        zenlog open-url
+        ;;
+    *)
+        exit 1
+esac
