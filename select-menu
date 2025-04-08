@@ -21,17 +21,34 @@
 # keys="$( perl -e 'for $ch (ord('1')..ord('9'), ord('a')..ord('z'), ord('A')..ord('Z') ) { print(chr($ch), "\n") }' )"
 # args+=("$i:clear-query+put(^)+put($i)+put(:)+accept-non-empty")
 
+keys=
+declare -A keys
+
+all_keys="$( perl -e 'for $ch (ord('1')..ord('9'), ord('a')..ord('z'), ord('A')..ord('Z') ) { print(chr($ch), "\n") }' )"
+
+for k in $all_keys ; do
+    keys[$k]="--bind $k:clear-query"
+done
 
 index=1
 for item in "$@" ; do
-    key=$(tr '[:upper:]' '[:lower:]' <<< ${item:0:1})
-    args+=("--bind" "$key:pos($index)+accept-non-empty")
+    k=$(tr '[:upper:]' '[:lower:]' <<< ${item:0:1})
+    keys[$k]="--bind $k:pos($index)+accept-non-empty"
     index=$(( index + 1 ))
 done
 
+args=""
+for k in ${!keys[@]}; do
+    # echo $k
+    args="$args ${keys[$k]}"
+done
+
+# echo "$args"; exit 99
+
+# unset FZF_DEFAULT_OPTS 
 (
     IFS=$'\n'
     echo "$*"
 ) |
-hl '#.*$' '@333' |
-fzf -1 --ansi "${args[@]}" | sed -e 's/^\(.\).*/\1/'
+hl '^.:' '@bcyan@555' '#.*$' '@333' |
+fzf -1 --ansi $args | sed -e 's/^\(.\).*/\1/'
