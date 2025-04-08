@@ -18,6 +18,9 @@ if [[ "$line" == "" ]] ; then
     exit 1
 fi
 
+bar="$(gray -f -- '--------')"
+export bar
+
 tokenize() {
     local line="$1"
 
@@ -33,25 +36,27 @@ s!^ \$\s+ !!x; # Prompt
 
     {
         split="$( perl -ne '
-#line 43
+#line 39
 
-$orig = $_;
+chomp;
 
 # Remove "obvious" line start tokens
 s!^ ([a-zA-Z]|\?\?) \s+ !!x; #git markers
 
 # Split by space and print in each line
-$a = s!\s+!\n!gr and print $a;
+if ($a = s!\s+!\n!gr) {
+    print $a, "\n";
+    print $ENV{bar}, "\n";
+}
 
 ' <<<"$line" )"
         if [[ "$split" != "" ]] && [[ "$line" != "$split" ]] ; then
             echo "$split"
-            gray -f -- '--------'
         fi
 
         # Whole line(s)
         echo "$line"
-    } | grep -v '^$' | fzf --ansi -1 -m --tac | tr -s '\n' ' '
+    } | uniq | grep -v '^$' | fzf --ansi -1 -m --tac | tr -s '\n' ' '
 }
 
 
