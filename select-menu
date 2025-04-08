@@ -1,5 +1,20 @@
 #!/bin/bash
 
+# Simple menu builder
+#
+# Example:
+#
+# case "$(select-menu '1: Run test only # comment' '2: Run with debugger'" in
+#     1)
+#         :
+#         ;;
+#     2)
+#         :
+#         ;;
+#     *)
+#         exit 1
+# esac
+
 (
     IFS=$'\n'
     echo "$*"
