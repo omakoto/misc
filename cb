@@ -66,6 +66,9 @@ if (( $copy )) || [[ ! -t 0 ]] ; then
     cat $f
   fi
   (
+    if ! [[ -s "$f" ]] ; then
+      exit 1
+    fi
     (
       cat "$f" | {
         if ! iswsl ; then

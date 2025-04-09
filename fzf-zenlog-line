@@ -71,7 +71,7 @@ if ($a = s!\s+!\n!gr) {
 
         # Whole line(s)
         echo "$line"
-    } | uniq | grep -v '^$' | fzf --ansi -1 -m --tac | tr -s '\n' ' '
+    } | uniq | grep -v '^$' | fzf --ansi -1 -m --tac # | tr -s '\n' ' '
 }
 
 

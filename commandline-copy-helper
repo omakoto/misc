@@ -5,6 +5,7 @@ selected=$(select-menu \
 'F: Copy last zenlog output w/ command' \
 'L: Copy current command line' \
 'D: Copy current dir' \
+'Z: Copy strings from zenlog' \
 )
 
 case "$selected" in
@@ -19,6 +20,9 @@ case "$selected" in
         ;;
     D)
         echo "$PWD" | cb -D '[Copied current dir to clipboard]'
+        ;;
+    Z)
+        fzf-zenlog-line | cb
         ;;
     *)
         exit 1
