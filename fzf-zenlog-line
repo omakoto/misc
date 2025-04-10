@@ -40,15 +40,18 @@ s!^ \$\s+ !!x; # Prompt
 ' <<<"$line" )"
 
     {
-        # Show vertical lines
+        # Show vertical columns
         if (( "$(wc -l <<<"$line")" > 1 )); then
             for i in $(seq 1 9); do
-                echo -n "$(col $i <<< "$line")"
-                echo -n ' '
-                echo
-                echo $bar
+                c="$(col $i <<< "$line")"
+                if [[ "$c" != "" ]] ; then
+                    echo "$bar"
+                    echo "$(col $i <<< "$line")"
+                fi
             done
         fi
+
+        echo $bar$bar$bar$bar
 
         split="$( perl -ne '
 #line 39
@@ -71,7 +74,7 @@ if ($a = s!\s+!\n!gr) {
 
         # Whole line(s)
         echo "$line"
-    } | uniq | grep -v '^$' | fzf --ansi -1 -m --tac # | tr -s '\n' ' '
+    } | grep -v -P '^\s*$' | uniq | fzf --ansi -1 -m --tac # | tr -s '\n' ' '
 }
 
 
