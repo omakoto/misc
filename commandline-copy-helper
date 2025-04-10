@@ -4,7 +4,7 @@ selected=$(select-menu \
 'C: Copy last zenlog output w/o command' \
 'F: Copy last zenlog output w/ command' \
 'L: Copy current command line' \
-'D: Copy current dir' \
+'D: Copy current dir ('"$PWD)" \
 'Z: Copy strings from zenlog' \
 )
 
