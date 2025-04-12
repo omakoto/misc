@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/omakoto/go-common/src/must"
-	"github.com/omakoto/go-common/src/runner"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/omakoto/go-common/src/must"
+	"github.com/omakoto/go-common/src/runner"
 )
 
 var (
@@ -23,7 +24,7 @@ func getTick() time.Duration {
 }
 
 func usage() {
-	fmt.Printf("Usage: work-timer.py DURATION [REP] [REST]\n")
+	fmt.Printf("Usage: work-timer.py [-DELAY] DURATION [REP] [REST]\n")
 }
 
 func parseSec(v string) int {
@@ -37,21 +38,31 @@ func parseSec(v string) int {
 	return must.Must2(strconv.Atoi(v)) * unit
 }
 
-func parseArgs(args []string) (rep, duration, rest int) {
+func parseArgs(args []string) (rep, duration, rest, delay int) {
 	if len(args) < 1 {
 		usage()
 		os.Exit(1)
 	}
 
-	duration = parseSec(args[0])
+	i := 0
+
+	if strings.HasPrefix(args[i], "-") {
+		delay = parseSec(args[i][1:])
+		i += 1
+	}
+
+	duration = parseSec(args[i])
 	rep = 1
 	rest = 3
+	i += 1
 
-	if len(args) >= 3 {
-		rest = must.Must2(strconv.Atoi(args[2]))
+	if len(args) > i {
+		rep = parseSec(args[i])
+		i += 1
 	}
-	if len(args) >= 2 {
-		rep = parseSec(args[1])
+	if len(args) > i {
+		rest = must.Must2(strconv.Atoi(args[i]))
+		i += 1
 	}
 	return
 }
@@ -92,9 +103,13 @@ func main() {
 	args := os.Args[1:]
 	runner.GenWrapper(runner.Options{WrapperPath: "../timer"})
 
-	rep, duration, rest := parseArgs(args)
+	rep, duration, rest, delay := parseArgs(args)
 	if rep > 1 {
 		p("Rep=%d  Duration=%d  Rest=%d\n", rep, duration, rest)
+	}
+
+	if delay > 0 {
+		doTimer1("[\x1b[38;5;12;1mDELAY\x1b[0m] ", delay, true)
 	}
 
 	if rep == 1 {
