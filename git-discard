@@ -22,10 +22,11 @@ for dir in $dirs ; do
 
     current_ref=$(git current-ref)
 
-    (( $v )) && echo $current_ref
+    (( $v )) && echo "Currrnt ref: $current_ref"
 
     work=temp-$(date8)-$$
 
+    echo "Current branch: $(git current-branch)"
     git checkout -b $work
     git add .
     git commit -a -m 'To be discarded' && {
