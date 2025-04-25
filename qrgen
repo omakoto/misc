@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -e
+. mutil.sh
+
+text="$*"
+
+out=/tmp/qr.png
+
+qrencode -o "$out" "$text" && xclip -i "$out" -selection clipboard -t image/png
+
+INFO "Generated" "$out"
+INFO "Copied into clipboard"
+
+#o "$out"
