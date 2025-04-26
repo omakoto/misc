@@ -14,6 +14,7 @@ mobile=0
 invocation_details=0
 title="[Message]"
 sound=""
+quiet=0
 
 eval "$(getopt.pl -Nxd 'Show a dialog box' '
 e|error|c|critical  mode=--error; color=bred; msgbox_opts=-e  # Show as error.
@@ -24,6 +25,7 @@ m|mobile            mobile=1                  # Send mobile notification via pus
 v|verbose           invocation_details=1      # Add invocation details.
 t|title=s           title=%                   # Title for desktop notification
 S|sound=s           sound=%                   # Play sound
+q|quiet             quiet=1                   # No sound
 ' "$@")"
 
 message="$*"
@@ -46,7 +48,7 @@ fi
 
 if [[ "$sound" != "" ]] ; then
   playsound "$sound"
-else
+elif (( $quiet == 0 )) ; then
   echo -ne '\007'
   sleep 0.1
   echo -ne '\007'
