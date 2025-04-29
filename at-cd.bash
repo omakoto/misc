@@ -44,13 +44,16 @@ dbg "wild: $wild"
 
 candidates=()
 
+col=$'\e[38;5;10m'
+res=$'\e[0m'
+
 for top in "${top_dirs[@]}"; do
     dbg "top: $top"
 
     cd "$top"
 
     for d in $(ls -d $wild 2>/dev/null); do
-        candidates+=("$top/$d")
+        candidates+=("${col}${top}/${res}${d}")
     done
 done
 
@@ -59,7 +62,7 @@ if (( "${#candidates[@]}" == 0 )) ; then
     exit 1
 fi
 
-selected="$(echo "${candidates[@]}" | tr ' ' '\n' | fzf -1)"
+selected="$(echo "${candidates[@]}" | tr ' ' '\n' | fzf -1 --ansi)"
 
 dbg "sel: $selected"
 
