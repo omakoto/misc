@@ -33,6 +33,10 @@ function command_not_found_handle_raw() {
         return $?
     fi
 
+    if [[ "$command" =~ ^@ ]] ; then
+        at-cd.bash "${command:1}"
+        return $?
+    fi
 
     if [[ "$command" =~ ^test[A-Z] ]] ; then
         command_not_found_handle_raw_ee a "$command"
