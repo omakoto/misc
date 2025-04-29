@@ -11,13 +11,13 @@ if [[ "$command" == "" ]] ;then
     exit 1
 fi
 
-top_dirs=("$HOME")
+top_dirs=("$PWD" "$HOME")
 if  [[ "$ANDROID_BUILD_TOP" != "" ]] &&  [[ -d "$ANDROID_BUILD_TOP" ]] ; then
     top_dirs+=("$ANDROID_BUILD_TOP")
 fi
 
 dbg() {
-    : echo "$*" 1>&2
+    : # echo "$*" 1>&2
 }
 
 make_wild() {
