@@ -228,9 +228,9 @@ eem() {
   echo-and-exec --timestamp --show-result --mobile --log --unbuffer --time --pwd "$@"
 }
 
-t() {
-  eem "$@"
-}
+#t() {
+#  eem "$@"
+#}
 
 echo-and-exec() {
   local to=1
