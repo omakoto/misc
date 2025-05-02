@@ -47,7 +47,7 @@ candidates=()
 col=$'\e[38;5;10m'
 res=$'\e[0m'
 
-for top in "${top_dirs[@]}"; do
+for top in $(echo "${top_dirs[@]}" | tr ' ' '\n' | global-unique) ; do
     dbg "top: $top"
 
     cd "$top"

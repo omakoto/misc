@@ -33,7 +33,7 @@ function command_not_found_handle_raw() {
         return $?
     fi
 
-    if [[ "$command" =~ ^= ]] ; then
+    if [[ "$command" =~ ^[=@] ]] ; then
         at-cd.bash "${command:1}"
         return $?
     fi
