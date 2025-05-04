@@ -31,6 +31,10 @@ make_wild() {
             ret="${ret}out/soong/.intermediates/"
             continue
         fi
+        if [[ "$ch" == "-" ]]; then
+            ret="${ret}**/"
+            continue
+        fi
 
         ret="${ret}[${ch^^}${ch,,}]*/"
     done

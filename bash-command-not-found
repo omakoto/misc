@@ -9,7 +9,7 @@ function command_not_found_handle_raw_ee() {
 }
 
 function command_not_found_handle_raw() {
-    local command="$1"
+    local command="$*"
 
     # Auto git checkout.
     if is-git-branch "$command" ; then
