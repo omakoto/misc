@@ -11,6 +11,8 @@ if [[ "$command" == "" ]] ;then
     exit 1
 fi
 
+export LC_ALL=C
+
 dbg() {
     :
     # echo "$*" 1>&2
@@ -67,23 +69,24 @@ mode0() {
     done
 }
 
-make_pcre() {
+# Example "@ o f b r" should match out/ .../ frameworks/base/ravenwood
+
+make_re() {
     local c="$1"
     local ret="^"
 
     for token in $c ; do
         dbg "token: $token"
 
-        ret="${ret}.*?/$token[^/]*?"
+        ret="${ret}.*?/\.?$token[^/]*?"
     done
 
     echo "$ret\$"
 }
 
-
 mode1() {
-    local pcre="$(make_pcre "$command")"
-    dbg "pcre: $pcre"
+    local re="$(make_re "$command")"
+    dbg "re: $re"
 
     local top_dirs=("$HOME/cbin")
     local d
@@ -94,7 +97,7 @@ mode1() {
     fi
     candidates=( $(
         ffind -d -j 32 -q "${top_dirs[@]}" \
-            | grep -P -- "$pcre" \
+            | grep -Ei -- "$re" \
             | global-unique \
             | sort \
     ) )
