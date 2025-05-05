@@ -5,9 +5,7 @@
 #
 # See also: bash-command-not-found
 
-command="$*"
-
-if [[ "$command" == "" ]] ;then
+if (( $# == 0 )) ;then
     exit 1
 fi
 
@@ -18,11 +16,25 @@ dbg() {
     # echo "$*" 1>&2
 }
 
+set -- $*
+
+use_pwd=0
 mode=0 # wild card mode -- e.g. @fb, @fbr, etc
-if [[ "$command" =~ \  ]] ;then
+
+# If the query contains a space, or start with a ., then use mode 1.
+if [[ "$1" == "." ]] ;then
+    use_pwd=1
+    mode=1
+    shift
+elif (( $# >= 2 ));then
     mode=1 # search mode
 fi
 
+command="$*"
+
+echo "query: mode=$mode: $command" 1>&2
+
+# ---------------------
 
 col=$'\e[38;5;10m'
 res=$'\e[0m'
@@ -85,16 +97,23 @@ make_re() {
 }
 
 mode1() {
+
+    local d
+    local top_dirs
+    if (( $use_pwd )) ; then
+        top_dirs+=("$PWD")
+    else
+        top_dirs+=("$HOME/cbin")
+        if  [[ "$ANDROID_BUILD_TOP" != "" ]] && [[ -d "$ANDROID_BUILD_TOP" ]] ; then
+            for d in frameworks cts tools build out; do
+                top_dirs+=("$ANDROID_BUILD_TOP/$d")
+            done
+        fi
+    fi
+
     local re="$(make_re "$command")"
     dbg "re: $re"
 
-    local top_dirs=("$HOME/cbin")
-    local d
-    if  [[ "$ANDROID_BUILD_TOP" != "" ]] && [[ -d "$ANDROID_BUILD_TOP" ]] ; then
-        for d in frameworks cts tools build out; do
-            top_dirs+=("$ANDROID_BUILD_TOP/$d")
-        done
-    fi
     candidates=( $(
         ffind -d -j 32 -q "${top_dirs[@]}" \
             | grep -Ei -- "$re" \
