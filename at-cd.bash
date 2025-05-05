@@ -5,20 +5,25 @@
 #
 # See also: bash-command-not-found
 
-command="$1"
+command="$*"
 
 if [[ "$command" == "" ]] ;then
     exit 1
 fi
 
-top_dirs=("$PWD" "$HOME")
-if  [[ "$ANDROID_BUILD_TOP" != "" ]] &&  [[ -d "$ANDROID_BUILD_TOP" ]] ; then
-    top_dirs+=("$ANDROID_BUILD_TOP")
+dbg() {
+    :
+    # echo "$*" 1>&2
+}
+
+mode=0 # wild card mode -- e.g. @fb, @fbr, etc
+if [[ "$command" =~ \  ]] ;then
+    mode=1 # search mode
 fi
 
-dbg() {
-    : # echo "$*" 1>&2
-}
+
+col=$'\e[38;5;10m'
+res=$'\e[0m'
 
 make_wild() {
     local c="$1"
@@ -42,24 +47,75 @@ make_wild() {
     echo "$ret"
 }
 
+mode0() {
+    local top_dirs=("$PWD" "$HOME")
+    if  [[ "$ANDROID_BUILD_TOP" != "" ]] && [[ -d "$ANDROID_BUILD_TOP" ]] ; then
+        top_dirs+=("$ANDROID_BUILD_TOP")
+    fi
 
-wild="$(make_wild "$command")"
-dbg "wild: $wild"
+    local wild="$(make_wild "$command")"
+    dbg "wild: $wild"
+
+    for top in $(echo "${top_dirs[@]}" | tr ' ' '\n' | global-unique) ; do
+        dbg "top: $top"
+
+        cd "$top"
+
+        for d in $(ls -d $wild 2>/dev/null); do
+            candidates+=("${col}${top}/${res}${d}")
+        done
+    done
+}
+
+make_pcre() {
+    local c="$1"
+    local ret="^"
+
+    for token in $c ; do
+        dbg "token: $token"
+
+        ret="${ret}.*?/$token[^/]*?"
+    done
+
+    echo "$ret\$"
+}
+
+
+mode1() {
+    local pcre="$(make_pcre "$command")"
+    dbg "pcre: $pcre"
+
+    local top_dirs=("$HOME/cbin")
+    local d
+    if  [[ "$ANDROID_BUILD_TOP" != "" ]] && [[ -d "$ANDROID_BUILD_TOP" ]] ; then
+        for d in frameworks cts tools build out; do
+            top_dirs+=("$ANDROID_BUILD_TOP/$d")
+        done
+    fi
+    candidates=( $(
+        ffind -d -j 32 -q "${top_dirs[@]}" \
+            | grep -P -- "$pcre" \
+            | global-unique \
+            | sort \
+    ) )
+}
 
 candidates=()
 
-col=$'\e[38;5;10m'
-res=$'\e[0m'
+if (( $mode == 0 )) ; then
+    mode0
+elif (( $mode == 1 )) ; then
+    mode1
+    # top_dirs=("$HOME/cbin/")
 
-for top in $(echo "${top_dirs[@]}" | tr ' ' '\n' | global-unique) ; do
-    dbg "top: $top"
 
-    cd "$top"
+    # ffind -d -q -j 32 "${top_dirs[@]}"
+    # exit 99
+else
+    echo "unknown mode: $mode"
+    exit 13
+fi
 
-    for d in $(ls -d $wild 2>/dev/null); do
-        candidates+=("${col}${top}/${res}${d}")
-    done
-done
 
 if (( "${#candidates[@]}" == 0 )) ; then
     echo "No directory found for query: $command"
