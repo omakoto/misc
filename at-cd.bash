@@ -16,23 +16,28 @@ dbg() {
     # echo "$*" 1>&2
 }
 
+# Default wild card mode -- e.g. @fb, @fbr, etc
+mode=0
+
+# If the query contains a space, use mode1.
+if [[ "$*" =~ \  ]] ; then
+    mode=1
+fi
+
 set -- $*
 
 use_pwd=0
-mode=0 # wild card mode -- e.g. @fb, @fbr, etc
 
-# If the query contains a space, or start with a ., then use mode 1.
+# If the first token is ".", then use mode1 and starts from $PWD.
 if [[ "$1" == "." ]] ;then
     use_pwd=1
     mode=1
     shift
-elif (( $# >= 2 ));then
-    mode=1 # search mode
 fi
 
 command="$*"
 
-echo "query: mode=$mode: $command" 1>&2
+dbg "query: mode=$mode: $command" 1>&2
 
 # ---------------------
 
