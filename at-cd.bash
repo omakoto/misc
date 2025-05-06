@@ -101,6 +101,8 @@ make_re() {
     echo "$ret\$"
 }
 
+ffind_opts='-i x86_64.* -i android_common -i android_x86.* -i android_vendor_x86.*'
+
 mode1() {
 
     local d
@@ -120,7 +122,7 @@ mode1() {
     dbg "re: $re"
 
     candidates=( $(
-        ffind -d -j 32 -q "${top_dirs[@]}" \
+        ee -2 ffind $ffind_opts -d -j 32 -q "${top_dirs[@]}" \
             | grep -Ei -- "$re" \
             | global-unique \
             | sort \
