@@ -112,9 +112,9 @@ mode1() {
     else
         top_dirs+=("$HOME/cbin")
         if  [[ "$ANDROID_BUILD_TOP" != "" ]] && [[ -d "$ANDROID_BUILD_TOP" ]] ; then
-            for d in frameworks cts tools build out; do
-                top_dirs+=("$ANDROID_BUILD_TOP/$d")
-            done
+            top_dirs+=( "$ANDROID_BUILD_TOP"/{frameworks,cts,tools,build} )
+            top_dirs+=( "$ANDROID_BUILD_TOP"/out/{host,target} )
+            top_dirs+=( "$SINT"/{frameworks,cts,tools,build} )
         fi
     fi
 
