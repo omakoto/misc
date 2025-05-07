@@ -5,39 +5,41 @@
 #
 # See also: bash-command-not-found
 
-if (( $# == 0 )) ;then
+set -e
+
+query="$*"
+
+if [[ "$query" == "" ]] ;then
     exit 1
 fi
 
 export LC_ALL=C
 
 dbg() {
-    :
-    # echo "$*" 1>&2
+    if (( $ATCD_DEBUG )) ; then
+        echo "DEBUG: $*" 1>&2
+    fi
 }
 
 # Default wild card mode -- e.g. @fb, @fbr, etc
 mode=0
 
-# If the query contains a space, use mode1.
-if [[ "$*" =~ \  ]] ; then
+# If the query contains a space or a period, use mode1.
+if [[ "$query" =~ [\ -]  ]] ; then
     mode=1
 fi
-
-set -- $*
 
 use_pwd=0
 
-# If the first token is ".", then use mode1 and starts from $PWD.
-if [[ "$1" == "." ]] ;then
+# If the query starts with a  ".", then use mode1 and starts from $PWD.
+if [[ "$query" =~ ^\. ]] ;then
     use_pwd=1
     mode=1
-    shift
+    query="${query:1}"
 fi
 
-command="$*"
 
-dbg "query: mode=$mode: $command" 1>&2
+dbg "query: mode=$mode: $query" 1>&2
 
 # ---------------------
 
@@ -72,7 +74,7 @@ mode0() {
         top_dirs+=("$ANDROID_BUILD_TOP")
     fi
 
-    local wild="$(make_wild "$command")"
+    local wild="$(make_wild "$query")"
     dbg "wild: $wild"
 
     for top in $(echo "${top_dirs[@]}" | tr ' ' '\n' | global-unique) ; do
@@ -89,13 +91,17 @@ mode0() {
 # Example "@ o f b r" should match out/ .../ frameworks/base/ravenwood
 
 make_re() {
-    local c="$1"
-    local ret="^"
+    local q="$1"
+    local ret="^.*"
 
-    for token in $c ; do
+    for token in $(perl -e 'print join(" ", split(/(?: \s+ | \b )/x, $ARGV[0]))' -- "$q") ; do
         dbg "token: $token"
 
-        ret="${ret}.*?/\.?$token[^/]*?"
+        if [[ "$token" == "-" ]] ; then
+            ret="${ret}.*?"
+            continue
+        fi
+        ret="${ret}/[\.]?$token[^/]*?"
     done
 
     echo "$ret\$"
@@ -118,14 +124,15 @@ mode1() {
         fi
     fi
 
-    local re="$(make_re "$command")"
+    local re="$(make_re "$query")"
     dbg "re: $re"
+
+    # exit 99
 
     candidates=( $(
         ee -2 ffind $ffind_opts -d -j 32 -q "${top_dirs[@]}" \
             | grep -Ei -- "$re" \
-            | global-unique \
-            | sort \
+            | sort -u \
     ) )
 }
 
@@ -147,7 +154,7 @@ fi
 
 
 if (( "${#candidates[@]}" == 0 )) ; then
-    echo "No directory found for query: $command"
+    echo "No directory found for query: $query"
     exit 1
 fi
 
