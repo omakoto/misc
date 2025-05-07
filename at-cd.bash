@@ -7,7 +7,10 @@
 
 set -e
 
+. mutil.sh
+
 query="$*"
+query="$(sed -e 's/^  *//' <<< "$query")" # Strip leading spaces
 
 if [[ "$query" == "" ]] ;then
     exit 1
@@ -133,12 +136,13 @@ mode1() {
     for p in "${prefixes[@]}"; do
         re="${re}|${p}"
     done
-    re="(${re:1})" # Strip the first `|`
+    re="^(${re:1})" # Strip the first `|`
     local prefix_re="$re"
     re="${re}$(make_re "$query")"
     re="${re}\$"
     
-    dbg "re: $re"
+    INFO "re: $re"
+    INFO "prefix_re: $prefix_re"
 
     # exit 99
 
