@@ -61,8 +61,8 @@ chomp;
 # Remove "obvious" line start tokens
 s!^ ([a-zA-Z]|\?\?) \s+ !!x; #git markers
 
-# Split by space and print in each line
-if ($a = s!\s+!\n!gr) {
+# Split by space or : and print in each line
+if ($a = s![\s:]+!\n!gr) {
     print $a, "\n";
     print $ENV{bar}, "\n";
 }
