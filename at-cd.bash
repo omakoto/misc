@@ -92,7 +92,7 @@ mode0() {
 
 make_re() {
     local q="$1"
-    local ret="^.*"
+    local ret=""
 
     for token in $(perl -e 'print join(" ", split(/(?: \s+ | \b )/x, $ARGV[0]))' -- "$q") ; do
         dbg "token: $token"
@@ -104,7 +104,7 @@ make_re() {
         ret="${ret}/[\.]?$token[^/]*?"
     done
 
-    echo "$ret\$"
+    echo "$ret"
 }
 
 ffind_opts='-i x86_64.* -i android_common -i android_x86.* -i android_vendor_x86.*'
@@ -113,18 +113,31 @@ mode1() {
 
     local d
     local top_dirs
+    local prefixes
+
     if (( $use_pwd )) ; then
-        top_dirs+=("$PWD")
+        top_dirs=("$PWD")
+        prefixes=("$PWD")
     else
         top_dirs+=("$HOME/cbin")
+        prefixes+=("$HOME/cbin")
         if  [[ "$ANDROID_BUILD_TOP" != "" ]] && [[ -d "$ANDROID_BUILD_TOP" ]] ; then
+            prefixes+=("$ANDROID_BUILD_TOP")
             top_dirs+=( "$ANDROID_BUILD_TOP"/{frameworks,cts,tools,build} )
             top_dirs+=( "$ANDROID_BUILD_TOP"/out/{host,target} )
-            top_dirs+=( "$SINT"/{frameworks,cts,tools,build} )
+            top_dirs+=( "$SINT"{frameworks,cts,tools,build} )
         fi
     fi
 
-    local re="$(make_re "$query")"
+    local re=""
+    for p in "${prefixes[@]}"; do
+        re="${re}|${p}"
+    done
+    re="(${re:1})" # Strip the first `|`
+    local prefix_re="$re"
+    re="${re}$(make_re "$query")"
+    re="${re}\$"
+    
     dbg "re: $re"
 
     # exit 99
@@ -133,6 +146,7 @@ mode1() {
         ee -2 ffind $ffind_opts -d -j 32 -q "${top_dirs[@]}" \
             | grep -Ei -- "$re" \
             | sort -u \
+            | hl "$prefix_re" '@yellow/black@white/black' \
     ) )
 }
 
