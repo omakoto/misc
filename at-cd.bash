@@ -126,9 +126,9 @@ mode1() {
         prefixes+=("$HOME/cbin")
         if  [[ "$ANDROID_BUILD_TOP" != "" ]] && [[ -d "$ANDROID_BUILD_TOP" ]] ; then
             prefixes+=("$ANDROID_BUILD_TOP")
-            top_dirs+=( "$ANDROID_BUILD_TOP"/{frameworks,cts,tools,build} )
+            top_dirs+=( "$ANDROID_BUILD_TOP"/{frameworks,cts,tools,build,packages} )
+            top_dirs+=( "$SINT"{frameworks,cts,tools,build,packages} )
             top_dirs+=( "$ANDROID_BUILD_TOP"/out/{host,target} )
-            top_dirs+=( "$SINT"{frameworks,cts,tools,build} )
         fi
     fi
 
