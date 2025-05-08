@@ -109,7 +109,7 @@ func main() {
 	}
 
 	if delay > 0 {
-		doTimer1("[\x1b[38;5;12;1mDELAY\x1b[0m] ", delay, true)
+		doTimer1("[\x1b[38;5;12;1mDELAY\x1b[0m] ", delay, false)
 	}
 
 	if rep == 1 {
