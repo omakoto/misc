@@ -26,12 +26,19 @@ col() {
     awk '{ print $'$c'}'
 }
 
+same() {
+    local v1="$1"
+    local v2="$2"
+
+    diff --ignore-blank-lines -q <(echo -n "$v1") <(echo -n "$v2") &>/dev/null
+}
+
 tokenize() {
     local line="$1"
 
     # Remove unnecessary line start tokens
     line="$( perl -pe '
-#line 33
+#line 34
 
 s!^Running: !!; # EE marker
 
@@ -41,17 +48,22 @@ s!^ \$\s+ !!x; # Prompt
 
     {
         # Show vertical columns
-        if (( "$(wc -l <<<"$line")" > 1 )); then
-            for i in $(seq 1 9); do
-                c="$(col $i <<< "$line")"
-                if [[ "$c" != "" ]] ; then
-                    echo "$bar"
-                    echo "$(col $i <<< "$line")"
-                fi
-            done
-        fi
+        vert="$(
+            if (( "$(wc -l <<<"$line")" > 1 )); then
+                for i in $(seq 1 9); do
+                    c="$(col $i <<< "$line")"
+                    if [[ "$c" != "" ]] ; then
+                        echo "$bar"
+                        echo "$(col $i <<< "$line")"
+                    fi
+                done
+            fi
+        )"
 
-        echo $bar$bar$bar$bar
+        if [[ "$vert" != "" ]] && ! same "$line" "$vert" ; then
+            echo "$vert"
+            echo $bar$bar$bar$bar
+        fi
 
         split="$( perl -ne '
 #line 39
@@ -68,12 +80,13 @@ if ($a = s![\s:]+!\n!gr) {
 }
 
 ' <<<"$line" )"
-        if [[ "$split" != "" ]] && [[ "$line" != "$split" ]] ; then
-            echo "$split"
+        if [[ "$split" != "" ]] && same "$line" != "$split" ; then
+            echo "${split}"
+            echo $bar
         fi
 
         # Whole line(s)
-        echo "$line"
+        echo "${line}"
     } | grep -v -P '^\s*$' | uniq | fzf --ansi -1 -m --tac # | tr -s '\n' ' '
 }
 
