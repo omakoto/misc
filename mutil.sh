@@ -709,7 +709,7 @@ function cd-to-scheduled-dir() {
     rm -f $file
     if [[ -d "$next_dir" ]] ; then
       if cd "$next_dir" ; then
-        INFO "Current directory:" "$PWD"
+        # INFO "Current directory:" "$PWD"
         source-setup
       fi
     fi

@@ -97,7 +97,11 @@ make_re() {
     local q="$1"
     local ret=""
 
-    for token in $(perl -e 'print join(" ", split(/(?: \s+ | \b )/x, $ARGV[0]))' -- "$q") ; do
+    local tokens="$(perl -e 'print join(" ", split(/(?: \s+ | \b )/x, $ARGV[0]))' -- "$q")"
+
+    INFO "tokens: $tokens" 1>&2
+
+    for token in $tokens ; do
         dbg "token: $token"
 
         if [[ "$token" == "-" ]] ; then
@@ -141,8 +145,8 @@ mode1() {
     re="${re}$(make_re "$query")"
     re="${re}\$"
     
+    INFO "prefix: $prefix_re"
     INFO "re: $re"
-    INFO "prefix_re: $prefix_re"
 
     # exit 99
 
