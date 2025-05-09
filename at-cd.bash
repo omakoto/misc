@@ -114,13 +114,14 @@ make_re() {
     echo "$ret"
 }
 
-ffind_opts='-i x86_64.* -i android_common -i android_x86.* -i android_vendor_x86.*'
+ffind_opts='-i x86_64.* -i android_common -i android_x86.* -i android_vendor_x86.* -i res'
 
 mode1() {
 
     local d
     local top_dirs
     local prefixes
+    local ffind_opts
 
     if (( $use_pwd )) ; then
         top_dirs=("$PWD")
@@ -130,9 +131,14 @@ mode1() {
         prefixes+=("$HOME")
         if  [[ "$ANDROID_BUILD_TOP" != "" ]] && [[ -d "$ANDROID_BUILD_TOP" ]] ; then
             prefixes+=("$ANDROID_BUILD_TOP")
-            top_dirs+=( "$ANDROID_BUILD_TOP"/{frameworks,cts,tools,build,packages} )
-            top_dirs+=( "$SINT"{frameworks,cts,tools,build,packages} )
-            top_dirs+=( "$ANDROID_BUILD_TOP"/out/{host,target} )
+            top_dirs+=( "$ANDROID_BUILD_TOP" )
+
+            local i
+            for i in $(cd "$ANDROID_BUILD_TOP" && echo dev* pdk* 00* vendor hardware dalvik bootable kernel prebuilts sdk prebuilts external) ; do
+                ffind_opts="$ffind_opts -x $ANDROID_BUILD_TOP/$i"
+                ffind_opts="$ffind_opts -x $ANDROID_BUILD_TOP/out/soong/.intermediates/$i"
+            done
+            ffind_opts="$ffind_opts -x $OUT"
         fi
     fi
 
@@ -151,7 +157,7 @@ mode1() {
     # exit 99
 
     candidates=( $(
-        ee -2 ffind $ffind_opts -d -j 32 -q "${top_dirs[@]}" \
+        ee -2 ffind $ffind_opts -d -j 32 -q $ffind_opts "${top_dirs[@]}" \
             | grep -Ei -- "$re" \
             | sort -u \
             | hl "$prefix_re" '@yellow/black@white/black' \
