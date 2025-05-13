@@ -1,3 +1,9 @@
 #!/bin/bash
 
-git update-index --skip-worktree "${@}"
+# set -e
+. mutil.sh
+
+for f in "$@" ; do
+    ee cd "$(dirname "$f")" && ee git update-index --skip-worktree "$(basename "$f")"
+done
+
