@@ -74,13 +74,13 @@ chomp;
 s!^ ([a-zA-Z]|\?\?) \s+ !!x; #git markers
 
 # Split by space or : and print in each line
-if ($a = s![\s\:\,\(\)\{\}]+!\n!gr) {
+if ($a = s![\s\:\,]+!\n!gr) {
     print $a, "\n";
     print $ENV{bar}, "\n";
 }
 
 ' <<<"$line" )"
-        if [[ "$split" != "" ]] && same "$line" != "$split" ; then
+        if [[ "$split" != "" ]] && ! same "$line" "$split" ; then
             echo "${split}"
             echo $bar
         fi
