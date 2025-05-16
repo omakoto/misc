@@ -28,7 +28,7 @@ select_tokens() {
 recent_dirs_cache=""
 get_recent_dirs() {
     if [[ "$recent_dirs_cache" == "" ]] ; then
-        recent_dirs_cache="$(recent-dirs -n 20)"
+        recent_dirs_cache="$(recent-dirs -n 10)"
     fi
     echo $recent_dirs_cache
 }
@@ -57,7 +57,10 @@ list_candidates() {
         fi
 
         # If the token doesn't exist as a file, then see if it exists in any recent dirs
-        if ! [[ -e "$t" ]] ; then
+        # Unless it starts with...
+        # "-" -> this is likely a flag
+        # "/" -> this is a fullpath.
+        if ! [[ -e "$t" ]] && ! [[ "$t" =~ ^[-/] ]]  ; then
             for rd in $(get_recent_dirs); do
                 if [[ -e "$rd$t" ]] ; then
                     echo "$(realpath -s -- "$rd$t") # Relative from $rd"
@@ -91,10 +94,13 @@ editor_mode() {
     {
         echo "#PWD: $PWD"
         echo
+        echo -n "# Building candidates:" 1>&2
         for t in "${tokens[@]}" ; do
+            echo -n " $t" 1>&2
             list_candidates "$t" | sed -e '2,$s/^/#/'
             echo ""
         done
+        echo 1>&2
     } > "$tmp"
 
     EE_QUIET=1 1w "$tmp"

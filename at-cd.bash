@@ -114,7 +114,7 @@ make_re() {
     echo "$ret"
 }
 
-ffind_max_depth=7
+ffind_max_depth=8
 ffind_opts='-i node_modules -i x86_64.* -i android_common -i android_x86.* -i android_vendor_x86.* -i res'" -m $ffind_max_depth"
 
 mode1() {
