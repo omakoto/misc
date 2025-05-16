@@ -186,7 +186,7 @@ if (( "${#candidates[@]}" == 0 )) ; then
     exit 1
 fi
 
-selected="$(echo "${candidates[@]}" | tr ' ' '\n' | uniq | fzf -1 --ansi)"
+selected="$(echo "${candidates[@]}" | tr -s '/' '/' | tr ' ' '\n' | uniq | fzf -1 --ansi)"
 
 dbg "sel: $selected"
 
