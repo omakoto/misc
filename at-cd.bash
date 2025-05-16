@@ -114,14 +114,15 @@ make_re() {
     echo "$ret"
 }
 
-ffind_opts='-i x86_64.* -i android_common -i android_x86.* -i android_vendor_x86.* -i res'
+ffind_max_depth=7
+ffind_opts='-i node_modules -i x86_64.* -i android_common -i android_x86.* -i android_vendor_x86.* -i res'" -m $ffind_max_depth"
 
 mode1() {
 
     local d
     local top_dirs
     local prefixes
-    local ffind_opts
+    #local ffind_opts
 
     if (( $use_pwd )) ; then
         top_dirs=("$PWD")
@@ -157,7 +158,7 @@ mode1() {
     # exit 99
 
     candidates=( $(
-        ee -2 ffind $ffind_opts -d -j 32 -q $ffind_opts "${top_dirs[@]}" \
+        ee -2 ffind $ffind_opts -d -j 32 -q -- "${top_dirs[@]}" \
             | grep -Ei -- "$re" \
             | sort -u \
             | hl "$prefix_re" '@yellow/black@white/black' \
