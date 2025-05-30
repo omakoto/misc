@@ -208,6 +208,12 @@ soong_modules() {
   )
 }
 
+git_changed_files() {
+  print '[GIT-CHANGES] ' <(
+    repo-local-change -nq
+  )
+}
+
 filter() {
   perl -ne '
 #line 236
@@ -300,6 +306,7 @@ export FZF_DEFAULT_OPTS="$(perl -pe 's!\{.*?\}!{+2..}!g' <<<"$FZF_DEFAULT_OPTS")
 completed=$({
     cat \
       <(git_branches) \
+      <(git_changed_files) \
       <(android_env) \
       <(recent_dirs) \
       <(envs) \
