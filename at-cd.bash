@@ -42,9 +42,12 @@ if [[ "$query" =~ ^\. ]] ;then
 fi
 
 
-echo "query: mode=$mode: ${query%Q}" 1>&2
-
 # ---------------------
+
+found() {
+    (( ${#candidates[@]} > 0 ))
+    return $?
+}
 
 col=$'\e[38;5;10m'
 res=$'\e[0m'
@@ -75,6 +78,8 @@ mode0() {
     local query="$1"
     shift
 
+    echo "# mode 0: ${query%Q}" 1>&2
+
     local top_dirs=("$PWD" "$HOME")
     if  [[ "$ANDROID_BUILD_TOP" != "" ]] && [[ -d "$ANDROID_BUILD_TOP" ]] ; then
         top_dirs+=("$ANDROID_BUILD_TOP")
@@ -92,6 +97,10 @@ mode0() {
             candidates+=("${col}${top}/${res}${d}")
         done
     done
+
+    if ! found ; then
+        mode1 "$query"
+    fi
 }
 
 # Example "@ o f b r" should match out/ .../ frameworks/base/ravenwood
@@ -99,6 +108,8 @@ mode0() {
 make_re() {
     local q="$1"
     local ret=""
+
+    echo "# mode 1: ${query%Q}" 1>&2
 
     local tokens="$(perl -e 'print join(" ", split(/(?: \s+ | \b )/x, $ARGV[0]))' -- "$q")"
 
@@ -165,8 +176,9 @@ mode1() {
             | sort -u \
             | hl "$prefix_re" '@yellow/black@white/black' \
     ) )
-    if (( ${#candidates[@]} == 0 )) && ! [[ $query =~ ^- ]]  ; then
-        INFO "No match found for $query, looking into subdirs..."
+
+    # If no candidates found, fallback.
+    if ! found && ! [[ $query =~ ^- ]]  ; then
         mode1 -"$query"
     fi
 }
@@ -177,11 +189,6 @@ if (( $mode == 0 )) ; then
     mode0 "$query"
 elif (( $mode == 1 )) ; then
     mode1 "$query"
-    # top_dirs=("$HOME/cbin/")
-
-
-    # ffind -d -q -j 32 "${top_dirs[@]}"
-    # exit 99
 else
     echo "unknown mode: $mode"
     exit 13
