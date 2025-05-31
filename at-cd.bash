@@ -10,7 +10,7 @@ set -e
 . mutil.sh
 
 query="$*"
-query="$(sed -e 's/^  *//' <<< "$query")" # Strip leading spaces
+# query="$(sed -e 's/^  *//' <<< "$query")" # Strip leading spaces
 
 if [[ "$query" == "" ]] ;then
     exit 1
@@ -42,7 +42,7 @@ if [[ "$query" =~ ^\. ]] ;then
 fi
 
 
-dbg "query: mode=$mode: $query" 1>&2
+echo "query: mode=$mode: ${query%Q}" 1>&2
 
 # ---------------------
 
@@ -72,6 +72,9 @@ make_wild() {
 }
 
 mode0() {
+    local query="$1"
+    shift
+
     local top_dirs=("$PWD" "$HOME")
     if  [[ "$ANDROID_BUILD_TOP" != "" ]] && [[ -d "$ANDROID_BUILD_TOP" ]] ; then
         top_dirs+=("$ANDROID_BUILD_TOP")
@@ -118,11 +121,10 @@ ffind_max_depth=8
 ffind_opts='-i node_modules -i x86_64.* -i android_common -i android_x86.* -i android_vendor_x86.* -i res'" -m $ffind_max_depth"
 
 mode1() {
-
+    local query="$1"
     local d
     local top_dirs
     local prefixes
-    #local ffind_opts
 
     if (( $use_pwd )) ; then
         top_dirs=("$PWD")
@@ -163,14 +165,18 @@ mode1() {
             | sort -u \
             | hl "$prefix_re" '@yellow/black@white/black' \
     ) )
+    if (( ${#candidates[@]} == 0 )) && ! [[ $query =~ ^- ]]  ; then
+        INFO "No match found for $query, looking into subdirs..."
+        mode1 -"$query"
+    fi
 }
 
 candidates=()
 
 if (( $mode == 0 )) ; then
-    mode0
+    mode0 "$query"
 elif (( $mode == 1 )) ; then
-    mode1
+    mode1 "$query"
     # top_dirs=("$HOME/cbin/")
 
 
