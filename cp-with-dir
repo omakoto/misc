@@ -1,0 +1,32 @@
+#!/bin/bash
+
+. mutil.sh
+set -e
+
+usage() {
+    cat <<'EOF'
+
+  Copy multiple files while preserving path
+
+Usage: cp-with-dir FILES... DIR
+
+
+EOF
+}
+
+if (( $# < 2 )) ; then
+    usage
+    exit 1
+fi
+
+files=("${@:1:$#-1}")
+to="${@: -1}"
+
+
+INFO Files: "${files[@]}"
+INFO Dir: "$to"
+
+tar cf - "${files[@]}" | (cd "$to" && tar vxf - "${files[@]}")
+
+
+
