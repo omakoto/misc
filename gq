@@ -1,0 +1,9 @@
+#!/bin/bash
+
+model="-m gemini-2.5-flash"
+
+temp=/tmp/gq-$$.md
+
+ee -2 gemini $model -p "$*" | tee $temp
+
+mdpreview < $temp

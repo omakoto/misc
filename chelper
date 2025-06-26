@@ -12,7 +12,4 @@ Do not skip any characters.
 __EOF__
 )
 
-
-model=gemini-2.5-flash
-
-ee gemini -m "$model" -p "$prompt $*"
+gq "$prompt $*"
