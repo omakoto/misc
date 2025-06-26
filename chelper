@@ -1,0 +1,18 @@
+#!/bin/bash
+
+prompt=$(cat <<__EOF__
+Split given Chinese paragraphs into "words" and create a table.
+One word for each row. Each "word" should be a small series of Hanji without
+changing their meanings. Do not just split into each character if that changes
+the meaning. Add pinyin,  both simplified and traditional hanji,
+and English translation to each row.
+Then, translate the whole paragraph into English.
+Lastly, if there's any confusing parts to beginner Chinese learners, explain that.
+Do not skip any characters.
+__EOF__
+)
+
+
+model=gemini-2.5-flash
+
+ee gemini -m "$model" -p "$prompt $*"
