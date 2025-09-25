@@ -77,7 +77,7 @@ case "$(hostname -s)" in
     ;;
 esac
 
-if lsusb | grep -q -P '(0853:0111|K120|REALFORCE)' ; then # Topre keyboard.
+if lsusb | grep -q -P '(0853:0111|K120|REALFORCE|Keychron)' ; then # Topre/Keychron keyboard.
   # $medir/dell-keymap-reset
   chrome_dpi=""
   rdt_dpi=""
