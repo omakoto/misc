@@ -103,7 +103,7 @@ mode0() {
     fi
 }
 
-# Example "@ o f b r" should match out/ .../ frameworks/base/ravenwood
+# Example "@ o - f b r" should match out/ .../ frameworks/base/ravenwood
 
 make_re() {
     local q="$1"
@@ -184,6 +184,16 @@ mode1() {
 }
 
 candidates=()
+
+cat <<'EOF'
+#
+# This is at-cd.bash
+# 
+# Examples:
+#   @fbr -> frameworks/base/core
+#   @o -     f b r ->  out/ .../ frameworks/base/ravenwood
+
+EOF
 
 if (( $mode == 0 )) ; then
     mode0 "$query"
