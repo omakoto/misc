@@ -5,7 +5,7 @@ set -e
 
 base=$HOME/sshfs/
 
-mkdir -p $base/{pi1,pi3,pi0,piz1}
+mkdir -p $base/{pi1,pi3,pi0,piz1,pi9}
 
 function mount() {
   local server="$1"
@@ -18,4 +18,5 @@ function mount() {
 
 #mount pi@172.20.201.1:/ $base/pi1
 #mount pi@172.20.201.3:/ $base/pi3
+mount omakoto@172.20.201.9:/ $base/pi9
 mount omakoto@172.20.201.10:/ $base/piz1
