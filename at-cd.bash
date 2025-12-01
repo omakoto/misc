@@ -191,7 +191,7 @@ cat <<'EOF'
 # 
 # Examples:
 #   @fbr -> frameworks/base/core
-#   @o -     f b r ->  out/ .../ frameworks/base/ravenwood
+#   @o - f b r ->  out/ .../ frameworks/base/ravenwood
 
 EOF
 
