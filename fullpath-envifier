@@ -30,7 +30,7 @@ echo "$files" | while read -r file; do
       # echo "$file"
       :
     else
-      recent-dirs | head -50 | while read -r dir ; do
+      recent-dirs -z -n 50 | while read -r dir ; do
         if [[ "$dir" == / ]] ; then
           continue
         fi

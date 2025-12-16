@@ -28,7 +28,7 @@ select_tokens() {
 recent_dirs_cache=""
 get_recent_dirs() {
     if [[ "$recent_dirs_cache" == "" ]] ; then
-        recent_dirs_cache="$(recent-dirs -n 10)"
+        recent_dirs_cache="$(recent-dirs -z -n 10)"
     fi
     echo $recent_dirs_cache
 }
@@ -113,7 +113,7 @@ BEGIN {
 
 chomp;
 
-s/ \# .* $ //x;     # Remove commented out lines
+s/ (^|\ ) \# .* $ //x;     # Remove commented out lines
 s/\s+$//; # remove trailing spaces
 
 next if /^ \s* $/x; # Skip empty lines
