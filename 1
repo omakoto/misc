@@ -150,6 +150,9 @@ for n in "${args[@]}" ; do
     f="$n"
   else
     case "${n##*/}" in
+      ravenwood-bugreport*.txt)
+        f="$n"
+        ;;
       *bugreport*.zip|*bugreport*.txt|*.br|dumpState_*.log)
         is_bugreport=1
         ;;
