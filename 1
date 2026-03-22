@@ -69,7 +69,7 @@ if (( $quiet )) ; then
 fi
 
 if (( $newdoc )) ; then
-  doc_dir=~/cbin/docs
+  doc_dir=$HOME/cbin/docs
   doc=$(datedir $doc_dir)/doc-$(date8).txt
   echo "$doc"
   files+=("$doc")
@@ -82,7 +82,7 @@ fi
 
 if (( ${#args} == 0 && ${#files} == 0 )) ; then
   if [[ -t 0 ]] ; then
-    files+=("~/work.txt")
+    files+=("$HOME/work.txt")
   else
     pipe=1
   fi
