@@ -4,5 +4,5 @@
 . mutil.sh
 
 for f in "$@" ; do
-    ee cd "$(dirname "$f")" && ee git update-index --no-skip-worktree "$(basename "$f")"
+    ee git update-index --no-skip-worktree "$f"
 done
