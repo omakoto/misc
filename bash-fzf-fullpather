@@ -56,6 +56,12 @@ list_candidates() {
             replace-with-env <<< "$abs" | tac
         fi
 
+        local al="$(alias "$t" 2>/dev/null)"
+        if [[ "$al" != "" ]] ; then
+            al="$(echo "$al" | sed -e "s/^[^=]*=//; s/^'//; s/'$//")"
+            echo "$al # Alias"
+        fi
+
         # If the token doesn't exist as a file, then see if it exists in any recent dirs
         # Unless it starts with...
         # "-" -> this is likely a flag

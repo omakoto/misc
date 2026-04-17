@@ -810,3 +810,7 @@ record_last_activity_time() {
 last_activity_age_sec() {
   fileage -s $LAST_ACTIVITY_FILE
 }
+
+# We need aliases here so that bash-fzf-fullpather can see them
+alias rrt='$ANDROID_BUILD_TOP/frameworks/base/ravenwood/scripts/run-ravenwood-tests.sh'
+alias sonata='${ANDROID_BUILD_TOP}/vendor/unbundled_google/packages/SystemUIGoogle/studio-dev/sonata/sonata.py'
