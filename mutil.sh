@@ -812,5 +812,5 @@ last_activity_age_sec() {
 }
 
 # We need aliases here so that bash-fzf-fullpather can see them
-alias rrt='$ANDROID_BUILD_TOP/frameworks/base/ravenwood/scripts/run-ravenwood-tests.sh'
-alias sonata='${ANDROID_BUILD_TOP}/vendor/unbundled_google/packages/SystemUIGoogle/studio-dev/sonata/sonata.py'
+#alias rrt='$ANDROID_BUILD_TOP/frameworks/base/ravenwood/scripts/run-ravenwood-tests.sh'
+#alias sonata='${ANDROID_BUILD_TOP}/vendor/unbundled_google/packages/SystemUIGoogle/studio-dev/sonata/sonata.py'
