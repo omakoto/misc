@@ -814,3 +814,13 @@ last_activity_age_sec() {
 # We need aliases here so that bash-fzf-fullpather can see them
 #alias rrt='$ANDROID_BUILD_TOP/frameworks/base/ravenwood/scripts/run-ravenwood-tests.sh'
 #alias sonata='${ANDROID_BUILD_TOP}/vendor/unbundled_google/packages/SystemUIGoogle/studio-dev/sonata/sonata.py'
+
+gemini() {
+  if which gemini >/dev/null 2>&1 ; then
+    gemini "$@"
+  elif [[ -x /google/bin/releases/gemini-cli/tools/gemini ]] ; then
+      /google/bin/releases/gemini-cli/tools/gemini "$@"
+  else
+    echo "gemini command not found." 1>&2
+  fi
+}
