@@ -35,7 +35,8 @@ fi
 echo "Select a region and press CTRL+C to capture:"
 
 # import "$out" # Using imagemagick # With imagemagic
-gnome-screenshot -a -f "$out" || not "Failed to capture a screenshot. (not under gnome?)"
+#gnome-screenshot -a -f "$out" || not "Failed to capture a screenshot. (not under gnome?)"
+flameshot gui -s -p "$out" || not "Failed to capture a screenshot. (not under gnome?)"
 
 if (( $copy_image )) ; then
   xclip -selection clipboard -t image/png -i $out
