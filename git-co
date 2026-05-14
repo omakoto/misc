@@ -11,6 +11,8 @@ in-git -e || exit 2
 # Update template
 commit_template=~/.git-commit-message-template.txt
 
+git_opts="-c maintenance.auto=0 -c gc.auto=0"
+
 # Extract the "stanzas" from recent messages and set them as template.
 {
     echo "# Git message template $commit_template"
@@ -33,7 +35,7 @@ pre_commit="$(git rev-parse HEAD 2>/dev/null)"
 show_commit() {
     echo "# Directory: $(pwd)"
     echo "# Branch: $(git current-branch)"
-    git -c color.ui=always show --compact-summary | perl -pe 'print "# " if (1..3); s/^    //'
+    git $git_opts -c color.ui=always show --compact-summary | perl -pe 'print "# " if (1..3); s/^    //'
 }
 
 print_description() {
@@ -46,7 +48,7 @@ print_description() {
         COLOR_OUT=2 byellow "No commit made. The draft message was:"
 
         # It may be that git was interrupted. So let's print the draft file.
-        cat "$(git rev-parse --git-dir)/COMMIT_EDITMSG"
+        cat "$(git $git_opts rev-parse --git-dir)/COMMIT_EDITMSG"
 
     else
         COLOR_OUT=2 bgreen "Commit was:"
@@ -61,7 +63,7 @@ print_description() {
 
 trap print_description EXIT
 
-git commit "${@}"
+git $git_opts commit "${@}"
 rc=$?
 
 # bcyan "Git commit finished with status $rc"
