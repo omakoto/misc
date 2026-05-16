@@ -1,9 +1,24 @@
 #!/bin/bash
 
 if [[ "$1" != "-g" ]] ; then
-  exec tailb -5000000 $MYHISTFILE
+  tailb -5000000 $MYHISTFILE
 else
   for f in ~/history/*/.myhist; do
     tailb -500000000 "$f"
   done
 fi
+
+shopt -s extglob # for +([0-9]) pattern, which matches files with numeric names, i.e. the "currently-running" files.
+
+# Always print all currently running commands
+# Files in $MYHISTFILE_NOW_DIR are named by PID, and contain the currently running command of that PID.
+# When a command finishes, the file is removed.
+# Make sure the PID exists, to avoid showing stale files.
+for f in $MYHISTFILE_NOW_DIR/+([0-9]) ; do
+  pid="${f##*/}"
+  # echo $pid >&2
+  if [[ -d /proc/$pid ]] && [[ -f "$f" ]] ; then
+    cat "$f"
+  fi
+done
+
