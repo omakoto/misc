@@ -824,3 +824,24 @@ gemini() {
     echo "gemini command not found." 1>&2
   fi
 }
+
+function dump_vars_funcs() {
+  local regex="$1"
+
+  # shell variables  
+  {
+    compgen -v | grep -E -- "$regex" | while read -r name; do
+      #_dump_vars_funcs_quote "$(declare -p "$name")"
+      echo "#$name"
+      declare -p "$name"
+      echo -ne '\0'
+    done
+
+    # functions
+    compgen -A function | grep -E -- "$regex" | while read -r name; do
+      echo "#$name()"
+      declare -f "$name"
+      echo -ne '\0'
+    done
+  } | sort -z
+}
