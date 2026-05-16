@@ -848,3 +848,15 @@ function dump_vars_funcs() {
     done
   } | sort -z
 }
+
+# comm -12 -z FILE1 FILE2 equivalent
+function in_2_only() {
+  local file1="$1"
+  local file2="$2"
+
+  #python3 -c "import sys; from collections import Counter; L = lambda f: open(f, 'rb').read().split(b'\x00')[:-1]; [sys.stdout.buffer.write(line + b'\x00') for line in (Counter(L(sys.argv[2])) - Counter(L(sys.argv[1]))).elements()]" "$file1" "$file2"
+
+  # This one can handle it if the last line doesn't end with a NULL byte.
+  python3 -c "import sys; from collections import Counter; L = lambda f: (lambda l: l[:-1] if l[-1] == b'' else l)(open(f, 'rb').read().split(b'\x00')); [sys.stdout.buffer.write(line + b'\x00') for line in (Counter(L(sys.argv[2])) - Counter(L(sys.argv[1]))).elements()]" "$file1" "$file2"
+}
+
