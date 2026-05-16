@@ -825,6 +825,9 @@ gemini() {
   fi
 }
 
+# Dump shell variables and functions in a way that's source-able.
+# Output is sorted with NULL as a delimiter between items.
+# Use tr -d '\0' to delete NULLs
 function dump_vars_funcs() {
   local regex="$1"
 
