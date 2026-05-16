@@ -12,9 +12,7 @@ if [[ "$-" == *i* ]] ; then
 fi
 
 _is_wsl=0
-if uname -a | grep -q microsoft ; then
-  _is_wsl=1
-fi
+[[ -n "${WSL_DISTRO_NAME:-}" ]] && _is_wsl=1
 
 #. <( ~/cbin/zenlog -s )
 . ~/cbin/misc/colors.bash
@@ -301,7 +299,7 @@ echo-and-exec() {
         byellow -nc
         echo -n "CWD: "
         bcyan -nc
-        pwd | sed -e 's!\n$!!'
+        echo -n "$PWD"
         nocolor -n ""
       fi
       byellow -nc
