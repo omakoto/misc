@@ -18,8 +18,8 @@ shopt -s extglob # for +([0-9]) pattern, which matches files with numeric names,
   for f in $MYHISTFILE_NOW_DIR/+([0-9]) ; do
     pid="${f##*/}"
     # echo $pid >&2
-    if [[ -d /proc/$pid ]] && [[ -f "$f" ]] ; then
+    if [[ -d /proc/$pid/ ]] && [[ -f "$f" ]] ; then
       cat "$f"
     fi
   done
-} | sed -e 's!{0}!{?}!'
+} | sed -e 's!{-}!{?}!'
