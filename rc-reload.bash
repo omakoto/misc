@@ -17,7 +17,7 @@ $BASH_SOURCE
 "
 
 _rc_file_fingerprint() {
-    echo $(sha1sum $_main_rc_files)
+    stat -c '%Y' $_main_rc_files 2>/dev/null
 }
 
 _update_rc_file_fingerprint() {
