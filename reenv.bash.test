@@ -1,0 +1,72 @@
+#!/bin/bash
+
+. $(dirname "$0")/reenv.bash
+
+num_test=0
+num_failure=0
+
+function test() {
+    (( ++num_test))
+
+    local label="$1"
+    local run="$2"
+    local expected="$3"
+
+    echo "================"
+    echo "Test: $label"
+    echo "================"
+
+    local actual="$(eval "$run" 2>&1)"
+    rc=$?
+
+    diff -c <(echo "$expected") <(echo "$actual")
+    rc=$?
+    if (( $rc == 0 )); then
+        echo "PASSED"
+    else
+        (( ++num_failure))
+        echo "FAILED! Actual:"
+        echo "------------"
+        echo "$actual"
+        echo "------------"
+    fi
+}
+
+
+test "Call without base" '
+reenv-cap
+echo $?
+' 'Use reenv-base to capture the base line environment first!
+1'
+
+
+test "No env change" '
+reenv-base
+echo $?
+reenv-cap
+echo $?
+' '0
+0'
+
+test "Basic env change" '
+
+changed=orig
+reenv-base
+echo $?
+
+aaa="abc"
+export XXX="xyz def"
+changed=new
+
+reenv-cap
+echo $?
+' '0
+0'
+
+
+
+
+
+
+
+echo OK
