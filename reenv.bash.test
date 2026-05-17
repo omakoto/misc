@@ -32,14 +32,14 @@ function test() {
     fi
 }
 
-
+# ==========================================================
 test "Call without base" '
 reenv-cap
 echo $?
 ' 'Use reenv-base to capture the base line environment first!
 1'
 
-
+# ==========================================================
 test "No env change" '
 reenv-base
 echo $?
@@ -48,6 +48,7 @@ echo $?
 ' '0
 0'
 
+# ==========================================================
 test "Basic env change" '
 
 changed=orig
@@ -69,6 +70,7 @@ declare -- aaa="abc"
 declare -- changed="new"
 0'
 
+# ==========================================================
 test "Basic env and func change" '
 
 function a() { echo ok; }
@@ -97,8 +99,45 @@ b ()
 declare -- var="xxx"
 0'
 
+# ==========================================================
+test "Deletion" '
+
+var1=aaa
+var2=bbb
+function func1() { echo ok; }
+function func2() { echo ok; }
+
+reenv-base
+echo $?
+
+unset -v var1
+var2=bbb
+var3=ccc
+unset -f func1
+function func2() { echo not ok; }
+function func3() { echo not ok; }
+reenv-cap
+echo $?
+' '0
+unset -f "func1"
+unset -v "var1"
+#func2()
+func2 () 
+{ 
+    echo not ok
+}
+#func3()
+func3 () 
+{ 
+    echo not ok
+}
+#var3
+declare -- var3="ccc"
+0'
 
 
+
+# ==========================================================
 if (( $num_failure == 0 )) && (( $num_tests > 0 )) ; then
     echo "ALL TESTS PASSED!"
     exit 0
