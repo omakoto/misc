@@ -20,6 +20,8 @@ shopt -s extglob # for +([0-9]) pattern, which matches files with numeric names,
     # echo $pid >&2
     if [[ -d /proc/$pid/ ]] && [[ -f "$f" ]] ; then
       cat "$f"
+    else
+      rm -fr "$f"
     fi
   done
 } | sed -e 's!{-}!{?}!'
