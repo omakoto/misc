@@ -2,11 +2,11 @@
 
 . $(dirname "$0")/reenv.bash
 
-num_test=0
+num_tests=0
 num_failure=0
 
 function test() {
-    (( ++num_test))
+    (( ++num_tests))
 
     local label="$1"
     local run="$2"
@@ -61,12 +61,48 @@ changed=new
 reenv-cap
 echo $?
 ' '0
+#XXX
+declare -x XXX="xyz def"
+#aaa
+declare -- aaa="abc"
+#changed
+declare -- changed="new"
+0'
+
+test "Basic env and func change" '
+
+function a() { echo ok; }
+
+reenv-base
+echo $?
+
+function a() { echo not ok; }
+function b() { echo ok; }
+var=xxx
+
+reenv-cap
+echo $?
+' '0
+#a()
+a () 
+{ 
+    echo not ok
+}
+#b()
+b () 
+{ 
+    echo ok
+}
+#var
+declare -- var="xxx"
 0'
 
 
 
+if (( $num_failure == 0 )) && (( $num_tests > 0 )) ; then
+    echo "ALL TESTS PASSED!"
+    exit 0
+fi
 
-
-
-
-echo OK
+echo "$(( $num_failure )) / $(( $num_tests )) TESTS FAILED!"
+exit 1

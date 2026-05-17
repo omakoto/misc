@@ -12,13 +12,13 @@ TODO write it..
 
 COMMENT
 
-_reenv_base_file="$(mktemp --suffix reenv)"
-_reenv_current="_reenv_base_file-cur"
+_reenv_file_base="${_reenv_file_base:-$(mktemp --suffix _reenv)}"
+_reenv_file_current="${_reenv_file_current:-${_reenv_file_base}-cur}"
 
 function _reenv_clear() {
     _reenv_base_variables=()
     _reenv_base_functions=()
-    rm -f "$_reenv_base_file"
+    rm -f "$_reenv_file_base"
 }
 _reenv_clear
 
@@ -26,6 +26,10 @@ _reenv_clear
 function _reenv_dump() {
     {
         compgen -v | while read -r name; do
+            # Skip certain variables
+            if [[ "$name" =~ ^(BASH|FUNCNAME$|RANDOM$|SRANDOM$|EPOCHREALTIME$|EPOCHSECONDS$|SECONDS$|USER$|PWD$|_$) ]] ; then
+                continue
+            fi
             echo "#$name"
             declare -p "$name"
             echo -ne '\0'
@@ -37,7 +41,7 @@ function _reenv_dump() {
             declare -f "$name"
             echo -ne '\0'
         done
-    } | sort -z
+    } | LC_ALL=C sort -z
 }
 
 # Capture the "base" environment.
@@ -46,27 +50,21 @@ function reenv-base() {
     _reenv_base_variables=($(compgen -v | sort))
     _reenv_base_functions=($(compgen -A function | sort))
 
-    # for n in "${_reenv_base_variables[@]}"; do
-    #     echo "Var: $n"
-    # done
-    # for n in "${_reenv_base_functions[@]}"; do
-    #     echo "Func: $n"
-    # done
-
-    _reenv_dump > "$_reenv_base_file"
+    _reenv_dump > "$_reenv_file_base"
 }
 
 # Dump the part of the current environment that has changed since
 # reenv-base in a format that can be source'd later.
 function reenv-cap() {
-    if ! [[ -f "$_reenv_base_file" ]] ; then
+    if ! [[ -f "$_reenv_file_base" ]] ; then
         echo "Use reenv-base to capture the base line environment first!" 1>&2
         return 1
     fi
 
-    _reenv_dump > "$_reenv_current"
-    comm -13 -z "$_reenv_base_file" "$_reenv_current"
+    _reenv_dump > "$_reenv_file_current"
+    LC_ALL=C comm -13 -z "$_reenv_file_base" "$_reenv_file_current" | tr -d '\0'
 
+    # TODO: Handle deletion
 }
 
 
