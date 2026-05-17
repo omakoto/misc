@@ -135,6 +135,81 @@ func3 ()
 declare -- var3="ccc"
 0'
 
+# ==========================================================
+test "Actually apply" '
+
+var1=aaa
+var2=bbb
+function func1() { echo ok; }
+function func2() { echo ok; }
+
+reenv-base
+echo $?
+
+# Update the env in subshell, and dump the diff.
+(
+    echo "# Capture in subshell!"
+    unset -v var1
+    var2=bbb
+    var3=ccc
+    unset -f func1
+    function func2() { echo not ok; }
+    function func3() { echo not ok; }
+
+    reenv-cap > /tmp/reenv-test.sh
+    cat /tmp/reenv-test.sh
+    echo $?
+)
+
+echo "# Capture again, which should be empty"
+reenv-cap
+echo $?
+
+echo "# Apply again!"
+. /tmp/reenv-test.sh
+echo $?
+
+# Now, this should print the same delta.
+reenv-cap
+echo $?
+
+' '0
+# Capture in subshell!
+unset -f "func1"
+unset -v "var1"
+#func2()
+func2 () 
+{ 
+    echo not ok
+}
+#func3()
+func3 () 
+{ 
+    echo not ok
+}
+#var3
+declare -- var3="ccc"
+0
+# Capture again, which should be empty
+0
+# Apply again!
+0
+unset -f "func1"
+unset -v "var1"
+#func2()
+func2 () 
+{ 
+    echo not ok
+}
+#func3()
+func3 () 
+{ 
+    echo not ok
+}
+#var3
+declare -- var3="ccc"
+0'
+
 
 
 # ==========================================================
