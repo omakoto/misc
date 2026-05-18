@@ -2,13 +2,14 @@
 
 # "shescape" implementation in bash
 
-printf="printf"
-sep=""
+# printf="printf"
+# sep=""
 
-for a in "$@"; do
-    echo -n "$sep"
-    $printf "%q" "$a"
-    sep=" "
-done
+# for a in "$@"; do
+#     echo -n "$sep"
+#     $printf "%q" "$a"
+#     sep=" "
+# done
 
+printf '%q ' "$@"
 echo
