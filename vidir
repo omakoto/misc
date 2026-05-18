@@ -85,6 +85,7 @@ foreach (@sorted) {
   my $was = $_;
   if ($expression) {
     eval $expression;
+    die "$0: expression error: $@\n" if $@;
     if ($was ne $_) {
       print OUT "##    $was ->\n";
     }
@@ -151,7 +152,7 @@ open (IN, $tmp->filename) || die "$0: cannot read ".$tmp->filename.": $!\n";
 while (<IN>) {
   chomp;
   s/\s*\#\#.*$//;
-  if(/^\s*(\d+) {0,1}(.*)/) {
+  if(/^\s*(\d+)\s+(.*)/) {
     my $num=int($1);
     my $name=$2;
     my $iscopy=exists $done{$num};
