@@ -300,7 +300,7 @@ echo-and-exec() {
         echo -n "CWD: "
         bcyan -nc
         echo -n "$PWD"
-        nocolor -n ""
+        nocolor -n " "
       fi
       byellow -nc
       (( $dry )) && echo -n "(DRY) "
