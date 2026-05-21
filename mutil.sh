@@ -223,14 +223,10 @@ dry-run() {
 }
 
 eem() {
-  echo-and-exec --timestamp --show-result --mobile --log --unbuffer --time --pwd "$@"
+  ee --timestamp --show-result --mobile --log --unbuffer --time --pwd "$@"
 }
 
-#t() {
-#  eem "$@"
-#}
-
-echo-and-exec() {
+ee() {
   local to=1
   local dry=0
   local dry_opts=""
@@ -297,9 +293,10 @@ echo-and-exec() {
     {
       if (( $pwd )) ; then
         byellow -nc
-        echo -n "CWD: "
+        echo -n "[CWD: "
         bcyan -nc
         echo -n "$PWD"
+        byellow -n "]"
         nocolor -n " "
       fi
       byellow -nc
@@ -347,12 +344,12 @@ echo-and-exec() {
   return $rc
 }
 
-ee() {
-  echo-and-exec "${@}"
+echo-and-exec() {
+  ee "${@}"
 }
 
 eet() {
-  echo-and-exec -t "${@}"
+  ee -t "${@}"
 }
 
 # Variation; used to intercept a command execution and show
