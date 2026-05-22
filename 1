@@ -63,6 +63,18 @@ eval "$(bashgetopt -u usage '
 args=( "$@" )
 files=()
 
+if (( $ALT_MODE == 1 )) ; then
+  case "$(select-menu '1: open/view normally' 'e: force edit')" in
+    1)
+      ;;
+    e)
+      force_editor=1
+      ;;
+    *)
+      exit 1
+  esac
+fi
+
 
 if (( $quiet )) ; then
     export EE_QUIET=1
