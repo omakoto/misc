@@ -1,0 +1,456 @@
+#!/usr/bin/env python3
+# Interactive ANSI 256-color picker.
+#
+# Allows selecting Foreground and Background colors simultaneously with transparency options.
+# Automatically copies the active escape sequence to the clipboard on selection changes.
+# Prints the chosen escape sequence in a bash $'...' string format to stdout on exit.
+
+import sys
+import os
+import tty
+import termios
+import select
+import signal
+import atexit
+import re
+import subprocess
+
+# Global state
+state = {
+    'bold': False,
+    'faint': False,
+    'italics': False,
+    'fg_color': 15,       # Default FG: White
+    'fg_trans': False,    # FG transparency
+    'bg_color': 0,        # Default BG: Black
+    'bg_trans': True      # BG transparency
+}
+
+click_map = {}
+old_settings = None
+terminal_setup = False
+
+# Regex to strip ANSI escapes for calculating printable text width
+ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*[a-zA-Z]')
+
+def printable_len(s):
+    return len(ANSI_ESCAPE.sub('', s))
+
+def ep(s):
+    normalized = s.replace('\r\n', '\n').replace('\n', '\r\n')
+    sys.stderr.write(normalized)
+
+def eflush():
+    sys.stderr.flush()
+
+def setup_terminal():
+    global terminal_setup, old_settings
+    if terminal_setup:
+        return
+    try:
+        old_settings = termios.tcgetattr(sys.stdin.fileno())
+        tty.setraw(sys.stdin.fileno())
+        # Enable alternate screen, SGR mouse reporting, and hide cursor
+        ep("\x1b[?1049h\x1b[?1000h\x1b[?1006h\x1b[?25l")
+        eflush()
+        terminal_setup = True
+    except Exception as e:
+        sys.stderr.write(f"Error setting up terminal: {e}\n")
+        sys.exit(1)
+
+def restore_terminal():
+    global terminal_setup
+    if not terminal_setup:
+        return
+    if old_settings is not None:
+        try:
+            termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, old_settings)
+        except Exception:
+            pass
+    # Disable mouse tracking, switch to main screen, show cursor
+    ep("\x1b[?1006l\x1b[?1000l\x1b[?1049l\x1b[?25h")
+    eflush()
+    terminal_setup = False
+
+def signal_handler(signum, frame):
+    restore_terminal()
+    sys.exit(128 + signum)
+
+# Register cleanup
+atexit.register(restore_terminal)
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+
+def copy_to_clipboard(text):
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+    except NameError:
+        script_dir = "/home/omakoto/cbin/misc"
+    cb_path = os.path.join(script_dir, 'cb')
+    if os.path.exists(cb_path):
+        try:
+            subprocess.run([cb_path, '-q'], input=text.encode('utf-8'), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        except Exception:
+            pass
+    else:
+        try:
+            subprocess.run(['cb', '-q'], input=text.encode('utf-8'), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        except Exception:
+            pass
+
+def get_bash_string():
+    attrs = []
+    if state['bold']:
+        attrs.append("1")
+    if state['faint']:
+        attrs.append("2")
+    if state['italics']:
+        attrs.append("3")
+        
+    if not state['fg_trans']:
+        attrs.append(f"38;5;{state['fg_color']}")
+        
+    if not state['bg_trans']:
+        attrs.append(f"48;5;{state['bg_color']}")
+        
+    if not attrs:
+        esc_seq = "\\e[0m"
+    else:
+        esc_seq = f"\\e[{';'.join(attrs)}m"
+    return f"$'{esc_seq}'"
+
+def update_selection(fg=None, bg=None):
+    if fg is not None:
+        state['fg_color'] = fg
+        state['fg_trans'] = False
+    if bg is not None:
+        state['bg_color'] = bg
+        state['bg_trans'] = False
+    bash_str = get_bash_string()
+    copy_to_clipboard(bash_str)
+
+def draw_screen():
+    global click_map
+    click_map = {}
+    
+    # Home cursor and clear screen down
+    ep("\x1b[H\x1b[J")
+    
+    # Header (Row 1)
+    ep(" \x1b[1m=== ANSI 256 Color Picker ===\x1b[0m\n\n")
+    
+    # Row 3: Modifiers
+    y = 3
+    raw_line = "  Modifiers:  "
+    ep(raw_line)
+    
+    def add_checkbox(label, key):
+        nonlocal raw_line
+        start_x = printable_len(raw_line) + 1
+        checked = "x" if state[key] else " "
+        
+        style_start = ""
+        style_end = ""
+        if key == 'bold' and state['bold']:
+            style_start, style_end = "\x1b[1m", "\x1b[0m"
+        elif key == 'faint' and state['faint']:
+            style_start, style_end = "\x1b[2m", "\x1b[0m"
+        elif key == 'italics' and state['italics']:
+            style_start, style_end = "\x1b[3m", "\x1b[0m"
+            
+        cb_str = f"[{checked}] {style_start}{label}{style_end}"
+        ep(cb_str)
+        raw_line += cb_str
+        end_x = printable_len(raw_line)
+        
+        for x in range(start_x, end_x + 1):
+            click_map[(x, y)] = ('toggle', key)
+            
+    add_checkbox("Bold", "bold")
+    ep("    ")
+    raw_line += "    "
+    add_checkbox("Faint", "faint")
+    ep("    ")
+    raw_line += "    "
+    add_checkbox("Italics", "italics")
+    ep("\n\n")
+    
+    # Color grid rows drawing function
+    def draw_color_row(colors, y_blocks, grid_type, use_gray_bg=False):
+        global click_map
+        indent = "    "
+        ep(indent)
+        
+        current_x = printable_len(indent) + 1
+        for c in colors:
+            is_selected = (state['fg_color'] == c) if grid_type == 'fg' else (state['bg_color'] == c)
+            
+            if is_selected:
+                if c < 10:
+                    text = f" [{c}] "
+                elif c < 100:
+                    text = f" [{c}]"
+                else:
+                    text = f"[{c}]"
+            else:
+                if c < 10:
+                    text = f"  {c}  "
+                elif c < 100:
+                    text = f"  {c} "
+                else:
+                    text = f" {c} "
+                    
+            if grid_type == 'fg':
+                attrs = [f"38;5;{c}"]
+                if use_gray_bg:
+                    attrs.append("48;5;8")
+            else:
+                if c < 16:
+                    fg = 15 if c in [0, 1, 4, 5, 8, 9, 12, 13] else 0
+                else:
+                    fg = 15 if c < 244 else 0
+                attrs = [f"38;5;{fg}", f"48;5;{c}"]
+                
+            if state['bold']:
+                attrs.append("1")
+            if state['faint']:
+                attrs.append("2")
+            if state['italics']:
+                attrs.append("3")
+                
+            attr_str = ";".join(attrs)
+            block_disp = f"\x1b[{attr_str}m{text}\x1b[0m"
+            ep(block_disp)
+            
+            block_width = len(text)
+            for x in range(current_x, current_x + block_width):
+                click_map[(x, y_blocks)] = (f'pick_{grid_type}', c)
+                
+            sep = " "
+            ep(sep)
+            current_x += block_width + len(sep)
+            
+        ep("\n")
+        return y_blocks + 1
+
+    # Row 5: Foreground Color Section
+    y = 5
+    raw_line = "  Foreground Color:  "
+    ep(raw_line)
+    
+    start_x = printable_len(raw_line) + 1
+    checked = "x" if state['fg_trans'] else " "
+    cb_str = f"[{checked}] Transparent"
+    ep(cb_str + "\n")
+    raw_line += cb_str
+    end_x = printable_len(raw_line)
+    
+    for x in range(start_x, end_x + 1):
+        click_map[(x, y)] = ('toggle', 'fg_trans')
+        
+    y_next = draw_color_row(range(0, 8), 6, 'fg', use_gray_bg=True)
+    y_next = draw_color_row(range(8, 16), y_next, 'fg', use_gray_bg=False)
+    ep("\n")
+    y_next += 1
+    y_next = draw_color_row(range(232, 244), y_next, 'fg', use_gray_bg=True)
+    y_next = draw_color_row(range(244, 256), y_next, 'fg', use_gray_bg=False)
+    ep("\n")
+    y_next += 1
+    
+    # Row y_next: Background Color Section
+    y = y_next
+    raw_line = "  Background Color:  "
+    ep(raw_line)
+    
+    start_x = printable_len(raw_line) + 1
+    checked = "x" if state['bg_trans'] else " "
+    cb_str = f"[{checked}] Transparent"
+    ep(cb_str + "\n")
+    raw_line += cb_str
+    end_x = printable_len(raw_line)
+    
+    for x in range(start_x, end_x + 1):
+        click_map[(x, y)] = ('toggle', 'bg_trans')
+        
+    y_next = draw_color_row(range(0, 8), y_next + 1, 'bg')
+    y_next = draw_color_row(range(8, 16), y_next, 'bg')
+    ep("\n")
+    y_next += 1
+    y_next = draw_color_row(range(232, 244), y_next, 'bg')
+    y_next = draw_color_row(range(244, 256), y_next, 'bg')
+    ep("\n")
+    y_next += 1
+    
+    # Preview Section
+    y_preview = y_next
+    ep("  Preview:\n")
+    y_next += 1
+    
+    preview_indent = "    "
+    ep(preview_indent)
+    
+    attrs = []
+    if state['bold']:
+        attrs.append("1")
+    if state['faint']:
+        attrs.append("2")
+    if state['italics']:
+        attrs.append("3")
+        
+    if not state['fg_trans']:
+        attrs.append(f"38;5;{state['fg_color']}")
+        
+    if not state['bg_trans']:
+        attrs.append(f"48;5;{state['bg_color']}")
+        
+    attr_str = ";".join(attrs)
+    preview_text = "  AaBbCcDdEeFfGg 0123456789  "
+    if not attr_str:
+        ep(f"{preview_text}\n\n")
+    else:
+        ep(f"\x1b[{attr_str}m{preview_text}\x1b[0m\n\n")
+    y_next += 2
+    
+    # Bash string output
+    ep(f"  Bash string:  \x1b[1m{get_bash_string()}\x1b[0m\n")
+    y_next += 1
+    ep("                \x1b[2m(Copied to clipboard)\x1b[0m\n\n")
+    y_next += 2
+    
+    # Buttons
+    y_exit = y_next
+    buttons_line = "  "
+    ep(buttons_line)
+    
+    start_x_select = printable_len(buttons_line) + 1
+    select_text = "[ Select & Close ]"
+    select_disp = f"\x1b[1;32m{select_text}\x1b[0m"
+    ep(select_disp)
+    buttons_line += select_text
+    end_x_select = printable_len(buttons_line)
+    
+    for x in range(start_x_select, end_x_select + 1):
+        click_map[(x, y_exit)] = ('confirm', None)
+        
+    spacer = "    "
+    ep(spacer)
+    buttons_line += spacer
+    
+    start_x_cancel = printable_len(buttons_line) + 1
+    cancel_text = "[ Cancel / Exit ]"
+    cancel_disp = f"\x1b[31m{cancel_text}\x1b[0m"
+    ep(cancel_disp + "\n")
+    buttons_line += cancel_text
+    end_x_cancel = printable_len(buttons_line)
+    
+    for x in range(start_x_cancel, end_x_cancel + 1):
+        click_map[(x, y_exit)] = ('exit', None)
+        
+    ep("\n\x1b[2m  * Click blocks to select. Hold Shift to highlight/copy text with your mouse.\x1b[0m\n")
+    eflush()
+
+def read_key():
+    r, _, _ = select.select([sys.stdin], [], [], 0.1)
+    if not r:
+        return None
+    try:
+        b = os.read(sys.stdin.fileno(), 1)
+    except Exception:
+        return None
+    if not b:
+        return None
+        
+    if b == b'\x03': # Ctrl-C
+        return 'ctrl-c'
+        
+    if b == b'\x1b':
+        r, _, _ = select.select([sys.stdin], [], [], 0.05)
+        if not r:
+            return 'escape'
+        try:
+            b2 = os.read(sys.stdin.fileno(), 1)
+        except Exception:
+            return 'escape'
+        if b2 == b'[':
+            seq = b""
+            while True:
+                try:
+                    ch_b = os.read(sys.stdin.fileno(), 1)
+                except Exception:
+                    break
+                if not ch_b:
+                    break
+                seq += ch_b
+                if 0x40 <= ch_b[0] <= 0x7E:
+                    break
+            seq_str = seq.decode('utf-8', errors='ignore')
+            if seq_str.startswith('<'):
+                try:
+                    parts = seq_str[1:-1].split(';')
+                    pb = int(parts[0])
+                    px = int(parts[1])
+                    py = int(parts[2])
+                    is_press = seq_str[-1] == 'M'
+                    return ('mouse', pb, px, py, is_press)
+                except Exception:
+                    pass
+            return ('esc_seq', '[' + seq_str)
+        else:
+            return ('esc_seq', b2.decode('utf-8', errors='ignore'))
+            
+    return b.decode('utf-8', errors='ignore')
+
+def select_color_and_exit():
+    result = get_bash_string()
+    restore_terminal()
+    sys.stdout.write(result + "\n")
+    sys.stdout.flush()
+    sys.exit(0)
+
+def main():
+    setup_terminal()
+    update_selection()  # Set initial clipboard string
+    draw_screen()
+    
+    while True:
+        key = read_key()
+        if key is None:
+            continue
+            
+        if key in ['ctrl-c', 'q', 'escape', '\x1b']:
+            break
+            
+        if key in ['\r', '\n']:
+            select_color_and_exit()
+            
+        if isinstance(key, tuple) and key[0] == 'mouse':
+            _, pb, px, py, is_press = key
+            if pb == 0 and not is_press:
+                action = click_map.get((px, py))
+                if action:
+                    act_type, val = action
+                    if act_type == 'toggle':
+                        if val == 'fg_trans':
+                            state['fg_trans'] = not state['fg_trans']
+                        elif val == 'bg_trans':
+                            state['bg_trans'] = not state['bg_trans']
+                        else:
+                            state[val] = not state[val]
+                        update_selection()
+                        draw_screen()
+                    elif act_type == 'pick_fg':
+                        update_selection(fg=val)
+                        draw_screen()
+                    elif act_type == 'pick_bg':
+                        update_selection(bg=val)
+                        draw_screen()
+                    elif act_type == 'confirm':
+                        select_color_and_exit()
+                    elif act_type == 'exit':
+                        break
+                        
+    restore_terminal()
+    sys.exit(0)
+
+if __name__ == '__main__':
+    main()
