@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# Interactive ANSI 256-color picker.
+# Interactive ANSI color picker.
 #
 # Allows selecting Foreground and Background colors simultaneously with transparency options.
 # Automatically copies the active escape sequence to the clipboard on selection changes.
-# Prints the chosen escape sequence in a bash $'...' string format to stdout on exit.
+# Prints the chosen escape sequence to stdout on exit (optionally formatted as a bash $'...' string).
 
 import sys
 import os
@@ -20,6 +20,7 @@ state = {
     'bold': False,
     'faint': False,
     'italics': False,
+    'bash_string': False, # Disabled by default
     'fg_color': 15,       # Default FG: White
     'fg_trans': False,    # FG transparency
     'bg_color': 0,        # Default BG: Black
@@ -98,7 +99,7 @@ def copy_to_clipboard(text):
         except Exception:
             pass
 
-def get_bash_string():
+def get_output_string():
     attrs = []
     if state['bold']:
         attrs.append("1")
@@ -117,7 +118,11 @@ def get_bash_string():
         esc_seq = "\\e[0m"
     else:
         esc_seq = f"\\e[{';'.join(attrs)}m"
-    return f"$'{esc_seq}'"
+        
+    if state['bash_string']:
+        return f"$'{esc_seq}'"
+    else:
+        return esc_seq
 
 def update_selection(fg=None, bg=None):
     if fg is not None:
@@ -126,8 +131,8 @@ def update_selection(fg=None, bg=None):
     if bg is not None:
         state['bg_color'] = bg
         state['bg_trans'] = False
-    bash_str = get_bash_string()
-    copy_to_clipboard(bash_str)
+    out_str = get_output_string()
+    copy_to_clipboard(out_str)
 
 def draw_screen():
     global click_map
@@ -137,7 +142,7 @@ def draw_screen():
     ep("\x1b[H\x1b[J")
     
     # Header (Row 1)
-    ep(" \x1b[1m=== ANSI 256 Color Picker ===\x1b[0m\n\n")
+    ep(" \x1b[1m=== ANSI Color Picker ===\x1b[0m\n\n")
     
     # Row 3: Modifiers
     y = 3
@@ -151,11 +156,11 @@ def draw_screen():
         
         style_start = ""
         style_end = ""
-        if key == 'bold' and state['bold']:
+        if key == 'bold':
             style_start, style_end = "\x1b[1m", "\x1b[0m"
-        elif key == 'faint' and state['faint']:
+        elif key == 'faint':
             style_start, style_end = "\x1b[2m", "\x1b[0m"
-        elif key == 'italics' and state['italics']:
+        elif key == 'italics':
             style_start, style_end = "\x1b[3m", "\x1b[0m"
             
         cb_str = f"[{checked}] {style_start}{label}{style_end}"
@@ -311,8 +316,19 @@ def draw_screen():
         ep(f"\x1b[{attr_str}m{preview_text}\x1b[0m\n\n")
     y_next += 2
     
-    # Bash string output
-    ep(f"  Bash string:  \x1b[1m{get_bash_string()}\x1b[0m\n")
+    # Checkbox for formatting output string
+    y = y_next
+    raw_line = "  "
+    ep(raw_line)
+    add_checkbox("Bash string", "bash_string")
+    ep("\n\n")
+    y_next += 2
+    
+    # Output string representation
+    if state['bash_string']:
+        ep(f"  Bash string:  \x1b[1m{get_output_string()}\x1b[0m\n")
+    else:
+        ep(f"  Esc sequence: \x1b[1m{get_output_string()}\x1b[0m\n")
     y_next += 1
     ep("                \x1b[2m(Copied to clipboard)\x1b[0m\n\n")
     y_next += 2
@@ -401,7 +417,7 @@ def read_key():
     return b.decode('utf-8', errors='ignore')
 
 def select_color_and_exit():
-    result = get_bash_string()
+    result = get_output_string()
     restore_terminal()
     sys.stdout.write(result + "\n")
     sys.stdout.flush()
