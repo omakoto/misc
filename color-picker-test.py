@@ -25,7 +25,8 @@ class ColorPickerTest(unittest.TestCase):
             'fg_color': 15,
             'fg_trans': False,
             'bg_color': 0,
-            'bg_trans': True
+            'bg_trans': True,
+            'last_copied': 'active'
         }
         # Reset click map
         color_picker.click_map = {}
@@ -126,6 +127,56 @@ class ColorPickerTest(unittest.TestCase):
         self.assertEqual(cm.exception.code, 0)
         self.assertTrue(color_picker.state['bold'])
         mock_copy.assert_called_with("\\e[1;38;5;15m")
+
+    @patch('color_picker.setup_terminal')
+    @patch('color_picker.restore_terminal')
+    @patch('color_picker.copy_to_clipboard')
+    @patch('sys.stderr')
+    @patch('sys.stdout')
+    @patch('color_picker.read_key')
+    def test_mouse_click_copy_active(self, mock_read_key, mock_stdout, mock_stderr, mock_copy, mock_restore, mock_setup):
+        color_picker.draw_screen()
+        coords = [k for k, v in color_picker.click_map.items() if v == ('copy_active', None)]
+        self.assertTrue(len(coords) > 0, "Active string should be in click_map")
+        
+        cx, cy = coords[0]
+        
+        mock_read_key.side_effect = [
+            ('mouse', 0, cx, cy, False),
+            'q'
+        ]
+        
+        color_picker.state['last_copied'] = 'reset'
+        with self.assertRaises(SystemExit) as cm:
+            color_picker.main()
+        self.assertEqual(cm.exception.code, 0)
+        self.assertEqual(color_picker.state['last_copied'], 'active')
+        mock_copy.assert_called_with("\\e[38;5;15m")
+
+    @patch('color_picker.setup_terminal')
+    @patch('color_picker.restore_terminal')
+    @patch('color_picker.copy_to_clipboard')
+    @patch('sys.stderr')
+    @patch('sys.stdout')
+    @patch('color_picker.read_key')
+    def test_mouse_click_copy_reset(self, mock_read_key, mock_stdout, mock_stderr, mock_copy, mock_restore, mock_setup):
+        color_picker.draw_screen()
+        coords = [k for k, v in color_picker.click_map.items() if v == ('copy_reset', None)]
+        self.assertTrue(len(coords) > 0, "Reset string should be in click_map")
+        
+        cx, cy = coords[0]
+        
+        mock_read_key.side_effect = [
+            ('mouse', 0, cx, cy, False),
+            'q'
+        ]
+        
+        color_picker.state['last_copied'] = 'active'
+        with self.assertRaises(SystemExit) as cm:
+            color_picker.main()
+        self.assertEqual(cm.exception.code, 0)
+        self.assertEqual(color_picker.state['last_copied'], 'reset')
+        mock_copy.assert_called_with("\\e[0m")
 
 if __name__ == '__main__':
     unittest.main()

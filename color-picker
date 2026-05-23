@@ -20,11 +20,12 @@ state = {
     'bold': False,
     'faint': False,
     'italics': False,
-    'bash_string': False, # Disabled by default
+    'bash_string': True,  # Enabled by default
     'fg_color': 15,       # Default FG: White
     'fg_trans': False,    # FG transparency
     'bg_color': 0,        # Default BG: Black
-    'bg_trans': True      # BG transparency
+    'bg_trans': True,     # BG transparency
+    'last_copied': 'active' # Track which string is currently in the clipboard
 }
 
 click_map = {}
@@ -131,6 +132,7 @@ def update_selection(fg=None, bg=None):
     if bg is not None:
         state['bg_color'] = bg
         state['bg_trans'] = False
+    state['last_copied'] = 'active'
     out_str = get_output_string()
     copy_to_clipboard(out_str)
 
@@ -325,12 +327,36 @@ def draw_screen():
     y_next += 2
     
     # Output string representation
-    if state['bash_string']:
-        ep(f"  Bash string:  \x1b[1m{get_output_string()}\x1b[0m\n")
-    else:
-        ep(f"  Esc sequence: \x1b[1m{get_output_string()}\x1b[0m\n")
+    y_active = y_next
+    active_label = "  Bash string:  " if state['bash_string'] else "  Esc sequence: "
+    active_val = get_output_string()
+    ep(f"{active_label}\x1b[1m{active_val}\x1b[0m\n")
+    for x in range(1, len(active_label) + len(active_val) + 1):
+        click_map[(x, y_active)] = ('copy_active', None)
     y_next += 1
-    ep("                \x1b[2m(Copied to clipboard)\x1b[0m\n\n")
+    
+    if state['last_copied'] == 'active':
+        ep("                \x1b[2m(Copied to clipboard)\x1b[0m\n")
+    else:
+        ep("\n")
+    y_next += 1
+    
+    # Reset string representation
+    y_reset = y_next
+    reset_label = "  Reset string: "
+    if state['bash_string']:
+        reset_val = "$'\\e[0m'"
+    else:
+        reset_val = "\\e[0m"
+    ep(f"{reset_label}\x1b[1m{reset_val}\x1b[0m\n")
+    for x in range(1, len(reset_label) + len(reset_val) + 1):
+        click_map[(x, y_reset)] = ('copy_reset', None)
+    y_next += 1
+    
+    if state['last_copied'] == 'reset':
+        ep("                \x1b[2m(Copied to clipboard)\x1b[0m\n\n")
+    else:
+        ep("\n\n")
     y_next += 2
     
     # Buttons
@@ -362,7 +388,6 @@ def draw_screen():
     for x in range(start_x_cancel, end_x_cancel + 1):
         click_map[(x, y_exit)] = ('exit', None)
         
-    ep("\n\x1b[2m  * Click blocks to select. Hold Shift to highlight/copy text with your mouse.\x1b[0m\n")
     eflush()
 
 def read_key():
@@ -462,6 +487,15 @@ def main():
                         draw_screen()
                     elif act_type == 'confirm':
                         select_color_and_exit()
+                    elif act_type == 'copy_active':
+                        copy_to_clipboard(get_output_string())
+                        state['last_copied'] = 'active'
+                        draw_screen()
+                    elif act_type == 'copy_reset':
+                        reset_str = "$'\\e[0m'" if state['bash_string'] else "\\e[0m"
+                        copy_to_clipboard(reset_str)
+                        state['last_copied'] = 'reset'
+                        draw_screen()
                     elif act_type == 'exit':
                         break
                         
