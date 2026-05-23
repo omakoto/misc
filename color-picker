@@ -328,7 +328,7 @@ def draw_screen():
     
     # Output string representation
     y_active = y_next
-    active_label = "  Bash string:  " if state['bash_string'] else "  Esc sequence: "
+    active_label = "  Sequence:     "
     active_val = get_output_string()
     ep(f"{active_label}\x1b[1m{active_val}\x1b[0m\n")
     for x in range(1, len(active_label) + len(active_val) + 1):
