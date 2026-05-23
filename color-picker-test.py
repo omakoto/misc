@@ -178,5 +178,40 @@ class ColorPickerTest(unittest.TestCase):
         self.assertEqual(color_picker.state['last_copied'], 'reset')
         mock_copy.assert_called_with("\\e[0m")
 
+    @patch('color_picker.setup_terminal')
+    @patch('color_picker.restore_terminal')
+    @patch('color_picker.copy_to_clipboard')
+    @patch('sys.stderr')
+    @patch('sys.stdout')
+    @patch('color_picker.read_key')
+    def test_shortcuts(self, mock_read_key, mock_stdout, mock_stderr, mock_copy, mock_restore, mock_setup):
+        # Test 'b' or 'B' for bold
+        mock_read_key.side_effect = ['b', 'B', 'q']
+        self.assertFalse(color_picker.state['bold'])
+        with self.assertRaises(SystemExit):
+            color_picker.main()
+        self.assertFalse(color_picker.state['bold'])
+
+        # Test 's' or 'S' for bash string
+        mock_read_key.side_effect = ['s', 'S', 'q']
+        self.assertFalse(color_picker.state['bash_string'])
+        with self.assertRaises(SystemExit):
+            color_picker.main()
+        self.assertFalse(color_picker.state['bash_string'])
+
+        # Test 'i' or 'I' for italics
+        mock_read_key.side_effect = ['i', 'I', 'q']
+        self.assertFalse(color_picker.state['italics'])
+        with self.assertRaises(SystemExit):
+            color_picker.main()
+        self.assertFalse(color_picker.state['italics'])
+
+        # Test 'f' or 'F' for faint
+        mock_read_key.side_effect = ['f', 'F', 'q']
+        self.assertFalse(color_picker.state['faint'])
+        with self.assertRaises(SystemExit):
+            color_picker.main()
+        self.assertFalse(color_picker.state['faint'])
+
 if __name__ == '__main__':
     unittest.main()

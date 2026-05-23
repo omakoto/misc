@@ -173,13 +173,13 @@ def draw_screen():
         for x in range(start_x, end_x + 1):
             click_map[(x, y)] = ('toggle', key)
             
-    add_checkbox("Bold", "bold")
+    add_checkbox("[B]old", "bold")
     ep("    ")
     raw_line += "    "
-    add_checkbox("Faint", "faint")
+    add_checkbox("[F]aint", "faint")
     ep("    ")
     raw_line += "    "
-    add_checkbox("Italics", "italics")
+    add_checkbox("[I]talics", "italics")
     ep("\n\n")
     
     # Color grid rows drawing function
@@ -322,7 +322,7 @@ def draw_screen():
     y = y_next
     raw_line = "  "
     ep(raw_line)
-    add_checkbox("Bash string", "bash_string")
+    add_checkbox("Ba[s]h string", "bash_string")
     ep("\n\n")
     y_next += 2
     
@@ -463,6 +463,23 @@ def main():
             
         if key in ['\r', '\n']:
             select_color_and_exit()
+            
+        if key in ['b', 'B']:
+            state['bold'] = not state['bold']
+            update_selection()
+            draw_screen()
+        elif key in ['s', 'S']:
+            state['bash_string'] = not state['bash_string']
+            update_selection()
+            draw_screen()
+        elif key in ['i', 'I']:
+            state['italics'] = not state['italics']
+            update_selection()
+            draw_screen()
+        elif key in ['f', 'F']:
+            state['faint'] = not state['faint']
+            update_selection()
+            draw_screen()
             
         if isinstance(key, tuple) and key[0] == 'mouse':
             _, pb, px, py, is_press = key
