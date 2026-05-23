@@ -247,7 +247,7 @@ def draw_screen():
     
     start_x = printable_len(raw_line) + 1
     checked = "x" if state['fg_trans'] else " "
-    cb_str = f"[{checked}] Transparent"
+    cb_str = f"[{checked}] Default"
     ep(cb_str + "\n")
     raw_line += cb_str
     end_x = printable_len(raw_line)
@@ -271,7 +271,7 @@ def draw_screen():
     
     start_x = printable_len(raw_line) + 1
     checked = "x" if state['bg_trans'] else " "
-    cb_str = f"[{checked}] Transparent"
+    cb_str = f"[{checked}] Default"
     ep(cb_str + "\n")
     raw_line += cb_str
     end_x = printable_len(raw_line)
