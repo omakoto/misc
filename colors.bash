@@ -36,6 +36,8 @@ Options:
   -i  italic
   -k  blink
   -u  underline
+  -x  crossed-out
+  -2  redirect to stderr
   -e  reusable escape sequence
 EOF
         ;;
