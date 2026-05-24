@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# Shell-escape, no newline
+
+printf '%q ' "$@"
