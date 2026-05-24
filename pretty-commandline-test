@@ -1,0 +1,112 @@
+#!/bin/bash
+
+# A test script for pretty-commandline
+
+set -euo pipefail
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PRETTY_CMD="$DIR/pretty-commandline"
+
+test_pretty() {
+    local label="$1"
+    local expected_output="$2"
+    shift 2
+    echo "Running test: $label"
+    
+    local output
+    output=$("$PRETTY_CMD" "$@")
+    
+    # Remove trailing newlines for comparison since command substitution $(...)
+    # strips trailing newlines.
+    local clean_expected="${expected_output%$'\n'}"
+    local clean_actual="${output%$'\n'}"
+    
+    # 1. Compare against the expected literal output string
+    if [ "$clean_expected" != "$clean_actual" ]; then
+        echo "FAIL: $label (Literal output mismatch)"
+        echo "Expected:"
+        echo "[$clean_expected]"
+        echo "Actual:"
+        echo "[$clean_actual]"
+        exit 1
+    fi
+    
+    # 2. Evaluate the generated command line to reconstruct the arguments
+    local actual_lines
+    actual_lines=$(
+        eval "set -- $output"
+        for arg in "$@"; do
+            echo "$arg"
+        done
+    )
+    
+    local expected_lines=""
+    for arg in "$@"; do
+        expected_lines+="$arg"$'\n'
+    done
+    
+    # Remove trailing newline for exact comparison
+    expected_lines="${expected_lines%$'\n'}"
+    
+    if [ "$expected_lines" != "$actual_lines" ]; then
+        echo "FAIL: $label (Reconstruction mismatch)"
+        echo "Expected:"
+        echo "[$expected_lines]"
+        echo "Actual:"
+        echo "[$actual_lines]"
+        exit 1
+    else
+        echo "PASS"
+    fi
+    echo
+}
+
+# Test cases
+
+IFS= read -r -d '' expected <<'EOF' || true
+arg1 \
+    arg2 \
+    arg\ 3\ with\ spaces
+EOF
+test_pretty "Simple arguments" "$expected" arg1 arg2 "arg 3 with spaces"
+
+IFS= read -r -d '' expected <<'EOF' || true
+  "$(IFS=:; set -- \
+    foo \
+    bar \
+    baz \
+  ; echo "$*")"
+EOF
+test_pretty "Arguments with colon" "$expected" "foo:bar:baz"
+
+IFS= read -r -d '' expected <<'EOF' || true
+flag \
+  -v \
+    "$(IFS=:; set -- \
+      path \
+      /usr/bin \
+      /bin \
+    ; echo "$*")" \
+    another
+EOF
+test_pretty "Mixed arguments" "$expected" "flag" "-v" "path:/usr/bin:/bin" "another"
+
+IFS= read -r -d '' expected <<'EOF' || true
+  "$(IFS=:; set -- \
+    a \
+    '' \
+    b \
+  ; echo "$*")"
+EOF
+test_pretty "Argument with empty parts in colon" "$expected" "a::b"
+
+IFS= read -r -d '' expected <<'EOF' || true
+  "$(IFS=:; set -- \
+    a \
+    b\ c \
+    d \
+  ; echo "$*")"
+EOF
+test_pretty "Multiple colons and spaces" "$expected" "a:b c:d"
+
+echo "All tests passed successfully!"

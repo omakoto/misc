@@ -20,7 +20,7 @@ maybe_split_tokens_with_colon() {
         return 1
     fi
 
-    echo "$indent  \"\$(bash -c 'IFS=: ; echo \"\$*\"' -- \\"
+    echo "$indent  \"\$(IFS=:; set -- \\"
 
     echo "$arg:" | while IFS='' read -r -d : token; do
         if ! [[ "$token" = -* ]] ; then
@@ -28,7 +28,7 @@ maybe_split_tokens_with_colon() {
         fi
         printf "%s  %q%s\n" "$indent" "$token" ' \'
     done
-    echo "$indent  )\"$suffix"
+    echo "$indent  ; echo \"\$*\")\"$suffix"
 
     return 0
 }
