@@ -22,6 +22,12 @@ if [[ "$1" == "-f" ]] ; then
   force=1
 fi
 
+# On VMWare, disable screensaver and lock screen.
+if grep -qi ^vmware /sys/class/dmi/id/product_name ; then
+  ee gsettings set org.gnome.desktop.screensaver idle-activation-enabled false
+  ee gsettings set org.gnome.desktop.screensaver lock-enabled false # disable screen saver and lock screen
+fi
+
 
 sf=2
 chrome_dpi=""
