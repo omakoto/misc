@@ -137,7 +137,8 @@ show | {
   if (( $# > 0 )) ; then
     grep -i "$*"
   elif [[ -t 1 ]] ; then
-    less
+    #less
+    fzf --exact --ignore-case --no-sort
   else
     cat
   fi
