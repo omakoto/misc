@@ -7,7 +7,9 @@
 
 for pid in "${@}"; do
     echo "# Pid: $pid"
+    echo "# env"
     indent=""
+    envs=()
     
     # Read null-delimited tokens and envs from /proc files
     readarray -d '' -t tokens < /proc/$pid/cmdline
@@ -26,12 +28,11 @@ for pid in "${@}"; do
         fi
 
         if [[ "${!name}" == "$value" ]]; then
-            #echo -n "# "
             continue
         fi
 
         printf "export %s=%q\n" "$name" "$value"
     done
-    echo
+    echo "# command line"
     pretty-args "${tokens[@]}"
 done
