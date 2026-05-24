@@ -1,0 +1,233 @@
+#!/bin/bash
+
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+  echo "Usage: ${0##*/} [-h]"
+  echo "Runs unit tests for colors.bash."
+  exit 0
+fi
+
+# Move to the script parent directory
+cd "${0%/*}"
+
+. testutil.bash
+. colors.bash
+
+esc=$'\e'
+
+# 1. Test basic colors with -f option
+test_black() { black -f "test"; }
+test_red() { red -f "test"; }
+test_green() { green -f "test"; }
+test_yellow() { yellow -f "test"; }
+test_blue() { blue -f "test"; }
+test_magenta() { magenta -f "test"; }
+test_cyan() { cyan -f "test"; }
+test_white() { white -f "test"; }
+test_gray() { gray -f "test"; }
+
+assert_out -d test_black <<EOF
+${esc}[30mtest${esc}[0m
+EOF
+
+assert_out -d test_red <<EOF
+${esc}[31mtest${esc}[0m
+EOF
+
+assert_out -d test_green <<EOF
+${esc}[32mtest${esc}[0m
+EOF
+
+assert_out -d test_yellow <<EOF
+${esc}[33mtest${esc}[0m
+EOF
+
+assert_out -d test_blue <<EOF
+${esc}[34mtest${esc}[0m
+EOF
+
+assert_out -d test_magenta <<EOF
+${esc}[35mtest${esc}[0m
+EOF
+
+assert_out -d test_cyan <<EOF
+${esc}[36mtest${esc}[0m
+EOF
+
+assert_out -d test_white <<EOF
+${esc}[37mtest${esc}[0m
+EOF
+
+assert_out -d test_gray <<EOF
+${esc}[38;5;8mtest${esc}[0m
+EOF
+
+
+# 2. Test bold/intense colors
+test_bred() { bred -f "test"; }
+test_bgreen() { bgreen -f "test"; }
+test_byellow() { byellow -f "test"; }
+test_bblue() { bblue -f "test"; }
+test_bmagenta() { bmagenta -f "test"; }
+test_bcyan() { bcyan -f "test"; }
+test_bwhite() { bwhite -f "test"; }
+
+assert_out -d test_bred <<EOF
+${esc}[1;31mtest${esc}[0m
+EOF
+
+assert_out -d test_bgreen <<EOF
+${esc}[1;32mtest${esc}[0m
+EOF
+
+assert_out -d test_byellow <<EOF
+${esc}[1;33mtest${esc}[0m
+EOF
+
+assert_out -d test_bblue <<EOF
+${esc}[1;34mtest${esc}[0m
+EOF
+
+assert_out -d test_bmagenta <<EOF
+${esc}[1;35mtest${esc}[0m
+EOF
+
+assert_out -d test_bcyan <<EOF
+${esc}[1;36mtest${esc}[0m
+EOF
+
+assert_out -d test_bwhite <<EOF
+${esc}[1;37mtest${esc}[0m
+EOF
+
+
+# 3. Test nocolor
+test_nocolor() { nocolor -f "test"; }
+assert_out -d test_nocolor <<EOF
+${esc}[0mtest
+EOF
+
+
+# 4. Test options
+# -n: no newline
+test_red_n() { red -f -n "test"; echo "NEWLINE"; }
+assert_out -d test_red_n <<EOF
+${esc}[31mtest${esc}[0mNEWLINE
+EOF
+
+# -c: continuation (no reset, though currently commented out in original script)
+test_red_c() { red -f -c "test"; }
+assert_out -d test_red_c <<EOF
+${esc}[31mtest${esc}[0m
+EOF
+
+# -G: background color
+test_red_G() { red -f -G "test"; }
+assert_out -d test_red_G <<EOF
+${esc}[41mtest${esc}[0m
+EOF
+
+# -b: bold
+test_red_b() { red -f -b "test"; }
+assert_out -d test_red_b <<EOF
+${esc}[1;31mtest${esc}[0m
+EOF
+
+# -i: italic
+test_red_i() { red -f -i "test"; }
+assert_out -d test_red_i <<EOF
+${esc}[3;31mtest${esc}[0m
+EOF
+
+# -u: underline
+test_red_u() { red -f -u "test"; }
+assert_out -d test_red_u <<EOF
+${esc}[4;31mtest${esc}[0m
+EOF
+
+# -k: blink
+test_red_k() { red -f -k "test"; }
+assert_out -d test_red_k <<EOF
+${esc}[5;31mtest${esc}[0m
+EOF
+
+# -x: crossed-out
+test_red_x() { red -f -x "test"; }
+assert_out -d test_red_x <<EOF
+${esc}[9;31mtest${esc}[0m
+EOF
+
+# -2: redirect to stderr
+test_red_2() { red -f -2 "test" 2>&1 >/dev/null; }
+assert_out -d test_red_2 <<EOF
+${esc}[31mtest${esc}[0m
+EOF
+
+
+# 5. Test logging commands (with FORCE_COLOR=1)
+export FORCE_COLOR=1
+
+test_debug() { DEBUG "test"; }
+assert_out -d test_debug <<EOF
+${esc}[38;5;8mtest${esc}[0m
+EOF
+
+test_info() { INFO "arg1" "arg2" "arg3"; }
+assert_out -d test_info <<EOF
+${esc}[1;33marg1${esc}[0m${esc}[1;36m arg2${esc}[0m arg3
+EOF
+
+test_error() { ERROR "msg1" "msg2"; }
+assert_out -d test_error <<EOF
+colors.bash.test:${esc}[1;31m [error] ${esc}[0m${esc}[1;31mmsg1${esc}[0m msg2
+EOF
+
+test_warn() { WARN "msg1" "msg2" "msg3"; }
+assert_out -d test_warn <<EOF
+colors.bash.test:${esc}[1;33m [warning] ${esc}[0m${esc}[1;33mmsg1${esc}[0m${esc}[1;33m msg2${esc}[0m msg3
+EOF
+
+# 6. Test the new -e (reusable escape sequence) option
+test_esc_bgreen() { bgreen -e "OK"; }
+assert_out -d test_esc_bgreen <<EOF
+\$'\e[1;32mOK\e[0m'
+EOF
+
+test_esc_bgreen_n() { bgreen -e -n "OK"; echo "NEWLINE"; }
+assert_out -d test_esc_bgreen_n <<EOF
+\$'\e[1;32mOK\e[0m'NEWLINE
+EOF
+
+test_esc_bgreen_empty() { bgreen -e; }
+assert_out -d test_esc_bgreen_empty <<EOF
+\$'\e[1;32m'
+EOF
+
+test_esc_bgreen_special() { bgreen -e "OK's"$'\n'"Next"; }
+assert_out -d test_esc_bgreen_special <<EOF
+\$'\e[1;32mOK\'s\nNext\e[0m'
+EOF
+
+# 7. Test -h option for color commands and the test script itself
+test_red_h() { red -h 2>&1 >/dev/null; }
+assert_out -d test_red_h <<EOF
+Options:
+  -n  no newline
+  -f  force color
+  -c  don't reset color
+  -G  bg
+  -b  bold/intense
+  -i  italic
+  -k  blink
+  -u  underline
+  -e  reusable escape sequence
+EOF
+
+test_test_script_h() { ./colors.bash.test -h; }
+assert_out -d test_test_script_h <<EOF
+Usage: colors.bash.test [-h]
+Runs unit tests for colors.bash.
+EOF
+
+done_testing
+
+

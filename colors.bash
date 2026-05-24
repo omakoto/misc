@@ -10,8 +10,9 @@ _do_color() {
   local attributes=""
   local prefix="3"
   local out=${COLOR_OUT:-1}
+  local esc_opt=0
 
-  while getopts bihnfcGukx2 opt; do
+  while getopts bihnfcGukx2e opt; do
     case "$opt" in
       n) nl_opt="-n" ;;
       f) force=1 ;;
@@ -23,8 +24,20 @@ _do_color() {
       x) attributes="${attributes}9;" ;; # crossed-out
       G) prefix="4" ;;
       2) out=2 ;;
+      e) esc_opt=1 ;;
       h)
-        echo "Options: -n [no newline] -f [force color] -c [don't reset color] -G [bg]  -b [bold/intense] -i [italic] -k [blink] -u [underline]" 1>&2
+        cat <<'EOF' 1>&2
+Options:
+  -n  no newline
+  -f  force color
+  -c  don't reset color
+  -G  bg
+  -b  bold/intense
+  -i  italic
+  -k  blink
+  -u  underline
+  -e  reusable escape sequence
+EOF
         ;;
       *)
         echo "Unknown flag $opt" 1>&2
@@ -35,30 +48,52 @@ _do_color() {
   shift $(($OPTIND - 1))
 
   local use_color=0
-  if [[ -t $out ]] || (( $force )) || (( $FORCE_COLOR )) ; then
+  if [[ -t $out ]] || (( $force )) || (( $FORCE_COLOR )) || (( $esc_opt )) ; then
     use_color=1
   fi
 
   {
+    local color_seq=""
     local reset=""
     if (( $use_color )) ; then
       if [[ $color == "" ]] ; then
-        echo -ne "\e[0m"
+        color_seq=$'\e[0m'
       else
-        echo -ne "\e[${attributes}${prefix}${color}m"
+        color_seq=$'\e['"${attributes}${prefix}${color}m"
         reset=$'\e[0m'
       fi
     fi
 
-    if (( $# == 0 )) ; then
-      return 0 # no argument, just start a color and finish.
+    if (( $esc_opt )) ; then
+      local str=""
+      if (( $# == 0 )) ; then
+        str="$color_seq"
+      else
+        str="${color_seq}${*}${reset}"
+      fi
+      # Escape str for $'...' format
+      str="${str//\\/\\\\}"
+      str="${str//\'/\\\'}"
+      str="${str//$'\e'/\\e}"
+      str="${str//$'\n'/\\n}"
+      str="${str//$'\r'/\\r}"
+      str="${str//$'\t'/\\t}"
+      
+      if [[ $nl_opt == "-n" ]] ; then
+        printf '%s' "\$'$str'"
+      else
+        printf '%s\n' "\$'$str'"
+      fi
     else
-      echo $nl_opt "$@""$reset"
+      if (( $use_color )) ; then
+        printf '%s' "$color_seq"
+      fi
+      if (( $# == 0 )) ; then
+        return 0 # no argument, just start a color and finish.
+      else
+        echo $nl_opt "$@""$reset"
+      fi
     fi
-
-    # if (( ! $continuation && $use_color )) ; then
-    #   echo -ne '\e[0m'
-    # fi
   } >& $out
 }
 
