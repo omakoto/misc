@@ -230,6 +230,50 @@ Usage: colors.bash.test [-h]
 Runs unit tests for colors.bash.
 EOF
 
+# 8. Test the new --help option
+test_red_long_help() { red --help 2>&1 >/dev/null; }
+assert_out -d test_red_long_help <<EOF
+Options:
+  -n  no newline
+  -f  force color
+  -c  don't reset color
+  -G  bg
+  -b  bold/intense
+  -i  italic
+  -k  blink
+  -u  underline
+  -x  crossed-out
+  -2  redirect to stderr
+  -e  reusable escape sequence
+EOF
+
+test_red_double_dash_long_help() { red -f -- --help; }
+assert_out -d test_red_double_dash_long_help <<EOF
+${esc}[31m--help${esc}[0m
+EOF
+
+test_red_b_long_help() { red -b --help 2>&1 >/dev/null; }
+assert_out -d test_red_b_long_help <<EOF
+Options:
+  -n  no newline
+  -f  force color
+  -c  don't reset color
+  -G  bg
+  -b  bold/intense
+  -i  italic
+  -k  blink
+  -u  underline
+  -x  crossed-out
+  -2  redirect to stderr
+  -e  reusable escape sequence
+EOF
+
+test_red_string_containing_long_help() { red -f "hello --help"; }
+assert_out -d test_red_string_containing_long_help <<EOF
+${esc}[31mhello --help${esc}[0m
+EOF
+
 done_testing
+
 
 

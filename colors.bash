@@ -2,6 +2,23 @@ _do_color() {
   local color="$1"
   shift
 
+  local args=()
+  local arg
+  local parsing_opts=1
+  for arg in "$@"; do
+    if (( parsing_opts )); then
+      if [[ "$arg" == "--" ]]; then
+        parsing_opts=0
+      elif [[ "$arg" == "--help" ]]; then
+        arg="-h"
+      elif [[ "$arg" != -* ]]; then
+        parsing_opts=0
+      fi
+    fi
+    args+=("$arg")
+  done
+  set -- "${args[@]}"
+
   local nl_opt=""
   local force=0
   local continuation=0
