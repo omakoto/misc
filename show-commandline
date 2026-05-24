@@ -14,8 +14,17 @@ for pid in "${@}"; do
     readarray -d '' -t envs < /proc/$pid/environ
 
     for env in "${envs[@]}" ; do
+        [[ -n "$env" ]] || continue
+        [[ "$env" == *=* ]] || continue
+
         name="${env%%=*}"
         value="${env#*=}"
+
+        if [[ ! "$name" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+            printf "export %s=%q\n" "$name" "$value"
+            continue
+        fi
+
         if [[ "${!name}" == "$value" ]]; then
             #echo -n "# "
             continue
