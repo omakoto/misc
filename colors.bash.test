@@ -114,10 +114,10 @@ assert_out -d test_red_n <<EOF
 ${esc}[31mtest${esc}[0mNEWLINE
 EOF
 
-# -c: continuation (no reset, though currently commented out in original script)
+# -c: continuation (no reset)
 test_red_c() { red -f -c "test"; }
 assert_out -d test_red_c <<EOF
-${esc}[31mtest${esc}[0m
+${esc}[31mtest
 EOF
 
 # -G: background color
@@ -208,6 +208,12 @@ assert_out -d test_esc_bgreen_special <<EOF
 ${esc}[1;32mOK's
 Next${esc}[0m
 $'\e[1;32mOK\'s\nNext\e[0m'
+EOF
+
+test_esc_bgreen_c() { bgreen -e -c "OK"; }
+assert_out -d test_esc_bgreen_c <<EOF
+${esc}[1;32mOK
+$'\e[1;32mOK'
 EOF
 
 # 7. Test -h option for color commands and the test script itself

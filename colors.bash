@@ -79,7 +79,9 @@ EOF
         color_seq=$'\e[0m'
       else
         color_seq=$'\e['"${attributes}${prefix}${color}m"
-        reset=$'\e[0m'
+        if (( ! $continuation )) ; then
+          reset=$'\e[0m'
+        fi
       fi
     fi
 
