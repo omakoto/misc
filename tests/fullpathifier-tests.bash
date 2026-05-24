@@ -23,7 +23,7 @@ fullpathifier-tests.bash
 EOF
 }
 
-assert_out run <<'EOF'
+assert_out -d run <<'EOF'
 CWD=[root]/
 a b c
 bbc def [root]/IsFile.pm
