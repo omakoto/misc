@@ -9,15 +9,9 @@ for pid in "${@}"; do
     echo "# Pid: $pid"
     indent=""
     
-    tokens=()
-    while IFS= read -r -d $'\0' token; do
-        tokens+=("$token")
-    done < /proc/$pid/cmdline
-
-    envs=()
-    while IFS= read -r -d $'\0' token; do
-        envs+=("$token")
-    done < /proc/$pid/environ
+    # Read null-delimited tokens and envs from /proc files
+    readarray -d '' -t tokens < /proc/$pid/cmdline
+    readarray -d '' -t envs < /proc/$pid/environ
 
     for env in "${envs[@]}" ; do
         name="${env%%=*}"
