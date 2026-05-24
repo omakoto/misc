@@ -189,22 +189,25 @@ EOF
 # 6. Test the new -e (reusable escape sequence) option
 test_esc_bgreen() { bgreen -e "OK"; }
 assert_out -d test_esc_bgreen <<EOF
-\$'\e[1;32mOK\e[0m'
+${esc}[1;32mOK${esc}[0m
+$'\e[1;32mOK\e[0m'
 EOF
 
 test_esc_bgreen_n() { bgreen -e -n "OK"; echo "NEWLINE"; }
 assert_out -d test_esc_bgreen_n <<EOF
-\$'\e[1;32mOK\e[0m'NEWLINE
+${esc}[1;32mOK${esc}[0m$'\e[1;32mOK\e[0m'NEWLINE
 EOF
 
 test_esc_bgreen_empty() { bgreen -e; }
 assert_out -d test_esc_bgreen_empty <<EOF
-\$'\e[1;32m'
+${esc}[1;32m$'\e[1;32m'
 EOF
 
 test_esc_bgreen_special() { bgreen -e "OK's"$'\n'"Next"; }
 assert_out -d test_esc_bgreen_special <<EOF
-\$'\e[1;32mOK\'s\nNext\e[0m'
+${esc}[1;32mOK's
+Next${esc}[0m
+$'\e[1;32mOK\'s\nNext\e[0m'
 EOF
 
 # 7. Test -h option for color commands and the test script itself

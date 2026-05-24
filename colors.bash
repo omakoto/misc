@@ -83,7 +83,19 @@ EOF
       fi
     fi
 
+    if (( $use_color )) ; then
+      printf '%s' "$color_seq"
+    fi
+    if (( $# == 0 )) ; then
+      if (( ! $esc_opt )) ; then
+        return 0 # no argument, just start a color and finish.
+      fi
+    else
+      echo $nl_opt "$@""$reset"
+    fi
+
     if (( $esc_opt )) ; then
+      # Print the raw escape sequence too
       local str=""
       if (( $# == 0 )) ; then
         str="$color_seq"
@@ -102,15 +114,6 @@ EOF
         printf '%s' "\$'$str'"
       else
         printf '%s\n' "\$'$str'"
-      fi
-    else
-      if (( $use_color )) ; then
-        printf '%s' "$color_seq"
-      fi
-      if (( $# == 0 )) ; then
-        return 0 # no argument, just start a color and finish.
-      else
-        echo $nl_opt "$@""$reset"
       fi
     fi
   } >& $out
