@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# A test script for pretty-commandline
+# A test script for pretty-args
 
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PRETTY_CMD="$DIR/pretty-commandline"
+PRETTY_CMD="$DIR/pretty-args"
 
 test_pretty() {
     local label="$1"

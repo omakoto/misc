@@ -2,6 +2,24 @@
 
 # Print the command line arguments, one in each line.
 # If an argument contains ':'s, split it further.
+#
+# Example:
+#   $ pretty-args foo bar "a b" "path:/usr/bin:/bin"
+#   foo \
+#     bar \
+#     a\ b \
+#     "$(IFS=:; set -- \
+#       path \
+#       /usr/bin \
+#       /bin \
+#     ; echo "$*")"
+#
+# How to run the test script:
+#   ./pretty-args-test
+#
+# See also show-commandline
+
+
 
 
 # If an argument contains a ':', we break it down further.
