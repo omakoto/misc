@@ -12,9 +12,9 @@ else
     idle="$(xprintidle)"
 fi
 
-if [[ -t 1 ]] ; then
-    echo "Idle: $(( $idle / 1000 ))"
-fi
+# if [[ -t 1 ]] ; then
+#     echo "Idle: $(( $idle / 1000 ))"
+# fi
 
 
 (( "${idle:-0}" >= ( "$threshold" * 1000) ))
