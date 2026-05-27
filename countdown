@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Countdown timer that takes a duration in seconds as the first argument,
+# and prints numbers from the starting duration down to 0, sleeping for 1 second in between.
 
 # Ensure $1 is provided
 if [[ -z "$1" ]]; then
