@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Ensure $1 is provided
+if [[ -z "$1" ]]; then
+  echo "Usage: countdown <seconds>" >&2
+  exit 1
+fi
+
+# Ensure $1 is a non-negative integer
+if [[ ! "$1" =~ ^[0-9]+$ ]]; then
+  echo "Error: Argument must be a non-negative integer." >&2
+  exit 1
+fi
+
+seconds=$1
+
+for ((i = seconds; i >= 0; i--)); do
+  echo "$i"
+  if ((i > 0)); then
+    sleep 1
+  fi
+done

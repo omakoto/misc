@@ -24,7 +24,7 @@ func getTick() time.Duration {
 }
 
 func usage() {
-	fmt.Printf("Usage: work-timer.py [-DELAY] DURATION [REP] [REST]\n")
+	fmt.Printf("Usage: go [-DELAY] DURATION [REP] [REST]\n")
 }
 
 func parseSec(v string) int {
