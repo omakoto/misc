@@ -165,15 +165,15 @@ for n in "${args[@]}" ; do
       ravenwood-bugreport*.txt)
         f="$n"
         ;;
-      *bugreport*.zip|*bugreport*.txt|*.br|dumpState_*.log)
-        is_bugreport=1
-        ;;
+#      *bugreport*.zip|*bugreport*.txt|*.br|dumpState_*.log)
+#        is_bugreport=1
+#        ;;
       *.zip)
-        if is-bugreport "$n" ; then
-          is_bugreport=1
-        else
+#        if is-bugreport "$n" ; then
+#          is_bugreport=1
+#        else
           f="$(unzip-to-each-dir "$n")"
-        fi
+#        fi
         ;;
       *.tar|*.tar.gz|*.tgz|*.tar.bz2|*.tar.xz|*.7z)
         f="$(unzip-to-each-dir "$n")"
@@ -247,10 +247,10 @@ for n in "${args[@]}" ; do
         fi
         ;;
     esac
-    if (( $is_bugreport )) ; then
-      f="$(bugreport-extract -b "$n")"
-      use_vim=1
-    fi
+#    if (( $is_bugreport )) ; then
+#      f="$(bugreport-extract -b "$n")"
+#      use_vim=1
+#    fi
   fi
   f="$(l2w "$f")" # for wsl, convert to the window path
   files+=("$f")
