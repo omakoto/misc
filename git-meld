@@ -1,127 +1,437 @@
-#!/bin/bash
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+git-meld - A Git diff tool wrapper using Meld for directory-level comparisons.
 
-(git difftool -d "$@" &)
+This script acts as a bridge between git diff and Meld, allowing you to
+visually compare branches, commits, the staging area, or the working directory
+in a directory-based Meld window.
 
-exit 0
+Usage:
+  git-meld [<options>] [<commit> [<commit>]] [--] [<path>...]
+  git-meld [<options>] <commit>..<commit> [--] [<path>...]
+  git-meld [<options>] <commit>...<commit> [--] [<path>...]
 
-# the followign is the legacy script
+Options compatible with git-diff:
+  --cached, --staged      Compare staging area (index) instead of working directory.
+  -h, --help              Show this help message and exit.
 
-#
-# Git environment.
-#
-PREFIX=$(git rev-parse --show-prefix)
+All other options (like -w, --ignore-all-space) are passed through to `git diff`
+to filter the list of files compared in Meld.
+"""
 
-# Parse locate and remote commits to diff from command line.
-function parse_commits() {
-  # No parameters: diff working tree against HEAD.
-  LCOMMIT=""
-  RCOMMIT=""
-  function is_commit() {
-    if [ -z "$1" ]; then
-      return 2
-    fi
-    local type=$(git cat-file -t $1 2>/dev/null)
-    if [ $? == 0 -a "$type" == "commit" ]; then
-      return 0
-    fi
-    return 2
-  }
-  # One parameter: diff working tree against specified remote commit.
-  if $(is_commit $1); then
-    RCOMMIT="$1"
-    shift 1
-  fi
-  # Remote commit is perforce base.
-  if (($FLAGS_perforce)); then
-    LCOMMIT=$RCOMMIT
-    RCOMMIT=$(git5 status --base $LCOMMIT)
-  # Two parameters: diff local commit against remote commit.
-  elif $(is_commit $1); then
-    LCOMMIT="$1"
-    shift 1
-  fi
-  # Default remote  commit is HEAD.
-  RCOMMIT=${RCOMMIT:-HEAD}
-  # Save remaining arguments as PATH_FILTER.
-  PATH_FILTER="$*"
+import sys
+import os
+import subprocess
+import tempfile
+import shutil
+import tarfile
+import io
+import stat
+import shlex
+from typing import List, Tuple, Set, Dict, Optional
+
+# Options known to take a value as the next argument in git-diff.
+# If these options are present, the next argument is skipped during revision parsing.
+OPTIONS_WITH_ARGS: Set[str] = {
+    "-S", "-G", "-O", "-U", "-c",
+    "--color-words", "--word-diff-regex", "--output",
+    "--diff-filter", "--relative", "--submodule", "--ws-error-highlight"
 }
 
-# Compute the list of changed files.
-function get_changed_files() {
-  FILES=$(git diff --name-only $LCOMMIT $RCOMMIT -- $PATH_FILTER)
-  echo "$FILES"
-  if [ -z "$FILES" ]; then
-    exit 0
-  fi
-}
+def print_help() -> None:
+    """Prints a user-friendly help message with examples."""
+    help_text = """git-meld - A Git diff tool wrapper using Meld for directory-level comparisons.
 
-# Make temporary dir.
-function make_tmpdir() {
-  TMPDIR=$(mktemp -d --tmpdir git.meldXXXXXXX)
-  # trap "rm -rf $TMPDIR" EXIT
-  mkdir -p $TMPDIR/remote $TMPDIR/local
-}
+Usage:
+  git-meld [<options>] [<commit> [<commit>]] [--] [<path>...]
+  git-meld [<options>] <commit>..<commit> [--] [<path>...]
+  git-meld [<options>] <commit>...<commit> [--] [<path>...]
 
-# Fetches file from git repository.
-function fetch_remote() {
-  local commit=$1
-  local file=$2
-  local tmpdir="$TMPDIR/$3"
-  TMP_FILE=/dev/null
-  if $(git cat-file -e "${commit}:${file}" 2>/dev/null); then
-    TMP_FILE="$(mktemp --tmpdir=$tmpdir XXXXXXXX)_$(basename $file)"
-    git show "${commit}:${file}" > $TMP_FILE
-  fi
-}
-# Fetches file local or from git repository
-function fetch_local() {
-  local file=$1
-  # Use local file when diff working tree.
-  if [ -z "$LCOMMIT" ]; then
-    TMP_FILE=${file:${#PREFIX}}
-    if [ ! -e "$TMP_FILE" ]; then
-      TMP_FILE=/dev/null
-    fi
-    return 0
-  fi
-  # Use local file when not changed compared to local commit.
-  echo "$LOCAL_CHANGES" | grep -q "$file"
-  if [ $? -ne 0 ]; then
-    TMP_FILE=${file:${#PREFIX}}
-    if [ ! -f $TMP_FILE ]
-    then
-      TMP_FILE=/dev/null
-    fi
-    return 0
-  fi
-  # Download to temporary dir
-  fetch_remote $LCOMMIT $file local
-}
+Options:
+  --cached, --staged      Compare staging area (index) instead of working directory.
+  -h, --help              Show this help message and exit.
 
-# Builds meld command.
-function build_meld_cmd() {
-  MELDCMD="meld"
-  # Prefer working tree version if has not changed since local commit.
-  if [ -n "$LCOMMIT" ]; then
-    LOCAL_CHANGES=$(git diff --name-only $LCOMMIT)
-  fi
-  # Create pairs.
-  for FILE in $FILES; do
-    # Base file
-    fetch_remote $RCOMMIT $FILE remote
-    RCOMMIT_FILE=$TMP_FILE
-    # Ref file
-    fetch_local $FILE
-    LCOMMIT_FILE=$TMP_FILE
-    # Extend meld cmd with file pair.
-    MELDCMD="$MELDCMD --diff $RCOMMIT_FILE $LCOMMIT_FILE"
-  done
-}
+All other options (e.g. -w, --ignore-all-space) are passed through to `git diff`
+to filter the list of files compared in Meld.
 
-parse_commits "$@"
-get_changed_files
-make_tmpdir
-build_meld_cmd
+Examples:
+  # Compare staging area to working directory:
+  git-meld
 
-echo "Running: $MELDCMD"
-$MELDCMD
+  # Compare HEAD to staging area:
+  git-meld --cached
+
+  # Compare HEAD~1 to working directory:
+  git-meld HEAD~1
+
+  # Compare HEAD~1 to staging area:
+  git-meld HEAD~1 --cached
+
+  # Compare two commits/branches:
+  git-meld master feature
+
+  # Compare branch range:
+  git-meld master..feature
+
+  # Compare files in a specific directory only:
+  git-meld master..feature -- src/
+"""
+    print(help_text)
+
+def get_toplevel() -> str:
+    """Returns the repository top-level absolute path."""
+    try:
+        res = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return res.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        sys.stderr.write(e.stderr)
+        sys.exit(e.returncode)
+
+def is_valid_rev(ref: str) -> bool:
+    """Checks if the given string is a valid git revision."""
+    if not ref:
+        return True  # Empty refs are defaulted to HEAD in ranges (e.g. ..B or A..)
+    try:
+        subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", ref],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+def parse_rev_or_range(arg: str) -> bool:
+    """Checks if the given string is a valid git revision or range."""
+    if "..." in arg:
+        parts = arg.split("...", 1)
+        return is_valid_rev(parts[0]) and is_valid_rev(parts[1])
+    elif ".." in arg:
+        parts = arg.split("..", 1)
+        return is_valid_rev(parts[0]) and is_valid_rev(parts[1])
+    else:
+        return is_valid_rev(arg)
+
+def parse_arguments(args: List[str]) -> Tuple[List[str], List[str], bool, bool]:
+    """
+    Parses arguments to extract revisions, pathspecs, cache options, and help request.
+    
+    Returns:
+        A tuple of (revisions, paths, is_cached, help_requested).
+    """
+    revisions: List[str] = []
+    paths: List[str] = []
+    is_cached: bool = False
+    help_requested: bool = False
+    
+    if "-h" in args or "--help" in args:
+        help_requested = True
+        return revisions, paths, is_cached, help_requested
+
+    i = 0
+    in_paths = False
+    while i < len(args):
+        arg = args[i]
+        
+        if in_paths:
+            paths.append(arg)
+            i += 1
+            continue
+            
+        if arg == "--":
+            in_paths = True
+            i += 1
+            continue
+            
+        if arg.startswith("-"):
+            if arg in {"--cached", "--staged"}:
+                is_cached = True
+            
+            # Skip option and its argument if it takes one
+            if arg in OPTIONS_WITH_ARGS:
+                i += 2
+                continue
+            # For options like -O<file>, if written as "-O file", we skip "file"
+            if arg[:2] in {"-S", "-G", "-O", "-U"}:
+                if len(arg) == 2:
+                    i += 2
+                else:
+                    i += 1
+                continue
+                
+            i += 1
+            continue
+        
+        # Positional argument: check if it's a revision/range or pathspec
+        has_range = any(".." in r or "..." in r for r in revisions)
+        num_revs = len(revisions)
+        
+        if (num_revs < 2 and not has_range) and parse_rev_or_range(arg):
+            revisions.append(arg)
+        else:
+            in_paths = True
+            paths.append(arg)
+        i += 1
+        
+    return revisions, paths, is_cached, help_requested
+
+def get_changed_files(diff_filter: str, user_args: List[str]) -> List[str]:
+    """Queries git for the list of changed files with the given diff-filter."""
+    cmd = ["git", "diff", "--no-renames", "-z", f"--diff-filter={diff_filter}", "--name-only"] + user_args
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        output = res.stdout.strip('\0')
+        if not output:
+            return []
+        return output.split('\0')
+    except subprocess.CalledProcessError as e:
+        sys.stderr.write(e.stderr)
+        sys.exit(e.returncode)
+
+def copy_files_named_tree(tree: str, file_list: List[str], out_dir: str) -> None:
+    """Extracts files from a named tree (commit, tag, etc.) to the output directory."""
+    if not file_list:
+        return
+    toplevel = get_toplevel()
+    cmd = ["git", "archive", "--format=tar", tree] + file_list
+    res = subprocess.run(cmd, cwd=toplevel, capture_output=True, check=True)
+    with tarfile.open(fileobj=io.BytesIO(res.stdout)) as tar:
+        try:
+            tar.extractall(path=out_dir, filter='fully_trusted')
+        except TypeError:
+            tar.extractall(path=out_dir)
+
+def copy_files_staging_area(file_list: List[str], out_dir: str) -> None:
+    """Extracts files from the staging area to the output directory."""
+    if not file_list:
+        return
+    toplevel = get_toplevel()
+    prefix = os.path.abspath(out_dir) + os.sep
+    cmd = ["git", "checkout-index", f"--prefix={prefix}", "--stdin", "-z"]
+    input_data = "\0".join(file_list).encode('utf-8') + b"\0"
+    subprocess.run(cmd, cwd=toplevel, input=input_data, check=True)
+
+def link_files_working_dir(file_list: List[str], out_dir: str) -> None:
+    """Creates symlinks from the working directory to the output directory."""
+    toplevel = get_toplevel()
+    for filename in file_list:
+        src_path = os.path.abspath(os.path.join(toplevel, filename))
+        dest_path = os.path.abspath(os.path.join(out_dir, filename))
+        os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+        if os.path.exists(dest_path) or os.path.islink(dest_path):
+            os.remove(dest_path)
+        os.symlink(src_path, dest_path)
+
+def sanitize_dir_name(name: str) -> str:
+    """Sanitizes directory name to keep it flat and safe."""
+    for c in ['/', '\\', ':', '*', '?', '"', '<', '>', '|']:
+        name = name.replace(c, '_')
+    return name
+
+def make_readonly_recursive(path: str) -> None:
+    """Recursively removes write permission from files and directories, avoiding symlinks."""
+    for root, dirs, files in os.walk(path):
+        for name in files:
+            file_path = os.path.join(root, name)
+            if not os.path.islink(file_path):
+                try:
+                    mode = os.stat(file_path).st_mode
+                    os.chmod(file_path, mode & ~stat.S_IWRITE)
+                except OSError:
+                    pass
+        for name in dirs:
+            dir_path = os.path.join(root, name)
+            if not os.path.islink(dir_path):
+                try:
+                    mode = os.stat(dir_path).st_mode
+                    os.chmod(dir_path, mode & ~stat.S_IWRITE)
+                except OSError:
+                    pass
+
+def make_writable_recursive(path: str) -> None:
+    """Recursively adds write permission to files and directories, avoiding symlinks."""
+    for root, dirs, files in os.walk(path):
+        for name in files:
+            file_path = os.path.join(root, name)
+            if not os.path.islink(file_path):
+                try:
+                    mode = os.stat(file_path).st_mode
+                    os.chmod(file_path, mode | stat.S_IWRITE)
+                except OSError:
+                    pass
+        for name in dirs:
+            dir_path = os.path.join(root, name)
+            if not os.path.islink(dir_path):
+                try:
+                    mode = os.stat(dir_path).st_mode
+                    os.chmod(dir_path, mode | stat.S_IWRITE)
+                except OSError:
+                    pass
+
+def get_git_config(key: str, default: str) -> str:
+    """Reads a git config value, returning default if not set."""
+    try:
+        res = subprocess.run(
+            ["git", "config", "--get", key],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        val = res.stdout.strip()
+        return val if val else default
+    except subprocess.CalledProcessError:
+        return default
+
+def main() -> None:
+    user_args = sys.argv[1:]
+    revisions, paths, is_cached, help_requested = parse_arguments(user_args)
+    
+    if help_requested:
+        print_help()
+        sys.exit(0)
+
+    # Determine source and destination trees and name identifiers
+    source_tree = ""
+    dest_tree = ""
+    source_name = "staging_area"
+    dest_name = "working_dir"
+
+    if len(revisions) == 1:
+        range_str = revisions[0]
+        if "..." in range_str:
+            parts = range_str.split("...", 1)
+            left = parts[0] if parts[0] else "HEAD"
+            right = parts[1] if parts[1] else "HEAD"
+            try:
+                res = subprocess.run(
+                    ["git", "merge-base", left, right],
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                source_tree = res.stdout.strip()
+            except subprocess.CalledProcessError as e:
+                sys.stderr.write(e.stderr)
+                sys.exit(e.returncode)
+            dest_tree = right
+            source_name = f"{left}...{right}_base"
+            dest_name = right
+        elif ".." in range_str:
+            parts = range_str.split("..", 1)
+            left = parts[0] if parts[0] else "HEAD"
+            right = parts[1] if parts[1] else "HEAD"
+            source_tree = left
+            dest_tree = right
+            source_name = left
+            dest_name = right
+        else:
+            source_tree = range_str
+            source_name = range_str
+            if is_cached:
+                dest_name = "staging_area"
+            else:
+                dest_name = "working_dir"
+    elif len(revisions) == 2:
+        source_tree = revisions[0]
+        dest_tree = revisions[1]
+        source_name = revisions[0]
+        dest_name = revisions[1]
+    else:
+        # No revisions
+        if is_cached:
+            source_tree = "HEAD"
+            source_name = "HEAD"
+            dest_name = "staging_area"
+        else:
+            source_name = "staging_area"
+            dest_name = "working_dir"
+
+    # Enforce one commit constraint with --cached/--staged
+    if is_cached:
+        if dest_tree:
+            sys.stderr.write(
+                f"Error: Only one commit can be given with the option --cached or --staged. "
+                f"You gave '{source_tree}' and '{dest_tree}'.\n"
+            )
+            sys.exit(1)
+
+    # Filter arguments to pass to git diff (exclude -h and --help)
+    filtered_diff_args = [arg for arg in user_args if arg not in {"-h", "--help"}]
+
+    # Query changed files
+    src_changed_files = get_changed_files("DMTUXB", filtered_diff_args)
+    dest_changed_files = get_changed_files("ACMTUXB", filtered_diff_args)
+
+    # If no changes are found, we can exit early
+    if not src_changed_files and not dest_changed_files:
+        print("No changes found.")
+        sys.exit(0)
+
+    # Create temporary directory structure
+    tmp_dir = tempfile.mkdtemp(prefix="git-meld-")
+    try:
+        source_dir = os.path.join(tmp_dir, sanitize_dir_name(source_name))
+        dest_dir = os.path.join(tmp_dir, sanitize_dir_name(dest_name))
+        
+        os.makedirs(source_dir, exist_ok=True)
+        os.makedirs(dest_dir, exist_ok=True)
+
+        # Populate source directory
+        if not source_tree:
+            copy_files_staging_area(src_changed_files, source_dir)
+        else:
+            copy_files_named_tree(source_tree, src_changed_files, source_dir)
+
+        # Populate destination directory
+        if is_cached:
+            copy_files_staging_area(dest_changed_files, dest_dir)
+        elif not dest_tree:
+            link_files_working_dir(dest_changed_files, dest_dir)
+        else:
+            copy_files_named_tree(dest_tree, dest_changed_files, dest_dir)
+
+        # Protect historical revisions from editing (make them read-only)
+        if not source_tree:
+            # Staging area is read-only
+            make_readonly_recursive(source_dir)
+        else:
+            # Historical commit is read-only
+            make_readonly_recursive(source_dir)
+
+        if is_cached or dest_tree:
+            # Staging area or historical commit in destination is read-only
+            make_readonly_recursive(dest_dir)
+
+        # Find and run the tree diff tool
+        tool = get_git_config("treediff.tool", "meld")
+        cmd = get_git_config(f"treediff.{tool}.cmd", tool)
+        path = get_git_config(f"treediff.{tool}.path", "")
+        
+        exec_path = os.path.join(path, cmd) if path else cmd
+        cmd_args = shlex.split(exec_path)
+        
+        try:
+            subprocess.run(cmd_args + [source_dir, dest_dir], check=True)
+        except subprocess.CalledProcessError as e:
+            sys.exit(e.returncode)
+        except FileNotFoundError:
+            sys.stderr.write(
+                f"Error: Could not find diff tool '{cmd_args[0]}'. "
+                f"Please make sure it is installed and in your PATH.\n"
+            )
+            sys.exit(1)
+            
+    finally:
+        # Cleanup temporary files
+        make_writable_recursive(tmp_dir)
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+if __name__ == "__main__":
+    main()
