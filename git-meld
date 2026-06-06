@@ -5,7 +5,7 @@ git-meld - A Git diff tool wrapper using Meld for directory-level comparisons.
 
 This script acts as a bridge between git diff and Meld, allowing you to
 visually compare branches, commits, the staging area, or the working directory
-in a directory-based Meld window.
+in a directory-based Meld window. The diff tool is launched in the background.
 
 Usage:
   git-meld [<options>] [<commit> [<commit>]] [--] [<path>...]
@@ -417,16 +417,43 @@ def main() -> None:
         exec_path = os.path.join(path, cmd) if path else cmd
         cmd_args = shlex.split(exec_path)
         
-        try:
-            subprocess.run(cmd_args + [source_dir, dest_dir], check=True)
-        except subprocess.CalledProcessError as e:
-            sys.exit(e.returncode)
-        except FileNotFoundError:
+        if not cmd_args:
+            sys.stderr.write("Error: No diff tool specified.\n")
+            sys.exit(1)
+
+        tool_executable = cmd_args[0]
+        if not shutil.which(tool_executable):
             sys.stderr.write(
-                f"Error: Could not find diff tool '{cmd_args[0]}'. "
+                f"Error: Could not find diff tool '{tool_executable}'. "
                 f"Please make sure it is installed and in your PATH.\n"
             )
             sys.exit(1)
+
+        try:
+            pid = os.fork()
+            if pid > 0:
+                # Parent process exits immediately, bypassing cleanup so the child can use the files
+                os._exit(0)
+        except OSError as e:
+            sys.stderr.write(f"Fork failed: {e}\n")
+            sys.exit(1)
+
+        # Child process: decouple from the parent's session/terminal
+        try:
+            os.setsid()
+        except OSError:
+            pass
+
+        try:
+            subprocess.run(
+                cmd_args + [source_dir, dest_dir],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=True
+            )
+        except subprocess.CalledProcessError as e:
+            sys.exit(e.returncode)
             
     finally:
         # Cleanup temporary files
