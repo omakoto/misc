@@ -1,0 +1,57 @@
+#!/bin/bash
+
+# Ensure we are inside a git repository
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "Error: Not a git repository" >&2
+  exit 1
+fi
+
+# Loop to continuously show git log with fzf
+while true; do
+  # Get selections from fzf in multi-select mode.
+  # We use --ansi to support colors from git log --color=always.
+  # We also use --no-sort to keep the chronological order of commits.
+  # Any arguments passed to this script (like a branch or file path) are passed to git log.
+  selections=$(git log --oneline --color=always "$@" | fzf --ansi --multi --no-sort)
+
+  # Finish the script if no commits are selected (e.g. user cancelled with Esc / Ctrl-C)
+  if [[ -z "$selections" ]]; then
+    break
+  fi
+
+  # Parse the hashes from selections (first word of each line)
+  hashes=()
+  while read -r line; do
+    if [[ -n "$line" ]]; then
+      hash=$(echo "$line" | awk '{print $1}')
+      if [[ -n "$hash" ]]; then
+        hashes+=("$hash")
+      fi
+    fi
+  done <<< "$selections"
+
+  num_hashes=${#hashes[@]}
+  if (( num_hashes == 0 )); then
+    break
+  fi
+
+  if (( num_hashes == 1 )); then
+    commit="${hashes[0]}"
+    # If the commit has a parent, compare against parent.
+    # Otherwise (e.g. root commit), compare against the empty tree.
+    if git rev-parse --verify "${commit}^" >/dev/null 2>&1; then
+      git meld "${commit}^..${commit}"
+    else
+      # 4b825dc642cb6eb9a001e5408d69288fbee4904f is the SHA-1 of the empty tree in git
+      git meld "4b825dc642cb6eb9a001e5408d69288fbee4904f..${commit}"
+    fi
+  else
+    # Find oldest and newest commits among the selected hashes using git log to sort them chronologically
+    sorted_hashes=($(git log --no-walk --date-order --reverse --format="%H" "${hashes[@]}"))
+    if (( ${#sorted_hashes[@]} > 0 )); then
+      oldest="${sorted_hashes[0]}"
+      newest="${sorted_hashes[${#sorted_hashes[@]}-1]}"
+      git meld "${oldest}..${newest}"
+    fi
+  fi
+done
