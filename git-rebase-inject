@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -e
+
+# Show locally modified (uncommit) files with new files with fzf in multi-select mode.
+# If no files are selected. exit.
+# If any files are selected, show git log with fzf, in a similar way to git-meld-history. Show the second pane and do git show too.
+# Then if a commit is selected, update the selected commit and "inject" the selected files at step 1. (so you need a rebase)
+# Create a detailed spec MD file like git-meld-history.md.
