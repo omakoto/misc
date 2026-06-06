@@ -16,6 +16,9 @@ Options compatible with git-diff:
   --cached, --staged      Compare staging area (index) instead of working directory.
   -h, --help              Show this help message and exit.
 
+Options specific to git-meld:
+  --no-rename-detection   Disable rename detection mapping.
+
 All other options (like -w, --ignore-all-space) are passed through to `git diff`
 to filter the list of files compared in Meld.
 """
@@ -51,6 +54,7 @@ Usage:
 Options:
   --cached, --staged      Compare staging area (index) instead of working directory.
   -h, --help              Show this help message and exit.
+  --no-rename-detection   Disable rename detection mapping.
 
 All other options (e.g. -w, --ignore-all-space) are passed through to `git diff`
 to filter the list of files compared in Meld.
@@ -119,21 +123,22 @@ def parse_rev_or_range(arg: str) -> bool:
     else:
         return is_valid_rev(arg)
 
-def parse_arguments(args: List[str]) -> Tuple[List[str], List[str], bool, bool]:
+def parse_arguments(args: List[str]) -> Tuple[List[str], List[str], bool, bool, bool]:
     """
-    Parses arguments to extract revisions, pathspecs, cache options, and help request.
+    Parses arguments to extract revisions, pathspecs, cache options, rename-detection option, and help request.
     
     Returns:
-        A tuple of (revisions, paths, is_cached, help_requested).
+        A tuple of (revisions, paths, is_cached, no_rename_detection, help_requested).
     """
     revisions: List[str] = []
     paths: List[str] = []
     is_cached: bool = False
+    no_rename_detection: bool = False
     help_requested: bool = False
     
     if "-h" in args or "--help" in args:
         help_requested = True
-        return revisions, paths, is_cached, help_requested
+        return revisions, paths, is_cached, no_rename_detection, help_requested
 
     i = 0
     in_paths = False
@@ -153,6 +158,8 @@ def parse_arguments(args: List[str]) -> Tuple[List[str], List[str], bool, bool]:
         if arg.startswith("-"):
             if arg in {"--cached", "--staged"}:
                 is_cached = True
+            elif arg == "--no-rename-detection":
+                no_rename_detection = True
             
             # Skip option and its argument if it takes one
             if arg in OPTIONS_WITH_ARGS:
@@ -180,20 +187,94 @@ def parse_arguments(args: List[str]) -> Tuple[List[str], List[str], bool, bool]:
             paths.append(arg)
         i += 1
         
-    return revisions, paths, is_cached, help_requested
+    return revisions, paths, is_cached, no_rename_detection, help_requested
 
-def get_changed_files(diff_filter: str, user_args: List[str]) -> List[str]:
-    """Queries git for the list of changed files with the given diff-filter."""
-    cmd = ["git", "diff", "--no-renames", "-z", f"--diff-filter={diff_filter}", "--name-only"] + user_args
+def query_diff_status(user_args: List[str], no_rename_detection: bool = False) -> Tuple[List[str], List[str], Dict[str, str]]:
+    """
+    Queries git diff for changed files and renames.
+    
+    Rename Detection & Alignment in Directory Diff (git-meld):
+    Normally, external directory diff tools like Meld compare directory structures 
+    by matching exact file paths. They do not have built-in Git rename metadata, so 
+    renamed files (e.g. 'src_path' to 'dest_path') are displayed as a deletion 
+    on the left pane and an addition on the right pane. This prevents side-by-side diffing.
+    
+    To solve this:
+      1. We query git diff using '-z --name-status' (without '--no-renames' by default).
+      2. If a file is renamed, Git outputs status 'Rxxx' followed by 'src_path' and 'dest_path'.
+      3. We add the old 'src_path' to the source list (so it is copied into source_dir), 
+         and the new 'dest_path' to the destination list (so it is copied/linked to dest_dir).
+      4. We record the mapping in 'rename_map': {dest_path: src_path}.
+      5. Later, in main(), we copy the extracted 'src_path' snapshot to the path 'dest_path'
+         inside the source_dir.
+      6. Consequently, both source_dir and dest_dir will have 'dest_path' (the renamed file).
+         Meld will then show 'dest_path' as a modified file, allowing a side-by-side diff.
+      7. The old 'src_path' is still kept in source_dir and is absent in dest_dir, so it
+         shows up as a deletion, which correctly communicates the rename.
+    
+    If 'no_rename_detection' is True, we pass '--no-renames' to Git diff, causing Git to 
+    treat renames as separate deletion ('D') and addition ('A') events. No alignment is performed.
+    
+    Returns:
+        src_files: Files to copy to source_dir
+        dest_files: Files to copy/link to dest_dir
+        rename_map: Dict mapping dest_path -> src_path
+    """
+    cmd = ["git", "diff", "-z", "--name-status"]
+    if no_rename_detection:
+        cmd.append("--no-renames")
+    cmd += user_args
     try:
-        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        output = res.stdout.strip('\0')
-        if not output:
-            return []
-        return output.split('\0')
+        res = subprocess.run(cmd, capture_output=True, check=True)
     except subprocess.CalledProcessError as e:
-        sys.stderr.write(e.stderr)
+        sys.stderr.write(e.stderr.decode('utf-8', errors='replace'))
         sys.exit(e.returncode)
+        
+    parts = res.stdout.split(b'\0')
+    if parts and parts[-1] == b'':
+        parts.pop()
+        
+    src_files: List[str] = []
+    dest_files: List[str] = []
+    rename_map: Dict[str, str] = {}
+    
+    i = 0
+    while i < len(parts):
+        status_part = parts[i]
+        if not status_part:
+            i += 1
+            continue
+        status = status_part.decode('utf-8', errors='replace')
+        
+        if status.startswith('R') or status.startswith('C'):
+            if i + 2 < len(parts):
+                src_path = parts[i+1].decode('utf-8', errors='replace')
+                dest_path = parts[i+2].decode('utf-8', errors='replace')
+                if status.startswith('R'):
+                    src_files.append(src_path)
+                    dest_files.append(dest_path)
+                    rename_map[dest_path] = src_path
+                else:
+                    dest_files.append(dest_path)
+                i += 3
+            else:
+                break
+        else:
+            if i + 1 < len(parts):
+                path = parts[i+1].decode('utf-8', errors='replace')
+                if status == 'D':
+                    src_files.append(path)
+                elif status == 'A':
+                    dest_files.append(path)
+                elif status in {'M', 'T', 'U', 'X', 'B'}:
+                    src_files.append(path)
+                    dest_files.append(path)
+                i += 2
+            else:
+                break
+                
+    return src_files, dest_files, rename_map
+
 
 def copy_files_named_tree(tree: str, file_list: List[str], out_dir: str) -> None:
     """Extracts files from a named tree (commit, tag, etc.) to the output directory."""
@@ -291,7 +372,7 @@ def get_git_config(key: str, default: str) -> str:
 
 def main() -> None:
     user_args = sys.argv[1:]
-    revisions, paths, is_cached, help_requested = parse_arguments(user_args)
+    revisions, paths, is_cached, no_rename_detection, help_requested = parse_arguments(user_args)
     
     if help_requested:
         print_help()
@@ -362,12 +443,11 @@ def main() -> None:
             )
             sys.exit(1)
 
-    # Filter arguments to pass to git diff (exclude -h and --help)
-    filtered_diff_args = [arg for arg in user_args if arg not in {"-h", "--help"}]
+    # Filter arguments to pass to git diff (exclude -h, --help, and --no-rename-detection)
+    filtered_diff_args = [arg for arg in user_args if arg not in {"-h", "--help", "--no-rename-detection"}]
 
     # Query changed files
-    src_changed_files = get_changed_files("DMTUXB", filtered_diff_args)
-    dest_changed_files = get_changed_files("ACMTUXB", filtered_diff_args)
+    src_changed_files, dest_changed_files, rename_map = query_diff_status(filtered_diff_args, no_rename_detection)
 
     # If no changes are found, we can exit early
     if not src_changed_files and not dest_changed_files:
@@ -396,6 +476,14 @@ def main() -> None:
             link_files_working_dir(dest_changed_files, dest_dir)
         else:
             copy_files_named_tree(dest_tree, dest_changed_files, dest_dir)
+
+        # Align renamed files in source directory so Meld can diff them
+        for dest_path, src_path in rename_map.items():
+            src_full = os.path.join(source_dir, src_path)
+            dest_full_in_src = os.path.join(source_dir, dest_path)
+            if os.path.exists(src_full):
+                os.makedirs(os.path.dirname(dest_full_in_src), exist_ok=True)
+                shutil.copy2(src_full, dest_full_in_src)
 
         # Protect historical revisions from editing (make them read-only)
         if not source_tree:
