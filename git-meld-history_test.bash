@@ -82,6 +82,8 @@ MOCK_FZF_SELECTION=""
 git-meld-history
 assert "[[ ! -f '$TEST_TMP_DIR/git_meld_calls' ]]" # Exited without calling git-meld
 assert "! grep -q '(CURRENT)' '$TEST_TMP_DIR/fzf_stdin'"
+assert "grep -q -- '--preview' '$TEST_TMP_DIR/fzf_args'"
+assert "grep -q -- '--preview-window' '$TEST_TMP_DIR/fzf_args'"
 
 # -------------------------------------------------------------
 # Test Case 2: Dirty repo with untracked files ((CURRENT) is present in fzf stdin)

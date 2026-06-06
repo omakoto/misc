@@ -16,10 +16,26 @@ while true; do
   # We also use --no-sort to keep the chronological order of commits.
   # Any arguments passed to this script (like a branch or file path) are passed to git log.
   # If the current directory is dirty, prepend a fake commit "(CURRENT)".
+  # Show git show / local diff in the top preview pane.
+  fzf_opts=(
+    --ansi
+    --multi
+    --no-sort
+    --preview '
+      if [[ "{1}" == *"(CURRENT)"* ]]; then
+        git status --short
+        git diff --color=always HEAD
+      else
+        git show --stat -p --color=always {1}
+      fi
+    '
+    --preview-window 'top:60%'
+  )
+
   if [[ -n "$(git status --porcelain)" ]]; then
-    selections=$( (printf "\e[33m(CURRENT)\e[m Local changes\n"; git log --oneline --color=always "$@") | fzf --ansi --multi --no-sort)
+    selections=$( (printf "\e[33m(CURRENT)\e[m Local changes\n"; git log --oneline --color=always "$@") | fzf "${fzf_opts[@]}")
   else
-    selections=$(git log --oneline --color=always "$@" | fzf --ansi --multi --no-sort)
+    selections=$(git log --oneline --color=always "$@" | fzf "${fzf_opts[@]}")
   fi
 
   # Finish the script if no commits are selected (e.g. user cancelled with Esc / Ctrl-C)
