@@ -1,9 +1,97 @@
 #!/bin/bash
+# Interactive utility to inject uncommitted file changes into a historical commit.
+# See git-rebase-inject.md for details on specifications.
+# Make sure to run git-rebase-inject_test.bash after making any changes.
 
 set -e
 
-# Show locally modified (uncommit) files with new files with fzf in multi-select mode.
-# If no files are selected. exit.
-# If any files are selected, show git log with fzf, in a similar way to git-meld-history. Show the second pane and do git show too.
-# Then if a commit is selected, update the selected commit and "inject" the selected files at step 1. (so you need a rebase)
-# Create a detailed spec MD file like git-meld-history.md.
+# Ensure we are inside a git repository
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "Error: Not a git repository" >&2
+  exit 1
+fi
+
+# Check if there are any uncommitted changes
+if [[ -z "$(git status --porcelain)" ]]; then
+  echo "No uncommitted changes found."
+  exit 0
+fi
+
+# 1. Select files to inject
+if ! selections=$(git status --porcelain | fzf --multi --prompt="Select files to inject: "); then
+  exit 0
+fi
+
+if [[ -z "$selections" ]]; then
+  exit 0
+fi
+
+# Resolve repository root
+repo_root=$(git rev-parse --show-toplevel)
+
+# Parse selected files
+selected_files=()
+while IFS= read -r line; do
+  if [[ -n "$line" ]]; then
+    file_path="${line:3}"
+    if [[ "$file_path" == *" -> "* ]]; then
+      file_path="${file_path##* -> }"
+    fi
+    selected_files+=("$repo_root/$file_path")
+  fi
+done <<< "$selections"
+
+if (( ${#selected_files[@]} == 0 )); then
+  exit 0
+fi
+
+# 2. Select target commit
+fzf_opts=(
+  --ansi
+  --no-sort
+  --preview 'git show --stat -p --color=always {1}'
+  --preview-window 'top:60%'
+  --prompt="Select target commit to inject into: "
+)
+if ! commit_selection=$(git log --oneline --color=always "$@" | fzf "${fzf_opts[@]}"); then
+  exit 0
+fi
+
+if [[ -z "$commit_selection" ]]; then
+  exit 0
+fi
+
+target_commit=$(echo "$commit_selection" | awk '{print $1}')
+if [[ -z "$target_commit" ]]; then
+  echo "Error: No target commit selected" >&2
+  exit 1
+fi
+
+# 3. Perform injection
+echo "Staging selected files..."
+git add -- "${selected_files[@]}"
+
+echo "Creating fixup commit targeting $target_commit..."
+git commit --fixup="$target_commit" -- "${selected_files[@]}"
+
+# Determine if target commit has a parent
+if git rev-parse --verify "${target_commit}^" >/dev/null 2>&1; then
+  rebase_base="${target_commit}^"
+  echo "Running autosquash rebase against $rebase_base..."
+  if ! GIT_SEQUENCE_EDITOR=: git rebase -i --autosquash "$rebase_base"; then
+    echo "Error: Rebase failed due to conflicts." >&2
+    echo "Please resolve conflicts and run 'git rebase --continue'." >&2
+    echo "If you abort with 'git rebase --abort', the fixup commit will remain at HEAD; undo it with 'git reset HEAD~1'." >&2
+    exit 1
+  fi
+else
+  echo "Running autosquash rebase against root..."
+  if ! GIT_SEQUENCE_EDITOR=: git rebase -i --autosquash --root; then
+    echo "Error: Rebase failed due to conflicts." >&2
+    echo "Please resolve conflicts and run 'git rebase --continue'." >&2
+    echo "If you abort with 'git rebase --abort', the fixup commit will remain at HEAD; undo it with 'git reset HEAD~1'." >&2
+    exit 1
+  fi
+fi
+
+echo "Successfully injected files into $target_commit!"
