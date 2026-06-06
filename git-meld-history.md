@@ -22,3 +22,11 @@ When `git-meld-history` is executed:
 
 4. **Pure Historical Selections**:
    - If `(CURRENT)` is not selected, the script falls back to standard historical comparisons (either single commit parent-to-child or range comparisons from the oldest to newest selected commits).
+
+---
+
+## Testing
+
+> [!IMPORTANT]
+> Always run the unit test script `git-meld-history_test.bash` after making any changes to `git-meld-history` to verify behavior.
+
