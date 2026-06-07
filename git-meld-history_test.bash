@@ -187,5 +187,24 @@ assert "[[ \$(git log --oneline | wc -l) -eq 2 ]]"
 export MOCK_FZF_KEY=""
 unset GIT_EDITOR
 
+# -------------------------------------------------------------
+# Test Case 8: Verify branch decoration formatting in fzf stdin
+# -------------------------------------------------------------
+setup_git_repo
+# Create a branch pointing to HEAD
+git checkout -b test-branch -q
+
+clear_test_state
+MOCK_FZF_SELECTION=""
+git-meld-history
+
+# Since test-branch points to Commit 2 (HEAD), fzf_stdin should contain:
+# <hash> [master, test-branch] Commit 2
+# Let's verify that the decoration is in cyan and formatted as [test-branch]
+head_hash=$(git rev-parse --short HEAD)
+# Escape sequence for cyan is \x1b[36m (grep -E matches literal escape sequences or we can use $'...' in bash)
+expected_pattern="${head_hash}.*\[36m\[.*test-branch.*\].*Commit 2"
+assert "grep -q -E '$expected_pattern' '$TEST_TMP_DIR/fzf_stdin'"
+
 # Complete testing
 done_testing

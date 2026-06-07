@@ -9,6 +9,48 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   exit 1
 fi
 
+# Helper function to format git log branch decorations
+format_git_log_branches() {
+  python3 -c '
+import sys, re
+for line in sys.stdin:
+    if "(CURRENT)" in line:
+        sys.stdout.write(line)
+        continue
+    parts = line.strip("\n").split("\x00")
+    if len(parts) < 3:
+        sys.stdout.write(line)
+        continue
+    hash_part, deco_part, subject_part = parts[0], parts[1], parts[2]
+    clean_deco = re.sub(r"\x1b\[[0-9;]*m", "", deco_part).strip()
+    if not clean_deco:
+        sys.stdout.write(f"{hash_part} {subject_part}\n")
+        continue
+    branches = []
+    for item in clean_deco.split(","):
+        item = item.strip()
+        if not item or item.startswith("tag:"):
+            continue
+        if "->" in item:
+            left, right = item.split("->", 1)
+            left, right = left.strip(), right.strip()
+            if left != "HEAD":
+                branches.append(left)
+            branches.append(right)
+        else:
+            branches.append(item)
+    unique_branches = []
+    for b in branches:
+        if b not in unique_branches:
+            unique_branches.append(b)
+    if unique_branches:
+        cyan_deco = f"\x1b[36m[" + ", ".join(unique_branches) + "]\x1b[m"
+        sys.stdout.write(f"{hash_part} {cyan_deco} {subject_part}\n")
+    else:
+        sys.stdout.write(f"{hash_part} {subject_part}\n")
+'
+}
+
 # Loop to continuously show git log with fzf
 while true; do
   # Get selections from fzf in multi-select mode.
@@ -35,9 +77,9 @@ while true; do
   )
 
   if [[ -n "$(git status --porcelain)" ]]; then
-    fzf_output=$( (printf "\e[33m(CURRENT)\e[m Local changes\n"; git log --oneline --color=always "$@") | fzf "${fzf_opts[@]}")
+    fzf_output=$( (printf "\e[33m(CURRENT)\e[m Local changes\n"; git log --color=always --format="%C(auto)%h%x00%D%x00%C(auto)%s" "$@") | format_git_log_branches | fzf "${fzf_opts[@]}")
   else
-    fzf_output=$(git log --oneline --color=always "$@" | fzf "${fzf_opts[@]}")
+    fzf_output=$(git log --color=always --format="%C(auto)%h%x00%D%x00%C(auto)%s" "$@" | format_git_log_branches | fzf "${fzf_opts[@]}")
   fi
 
   # Finish the script if no key/selections are returned (e.g. user cancelled with Esc / Ctrl-C)
