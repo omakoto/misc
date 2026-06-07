@@ -1,0 +1,68 @@
+#!/bin/bash
+# git-resolve-conflicts-with-meld - Launch meld for merge conflict resolution in a git repository.
+#
+# This script launches Meld to resolve git merge conflicts. It defaults to the
+# current directory, but accepts a path to a git repository as an optional argument.
+
+# Print the help message.
+function print_help() {
+  cat <<'EOF'
+Usage: git-resolve-conflicts-with-meld [options] [git_repo_dir]
+
+Options:
+  -h, --help  Show this help message.
+
+Examples:
+  # Resolve conflicts in the current repository:
+  git-resolve-conflicts-with-meld
+
+  # Resolve conflicts in a specific repository directory:
+  git-resolve-conflicts-with-meld /path/to/repo
+EOF
+}
+
+# Check for --help option before getopts loop
+if [ "$1" = "--help" ]; then
+  print_help
+  exit 0
+fi
+
+# Parse flags using getopts
+while getopts "h" opt; do
+  case "$opt" in
+    h)
+      print_help
+      exit 0
+      ;;
+    \?)
+      print_help
+      exit 1
+      ;;
+  esac
+done
+
+shift $((OPTIND - 1))
+
+# Target repository directory defaults to current directory
+repo_dir="${1:-.}"
+
+# Verify directory exists
+if [ ! -d "$repo_dir" ]; then
+  echo "Error: Directory '$repo_dir' does not exist." >&2
+  exit 1
+fi
+
+# Resolve to absolute path to display in messages cleanly
+abs_repo_dir=$(cd "$repo_dir" && pwd)
+
+# Change to the target directory
+cd "$abs_repo_dir" || exit 1
+
+# Check if we are inside a Git repository
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "Error: '$abs_repo_dir' is not inside a Git repository." >&2
+  exit 1
+fi
+
+# Launch git mergetool with meld
+exec git mergetool --tool=meld
