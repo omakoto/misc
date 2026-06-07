@@ -46,14 +46,8 @@ if (( ${#selected_files[@]} == 0 )); then
 fi
 
 # 2. Select target commit
-fzf_opts=(
-  --ansi
-  --no-sort
-  --preview 'git show --stat -p --color=always {1}'
-  --preview-window 'top:60%'
-  --prompt="Select target commit to inject into: "
-)
-if ! commit_selection=$(git log --oneline --color=always "$@" | fzf "${fzf_opts[@]}"); then
+header="Select target commit to inject into: "
+if ! commit_selection=$(git-history-fzf -s -h "$header" "$@"); then
   exit 0
 fi
 
