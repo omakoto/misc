@@ -19,7 +19,7 @@ for line in sys.stdin:
         sys.stdout.write(line)
         continue
     hash_part, date_part, deco_part, subject_part = parts[0], parts[1], parts[2], parts[3]
-    formatted_date = f"[{date_part}]"
+    formatted_date = f"\x1b[36m[{date_part}]\x1b[m"
     clean_deco = re.sub(r"\x1b\[[0-9;]*m", "", deco_part).strip()
     if not clean_deco:
         sys.stdout.write(f"{hash_part} {formatted_date} {subject_part}\n")
@@ -42,8 +42,8 @@ for line in sys.stdin:
         if b not in unique_branches:
             unique_branches.append(b)
     if unique_branches:
-        cyan_deco = f"\x1b[36m[" + ", ".join(unique_branches) + "]\x1b[m"
-        sys.stdout.write(f"{hash_part} {formatted_date} {cyan_deco} {subject_part}\n")
+        green_deco = f"\x1b[32m[" + ", ".join(unique_branches) + "]\x1b[m"
+        sys.stdout.write(f"{hash_part} {formatted_date} {green_deco} {subject_part}\n")
     else:
         sys.stdout.write(f"{hash_part} {formatted_date} {subject_part}\n")
 '
