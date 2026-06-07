@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # Reusable interactive Git history selector using fzf.
 # Displays commits with hash, author date, author email, and branch decorations.
 # Returns the selected key on the first line (if -e is used), and selected commits on subsequent lines.
@@ -7,139 +8,170 @@
 #   git-history-fzf -c -h "Select commits"
 #   git-history-fzf --help
 
-# Ensure we are inside a git repository
-if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  echo "Error: Not a git repository" >&2
-  exit 1
-fi
+import sys
+import os
+import subprocess
+import argparse
+import re
+from typing import List, Set
 
-print_help() {
-  cat <<'EOF'
-Usage: git-history-fzf [options] [--] [git-log-options]
+def is_inside_work_tree() -> bool:
+    """Checks if the current working directory is inside a Git work tree."""
+    res = subprocess.run(
+        ["git", "rev-parse", "--is-inside-work-tree"],
+        capture_output=True
+    )
+    return res.returncode == 0
 
-Options:
-  -c         Include the "(CURRENT)" local changes line if workspace is dirty
-  -h HEADER  Specify the header string for fzf
-  -s         Single-line select mode (disable multi-select)
-  -e KEYS    Comma-separated list of keys to expect from fzf (like ctrl-s)
-  --help     Show this help message
+def is_dirty() -> bool:
+    """Checks if the Git repository has any uncommitted changes."""
+    res = subprocess.run(
+        ["git", "status", "--porcelain"],
+        capture_output=True
+    )
+    return bool(res.stdout.strip())
 
-Examples:
-  git-history-fzf -c
-  git-history-fzf -s -h "Select a single commit"
-  git-history-fzf -c -e ctrl-s -h "Select commits" -- --author="John"
-EOF
-}
-
-if [[ "$1" == "--help" ]]; then
-  print_help
-  exit 0
-fi
-
-show_current=0
-header=""
-multi_select=1
-expect_keys=""
-
-while getopts "ch:se:" opt; do
-  case "$opt" in
-    c)
-      show_current=1
-      ;;
-    h)
-      header="$OPTARG"
-      ;;
-    s)
-      multi_select=0
-      ;;
-    e)
-      expect_keys="$OPTARG"
-      ;;
-    \?)
-      print_help >&2
-      exit 1
-      ;;
-  esac
-done
-shift $((OPTIND - 1))
-
-# Helper function to format git log branch decorations
-format_git_log_branches() {
-  python3 -c '
-import sys, re
-for line in sys.stdin:
-    parts = line.strip("\n").split("\x00")
+def format_line(line: bytes) -> bytes:
+    """Formats a single line from git log for fzf selection."""
+    line = line.rstrip(b"\n")
+    parts = line.split(b"\x00")
     if len(parts) < 5:
-        sys.stdout.write(line)
-        continue
+        return line + b"\n"
+        
     hash_part, date_part, email_part, deco_part, subject_part = parts[0], parts[1], parts[2], parts[3], parts[4]
-    formatted_date = f"\x1b[36m[{date_part}]\x1b[m"
-    formatted_email = f"\x1b[35m<{email_part}>\x1b[m"
-    clean_deco = re.sub(r"\x1b\[[0-9;]*m", "", deco_part).strip()
+    
+    formatted_date = b"\x1b[36m[" + date_part + b"]\x1b[m"
+    formatted_email = b"\x1b[35m<" + email_part + b">\x1b[m"
+    
+    # Strip ANSI escape codes from decoration part
+    clean_deco = re.sub(br"\x1b\[[0-9;]*m", b"", deco_part).strip()
     if not clean_deco:
-        sys.stdout.write(f"{hash_part} {formatted_date} {formatted_email} {subject_part}\n")
-        continue
-    branches = []
-    for item in clean_deco.split(","):
+        return hash_part + b" " + formatted_date + b" " + formatted_email + b" " + subject_part + b"\n"
+        
+    branches: List[bytes] = []
+    for item in clean_deco.split(b","):
         item = item.strip()
-        if not item or item.startswith("tag:"):
+        if not item or item.startswith(b"tag:"):
             continue
-        if "->" in item:
-            left, right = item.split("->", 1)
+        if b"->" in item:
+            left, right = item.split(b"->", 1)
             left, right = left.strip(), right.strip()
-            if left != "HEAD":
+            if left != b"HEAD":
                 branches.append(left)
             branches.append(right)
         else:
             branches.append(item)
-    unique_branches = []
+            
+    unique_branches: List[bytes] = []
     for b in branches:
         if b not in unique_branches:
             unique_branches.append(b)
+            
     if unique_branches:
-        green_deco = f"\x1b[32m[" + ", ".join(unique_branches) + "]\x1b[m"
-        sys.stdout.write(f"{hash_part} {formatted_date} {formatted_email} {green_deco} {subject_part}\n")
+        green_deco = b"\x1b[32m[" + b", ".join(unique_branches) + b"]\x1b[m"
+        return hash_part + b" " + formatted_date + b" " + formatted_email + b" " + green_deco + b" " + subject_part + b"\n"
     else:
-        sys.stdout.write(f"{hash_part} {formatted_date} {formatted_email} {subject_part}\n")
-'
-}
+        return hash_part + b" " + formatted_date + b" " + formatted_email + b" " + subject_part + b"\n"
 
-fzf_opts=(
-  --ansi
-  --no-sort
-  --preview '
-    if [[ "{1}" == *"(CURRENT)"* ]]; then
-      git status --short
-      if command -v delta >/dev/null 2>&1; then
-        git diff --color=always HEAD | delta
-      else
-        git diff --color=always HEAD
-      fi
-    else
-      if command -v delta >/dev/null 2>&1; then
-        git show --stat -p --color=always {1} | delta
-      else
-        git show --stat -p --color=always {1}
-      fi
-    fi
-  '
-  --preview-window 'top:60%'
-)
+def main() -> None:
+    if not is_inside_work_tree():
+        sys.stderr.write("Error: Not a git repository\n")
+        sys.exit(1)
 
-if (( multi_select )); then
-  fzf_opts+=(--multi)
-fi
+    parser = argparse.ArgumentParser(
+        description="Reusable interactive Git history selector using fzf.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        add_help=False,
+        epilog="""\
+Examples:
+  git-history-fzf -c
+  git-history-fzf -s -h "Select a single commit"
+  git-history-fzf -c -e ctrl-s -h "Select commits" -- --author="John"
+"""
+    )
+    parser.add_argument("--help", action="help", help="show this help message and exit")
+    parser.add_argument("-c", "--current", action="store_true", help="Include the '(CURRENT)' local changes line if workspace is dirty")
+    parser.add_argument("-h", "--header", help="Specify the header string for fzf")
+    parser.add_argument("-s", "--single", action="store_true", help="Single-line select mode (disable multi-select)")
+    parser.add_argument("-e", "--expect", help="Comma-separated list of keys to expect from fzf (like ctrl-s)")
+    
+    args, git_log_args = parser.parse_known_args()
+    
+    # Strip the leading '--' if it was used to separate options
+    if git_log_args and git_log_args[0] == "--":
+        git_log_args = git_log_args[1:]
 
-if [[ -n "$expect_keys" ]]; then
-  fzf_opts+=(--expect="$expect_keys")
-fi
+    # Construct fzf options
+    fzf_cmd: List[str] = [
+        "fzf",
+        "--ansi",
+        "--no-sort",
+        "--preview",
+        'if [[ "{1}" == *"(CURRENT)"* ]]; then '
+        '  git status --short; '
+        '  if command -v delta >/dev/null 2>&1; then '
+        '    git diff --color=always HEAD | delta; '
+        '  else '
+        '    git diff --color=always HEAD; '
+        '  fi; '
+        'else '
+        '  if command -v delta >/dev/null 2>&1; then '
+        '    git show --stat -p --color=always {1} | delta; '
+        '  else '
+        '    git show --stat -p --color=always {1}; '
+        '  fi; '
+        'fi',
+        "--preview-window", "top:60%"
+    ]
+    
+    if not args.single:
+        fzf_cmd.append("--multi")
+        
+    if args.expect:
+        fzf_cmd.append(f"--expect={args.expect}")
+        
+    if args.header:
+        fzf_cmd.append(f"--header={args.header}")
 
-if [[ -n "$header" ]]; then
-  fzf_opts+=(--header "$header")
-fi
+    # Start fzf process
+    fzf_proc = subprocess.Popen(
+        fzf_cmd,
+        stdin=subprocess.PIPE,
+        stdout=sys.stdout.buffer,
+        text=False
+    )
 
-if (( show_current )) && [[ -n "$(git status --porcelain)" ]]; then
-  (printf "\e[33m(CURRENT)\e[m Local changes\n"; git log --color=always --date=format:'%Y-%m-%d %H:%M:%S' --format="%C(auto)%h%x00%ad%x00%aE%x00%D%x00%C(auto)%s" "$@") | format_git_log_branches | fzf "${fzf_opts[@]}"
-else
-  git log --color=always --date=format:'%Y-%m-%d %H:%M:%S' --format="%C(auto)%h%x00%ad%x00%aE%x00%D%x00%C(auto)%s" "$@" | format_git_log_branches | fzf "${fzf_opts[@]}"
-fi
+    # Start git log process
+    git_cmd: List[str] = [
+        "git", "log", "--color=always",
+        "--date=format:%Y-%m-%d %H:%M:%S",
+        "--format=%C(auto)%h%x00%ad%x00%aE%x00%D%x00%C(auto)%s"
+    ] + git_log_args
+
+    git_proc = subprocess.Popen(
+        git_cmd,
+        stdout=subprocess.PIPE,
+        text=False
+    )
+
+    try:
+        if fzf_proc.stdin is not None:
+            if args.current and is_dirty():
+                fzf_proc.stdin.write(b"\x1b[33m(CURRENT)\x1b[m Local changes\n")
+            
+            if git_proc.stdout is not None:
+                for line in git_proc.stdout:
+                    fzf_proc.stdin.write(format_line(line))
+            
+            fzf_proc.stdin.close()
+    except BrokenPipeError:
+        # Occurs if fzf is closed before all git log lines are consumed
+        pass
+
+    git_proc.wait()
+    fzf_code = fzf_proc.wait()
+    sys.stdout.buffer.flush()
+    sys.exit(fzf_code)
+
+if __name__ == "__main__":
+    main()
