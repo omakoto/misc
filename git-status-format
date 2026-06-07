@@ -1,0 +1,99 @@
+#!/bin/bash
+
+# Nicely format a short form of git status.
+# Use with `git status -s`.
+
+print_help() {
+    cat <<'EOF'
+Usage: git status -s | git-status-format [OPTIONS]
+
+Nicely format a short form of git status (git status -s) with colors.
+
+Options:
+  -h, --help    Show this help message
+EOF
+}
+
+if [[ "$1" == "--help" ]] ; then
+    print_help
+    exit 0
+fi
+
+while getopts "h" opt; do
+    case "$opt" in
+        h)
+            print_help
+            exit 0
+            ;;
+        *)
+            print_help
+            exit 1
+            ;;
+    esac
+done
+shift $((OPTIND - 1))
+
+# Meaning of git short status characters:
+#   First column: Staged (index) changes status
+#   Second column: Unstaged (worktree) changes status
+# Characters:
+#   M = modified
+#   A = added
+#   D = deleted
+#   R = renamed
+#   C = copied
+#   T = type change
+#   U = unmerged (conflict)
+#   ? = untracked
+#   ! = ignored
+hl_opts=(
+    # Conflicts: dark red-orange / rust background
+    '^(DD|AA|U.|.U)' '@@/3c1204'
+
+    # Deleted: dark red background
+    '^(D.|.D)' '@@/2a0808'
+
+    # Added / New: dark blue background
+    '^(A.|.A|R.|.R|C.|.C)' '@@/0a1c36'
+
+    # Edited / Modified: dark yellow-brown background
+    '^(M.|.M|T.|.T)' '@@/2b240a'
+
+    # Untracked: dark magenta background
+    '^\?\?' '@@/240524'
+
+    # Ignored: dark gray background
+    '^!!' '@@/151515'
+
+    # Staged changes (first character)
+    '^M' '@bgreen'
+    '^A' '@bcyan'
+    '^D' '@bred'
+    '^R' '@byellow'
+    '^C' '@bgreen'
+    '^U' '@bred'
+    '^T' '@byellow'
+    '^\?' '@bmagenta'
+    '^!' '@fwhite'
+
+    # Unstaged changes (second character)
+    '^.(M)' '@bgreen'
+    '^.(D)' '@bred'
+    '^.(T)' '@byellow'
+    '^.(U)' '@bred'
+    '^.(\?)' '@bmagenta'
+    '^.(!)' '@fwhite'
+)
+
+colorize() {
+    if [[ -t 1 ]] ; then
+        hl "${hl_opts[@]}"
+    else
+        cat
+    fi
+}
+
+colorize
+
+
+
