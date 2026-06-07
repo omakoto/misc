@@ -15,14 +15,15 @@ format_git_log_branches() {
 import sys, re
 for line in sys.stdin:
     parts = line.strip("\n").split("\x00")
-    if len(parts) < 4:
+    if len(parts) < 5:
         sys.stdout.write(line)
         continue
-    hash_part, date_part, deco_part, subject_part = parts[0], parts[1], parts[2], parts[3]
+    hash_part, date_part, email_part, deco_part, subject_part = parts[0], parts[1], parts[2], parts[3], parts[4]
     formatted_date = f"\x1b[36m[{date_part}]\x1b[m"
+    formatted_email = f"\x1b[35m<{email_part}>\x1b[m"
     clean_deco = re.sub(r"\x1b\[[0-9;]*m", "", deco_part).strip()
     if not clean_deco:
-        sys.stdout.write(f"{hash_part} {formatted_date} {subject_part}\n")
+        sys.stdout.write(f"{hash_part} {formatted_date} {formatted_email} {subject_part}\n")
         continue
     branches = []
     for item in clean_deco.split(","):
@@ -43,9 +44,9 @@ for line in sys.stdin:
             unique_branches.append(b)
     if unique_branches:
         green_deco = f"\x1b[32m[" + ", ".join(unique_branches) + "]\x1b[m"
-        sys.stdout.write(f"{hash_part} {formatted_date} {green_deco} {subject_part}\n")
+        sys.stdout.write(f"{hash_part} {formatted_date} {formatted_email} {green_deco} {subject_part}\n")
     else:
-        sys.stdout.write(f"{hash_part} {formatted_date} {subject_part}\n")
+        sys.stdout.write(f"{hash_part} {formatted_date} {formatted_email} {subject_part}\n")
 '
 }
 
@@ -83,9 +84,9 @@ while true; do
   )
 
   if [[ -n "$(git status --porcelain)" ]]; then
-    fzf_output=$( (printf "\e[33m(CURRENT)\e[m Local changes\n"; git log --color=always --date=format:'%Y-%m-%d %H:%M:%S' --format="%C(auto)%h%x00%ad%x00%D%x00%C(auto)%s" "$@") | format_git_log_branches | fzf "${fzf_opts[@]}")
+    fzf_output=$( (printf "\e[33m(CURRENT)\e[m Local changes\n"; git log --color=always --date=format:'%Y-%m-%d %H:%M:%S' --format="%C(auto)%h%x00%ad%x00%aE%x00%D%x00%C(auto)%s" "$@") | format_git_log_branches | fzf "${fzf_opts[@]}")
   else
-    fzf_output=$(git log --color=always --date=format:'%Y-%m-%d %H:%M:%S' --format="%C(auto)%h%x00%ad%x00%D%x00%C(auto)%s" "$@" | format_git_log_branches | fzf "${fzf_opts[@]}")
+    fzf_output=$(git log --color=always --date=format:'%Y-%m-%d %H:%M:%S' --format="%C(auto)%h%x00%ad%x00%aE%x00%D%x00%C(auto)%s" "$@" | format_git_log_branches | fzf "${fzf_opts[@]}")
   fi
 
   # Finish the script if no key/selections are returned (e.g. user cancelled with Esc / Ctrl-C)

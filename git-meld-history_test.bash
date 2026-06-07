@@ -221,9 +221,9 @@ clear_test_state
 MOCK_FZF_SELECTION=""
 git-meld-history
 
-# Verify fzf_stdin formatted this commit correctly (i.e. contains the timestamp in brackets)
+# Verify fzf_stdin formatted this commit correctly (i.e. contains the timestamp in brackets and magenta author email)
 head_hash=$(git rev-parse --short HEAD)
-expected_pattern="${head_hash}.*\[[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\].*Commit mentioning \(CURRENT\) here"
+expected_pattern="${head_hash}.*\[[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\].*\[35m<test@example.com>.*Commit mentioning \(CURRENT\) here"
 assert "grep -q -E '$expected_pattern' '$TEST_TMP_DIR/fzf_stdin'"
 
 # Complete testing
