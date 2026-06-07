@@ -19,6 +19,7 @@ my $error = 0;
 my $verbose = 1;
 my $help = 0;
 my $expression = "";
+my $fullpath = 0;
 
 sub print_help() {
   print <<'EOF';
@@ -43,12 +44,16 @@ Description:
 Options:
   -e, --expression EXP   Run a Perl expression on each filename before editing.
                          The filename is in $_ and can be modified.
+  -f, --fullpath         Use the full (absolute) path for each filename without resolving symlinks.
   -v, --verbose          Verbosely display the actions taken by the program (default).
   -h, --help             Show this help message.
 
 Examples:
   # Edit the current directory
   imv
+
+  # Edit the current directory showing absolute paths (without resolving symlinks)
+  imv -f
 
   # Edit only JPEG files in the current directory
   imv *.jpeg
@@ -73,6 +78,7 @@ EOF
 GetOptions(
   "verbose|v"      => \$verbose,
   "expression|e=s" => \$expression,
+  "fullpath|f"     => \$fullpath,
   "help|h"         => \$help,
 ) or do {
   print_help();
@@ -120,6 +126,13 @@ for my $item(@ARGV) {
 }
 
 @sorted = (sort(@directories), sort(@files));
+
+if ($fullpath) {
+  @sorted = map {
+    my $has_slash = m{/\z} ? '/' : '';
+    File::Spec->rel2abs($_) . $has_slash;
+  } @sorted;
+}
 
 if (grep(/[[:cntrl:]]/, @sorted)) {
   die "$0: control characters in filenames are not supported\n";
@@ -300,7 +313,7 @@ imv - edit directory / rename files using a text editor
 
 =head1 SYNOPSIS
 
-B<imv> [--verbose] [-e EXPRESSION] [directory|file|-] ...
+B<imv> [--verbose] [-e EXPRESSION] [-f] [directory|file|-] ...
 
 =head1 DESCRIPTION
 
@@ -326,6 +339,10 @@ of files can be specified on the command line.
 Specify a Perl expression to run on each filename. The filename is stored in $_
 and can be modified.
 
+=item -f, --fullpath
+
+Use the full (absolute) path for each filename without resolving symlinks.
+
 =item -v, --verbose
 
 Verbosely display the actions taken by the program.
@@ -341,6 +358,10 @@ Show the help message.
 =over 4
 
 =item imv
+
+=item imv -f
+
+Edit the current directory using absolute paths.
 
 =item imv *.jpeg
 
