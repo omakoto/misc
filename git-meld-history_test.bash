@@ -206,5 +206,25 @@ head_hash=$(git rev-parse --short HEAD)
 expected_pattern="${head_hash}.*\[36m\[.*test-branch.*\].*Commit 2"
 assert "grep -q -E '$expected_pattern' '$TEST_TMP_DIR/fzf_stdin'"
 
+# -------------------------------------------------------------
+# Test Case 9: Verify commit with (CURRENT) in message is formatted (not bypassed)
+# -------------------------------------------------------------
+setup_git_repo
+# Create a commit message containing '(CURRENT)'
+echo "content4" > file4.txt
+git add file4.txt
+git config user.name "Test User"
+git config user.email "test@example.com"
+git commit -q -m "Commit mentioning (CURRENT) here"
+
+clear_test_state
+MOCK_FZF_SELECTION=""
+git-meld-history
+
+# Verify fzf_stdin formatted this commit correctly (i.e. contains the timestamp in brackets)
+head_hash=$(git rev-parse --short HEAD)
+expected_pattern="${head_hash}.*\[[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\].*Commit mentioning \(CURRENT\) here"
+assert "grep -q -E '$expected_pattern' '$TEST_TMP_DIR/fzf_stdin'"
+
 # Complete testing
 done_testing

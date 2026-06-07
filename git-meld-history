@@ -14,17 +14,15 @@ format_git_log_branches() {
   python3 -c '
 import sys, re
 for line in sys.stdin:
-    if "(CURRENT)" in line:
-        sys.stdout.write(line)
-        continue
     parts = line.strip("\n").split("\x00")
-    if len(parts) < 3:
+    if len(parts) < 4:
         sys.stdout.write(line)
         continue
-    hash_part, deco_part, subject_part = parts[0], parts[1], parts[2]
+    hash_part, date_part, deco_part, subject_part = parts[0], parts[1], parts[2], parts[3]
+    formatted_date = f"[{date_part}]"
     clean_deco = re.sub(r"\x1b\[[0-9;]*m", "", deco_part).strip()
     if not clean_deco:
-        sys.stdout.write(f"{hash_part} {subject_part}\n")
+        sys.stdout.write(f"{hash_part} {formatted_date} {subject_part}\n")
         continue
     branches = []
     for item in clean_deco.split(","):
@@ -45,9 +43,9 @@ for line in sys.stdin:
             unique_branches.append(b)
     if unique_branches:
         cyan_deco = f"\x1b[36m[" + ", ".join(unique_branches) + "]\x1b[m"
-        sys.stdout.write(f"{hash_part} {cyan_deco} {subject_part}\n")
+        sys.stdout.write(f"{hash_part} {formatted_date} {cyan_deco} {subject_part}\n")
     else:
-        sys.stdout.write(f"{hash_part} {subject_part}\n")
+        sys.stdout.write(f"{hash_part} {formatted_date} {subject_part}\n")
 '
 }
 
@@ -85,9 +83,9 @@ while true; do
   )
 
   if [[ -n "$(git status --porcelain)" ]]; then
-    fzf_output=$( (printf "\e[33m(CURRENT)\e[m Local changes\n"; git log --color=always --format="%C(auto)%h%x00%D%x00%C(auto)%s" "$@") | format_git_log_branches | fzf "${fzf_opts[@]}")
+    fzf_output=$( (printf "\e[33m(CURRENT)\e[m Local changes\n"; git log --color=always --date=format:'%Y-%m-%d %H:%M:%S' --format="%C(auto)%h%x00%ad%x00%D%x00%C(auto)%s" "$@") | format_git_log_branches | fzf "${fzf_opts[@]}")
   else
-    fzf_output=$(git log --color=always --format="%C(auto)%h%x00%D%x00%C(auto)%s" "$@" | format_git_log_branches | fzf "${fzf_opts[@]}")
+    fzf_output=$(git log --color=always --date=format:'%Y-%m-%d %H:%M:%S' --format="%C(auto)%h%x00%ad%x00%D%x00%C(auto)%s" "$@" | format_git_log_branches | fzf "${fzf_opts[@]}")
   fi
 
   # Finish the script if no key/selections are returned (e.g. user cancelled with Esc / Ctrl-C)
