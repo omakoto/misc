@@ -30,8 +30,15 @@ class TestHelperFunctions(unittest.TestCase):
 
     def test_preprocess_expression(self) -> None:
         self.assertEqual(calc.preprocess_expression("2x3"), "2*3")
-        self.assertEqual(calc.preprocess_expression("2 x 3"), "2 * 3")
+        self.assertEqual(calc.preprocess_expression("2 x 3"), "2*3")
+        self.assertEqual(calc.preprocess_expression("1x 3"), "1*3")
+        self.assertEqual(calc.preprocess_expression("1 x3"), "1*3")
+        self.assertEqual(calc.preprocess_expression("2x3x4"), "2*3*4")
+        self.assertEqual(calc.preprocess_expression("2 x 3 x 4"), "2*3*4")
         self.assertEqual(calc.preprocess_expression("100,000 * 3"), "100000 * 3")
+        self.assertEqual(calc.preprocess_expression("100_000 * 3"), "100000 * 3")
+        self.assertEqual(calc.preprocess_expression("100_000,000 * 3"), "100000000 * 3")
+        self.assertEqual(calc.preprocess_expression("1,000_000,000 * 3"), "1000000000 * 3")
 
 
 class TestCalcExecution(unittest.TestCase):
@@ -99,6 +106,15 @@ class TestCalcExecution(unittest.TestCase):
         out_no_space = self.run_calc(["2x3"])
         self.assertIn("6", out_no_space)
 
+        # Test "1x 3" and "1 x3"
+        self.assertIn("3", self.run_calc(["1x 3"]))
+        self.assertIn("3", self.run_calc(["1 x3"]))
+
+        # Test multiple x's in a single expression
+        self.assertIn("24", self.run_calc(["2x3x4"]))
+        self.assertIn("24", self.run_calc(["2 x 3 x 4"]))
+        self.assertIn("24", self.run_calc(["2x 3 x4"]))
+
         # Test x in fraction mode
         out_frac = self.run_calc(["-f", "1/3 x 3/2"])
         self.assertIn("1/2", out_frac)
@@ -106,6 +122,9 @@ class TestCalcExecution(unittest.TestCase):
         # Test float with x
         out_float = self.run_calc(["2.5x4"])
         self.assertIn("10.0", out_float)
+        self.assertIn("10.0", self.run_calc(["2.5 x 4"]))
+        self.assertIn("10.0", self.run_calc(["2.5 x4"]))
+        self.assertIn("10.0", self.run_calc(["2.5x 4"]))
 
         # Test stdin with x multiplication
         out_stdin = self.run_calc([], stdin_data="2x3\n")
@@ -123,6 +142,11 @@ class TestCalcExecution(unittest.TestCase):
         mock_input.side_effect = ["1/3 + 1/6", "exit"]
         out_frac = self.run_calc(["-i", "-f"])
         self.assertIn("1/2", out_frac)
+
+    def test_digit_separators(self) -> None:
+        # Test commas and underscores mixed in a single execution
+        out = self.run_calc(["1,000_000 + 2_000,000"])
+        self.assertIn("3000000", out)
 
 
 if __name__ == '__main__':

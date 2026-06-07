@@ -67,13 +67,11 @@ class FractionTransformer(ast.NodeTransformer):
 
 def preprocess_expression(exp: str) -> str:
     """Preprocesses the math expression string to support custom notations:
-    - Replaces 'x' between spaces (e.g. '2 x 3') with '*'
-    - Replaces 'x' between digits (e.g. '2x3') with '*'
-    - Strips commas between digits (e.g. '100,000' -> '100000')
+    - Replaces 'x' representing multiplication (e.g. '2x3', '2 x 3', '1x 3', '2x3x4') with '*'
+    - Strips commas and underscores between digits (e.g. '100,000' -> '100000', '100_000' -> '100000')
     """
-    exp = re.sub(r'\bx\b', '*', exp)
-    exp = re.sub(r'(?<=\d)x(?=\d)', '*', exp)
-    exp = re.sub(r'(?<=\d),(?=\d)', '', exp)
+    exp = re.sub(r'\bx\b|(?<=\d)\s*x\s*(?=\d)', '*', exp)
+    exp = re.sub(r'(?<=\d)[,_](?=\d)', '', exp)
     return exp
 
 
