@@ -63,7 +63,7 @@ while true; do
     --ansi
     --multi
     --no-sort
-    --header "^S: squash selected commits"
+    --header "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits, Multi-select [^S]: Squash commits"
     --expect=ctrl-s
     --preview '
       if [[ "{1}" == *"(CURRENT)"* ]]; then
