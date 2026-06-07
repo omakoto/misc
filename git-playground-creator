@@ -1,0 +1,26 @@
+#!/bash
+
+# TODO: One line description
+
+set -e
+
+# TODO: Implement the following
+
+create a function, git-create-playground, that does the following:
+
+- mkdir -p /tmp/git-playgroud-[timestamp(yyyy_mm_dd_hh_mm_ss)] and cd to it
+- `git init` in it
+- create 5 commits in it with the following empty files and commit messages.
+  - Message: "commit 1"
+    - Files: file1-1.txt, file1-2.txt
+  - Message: "commit 2 (new dir 1)"
+    - Files: file2-1.txt, file2-2.txt, subdir1/file1.txt
+  - Message: "commit 3"
+    - Files: file3-1.txt, file3-2.txt
+  - Message: "commit 4 (new dir 2)"
+    - Files: file4-1.txt, file4-2.txt, subdir2/file1.txt
+  - Message: "commit 5"
+    - Files: file5-1.txt, file5-2.txt
+
+- Then edit files: `echo aaa> file1-1.txt`and  `echo bbb> file3-1.txt`
+- Create a new file, new-1.txt, new-2.txt and new-3.txt
