@@ -121,7 +121,7 @@ commit1_hash=$(git rev-parse --short HEAD~1)
 MOCK_FZF_SELECTION="(CURRENT) Local changes\n$commit1_hash Commit 1"
 git-meld-history
 assert "[[ -f '$TEST_TMP_DIR/git_meld_calls' ]]"
-assert "[[ '$(cat $TEST_TMP_DIR/git_meld_calls)' == "$commit1_hash"* ]]"
+assert "[[ '$(cat $TEST_TMP_DIR/git_meld_calls)' == '4b825dc642cb6eb9a001e5408d69288fbee4904f' ]]"
 assert "[[ -n '$(git ls-files --others --exclude-standard)' ]]"
 
 # -------------------------------------------------------------
@@ -135,7 +135,7 @@ commit2_hash=$(git rev-parse --short HEAD)
 MOCK_FZF_SELECTION="(CURRENT) Local changes\n$commit2_hash Commit 2\n$commit1_hash Commit 1"
 git-meld-history
 assert "[[ -f '$TEST_TMP_DIR/git_meld_calls' ]]"
-assert "[[ '$(cat $TEST_TMP_DIR/git_meld_calls)' == "$commit1_hash"* ]]"
+assert "[[ '$(cat $TEST_TMP_DIR/git_meld_calls)' == '4b825dc642cb6eb9a001e5408d69288fbee4904f' ]]"
 assert "[[ -n '$(git ls-files --others --exclude-standard)' ]]"
 
 # -------------------------------------------------------------
@@ -150,7 +150,7 @@ git-meld-history
 assert "[[ -f '$TEST_TMP_DIR/git_meld_calls' ]]"
 full_commit1=$(git rev-parse HEAD~1)
 full_commit2=$(git rev-parse HEAD)
-assert "[[ '$(cat $TEST_TMP_DIR/git_meld_calls)' == '${full_commit1}..${full_commit2}' ]]"
+assert "[[ '$(cat $TEST_TMP_DIR/git_meld_calls)' == '4b825dc642cb6eb9a001e5408d69288fbee4904f..${full_commit2}' ]]"
 
 # -------------------------------------------------------------
 # Test Case 7: Squash selected commits using ctrl-s

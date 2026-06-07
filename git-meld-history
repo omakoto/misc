@@ -62,7 +62,7 @@ while true; do
     --ansi
     --multi
     --no-sort
-    --header "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits, Multi-select [^S]: Squash commits"
+    --header "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), Multi-select [^S]: Squash commits"
     --expect=ctrl-s
     --preview '
       if [[ "{1}" == *"(CURRENT)"* ]]; then
@@ -307,7 +307,11 @@ EOF
           git add -N -- "${untracked_files[@]}"
         fi
 
-        git meld "$oldest"
+        if git rev-parse --verify "${oldest}^" >/dev/null 2>&1; then
+          git meld "${oldest}^"
+        else
+          git meld "4b825dc642cb6eb9a001e5408d69288fbee4904f"
+        fi
 
         if (( ${#untracked_files[@]} > 0 )); then
           git reset HEAD -- "${untracked_files[@]}"
@@ -319,7 +323,11 @@ EOF
       if (( ${#sorted_hashes[@]} > 0 )); then
         oldest="${sorted_hashes[0]}"
         newest="${sorted_hashes[${#sorted_hashes[@]}-1]}"
-        git meld "${oldest}..${newest}"
+        if git rev-parse --verify "${oldest}^" >/dev/null 2>&1; then
+          git meld "${oldest}^..${newest}"
+        else
+          git meld "4b825dc642cb6eb9a001e5408d69288fbee4904f..${newest}"
+        fi
       fi
     fi
   fi
