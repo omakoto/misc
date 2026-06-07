@@ -1,12 +1,12 @@
 #!/usr/bin/perl
-use strict;
-use warnings FATAL => 'all';
-use utf8;
-#use open qw(:std :utf8);
-#use encoding 'utf8';
+# imv - Interactive file and directory renamer using a text editor.
+# This script allows editing directory contents or a list of files in a text editor
+# to rename, copy, or delete them.
 
-use vars qw($VERSION);
-$VERSION = '0.040-woldrich';
+use v5.36;
+use utf8;
+
+our $VERSION = '0.040-woldrich-modern';
 
 use File::Basename;
 use File::Spec;
@@ -15,19 +15,76 @@ use File::Copy;
 use File::Path ();
 use Getopt::Long;
 
-my($error, $verbose, $help) = (0, 1, 0);
-
+my $error = 0;
+my $verbose = 1;
+my $help = 0;
 my $expression = "";
 
-if (! GetOptions("verbose|v?" => \$verbose,
-      "e|expression=s" => \$expression,
-      "h|help" => \$help) or $help) {
-  die "Usage: $0 [-e EXP] [directory|file|-]\n";
+sub print_help() {
+  print <<'EOF';
+imv - Interactive directory/file renamer using a text editor
+
+Usage:
+  imv [options] [directory|file|-]
+
+Description:
+  imv (also known as vidir) allows you to edit the contents of a directory
+  or a list of files using your favorite text editor.
+
+  Each item appears on a numbered line. You can:
+  - Edit the filenames to rename files.
+  - Delete lines to remove files/directories (after confirmation).
+  - Swap the numbers of two files to swap their filenames.
+  - Duplicate a line (keep the number) to copy a file.
+
+  If no directory or file is specified, the current directory is edited.
+  If '-' is specified, a list of filenames is read from standard input.
+
+Options:
+  -e, --expression EXP   Run a Perl expression on each filename before editing.
+                         The filename is in $_ and can be modified.
+  -v, --verbose          Verbosely display the actions taken by the program (default).
+  -h, --help             Show this help message.
+
+Examples:
+  # Edit the current directory
+  imv
+
+  # Edit only JPEG files in the current directory
+  imv *.jpeg
+
+  # Rename file extensions from .htm to .html using -e
+  imv -e 's/\.htm$/\.html/' *.htm
+
+  # Convert all filenames in the current directory to lowercase using -e
+  imv -e '$_ = lc($_)' *
+
+  # Replace spaces with underscores in all filenames in the current directory using -e
+  imv -e 's/\s+/_/g' *
+
+  # Prepend a prefix to all files using -e
+  imv -e '$_ = "prefix_" . $_' *
+
+  # Find all files recursively and edit their names
+  find -type f | imv -
+EOF
 }
 
-sub copyp($$) {
-  my ($from, $to) = @_;
+GetOptions(
+  "verbose|v"      => \$verbose,
+  "expression|e=s" => \$expression,
+  "help|h"         => \$help,
+) or do {
+  print_help();
+  exit 1;
+};
 
+if ($help) {
+  print_help();
+  exit 0;
+}
+
+sub copyp($from, $to) {
   return system("/bin/cp", "-n", "--preserve=mode,links", "-P", $from, $to) == 0;
 }
 
@@ -64,18 +121,12 @@ for my $item(@ARGV) {
 
 @sorted = (sort(@directories), sort(@files));
 
-# for my $f ( @ARGV ) {
-#   print "$f\n";
-# }
-
-# exit 9;
-
 if (grep(/[[:cntrl:]]/, @sorted)) {
   die "$0: control characters in filenames are not supported\n";
 }
 
 my $tmp=File::Temp->new(TEMPLATE => "dirXXXXX", DIR => File::Spec->tmpdir);
-open (OUT, ">".$tmp->filename) || die "$0: cannot create ".$tmp->filename.": $!\n";
+open (my $out_fh, ">", $tmp->filename) || die "$0: cannot create ".$tmp->filename.": $!\n";
 
 my %item;
 my %done;
@@ -87,15 +138,15 @@ foreach (@sorted) {
     eval $expression;
     die "$0: expression error: $@\n" if $@;
     if ($was ne $_) {
-      print OUT "##    $was ->\n";
+      print $out_fh "##    $was ->\n";
     }
   }
-  print OUT sprintf("%5d %s", $c, $_);
-  print OUT ("\t## -> ", readlink $_) if -l $_;
-  print OUT "\n";
+  print $out_fh sprintf("%5d %s", $c, $_);
+  print $out_fh ("\t## -> ", readlink $_) if -l $_;
+  print $out_fh "\n";
 }
 @sorted=();
-close OUT || die "$0: cannot write ".$tmp->filename.": $!\n";
+close $out_fh || die "$0: cannot write ".$tmp->filename.": $!\n";
 
 my @editor = 'vi';
 
@@ -112,17 +163,15 @@ elsif(exists($ENV{VISUAL})) {
   @editor = split(' ', $ENV{VISUAL});
 }
 
-sub readall($) {
-  my ($file) = @_;
-  open(F, $file) or die("Error: $!\n");
+sub readall($file) {
+  open(my $fh, '<', $file) or die("Error: $!\n");
   my $data;
-  read(F, $data, -s $file );
-  close F;
+  read($fh, $data, -s $file );
+  close $fh;
   return $data;
 }
 
-sub confirm($) {
-  my ($msg) = @_;
+sub confirm($msg) {
   print $msg, "[y/N] ";
   my $answer = <STDIN>;
   return ($answer =~ /^y/);
@@ -148,8 +197,8 @@ if ($pre eq $now) {
   }
 }
 
-open (IN, $tmp->filename) || die "$0: cannot read ".$tmp->filename.": $!\n";
-while (<IN>) {
+open (my $in_fh, "<", $tmp->filename) || die "$0: cannot read ".$tmp->filename.": $!\n";
+while (<$in_fh>) {
   chomp;
   s/\s*\#\#.*$//;
   if(/^\s*(\d+)\s+(.*)/) {
@@ -172,22 +221,22 @@ while (<IN>) {
 
       # deal with swaps
       if (-e $name || -l $name) {
-        my $tmp=$name."~";
-        my $c=0;
-        while (-e $tmp || -l $tmp) {
-          $c++;
-          $tmp=$name."~$c";
+        my $backup_name = $name . "~";
+        my $suffix = 0;
+        while (-e $backup_name || -l $backup_name) {
+          $suffix++;
+          $backup_name = $name . "~" . $suffix;
         }
-        if (! rename($name, $tmp)) {
-          print STDERR "$0: failed to rename $name to $tmp: $!\n";
+        if (! rename($name, $backup_name)) {
+          print STDERR "$0: failed to rename $name to $backup_name: $!\n";
           $error=1;
         }
         elsif ($verbose) {
-          print "'$name' -> '$tmp'\n";
+          print "'$name' -> '$backup_name'\n";
         }
         foreach my $item (keys %item) {
           if ($item{$item} eq $name) {
-            $item{$item}=$tmp;
+            $item{$item} = $backup_name;
           }
         }
       }
@@ -218,12 +267,10 @@ while (<IN>) {
     die "$0: unable to parse line \"$_\", aborting\n";
   }
 }
-close IN || die "$0: cannot read ".$tmp->filename.": $!\n";
+close $in_fh || die "$0: cannot read ".$tmp->filename.": $!\n";
 unlink($tmp.'~') if -e $tmp.'~';
 
-sub rm {
-  my $file = shift;
-
+sub rm($file) {
   if (-d $file && ! -l $file) {
     return File::Path::rmtree($file);
   }
@@ -249,19 +296,19 @@ __END__
 
 =head1 NAME
 
-vidir - edit directory
+imv - edit directory / rename files using a text editor
 
 =head1 SYNOPSIS
 
-B<vidir> [--verbose] [-e EXPRESSION] [directory|file|-] ...
+B<imv> [--verbose] [-e EXPRESSION] [directory|file|-] ...
 
 =head1 DESCRIPTION
 
-vidir allows editing of the contents of a directory in a text editor. If no
-directory is specified, the current directory is edited.
+imv (adapted from vidir) allows editing of the contents of a directory in a text
+editor. If no directory is specified, the current directory is edited.
 
 When editing a directory, each item in the directory will appear on its own
-numbered line. These numbers are how vidir keeps track of what items are
+numbered line. These numbers are how imv keeps track of what items are
 changed. Delete lines to remove files from the directory, or
 edit filenames to rename files. You can also switch pairs of numbers to
 swap filenames.
@@ -274,9 +321,18 @@ of files can be specified on the command line.
 
 =over 4
 
+=item -e, --expression EXPRESSION
+
+Specify a Perl expression to run on each filename. The filename is stored in $_
+and can be modified.
+
 =item -v, --verbose
 
 Verbosely display the actions taken by the program.
+
+=item -h, --help
+
+Show the help message.
 
 =back
 
@@ -284,18 +340,34 @@ Verbosely display the actions taken by the program.
 
 =over 4
 
-=item vidir
+=item imv
 
-=item vidir *.jpeg
+=item imv *.jpeg
 
 Typical uses.
 
-=item find | vidir -
+=item imv -e 's/\.htm$/\.html/' *.htm
+
+Rename file extensions from .htm to .html.
+
+=item imv -e '$_ = lc($_)' *
+
+Convert all filenames in the current directory to lowercase.
+
+=item imv -e 's/\s+/_/g' *
+
+Replace spaces with underscores in all filenames in the current directory.
+
+=item imv -e '$_ = "prefix_" . $_' *
+
+Prepend a prefix to all files.
+
+=item find | imv -
 
 Edit subdirectory contents too. To delete subdirectories,
 delete all their contents and the subdirectory itself in the editor.
 
-=item find -type f | vidir -
+=item find -type f | imv -
 
 Edit all files under the current directory and subdirectories.
 
