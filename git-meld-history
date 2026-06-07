@@ -68,9 +68,17 @@ while true; do
     --preview '
       if [[ "{1}" == *"(CURRENT)"* ]]; then
         git status --short
-        git diff --color=always HEAD
+        if command -v delta >/dev/null 2>&1; then
+          git diff --color=always HEAD | delta
+        else
+          git diff --color=always HEAD
+        fi
       else
-        git show --stat -p --color=always {1}
+        if command -v delta >/dev/null 2>&1; then
+          git show --stat -p --color=always {1} | delta
+        else
+          git show --stat -p --color=always {1}
+        fi
       fi
     '
     --preview-window 'top:60%'
