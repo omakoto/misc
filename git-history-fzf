@@ -1,0 +1,145 @@
+#!/bin/bash
+# Reusable interactive Git history selector using fzf.
+# Displays commits with hash, author date, author email, and branch decorations.
+# Returns the selected key on the first line (if -e is used), and selected commits on subsequent lines.
+#
+# Examples:
+#   git-history-fzf -c -h "Select commits"
+#   git-history-fzf --help
+
+# Ensure we are inside a git repository
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "Error: Not a git repository" >&2
+  exit 1
+fi
+
+print_help() {
+  cat <<'EOF'
+Usage: git-history-fzf [options] [--] [git-log-options]
+
+Options:
+  -c         Include the "(CURRENT)" local changes line if workspace is dirty
+  -h HEADER  Specify the header string for fzf
+  -s         Single-line select mode (disable multi-select)
+  -e KEYS    Comma-separated list of keys to expect from fzf (like ctrl-s)
+  --help     Show this help message
+
+Examples:
+  git-history-fzf -c
+  git-history-fzf -s -h "Select a single commit"
+  git-history-fzf -c -e ctrl-s -h "Select commits" -- --author="John"
+EOF
+}
+
+if [[ "$1" == "--help" ]]; then
+  print_help
+  exit 0
+fi
+
+show_current=0
+header=""
+multi_select=1
+expect_keys=""
+
+while getopts "ch:se:" opt; do
+  case "$opt" in
+    c)
+      show_current=1
+      ;;
+    h)
+      header="$OPTARG"
+      ;;
+    s)
+      multi_select=0
+      ;;
+    e)
+      expect_keys="$OPTARG"
+      ;;
+    \?)
+      print_help >&2
+      exit 1
+      ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+# Helper function to format git log branch decorations
+format_git_log_branches() {
+  python3 -c '
+import sys, re
+for line in sys.stdin:
+    parts = line.strip("\n").split("\x00")
+    if len(parts) < 5:
+        sys.stdout.write(line)
+        continue
+    hash_part, date_part, email_part, deco_part, subject_part = parts[0], parts[1], parts[2], parts[3], parts[4]
+    formatted_date = f"\x1b[36m[{date_part}]\x1b[m"
+    formatted_email = f"\x1b[35m<{email_part}>\x1b[m"
+    clean_deco = re.sub(r"\x1b\[[0-9;]*m", "", deco_part).strip()
+    if not clean_deco:
+        sys.stdout.write(f"{hash_part} {formatted_date} {formatted_email} {subject_part}\n")
+        continue
+    branches = []
+    for item in clean_deco.split(","):
+        item = item.strip()
+        if not item or item.startswith("tag:"):
+            continue
+        if "->" in item:
+            left, right = item.split("->", 1)
+            left, right = left.strip(), right.strip()
+            if left != "HEAD":
+                branches.append(left)
+            branches.append(right)
+        else:
+            branches.append(item)
+    unique_branches = []
+    for b in branches:
+        if b not in unique_branches:
+            unique_branches.append(b)
+    if unique_branches:
+        green_deco = f"\x1b[32m[" + ", ".join(unique_branches) + "]\x1b[m"
+        sys.stdout.write(f"{hash_part} {formatted_date} {formatted_email} {green_deco} {subject_part}\n")
+    else:
+        sys.stdout.write(f"{hash_part} {formatted_date} {formatted_email} {subject_part}\n")
+'
+}
+
+fzf_opts=(
+  --ansi
+  --no-sort
+  --preview '
+    if [[ "{1}" == *"(CURRENT)"* ]]; then
+      git status --short
+      if command -v delta >/dev/null 2>&1; then
+        git diff --color=always HEAD | delta
+      else
+        git diff --color=always HEAD
+      fi
+    else
+      if command -v delta >/dev/null 2>&1; then
+        git show --stat -p --color=always {1} | delta
+      else
+        git show --stat -p --color=always {1}
+      fi
+    fi
+  '
+  --preview-window 'top:60%'
+)
+
+if (( multi_select )); then
+  fzf_opts+=(--multi)
+fi
+
+if [[ -n "$expect_keys" ]]; then
+  fzf_opts+=(--expect="$expect_keys")
+fi
+
+if [[ -n "$header" ]]; then
+  fzf_opts+=(--header "$header")
+fi
+
+if (( show_current )) && [[ -n "$(git status --porcelain)" ]]; then
+  (printf "\e[33m(CURRENT)\e[m Local changes\n"; git log --color=always --date=format:'%Y-%m-%d %H:%M:%S' --format="%C(auto)%h%x00%ad%x00%aE%x00%D%x00%C(auto)%s" "$@") | format_git_log_branches | fzf "${fzf_opts[@]}"
+else
+  git log --color=always --date=format:'%Y-%m-%d %H:%M:%S' --format="%C(auto)%h%x00%ad%x00%aE%x00%D%x00%C(auto)%s" "$@" | format_git_log_branches | fzf "${fzf_opts[@]}"
+fi

@@ -226,5 +226,24 @@ head_hash=$(git rev-parse --short HEAD)
 expected_pattern="${head_hash}.*\[[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\].*\[35m<test@example.com>.*Commit mentioning \(CURRENT\) here"
 assert "grep -q -E '$expected_pattern' '$TEST_TMP_DIR/fzf_stdin'"
 
+# -------------------------------------------------------------
+# Test Case 10: Test git-history-fzf script options
+# -------------------------------------------------------------
+setup_git_repo
+echo "dirty changes" > untracked.txt
+clear_test_state
+MOCK_FZF_SELECTION=""
+
+# Run with -c and -h option, checking that fzf receives the correct header and fzf_stdin contains (CURRENT)
+git-history-fzf -c -h "Custom Header Title"
+assert "grep -q 'Custom Header Title' '$TEST_TMP_DIR/fzf_args'"
+assert "grep -q '(CURRENT)' '$TEST_TMP_DIR/fzf_stdin'"
+
+clear_test_state
+# Run without -c, checking that fzf_stdin does not contain (CURRENT)
+git-history-fzf -h "Another Title"
+assert "grep -q 'Another Title' '$TEST_TMP_DIR/fzf_args'"
+assert "! grep -q '(CURRENT)' '$TEST_TMP_DIR/fzf_stdin'"
+
 # Complete testing
 done_testing

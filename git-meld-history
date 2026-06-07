@@ -9,85 +9,11 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   exit 1
 fi
 
-# Helper function to format git log branch decorations
-format_git_log_branches() {
-  python3 -c '
-import sys, re
-for line in sys.stdin:
-    parts = line.strip("\n").split("\x00")
-    if len(parts) < 5:
-        sys.stdout.write(line)
-        continue
-    hash_part, date_part, email_part, deco_part, subject_part = parts[0], parts[1], parts[2], parts[3], parts[4]
-    formatted_date = f"\x1b[36m[{date_part}]\x1b[m"
-    formatted_email = f"\x1b[35m<{email_part}>\x1b[m"
-    clean_deco = re.sub(r"\x1b\[[0-9;]*m", "", deco_part).strip()
-    if not clean_deco:
-        sys.stdout.write(f"{hash_part} {formatted_date} {formatted_email} {subject_part}\n")
-        continue
-    branches = []
-    for item in clean_deco.split(","):
-        item = item.strip()
-        if not item or item.startswith("tag:"):
-            continue
-        if "->" in item:
-            left, right = item.split("->", 1)
-            left, right = left.strip(), right.strip()
-            if left != "HEAD":
-                branches.append(left)
-            branches.append(right)
-        else:
-            branches.append(item)
-    unique_branches = []
-    for b in branches:
-        if b not in unique_branches:
-            unique_branches.append(b)
-    if unique_branches:
-        green_deco = f"\x1b[32m[" + ", ".join(unique_branches) + "]\x1b[m"
-        sys.stdout.write(f"{hash_part} {formatted_date} {formatted_email} {green_deco} {subject_part}\n")
-    else:
-        sys.stdout.write(f"{hash_part} {formatted_date} {formatted_email} {subject_part}\n")
-'
-}
-
 # Loop to continuously show git log with fzf
 while true; do
-  # Get selections from fzf in multi-select mode.
-  # We use --ansi to support colors from git log --color=always.
-  # We also use --no-sort to keep the chronological order of commits.
-  # Any arguments passed to this script (like a branch or file path) are passed to git log.
-  # If the current directory is dirty, prepend a fake commit "(CURRENT)".
-  # Show git show / local diff in the top preview pane.
-  fzf_opts=(
-    --ansi
-    --multi
-    --no-sort
-    --header "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), Multi-select [^S]: Squash commits"
-    --expect=ctrl-s
-    --preview '
-      if [[ "{1}" == *"(CURRENT)"* ]]; then
-        git status --short
-        if command -v delta >/dev/null 2>&1; then
-          git diff --color=always HEAD | delta
-        else
-          git diff --color=always HEAD
-        fi
-      else
-        if command -v delta >/dev/null 2>&1; then
-          git show --stat -p --color=always {1} | delta
-        else
-          git show --stat -p --color=always {1}
-        fi
-      fi
-    '
-    --preview-window 'top:60%'
-  )
-
-  if [[ -n "$(git status --porcelain)" ]]; then
-    fzf_output=$( (printf "\e[33m(CURRENT)\e[m Local changes\n"; git log --color=always --date=format:'%Y-%m-%d %H:%M:%S' --format="%C(auto)%h%x00%ad%x00%aE%x00%D%x00%C(auto)%s" "$@") | format_git_log_branches | fzf "${fzf_opts[@]}")
-  else
-    fzf_output=$(git log --color=always --date=format:'%Y-%m-%d %H:%M:%S' --format="%C(auto)%h%x00%ad%x00%aE%x00%D%x00%C(auto)%s" "$@" | format_git_log_branches | fzf "${fzf_opts[@]}")
-  fi
+  # Get selections from fzf using git-history-fzf
+  header="[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), Multi-select [^S]: Squash commits"
+  fzf_output=$(git-history-fzf -c -e ctrl-s -h "$header" "$@")
 
   # Finish the script if no key/selections are returned (e.g. user cancelled with Esc / Ctrl-C)
   if [[ -z "$fzf_output" ]]; then
