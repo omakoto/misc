@@ -31,6 +31,9 @@ if [[ -f "$TEST_TMP_DIR/fzf_called" ]]; then
 else
   touch "$TEST_TMP_DIR/fzf_called"
   if [[ -n "$MOCK_FZF_SELECTION" ]]; then
+    # When --expect is used, fzf outputs the key pressed on the first line.
+    # We default to empty string (which represents Enter).
+    echo "${MOCK_FZF_KEY:-}"
     echo -e "$MOCK_FZF_SELECTION"
   fi
 fi
@@ -148,6 +151,41 @@ assert "[[ -f '$TEST_TMP_DIR/git_meld_calls' ]]"
 full_commit1=$(git rev-parse HEAD~1)
 full_commit2=$(git rev-parse HEAD)
 assert "[[ '$(cat $TEST_TMP_DIR/git_meld_calls)' == '${full_commit1}..${full_commit2}' ]]"
+
+# -------------------------------------------------------------
+# Test Case 7: Squash selected commits using ctrl-s
+# -------------------------------------------------------------
+setup_git_repo
+# Create a third commit so we have more history
+echo "content3" > file3.txt
+git add file3.txt
+git config user.name "Test User"
+git config user.email "test@example.com"
+git commit -q -m "Commit 3"
+
+clear_test_state
+commit1_hash=$(git rev-parse --short HEAD~2)
+commit2_hash=$(git rev-parse --short HEAD~1)
+commit3_hash=$(git rev-parse --short HEAD)
+
+# Select Commit 1 and Commit 3 to squash, passing ctrl-s
+export MOCK_FZF_KEY="ctrl-s"
+MOCK_FZF_SELECTION="$commit3_hash Commit 3\n$commit1_hash Commit 1"
+
+# We must mock git editor because rebase will prompt for squash message
+export GIT_EDITOR="cat"
+
+git-meld-history
+
+# Since the rebase succeeded, let's verify that the commit history is updated.
+# Specifically, Commit 3 should be squashed into Commit 1.
+# The new history should have 2 commits:
+# 1. The combined commit (Commit 1 + Commit 3)
+# 2. Commit 2 applied on top of it.
+# Let's verify this by checking git log.
+assert "[[ \$(git log --oneline | wc -l) -eq 2 ]]"
+export MOCK_FZF_KEY=""
+unset GIT_EDITOR
 
 # Complete testing
 done_testing

@@ -21,6 +21,8 @@ while true; do
     --ansi
     --multi
     --no-sort
+    --header "^S: squash selected commits"
+    --expect=ctrl-s
     --preview '
       if [[ "{1}" == *"(CURRENT)"* ]]; then
         git status --short
@@ -33,12 +35,22 @@ while true; do
   )
 
   if [[ -n "$(git status --porcelain)" ]]; then
-    selections=$( (printf "\e[33m(CURRENT)\e[m Local changes\n"; git log --oneline --color=always "$@") | fzf "${fzf_opts[@]}")
+    fzf_output=$( (printf "\e[33m(CURRENT)\e[m Local changes\n"; git log --oneline --color=always "$@") | fzf "${fzf_opts[@]}")
   else
-    selections=$(git log --oneline --color=always "$@" | fzf "${fzf_opts[@]}")
+    fzf_output=$(git log --oneline --color=always "$@" | fzf "${fzf_opts[@]}")
   fi
 
-  # Finish the script if no commits are selected (e.g. user cancelled with Esc / Ctrl-C)
+  # Finish the script if no key/selections are returned (e.g. user cancelled with Esc / Ctrl-C)
+  if [[ -z "$fzf_output" ]]; then
+    break
+  fi
+
+  # Read first line as the key pressed
+  key=$(head -n 1 <<< "$fzf_output")
+  # Remaining lines are the selections
+  selections=$(tail -n +2 <<< "$fzf_output")
+
+  # Finish the script if no commits are selected (e.g. user cancelled or selected nothing)
   if [[ -z "$selections" ]]; then
     break
   fi
@@ -63,6 +75,135 @@ while true; do
   num_hashes=${#hashes[@]}
   if (( num_hashes == 0 )); then
     break
+  fi
+
+  if [[ "$key" == "ctrl-s" ]]; then
+    if (( has_current )); then
+      echo "Error: Cannot squash local changes (CURRENT)" >&2
+      sleep 2
+      continue
+    fi
+    if (( num_hashes < 2 )); then
+      echo "Error: Please select at least 2 commits to squash" >&2
+      sleep 2
+      continue
+    fi
+
+    # Perform the squash!
+    # Get full SHAs of the selected commits
+    full_selected_hashes=()
+    for h in "${hashes[@]}"; do
+      full_sha=$(git rev-parse --verify "$h")
+      full_selected_hashes+=("$full_sha")
+    done
+
+    # Sort selected commits chronologically (oldest first)
+    sorted_hashes=($(git log --no-walk --date-order --reverse --format="%H" "${full_selected_hashes[@]}"))
+    oldest="${sorted_hashes[0]}"
+
+    # Find parent of the oldest commit
+    if git rev-parse --verify "${oldest}^" >/dev/null 2>&1; then
+      rebase_base="${oldest}^"
+    else
+      rebase_base="--root"
+    fi
+
+    # Create temporary python sequence editor script
+    editor_script=$(mktemp)
+    cat << 'EOF' > "$editor_script"
+import sys
+import os
+import subprocess
+
+def main() -> None:
+    todo_file = sys.argv[1]
+    squash_hashes_str = os.environ.get("SQUASH_HASHES", "")
+    squash_hashes = set(squash_hashes_str.split())
+    
+    if not squash_hashes:
+        return
+
+    with open(todo_file, "r") as f:
+        lines = f.readlines()
+
+    new_lines = []
+    squash_lines = []
+    anchor_seen = False
+    
+    # First pass: find all subsequent selected commits to squash
+    for line in lines:
+        parts = line.strip().split()
+        if len(parts) >= 2 and not line.startswith("#"):
+            cmd = parts[0]
+            sha = parts[1]
+            try:
+                full_sha = subprocess.check_output(
+                    ["git", "rev-parse", "--verify", sha],
+                    stderr=subprocess.DEVNULL,
+                    text=True
+                ).strip()
+            except subprocess.CalledProcessError:
+                full_sha = ""
+                
+            if full_sha in squash_hashes:
+                if not anchor_seen:
+                    anchor_seen = True
+                else:
+                    rest = line.strip()[len(cmd) + len(sha) + 1:].strip()
+                    squash_lines.append(f"squash {sha} {rest}\n")
+
+    # Second pass: write the new todo list
+    anchor_seen = False
+    for line in lines:
+        parts = line.strip().split()
+        if len(parts) >= 2 and not line.startswith("#"):
+            sha = parts[1]
+            try:
+                full_sha = subprocess.check_output(
+                    ["git", "rev-parse", "--verify", sha],
+                    stderr=subprocess.DEVNULL,
+                    text=True
+                ).strip()
+            except subprocess.CalledProcessError:
+                full_sha = ""
+                
+            if full_sha in squash_hashes:
+                if not anchor_seen:
+                    anchor_seen = True
+                    new_lines.append(line)
+                    new_lines.extend(squash_lines)
+                else:
+                    pass
+            else:
+                new_lines.append(line)
+        else:
+            new_lines.append(line)
+
+    with open(todo_file, "w") as f:
+        f.writelines(new_lines)
+
+if __name__ == "__main__":
+    main()
+EOF
+    chmod +x "$editor_script"
+
+    export SQUASH_HASHES="${sorted_hashes[*]}"
+    if [[ "$rebase_base" == "--root" ]]; then
+      GIT_SEQUENCE_EDITOR="python3 $editor_script" git rebase -i --root
+    else
+      GIT_SEQUENCE_EDITOR="python3 $editor_script" git rebase -i "$rebase_base"
+    fi
+    rebase_status=$?
+    rm -f "$editor_script"
+
+    if (( rebase_status != 0 )); then
+      echo "Rebase/squash failed or paused for conflict resolution." >&2
+      echo "Exiting script so you can resolve it in your terminal (using git rebase --continue/--abort)." >&2
+      break
+    fi
+
+    # Continue the loop to show the updated history
+    continue
   fi
 
   if (( num_hashes == 1 )); then
