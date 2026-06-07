@@ -72,7 +72,7 @@ git commit --fixup="$target_commit" -- "${selected_files[@]}"
 if git rev-parse --verify "${target_commit}^" >/dev/null 2>&1; then
   rebase_base="${target_commit}^"
   echo "Running autosquash rebase against $rebase_base..."
-  if ! GIT_SEQUENCE_EDITOR=: git rebase -i --autosquash "$rebase_base"; then
+  if ! GIT_SEQUENCE_EDITOR=: git rebase -i --autosquash --autostash "$rebase_base"; then
     echo "Error: Rebase failed due to conflicts." >&2
     echo "Please resolve conflicts and run 'git rebase --continue'." >&2
     echo "If you abort with 'git rebase --abort', the fixup commit will remain at HEAD; undo it with 'git reset HEAD~1'." >&2
@@ -80,7 +80,7 @@ if git rev-parse --verify "${target_commit}^" >/dev/null 2>&1; then
   fi
 else
   echo "Running autosquash rebase against root..."
-  if ! GIT_SEQUENCE_EDITOR=: git rebase -i --autosquash --root; then
+  if ! GIT_SEQUENCE_EDITOR=: git rebase -i --autosquash --autostash --root; then
     echo "Error: Rebase failed due to conflicts." >&2
     echo "Please resolve conflicts and run 'git rebase --continue'." >&2
     echo "If you abort with 'git rebase --abort', the fixup commit will remain at HEAD; undo it with 'git reset HEAD~1'." >&2

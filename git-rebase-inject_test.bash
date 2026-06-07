@@ -132,5 +132,25 @@ assert "[[ -z '$(git status --porcelain)' ]]"
 content=$(git show HEAD:new_file.txt)
 assert "[[ '$content' == 'injected new file' ]]"
 
+# -------------------------------------------------------------
+# Test Case 5: Inject one file, while another dirty file is kept
+# -------------------------------------------------------------
+setup_git_repo
+echo "injected change to file1" >> file1.txt
+echo "other dirty change" >> file2.txt
+clear_test_state
+
+commit1_hash=$(git rev-parse --short HEAD~1)
+MOCK_FZF_FILES=" M file1.txt"
+MOCK_FZF_COMMIT="$commit1_hash Commit 1"
+
+git-rebase-inject
+
+# Verify that the other dirty change is still there (workspace is not clean, contains file2.txt changes)
+assert "[[ \$(git status --porcelain) == *'M file2.txt'* ]]"
+# Verify that Commit 1 contains the injected change
+content=$(git show HEAD~1:file1.txt)
+assert "[[ '$content' == *'injected change'* ]]"
+
 # Complete testing
 done_testing
