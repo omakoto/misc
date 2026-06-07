@@ -46,7 +46,9 @@ done
 shift $((OPTIND - 1))
 
 # Define the git-create-playground function
-git-create-playground() {
+git-create-playground() (
+  set -e
+  export NO_GIT_COMMIT_HOOK=1 # disable `git-co` hook.
   local timestamp
   timestamp=$(date +%Y_%m_%d_%H_%M_%S)
   local dir="/tmp/git-playgroud-${timestamp}"
@@ -97,7 +99,7 @@ git-create-playground() {
   touch new-1.txt new-2.txt new-3.txt
   
   echo $'\e[1;33m'"Playground initialized at: $dir"$'\e[0m'
-}
+)
 
 # If the script is run directly (not sourced), execute the function.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
