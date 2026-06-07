@@ -1,7 +1,14 @@
 #!/bin/bash
 # Interactive Git history viewer using fzf and git-meld.
+# Accepts an optional first argument as the target git repository directory.
 # See git-meld-history.md for details on specifications, including dirty directory/workspace (CURRENT) handling.
 # Make sure to run git-meld-history_test.bash after making any changes.
+
+# If the first argument is a directory, use it as the target git repository directory
+if [[ "$1" != "" ]]; then
+  cd "$1" || exit 1
+  shift
+fi
 
 # Ensure we are inside a git repository
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then

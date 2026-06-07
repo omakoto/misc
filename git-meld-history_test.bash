@@ -245,5 +245,21 @@ git-history-fzf -h "Another Title"
 assert "grep -q 'Another Title' '$TEST_TMP_DIR/fzf_args'"
 assert "! grep -q '(CURRENT)' '$TEST_TMP_DIR/fzf_stdin'"
 
+# -------------------------------------------------------------
+# Test Case 11: Run git-meld-history passing target repository directory
+# -------------------------------------------------------------
+setup_git_repo
+clear_test_state
+MOCK_FZF_SELECTION=""
+
+# Run from outside the repo, passing the repo directory
+cd "$TEST_TMP_DIR"
+git-meld-history "$TEST_TMP_DIR/repo"
+assert "[[ ! -f '$TEST_TMP_DIR/git_meld_calls' ]]" # Exited without calling git-meld
+assert "! grep -q '(CURRENT)' '$TEST_TMP_DIR/fzf_stdin'"
+
+# Return to script directory
+cd "$SCRIPT_DIR"
+
 # Complete testing
 done_testing
