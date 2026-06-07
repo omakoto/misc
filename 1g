@@ -1,0 +1,6 @@
+#!/bin/bash
+# Shortcut script to execute git-meld-history.
+
+set -e
+
+exec git meld-history
