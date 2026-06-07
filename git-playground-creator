@@ -5,7 +5,11 @@
 # a new Git repository in a temporary directory, creates 5 commits with various
 # files and directories, and leaves some unstaged and untracked changes.
 
-set -e
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  set -e
+fi
+
+GIT_PLAYGROUND_CREATOR_SOURCE=$(readlink -f "${BASH_SOURCE[0]}")
 
 # Print the help message.
 function print_help() {
@@ -23,30 +27,42 @@ Examples:
 EOF
 }
 
-# Check for --help option before getopts loop
-if [ "$1" = "--help" ]; then
-  print_help
-  exit 0
+# Check for options and parse flags only when run directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  # Check for --help option before getopts loop
+  if [ "$1" = "--help" ]; then
+    print_help
+    exit 0
+  fi
+
+  # Parse flags using getopts
+  while getopts "h" opt; do
+    case "$opt" in
+      h)
+        print_help
+        exit 0
+        ;;
+      \?)
+        print_help
+        exit 1
+        ;;
+    esac
+  done
+
+  shift $((OPTIND - 1))
 fi
-
-# Parse flags using getopts
-while getopts "h" opt; do
-  case "$opt" in
-    h)
-      print_help
-      exit 0
-      ;;
-    \?)
-      print_help
-      exit 1
-      ;;
-  esac
-done
-
-shift $((OPTIND - 1))
 
 # Define the git-create-playground function
 git-create-playground() {
+  if [[ -z "$GIT_PLAYGROUND_CREATOR_RESOURCED" ]]; then
+    if [[ "${BASH_SOURCE[0]}" != "${0}" && -f "$GIT_PLAYGROUND_CREATOR_SOURCE" ]]; then
+      local GIT_PLAYGROUND_CREATOR_RESOURCED=1
+      source "$GIT_PLAYGROUND_CREATOR_SOURCE"
+      git-create-playground "$@"
+      return
+    fi
+  fi
+
   local timestamp
   timestamp=$(date +%Y_%m_%d_%H_%M_%S)
   local dir="/tmp/git-playgroud-${timestamp}"
@@ -85,11 +101,13 @@ git-create-playground() {
     # Commit 4
     mkdir -p subdir2
     touch file4-1.txt file4-2.txt subdir2/file1.txt
+    echo "F41================================" > file4-1.txt 
     git add file4-1.txt file4-2.txt subdir2/file1.txt
     git commit -m "commit 4 (new dir 2)"
     
     # Commit 5
     touch file5-1.txt file5-2.txt
+    echo "F51--------------------------------" > file5-1.txt
     git add file5-1.txt file5-2.txt
     git commit -m "commit 5"
     
