@@ -77,6 +77,7 @@ git-create-playground() {
     export NO_GIT_COMMIT_HOOK=1 # disable `git-co` hook.
     
     git init
+    git branch -m main
     
     # Configure local git user for clean commit behavior
     git config user.name "Playground User"
