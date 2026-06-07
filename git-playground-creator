@@ -46,9 +46,7 @@ done
 shift $((OPTIND - 1))
 
 # Define the git-create-playground function
-git-create-playground() (
-  set -e
-  export NO_GIT_COMMIT_HOOK=1 # disable `git-co` hook.
+git-create-playground() {
   local timestamp
   timestamp=$(date +%Y_%m_%d_%H_%M_%S)
   local dir="/tmp/git-playgroud-${timestamp}"
@@ -58,48 +56,53 @@ git-create-playground() (
   mkdir -p "$dir"
   cd "$dir"
   
-  git init
-  
-  # Configure local git user for clean commit behavior
-  git config user.name "Playground User"
-  git config user.email "playground@example.com"
-  
-  # Commit 1
-  touch file1-1.txt file1-2.txt
-  git add file1-1.txt file1-2.txt
-  git commit -m "commit 1"
-  
-  # Commit 2
-  mkdir -p subdir1
-  touch file2-1.txt file2-2.txt subdir1/file1.txt
-  git add file2-1.txt file2-2.txt subdir1/file1.txt
-  git commit -m "commit 2 (new dir 1)"
-  
-  # Commit 3
-  touch file3-1.txt file3-2.txt
-  git add file3-1.txt file3-2.txt
-  git commit -m "commit 3"
-  
-  # Commit 4
-  mkdir -p subdir2
-  touch file4-1.txt file4-2.txt subdir2/file1.txt
-  git add file4-1.txt file4-2.txt subdir2/file1.txt
-  git commit -m "commit 4 (new dir 2)"
-  
-  # Commit 5
-  touch file5-1.txt file5-2.txt
-  git add file5-1.txt file5-2.txt
-  git commit -m "commit 5"
-  
-  # Post-commit modifications (leave as unstaged/modified)
-  echo "aaa" > file1-1.txt
-  echo "bbb" > file3-1.txt
-  
-  # Post-commit untracked files
-  touch new-1.txt new-2.txt new-3.txt
-  
-  echo $'\e[1;33m'"Playground initialized at: $dir"$'\e[0m'
-)
+  (
+    set -e
+    export NO_GIT_COMMIT_HOOK=1 # disable `git-co` hook.
+    
+    git init
+    
+    # Configure local git user for clean commit behavior
+    git config user.name "Playground User"
+    git config user.email "playground@example.com"
+    
+    # Commit 1
+    touch file1-1.txt file1-2.txt
+    git add file1-1.txt file1-2.txt
+    git commit -m "commit 1"
+    
+    # Commit 2
+    mkdir -p subdir1
+    touch file2-1.txt file2-2.txt subdir1/file1.txt
+    git add file2-1.txt file2-2.txt subdir1/file1.txt
+    git commit -m "commit 2 (new dir 1)"
+    
+    # Commit 3
+    touch file3-1.txt file3-2.txt
+    git add file3-1.txt file3-2.txt
+    git commit -m "commit 3"
+    
+    # Commit 4
+    mkdir -p subdir2
+    touch file4-1.txt file4-2.txt subdir2/file1.txt
+    git add file4-1.txt file4-2.txt subdir2/file1.txt
+    git commit -m "commit 4 (new dir 2)"
+    
+    # Commit 5
+    touch file5-1.txt file5-2.txt
+    git add file5-1.txt file5-2.txt
+    git commit -m "commit 5"
+    
+    # Post-commit modifications (leave as unstaged/modified)
+    echo "aaa" > file1-1.txt
+    echo "bbb" > file3-1.txt
+    
+    # Post-commit untracked files
+    touch new-1.txt new-2.txt new-3.txt
+    
+    echo $'\e[1;33m'"Playground initialized at: $dir"$'\e[0m'
+  )
+}
 
 # If the script is run directly (not sourced), execute the function.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
