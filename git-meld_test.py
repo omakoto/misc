@@ -71,14 +71,16 @@ class GitMeldTest(unittest.TestCase):
 
     @patch('subprocess.run')
     def test_query_diff_status(self, mock_run):
-        # We simulate git diff output with renames, modifications, and deletions.
-        # Format of git diff -z --name-status is:
-        # STATUS \0 PATH1 \0 (PATH2 \0 if rename)
+        # We simulate git diff output with renames, modifications, deletions, and submodules.
+        # Format of git diff -z --raw is:
+        # :src_mode dst_mode src_sha dst_sha status \0 PATH1 \0 (PATH2 \0 if rename/copy)
         mock_stdout = (
-            b"M\0file1.txt\0"
-            b"R100\0old_file.txt\0new_file.txt\0"
-            b"D\0deleted_file.txt\0"
-            b"A\0added_file.txt\0"
+            b":100644 100644 1111111 2222222 M\0file1.txt\0"
+            b":100644 100644 3333333 4444444 R100\0old_file.txt\0new_file.txt\0"
+            b":100644 000000 5555555 0000000 D\0deleted_file.txt\0"
+            b":000000 100644 0000000 6666666 A\0added_file.txt\0"
+            b":160000 160000 7777777 8888888 M\0submodule_dir\0"
+            b":160000 160000 9999999 aaaaaaa R100\0old_submodule\0new_submodule\0"
         )
         mock_run.return_value = MagicMock(stdout=mock_stdout)
         

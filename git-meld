@@ -200,7 +200,7 @@ def query_diff_status(user_args: List[str], no_rename_detection: bool = False) -
     on the left pane and an addition on the right pane. This prevents side-by-side diffing.
     
     To solve this:
-      1. We query git diff using '-z --name-status' (without '--no-renames' by default).
+      1. We query git diff using '-z --raw' (without '--no-renames' by default).
       2. If a file is renamed, Git outputs status 'Rxxx' followed by 'src_path' and 'dest_path'.
       3. We add the old 'src_path' to the source list (so it is copied into source_dir), 
          and the new 'dest_path' to the destination list (so it is copied/linked to dest_dir).
@@ -220,7 +220,7 @@ def query_diff_status(user_args: List[str], no_rename_detection: bool = False) -
         dest_files: Files to copy/link to dest_dir
         rename_map: Dict mapping dest_path -> src_path
     """
-    cmd = ["git", "diff", "-z", "--name-status"]
+    cmd = ["git", "diff", "-z", "--raw"]
     if no_rename_detection:
         cmd.append("--no-renames")
     cmd += user_args
@@ -244,31 +244,48 @@ def query_diff_status(user_args: List[str], no_rename_detection: bool = False) -
         if not status_part:
             i += 1
             continue
-        status = status_part.decode('utf-8', errors='replace')
+        status_str = status_part.decode('utf-8', errors='replace')
         
+        is_submodule = False
+        if status_str.startswith(':'):
+            # Parse raw format: :<src-mode> <dst-mode> <src-sha> <dst-sha> <status>
+            meta_parts = status_str.split()
+            if len(meta_parts) >= 5:
+                src_mode = meta_parts[0][1:]
+                dst_mode = meta_parts[1]
+                status = meta_parts[4]
+                if src_mode == '160000' or dst_mode == '160000':
+                    is_submodule = True
+            else:
+                status = status_str
+        else:
+            status = status_str
+            
         if status.startswith('R') or status.startswith('C'):
             if i + 2 < len(parts):
                 src_path = parts[i+1].decode('utf-8', errors='replace')
                 dest_path = parts[i+2].decode('utf-8', errors='replace')
-                if status.startswith('R'):
-                    src_files.append(src_path)
-                    dest_files.append(dest_path)
-                    rename_map[dest_path] = src_path
-                else:
-                    dest_files.append(dest_path)
+                if not is_submodule:
+                    if status.startswith('R'):
+                        src_files.append(src_path)
+                        dest_files.append(dest_path)
+                        rename_map[dest_path] = src_path
+                    else:
+                        dest_files.append(dest_path)
                 i += 3
             else:
                 break
         else:
             if i + 1 < len(parts):
                 path = parts[i+1].decode('utf-8', errors='replace')
-                if status == 'D':
-                    src_files.append(path)
-                elif status == 'A':
-                    dest_files.append(path)
-                elif status in {'M', 'T', 'U', 'X', 'B'}:
-                    src_files.append(path)
-                    dest_files.append(path)
+                if not is_submodule:
+                    if status == 'D':
+                        src_files.append(path)
+                    elif status == 'A':
+                        dest_files.append(path)
+                    elif status in {'M', 'T', 'U', 'X', 'B'}:
+                        src_files.append(path)
+                        dest_files.append(path)
                 i += 2
             else:
                 break
