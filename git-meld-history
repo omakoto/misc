@@ -30,6 +30,13 @@ Examples:
 EOF
 }
 
+run_command() {
+  local quoted
+  quoted=$(printf '%q ' "$@")
+  echo "+ ${quoted% }" >&2
+  "$@"
+}
+
 if [[ "$1" == "-h" || "$1" == "--help" ]]; then
   print_help
   exit 0
@@ -80,7 +87,8 @@ while true; do
 
   if [[ "$key" == "ctrl-i" ]]; then
     if [[ -n "$(git status --porcelain)" ]]; then
-      exec git-rebase-inject "$@"
+      run_command git-rebase-inject "$@"
+      exit $?
     else
       echo "Error: Inject is only available when the worktree is dirty." >&2
       sleep 2
@@ -274,7 +282,7 @@ EOF
         git add -N -- "${untracked_files[@]}"
       fi
 
-      git meld HEAD "${meld_args[@]}"
+      run_command git meld HEAD "${meld_args[@]}"
 
       if (( ${#untracked_files[@]} > 0 )); then
         git reset HEAD -- "${untracked_files[@]}"
@@ -283,10 +291,10 @@ EOF
       # If the commit has a parent, compare against parent.
       # Otherwise (e.g. root commit), compare against the empty tree.
       if git rev-parse --verify "${commit}^" >/dev/null 2>&1; then
-        git meld "${commit}^..${commit}" "${meld_args[@]}"
+        run_command git meld "${commit}^..${commit}" "${meld_args[@]}"
       else
         # 4b825dc642cb6eb9a001e5408d69288fbee4904f is the SHA-1 of the empty tree in git
-        git meld "4b825dc642cb6eb9a001e5408d69288fbee4904f..${commit}" "${meld_args[@]}"
+        run_command git meld "4b825dc642cb6eb9a001e5408d69288fbee4904f..${commit}" "${meld_args[@]}"
       fi
     fi
   else
@@ -314,9 +322,9 @@ EOF
         fi
 
         if git rev-parse --verify "${oldest}^" >/dev/null 2>&1; then
-          git meld "${oldest}^" "${meld_args[@]}"
+          run_command git meld "${oldest}^" "${meld_args[@]}"
         else
-          git meld "4b825dc642cb6eb9a001e5408d69288fbee4904f" "${meld_args[@]}"
+          run_command git meld "4b825dc642cb6eb9a001e5408d69288fbee4904f" "${meld_args[@]}"
         fi
 
         if (( ${#untracked_files[@]} > 0 )); then
@@ -330,9 +338,9 @@ EOF
         oldest="${sorted_hashes[0]}"
         newest="${sorted_hashes[${#sorted_hashes[@]}-1]}"
         if git rev-parse --verify "${oldest}^" >/dev/null 2>&1; then
-          git meld "${oldest}^..${newest}" "${meld_args[@]}"
+          run_command git meld "${oldest}^..${newest}" "${meld_args[@]}"
         else
-          git meld "4b825dc642cb6eb9a001e5408d69288fbee4904f..${newest}" "${meld_args[@]}"
+          run_command git meld "4b825dc642cb6eb9a001e5408d69288fbee4904f..${newest}" "${meld_args[@]}"
         fi
       fi
     fi

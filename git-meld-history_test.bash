@@ -267,13 +267,14 @@ cd "$SCRIPT_DIR"
 # Test Case 12: Verify upstream-base decoration formatting in fzf stdin
 # -------------------------------------------------------------
 setup_git_repo
+default_branch=$(git branch --show-current)
 # Create a tracking branch and upstream branch
 git checkout -b remote-branch -q
 echo "content-remote" > file-remote.txt
 git add file-remote.txt
 git commit -q -m "Commit on upstream branch"
-git checkout master -q
-git branch --set-upstream-to=remote-branch master -q
+git checkout "$default_branch" -q
+git branch --set-upstream-to=remote-branch "$default_branch" -q
 
 clear_test_state
 MOCK_FZF_SELECTION=""
