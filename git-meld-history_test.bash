@@ -465,9 +465,9 @@ chmod +x "$TEST_TMP_DIR/bin/fzf"
 
 git-meld-history "$TEST_TMP_DIR/repo/subdir"
 
-# git-meld should be called with -- .
+# git-meld should be called without limiting to subdir (should show all files)
 assert "[[ -f '$TEST_TMP_DIR/git_meld_calls' ]]"
-assert "[[ '$(cat $TEST_TMP_DIR/git_meld_calls)' == *'-- .' ]]"
+assert "[[ '$(cat $TEST_TMP_DIR/git_meld_calls)' == '${commit3_hash}^..${commit3_hash}' ]]"
 
 # Clean up environment
 unset MOCK_FZF_SELECTION
