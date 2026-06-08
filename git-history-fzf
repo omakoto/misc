@@ -99,6 +99,28 @@ def format_line(line: bytes, merge_bases: Optional[Set[bytes]] = None) -> bytes:
     else:
         return hash_part + b" " + formatted_date + b" " + formatted_email + b" " + subject_part + b"\n"
 
+def get_submodules() -> List[str]:
+    """Retrieves the list of submodule paths in the repository."""
+    try:
+        res = subprocess.run(
+            ["git", "submodule", "status"],
+            capture_output=True,
+            text=True
+        )
+        if res.returncode == 0:
+            subfiles: List[str] = []
+            for line in res.stdout.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                parts = line.split()
+                if len(parts) >= 2:
+                    subfiles.append(parts[1])
+            return subfiles
+    except Exception:
+        pass
+    return []
+
 def main() -> None:
     if not is_inside_work_tree():
         sys.stderr.write("Error: Not a git repository\n")
@@ -113,12 +135,14 @@ def main() -> None:
         epilog="""\
 Examples:
   git-history-fzf -c
+  git-history-fzf -c --submodules
   git-history-fzf -s -h "Select a single commit"
   git-history-fzf -c -e ctrl-s -h "Select commits" -- --author="John"
 """
     )
     parser.add_argument("--help", action="help", help="show this help message and exit")
     parser.add_argument("-c", "--current", action="store_true", help="Include the '(CURRENT)' local changes line if workspace is dirty")
+    parser.add_argument("--submodules", action="store_true", help="Include submodules at the top of the list")
     parser.add_argument("-h", "--header", help="Specify the header string for fzf")
     parser.add_argument("-s", "--single", action="store_true", help="Single-line select mode (disable multi-select)")
     parser.add_argument("-e", "--expect", help="Comma-separated list of keys to expect from fzf (like ctrl-s)")
@@ -142,6 +166,16 @@ Examples:
         '  else '
         '    git diff --color=always HEAD; '
         '  fi; '
+        'elif [[ "{1}" == *"(submodule)"* ]]; then '
+        '  if [[ "{2}" == "[Submodules]" ]]; then '
+        '    git submodule status; '
+        '  else '
+        '    echo "Submodule: {2}"; '
+        '    echo; '
+        '    git -C {2} status; '
+        '    echo; '
+        '    git -C {2} log -n 5 --oneline --color=always; '
+        '  fi; '
         'else '
         '  if command -v delta >/dev/null 2>&1; then '
         '    git show --stat -p --color=always {1} | delta; '
@@ -161,45 +195,107 @@ Examples:
     if args.header:
         fzf_cmd.append(f"--header={args.header}")
 
-    # Start fzf process
-    fzf_proc = subprocess.Popen(
-        fzf_cmd,
-        stdin=subprocess.PIPE,
-        stdout=sys.stdout.buffer,
-        text=False
-    )
+    while True:
+        # Start fzf process
+        fzf_proc = subprocess.Popen(
+            fzf_cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            text=False
+        )
 
-    # Start git log process
-    git_cmd: List[str] = [
-        "git", "log", "--color=always",
-        "--date=format:%Y-%m-%d %H:%M:%S",
-        "--format=%C(auto)%h%x00%ad%x00%aE%x00%D%x00%C(auto)%s"
-    ] + git_log_args
+        # Start git log process
+        git_cmd: List[str] = [
+            "git", "log", "--color=always",
+            "--date=format:%Y-%m-%d %H:%M:%S",
+            "--format=%C(auto)%h%x00%ad%x00%aE%x00%D%x00%C(auto)%s"
+        ] + git_log_args
 
-    git_proc = subprocess.Popen(
-        git_cmd,
-        stdout=subprocess.PIPE,
-        text=False
-    )
+        git_proc = subprocess.Popen(
+            git_cmd,
+            stdout=subprocess.PIPE,
+            text=False
+        )
 
-    try:
-        if fzf_proc.stdin is not None:
-            if args.current and is_dirty():
-                fzf_proc.stdin.write(b"\x1b[33m(CURRENT)\x1b[m Local changes\n")
-            
-            if git_proc.stdout is not None:
-                for line in git_proc.stdout:
-                    fzf_proc.stdin.write(format_line(line, merge_bases))
-            
-            fzf_proc.stdin.close()
-    except BrokenPipeError:
-        # Occurs if fzf is closed before all git log lines are consumed
-        pass
+        try:
+            if fzf_proc.stdin is not None:
+                if args.current and is_dirty():
+                    fzf_proc.stdin.write(b"\x1b[33m(CURRENT)\x1b[m Local changes\n")
+                
+                if args.submodules:
+                    subs = get_submodules()
+                    if subs:
+                        fzf_proc.stdin.write(b"\x1b[35m(submodule)\x1b[m [Submodules]\n")
+                
+                if git_proc.stdout is not None:
+                    for line in git_proc.stdout:
+                        fzf_proc.stdin.write(format_line(line, merge_bases))
+                
+                fzf_proc.stdin.close()
+        except BrokenPipeError:
+            pass
 
-    git_proc.wait()
-    fzf_code = fzf_proc.wait()
-    sys.stdout.buffer.flush()
-    sys.exit(fzf_code)
+        fzf_output, _ = fzf_proc.communicate()
+        fzf_code = fzf_proc.wait()
+        git_proc.wait()
+
+        if fzf_code != 0:
+            sys.exit(fzf_code)
+
+        # Parse selections
+        lines = fzf_output.split(b"\n")
+        if lines and lines[-1] == b"":
+            lines.pop()
+
+        selections = lines[1:] if args.expect else lines
+        has_submodules_trigger = False
+        for sel in selections:
+            if b"(submodule) [Submodules]" in sel:
+                has_submodules_trigger = True
+                break
+
+        if has_submodules_trigger:
+            fzf_sub_cmd = [
+                "fzf",
+                "--ansi",
+                "--no-sort",
+                "--header=Select a submodule to view its history",
+                "--preview",
+                "echo 'Submodule: {1}'; echo; git -C {1} status; echo; git -C {1} log -n 5 --oneline --color=always",
+                "--preview-window", "top:60%"
+            ]
+            fzf_sub_proc = subprocess.Popen(
+                fzf_sub_cmd,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                text=False
+            )
+            try:
+                if fzf_sub_proc.stdin is not None:
+                    for sub in get_submodules():
+                        fzf_sub_proc.stdin.write(f"{sub}\n".encode('utf-8'))
+                    fzf_sub_proc.stdin.close()
+            except BrokenPipeError:
+                pass
+
+            sub_output, _ = fzf_sub_proc.communicate()
+            sub_code = fzf_sub_proc.wait()
+
+            if sub_code == 0:
+                selected_sub = sub_output.strip()
+                if args.expect:
+                    sys.stdout.buffer.write(b"\n(submodule) " + selected_sub + b"\n")
+                else:
+                    sys.stdout.buffer.write(b"(submodule) " + selected_sub + b"\n")
+                sys.stdout.buffer.flush()
+                sys.exit(0)
+            else:
+                # User cancelled submodules selector, return to main loop
+                continue
+        else:
+            sys.stdout.buffer.write(fzf_output)
+            sys.stdout.buffer.flush()
+            sys.exit(0)
 
 if __name__ == "__main__":
     main()

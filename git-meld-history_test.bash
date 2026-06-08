@@ -22,6 +22,7 @@ export PATH="$TEST_TMP_DIR/bin:$PATH"
 # Create mock fzf
 cat > "$TEST_TMP_DIR/bin/fzf" <<'EOF'
 #!/bin/bash
+echo "$(pwd)" >> "$TEST_TMP_DIR/fzf_cwds"
 echo "$*" > "$TEST_TMP_DIR/fzf_args"
 cat > "$TEST_TMP_DIR/fzf_stdin"
 
@@ -74,6 +75,7 @@ clear_test_state() {
   rm -f "$TEST_TMP_DIR/fzf_stdin"
   rm -f "$TEST_TMP_DIR/fzf_called"
   rm -f "$TEST_TMP_DIR/git_meld_calls"
+  rm -f "$TEST_TMP_DIR/fzf_cwds"
 }
 
 # -------------------------------------------------------------
@@ -283,6 +285,123 @@ git-meld-history
 head_hash=$(git rev-parse --short HEAD)
 expected_pattern="${head_hash}.*\[32m\[.*upstream-base.*\].*Commit 2"
 assert "grep -q -E '$expected_pattern' '$TEST_TMP_DIR/fzf_stdin'"
+
+# -------------------------------------------------------------
+# Test Case 13: Verify submodules formatting in fzf stdin
+# -------------------------------------------------------------
+setup_git_repo
+mkdir -p "$TEST_TMP_DIR/subrepo"
+(
+  cd "$TEST_TMP_DIR/subrepo"
+  git init -q
+  git config user.email "test@example.com"
+  git config user.name "Test User"
+  echo "subcontent" > subfile.txt
+  git add subfile.txt
+  git commit -q -m "Sub Commit"
+)
+git -c protocol.file.allow=always submodule add -q "$TEST_TMP_DIR/subrepo" mysub
+git commit -q -m "Add submodule"
+
+clear_test_state
+MOCK_FZF_SELECTION=""
+git-meld-history
+assert "grep -q '\[Submodules\]' '$TEST_TMP_DIR/fzf_stdin'"
+assert "grep -q -E '\[35m\(submodule\)' '$TEST_TMP_DIR/fzf_stdin'"
+
+# -------------------------------------------------------------
+# Test Case 14: Verify submodule selection directory switch
+# -------------------------------------------------------------
+setup_git_repo
+mkdir -p "$TEST_TMP_DIR/subrepo"
+(
+  cd "$TEST_TMP_DIR/subrepo"
+  git init -q
+  git config user.email "test@example.com"
+  git config user.name "Test User"
+  echo "subcontent" > subfile.txt
+  git add subfile.txt
+  git commit -q -m "Sub Commit"
+)
+git -c protocol.file.allow=always submodule add -q "$TEST_TMP_DIR/subrepo" mysub
+git commit -q -m "Add submodule"
+
+clear_test_state
+MOCK_FZF_SELECTION="(submodule) mysub"
+git-meld-history
+
+# Verify fzf_cwds recorded the two calls:
+# 1st: in repository root
+# 2nd: in submodule directory
+assert "[[ -f '$TEST_TMP_DIR/fzf_cwds' ]]"
+cwds=($(cat "$TEST_TMP_DIR/fzf_cwds"))
+assert "[[ ${#cwds[@]} -eq 2 ]]"
+assert "[[ '${cwds[0]}' == *'/repo' ]]"
+assert "[[ '${cwds[1]}' == *'/repo/mysub' ]]"
+
+# -------------------------------------------------------------
+# Test Case 15: Verify two-stage submodule selection fzf flow
+# -------------------------------------------------------------
+setup_git_repo
+mkdir -p "$TEST_TMP_DIR/subrepo"
+(
+  cd "$TEST_TMP_DIR/subrepo"
+  git init -q
+  git config user.email "test@example.com"
+  git config user.name "Test User"
+  echo "subcontent" > subfile.txt
+  git add subfile.txt
+  git commit -q -m "Sub Commit"
+)
+git -c protocol.file.allow=always submodule add -q "$TEST_TMP_DIR/subrepo" mysub
+git commit -q -m "Add submodule"
+
+clear_test_state
+# Overwrite fzf mock to handle three calls
+cat > "$TEST_TMP_DIR/bin/fzf" <<'EOF'
+#!/bin/bash
+echo "$(pwd)" >> "$TEST_TMP_DIR/fzf_cwds"
+echo "$*" >> "$TEST_TMP_DIR/fzf_args_all"
+
+# Count calls
+count=0
+if [[ -f "$TEST_TMP_DIR/fzf_call_count" ]]; then
+  count=$(cat "$TEST_TMP_DIR/fzf_call_count")
+fi
+count=$((count + 1))
+echo "$count" > "$TEST_TMP_DIR/fzf_call_count"
+
+cat > "$TEST_TMP_DIR/fzf_stdin_$count"
+
+if (( count == 1 )); then
+  # 1st call: main fzf selector, select "[Submodules]"
+  echo ""
+  echo "(submodule) [Submodules]"
+elif (( count == 2 )); then
+  # 2nd call: submodule fzf selector, select "mysub"
+  echo "mysub"
+else
+  # 3rd call: main fzf selector in submodule directory, return empty to break loop
+  echo ""
+fi
+EOF
+chmod +x "$TEST_TMP_DIR/bin/fzf"
+
+git-meld-history
+
+# Verify working directories:
+# 1st call: /repo
+# 2nd call (submodule selection fzf): also /repo (since it's called by python script before cd!)
+# 3rd call: /repo/mysub (after cd!)
+assert "[[ -f '$TEST_TMP_DIR/fzf_cwds' ]]"
+cwds=($(cat "$TEST_TMP_DIR/fzf_cwds"))
+assert "[[ ${#cwds[@]} -eq 3 ]]"
+assert "[[ '${cwds[0]}' == *'/repo' ]]"
+assert "[[ '${cwds[1]}' == *'/repo' ]]"
+assert "[[ '${cwds[2]}' == *'/repo/mysub' ]]"
+
+# Verify stdin of 2nd call (submodule fzf) contained 'mysub'
+assert "grep -q 'mysub' '$TEST_TMP_DIR/fzf_stdin_2'"
 
 # Complete testing
 done_testing

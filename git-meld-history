@@ -20,7 +20,7 @@ fi
 while true; do
   # Get selections from fzf using git-history-fzf
   header="[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), Multi-select [^S]: Squash commits"
-  fzf_output=$(git-history-fzf -c -e ctrl-s -h "$header" "$@")
+  fzf_output=$(git-history-fzf -c --submodules -e ctrl-s -h "$header" "$@")
 
   # Finish the script if no key/selections are returned (e.g. user cancelled with Esc / Ctrl-C)
   if [[ -z "$fzf_output" ]]; then
@@ -35,6 +35,23 @@ while true; do
   # Finish the script if no commits are selected (e.g. user cancelled or selected nothing)
   if [[ -z "$selections" ]]; then
     break
+  fi
+
+  # Check if a submodule is selected
+  submodule_dir=""
+  while read -r line; do
+    if [[ "$line" == "(submodule) "* ]]; then
+      submodule_dir=$(echo "$line" | cut -d' ' -f2-)
+      break
+    fi
+  done <<< "$selections"
+
+  if [[ -n "$submodule_dir" ]]; then
+    cd "$submodule_dir" || {
+      echo "Error: Could not change directory to $submodule_dir" >&2
+      sleep 2
+    }
+    continue
   fi
 
   # Parse the hashes from selections (first word of each line)
