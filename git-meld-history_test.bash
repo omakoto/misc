@@ -403,6 +403,74 @@ assert "[[ '${cwds[2]}' == *'/repo/mysub' ]]"
 # Verify stdin of 2nd call (submodule fzf) contained 'mysub'
 assert "grep -q 'mysub' '$TEST_TMP_DIR/fzf_stdin_2'"
 
+# -------------------------------------------------------------
+# Test Case 16: Verify help flag
+# -------------------------------------------------------------
+help_output=$(git-meld-history --help)
+assert "[[ \"\$help_output\" == *'git-meld-history - Interactive Git history viewer'* ]]"
+
+# -------------------------------------------------------------
+# Test Case 17: Limit history to subdirectory when not a top-level git directory
+# -------------------------------------------------------------
+setup_git_repo
+mkdir -p "$TEST_TMP_DIR/repo/subdir"
+echo "subcontent" > "$TEST_TMP_DIR/repo/subdir/subfile.txt"
+git add subdir/subfile.txt
+git config user.name "Test User"
+git config user.email "test@example.com"
+git commit -q -m "Commit 3 in subdir"
+
+clear_test_state
+# Re-create mock fzf that exits on first call (to capture stdin)
+cat > "$TEST_TMP_DIR/bin/fzf" <<'EOF'
+#!/bin/bash
+echo "$(pwd)" >> "$TEST_TMP_DIR/fzf_cwds"
+echo "$*" > "$TEST_TMP_DIR/fzf_args"
+cat > "$TEST_TMP_DIR/fzf_stdin"
+echo "" # Empty return to break loop
+EOF
+chmod +x "$TEST_TMP_DIR/bin/fzf"
+
+# Run passing the subdirectory
+git-meld-history "$TEST_TMP_DIR/repo/subdir"
+
+# 1. fzf should be run with the subdirectory as pwd
+assert "[[ -f '$TEST_TMP_DIR/fzf_cwds' ]]"
+assert "[[ '$(cat $TEST_TMP_DIR/fzf_cwds)' == *'/repo/subdir' ]]"
+
+# 2. fzf_stdin should contain "Commit 3 in subdir" but NOT "Commit 2" or "Commit 1"
+# because history is limited to that subdirectory!
+assert "grep -q 'Commit 3 in subdir' '$TEST_TMP_DIR/fzf_stdin'"
+assert "! grep -q 'Commit 2' '$TEST_TMP_DIR/fzf_stdin'"
+assert "! grep -q 'Commit 1' '$TEST_TMP_DIR/fzf_stdin'"
+
+# 4. Now let's test that selecting a commit inside the subdirectory limits git-meld to the subdirectory
+clear_test_state
+commit3_hash=$(git rev-parse --short HEAD)
+export MOCK_FZF_SELECTION="$commit3_hash Commit 3 in subdir"
+
+# Re-create mock fzf to return the selection
+cat > "$TEST_TMP_DIR/bin/fzf" <<'EOF'
+#!/bin/bash
+if [[ -f "$TEST_TMP_DIR/fzf_called" ]]; then
+  echo ""
+else
+  touch "$TEST_TMP_DIR/fzf_called"
+  echo ""
+  echo -e "$MOCK_FZF_SELECTION"
+fi
+EOF
+chmod +x "$TEST_TMP_DIR/bin/fzf"
+
+git-meld-history "$TEST_TMP_DIR/repo/subdir"
+
+# git-meld should be called with -- .
+assert "[[ -f '$TEST_TMP_DIR/git_meld_calls' ]]"
+assert "[[ '$(cat $TEST_TMP_DIR/git_meld_calls)' == *'-- .' ]]"
+
+# Clean up environment
+unset MOCK_FZF_SELECTION
+
 # Complete testing
 done_testing
 
