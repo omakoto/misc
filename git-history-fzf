@@ -69,26 +69,20 @@ def format_line(line: bytes, merge_bases: Optional[Set[bytes]] = None) -> bytes:
                 is_mb = True
                 break
 
-    if not clean_deco:
-        if is_mb:
-            green_deco = b"\x1b[32m[upstream-base]\x1b[m"
-            return hash_part + b" " + formatted_date + b" " + formatted_email + b" " + green_deco + b" " + subject_part + b"\n"
-        else:
-            return hash_part + b" " + formatted_date + b" " + formatted_email + b" " + subject_part + b"\n"
-        
     branches: List[bytes] = []
-    for item in clean_deco.split(b","):
-        item = item.strip()
-        if not item or item.startswith(b"tag:"):
-            continue
-        if b"->" in item:
-            left, right = item.split(b"->", 1)
-            left, right = left.strip(), right.strip()
-            if left != b"HEAD":
-                branches.append(left)
-            branches.append(right)
-        else:
-            branches.append(item)
+    if clean_deco:
+        for item in clean_deco.split(b","):
+            item = item.strip()
+            if not item or item.startswith(b"tag:"):
+                continue
+            if b"->" in item:
+                left, right = item.split(b"->", 1)
+                left, right = left.strip(), right.strip()
+                if left != b"HEAD":
+                    branches.append(left)
+                branches.append(right)
+            else:
+                branches.append(item)
             
     unique_branches: List[bytes] = []
     for b in branches:
@@ -96,8 +90,8 @@ def format_line(line: bytes, merge_bases: Optional[Set[bytes]] = None) -> bytes:
             unique_branches.append(b)
             
     if is_mb:
-        if b"upstream-base" not in unique_branches:
-            unique_branches.append(b"upstream-base")
+        if b"\x1b[33mupstream-base\x1b[32m" not in unique_branches:
+            unique_branches.append(b"\x1b[33mupstream-base\x1b[32m")
 
     if unique_branches:
         green_deco = b"\x1b[32m[" + b", ".join(unique_branches) + b"]\x1b[m"
