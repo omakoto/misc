@@ -17,15 +17,18 @@ import argparse
 import re
 import shlex
 from typing import List, Set, Optional, Any
+_fzf_active = False
 
 def run_command(cmd: List[str], **kwargs: Any) -> subprocess.CompletedProcess[Any]:
-    sys.stderr.write(f"+ {shlex.join(cmd)}\n")
-    sys.stderr.flush()
+    if not _fzf_active:
+        sys.stderr.write(f"+ {shlex.join(cmd)}\n")
+        sys.stderr.flush()
     return subprocess.run(cmd, **kwargs)
 
 def popen_command(cmd: List[str], **kwargs: Any) -> subprocess.Popen[Any]:
-    sys.stderr.write(f"+ {shlex.join(cmd)}\n")
-    sys.stderr.flush()
+    if not _fzf_active:
+        sys.stderr.write(f"+ {shlex.join(cmd)}\n")
+        sys.stderr.flush()
     return subprocess.Popen(cmd, **kwargs)
 
 def terminate_process(proc: subprocess.Popen[Any]) -> None:
@@ -143,7 +146,8 @@ def get_submodules() -> List[str]:
         pass
     return []
 
-def main() -> None:
+def main_inner() -> None:
+    global _fzf_active
     if not is_inside_work_tree():
         sys.stderr.write("Error: Not a git repository\n")
         sys.exit(1)
@@ -217,6 +221,7 @@ Examples:
     if args.header:
         fzf_cmd.append(f"--header={args.header}")
 
+    _fzf_active = True
     while True:
         # Start fzf process
         fzf_proc = popen_command(
@@ -318,6 +323,13 @@ Examples:
             sys.stdout.buffer.write(fzf_output)
             sys.stdout.buffer.flush()
             sys.exit(0)
+
+def main() -> None:
+    global _fzf_active
+    try:
+        main_inner()
+    finally:
+        _fzf_active = False
 
 if __name__ == "__main__":
     main()
