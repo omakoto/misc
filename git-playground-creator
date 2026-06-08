@@ -16,7 +16,7 @@ function print_help() {
   cat <<'EOF'
 Usage: git-playground-creator [options]
 
-Create a temporary Git repository playground for testing and conflict resolution practice.
+Create a temporary Git repository playground for testing.
 The playground will include two branches:
   - clean-branch: Can be cleanly merged to main.
   - conflict-branch: Will conflict against main on file5-1.txt, file5-2.txt, and file1-2.txt.
