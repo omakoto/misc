@@ -261,5 +261,29 @@ assert "! grep -q '(CURRENT)' '$TEST_TMP_DIR/fzf_stdin'"
 # Return to script directory
 cd "$SCRIPT_DIR"
 
+# -------------------------------------------------------------
+# Test Case 12: Verify upstream-base decoration formatting in fzf stdin
+# -------------------------------------------------------------
+setup_git_repo
+# Create a tracking branch and upstream branch
+git checkout -b remote-branch -q
+echo "content-remote" > file-remote.txt
+git add file-remote.txt
+git commit -q -m "Commit on upstream branch"
+git checkout master -q
+git branch --set-upstream-to=remote-branch master -q
+
+clear_test_state
+MOCK_FZF_SELECTION=""
+git-meld-history
+
+# Since remote-branch is set as upstream for master, the merge-base between
+# master (HEAD) and remote-branch is Commit 2 (which is master tip).
+# Let's verify that the decoration is in green and formatted as [upstream-base]
+head_hash=$(git rev-parse --short HEAD)
+expected_pattern="${head_hash}.*\[32m\[.*upstream-base.*\].*Commit 2"
+assert "grep -q -E '$expected_pattern' '$TEST_TMP_DIR/fzf_stdin'"
+
 # Complete testing
 done_testing
+
