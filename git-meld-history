@@ -60,8 +60,13 @@ fi
 # Loop to continuously show git log with fzf
 while true; do
   # Get selections from fzf using git-history-fzf
-  header="[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), Multi-select [^S]: Squash commits"
-  fzf_output=$(git-history-fzf -c --submodules -e ctrl-s -h "$header" "$@" "${extra_args[@]}")
+  if [[ -n "$(git status --porcelain)" ]]; then
+    header="[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), Multi-select [^S]: Squash commits, [^I]: Inject"
+    fzf_output=$(git-history-fzf -c --submodules -e ctrl-s,ctrl-i -h "$header" "$@" "${extra_args[@]}")
+  else
+    header="[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), Multi-select [^S]: Squash commits"
+    fzf_output=$(git-history-fzf -c --submodules -e ctrl-s -h "$header" "$@" "${extra_args[@]}")
+  fi
 
   # Finish the script if no key/selections are returned (e.g. user cancelled with Esc / Ctrl-C)
   if [[ -z "$fzf_output" ]]; then
@@ -72,6 +77,16 @@ while true; do
   key=$(head -n 1 <<< "$fzf_output")
   # Remaining lines are the selections
   selections=$(tail -n +2 <<< "$fzf_output")
+
+  if [[ "$key" == "ctrl-i" ]]; then
+    if [[ -n "$(git status --porcelain)" ]]; then
+      exec git-rebase-inject "$@"
+    else
+      echo "Error: Inject is only available when the worktree is dirty." >&2
+      sleep 2
+      continue
+    fi
+  fi
 
   # Finish the script if no commits are selected (e.g. user cancelled or selected nothing)
   if [[ -z "$selections" ]]; then
