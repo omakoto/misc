@@ -81,6 +81,7 @@ touch "$MOCK_DIR/test.db"
 run_1() {
   > "$TEST_LOG"
   ./1 "$@" >/dev/null 2>&1
+  sleep 0.1
   
   # Normalize paths and PIDs in output log
   cat "$TEST_LOG" | \
@@ -169,7 +170,7 @@ EOF
 
 # 8. Markdown file (renders with pandoc and opens HTML via 'c')
 assert_out -d run_1 "$MOCK_DIR/test.md" <<'EOF'
-[[temp]/pandoc] ARGS: -f gfm -s [temp]/test.md -o [tmp]/test.md-[pid].html
+[[temp]/pandoc] ARGS: -f gfm -s -V maxwidth=min(95%, 120em) [temp]/test.md -o [tmp]/test.md-[pid].html
 [[temp]/c] ARGS: [tmp]/test.md-[pid].html
 EOF
 

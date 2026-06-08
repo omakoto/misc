@@ -182,9 +182,9 @@ for n in "${args[@]}" ; do
         f=$temp/${n##*/}-$$-list.txt
         ee -2 dpkg -c "$n" > "$f"
         ;;
-      *.md)
+      *.md|markdown)
         html="$temp/${n##*/}-$$.html"
-        pandoc -f gfm -s "$n" -o "$html"
+        pandoc -f gfm -s -V maxwidth="min(95%, 120em)" "$n" -o "$html"
         c "$html"
         continue
         ;;
