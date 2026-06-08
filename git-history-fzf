@@ -15,11 +15,31 @@ import os
 import subprocess
 import argparse
 import re
-from typing import List, Set, Optional
+import shlex
+from typing import List, Set, Optional, Any
+
+def run_command(cmd: List[str], **kwargs: Any) -> subprocess.CompletedProcess[Any]:
+    sys.stderr.write(f"+ {shlex.join(cmd)}\n")
+    sys.stderr.flush()
+    return subprocess.run(cmd, **kwargs)
+
+def popen_command(cmd: List[str], **kwargs: Any) -> subprocess.Popen[Any]:
+    sys.stderr.write(f"+ {shlex.join(cmd)}\n")
+    sys.stderr.flush()
+    return subprocess.Popen(cmd, **kwargs)
+
+def terminate_process(proc: subprocess.Popen[Any]) -> None:
+    if proc.poll() is None:
+        proc.terminate()
+        try:
+            proc.wait(timeout=0.2)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
 
 def is_inside_work_tree() -> bool:
     """Checks if the current working directory is inside a Git work tree."""
-    res = subprocess.run(
+    res = run_command(
         ["git", "rev-parse", "--is-inside-work-tree"],
         capture_output=True
     )
@@ -27,7 +47,7 @@ def is_inside_work_tree() -> bool:
 
 def is_dirty() -> bool:
     """Checks if the Git repository has any uncommitted changes."""
-    res = subprocess.run(
+    res = run_command(
         ["git", "status", "--porcelain"],
         capture_output=True
     )
@@ -36,7 +56,7 @@ def is_dirty() -> bool:
 def get_merge_bases() -> Set[bytes]:
     """Retrieves the merge base commit SHAs with the upstream branch."""
     try:
-        res = subprocess.run(
+        res = run_command(
             ["git", "merge-base", "HEAD", "@{u}"],
             capture_output=True
         )
@@ -104,7 +124,7 @@ def format_line(line: bytes, merge_bases: Optional[Set[bytes]] = None) -> bytes:
 def get_submodules() -> List[str]:
     """Retrieves the list of submodule paths in the repository."""
     try:
-        res = subprocess.run(
+        res = run_command(
             ["git", "submodule", "status"],
             capture_output=True,
             text=True
@@ -199,7 +219,7 @@ Examples:
 
     while True:
         # Start fzf process
-        fzf_proc = subprocess.Popen(
+        fzf_proc = popen_command(
             fzf_cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -213,7 +233,7 @@ Examples:
             "--format=%C(auto)%h%x00%ad%x00%aE%x00%D%x00%C(auto)%s"
         ] + git_log_args
 
-        git_proc = subprocess.Popen(
+        git_proc = popen_command(
             git_cmd,
             stdout=subprocess.PIPE,
             text=False
@@ -239,7 +259,7 @@ Examples:
 
         fzf_output, _ = fzf_proc.communicate()
         fzf_code = fzf_proc.wait()
-        git_proc.wait()
+        terminate_process(git_proc)
 
         if fzf_code != 0:
             sys.exit(fzf_code)
@@ -266,7 +286,7 @@ Examples:
                 "echo 'Submodule: {1}'; echo; git -C {1} status; echo; git -C {1} log -n 5 --oneline --color=always",
                 "--preview-window", "top:60%"
             ]
-            fzf_sub_proc = subprocess.Popen(
+            fzf_sub_proc = popen_command(
                 fzf_sub_cmd,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
