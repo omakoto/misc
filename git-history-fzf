@@ -4,6 +4,8 @@
 # Displays commits with hash, author date, author email, and branch decorations.
 # Returns the selected key on the first line (if -e is used), and selected commits on subsequent lines.
 #
+# Make sure to run git-history-fzf_test.py after making any changes.
+#
 # Examples:
 #   git-history-fzf -c -h "Select commits"
 #   git-history-fzf --help
