@@ -136,4 +136,8 @@ assert "run_test_migration \"$mock_out_c2\" \"$DST_SUBDIR\""
 assert "[[ -f \"$DST_REPO/file2.txt\" ]]"
 assert "[[ \$(cat \"$DST_REPO/file2.txt\") == \"file2 content\" ]]"
 
+# Test Case 4: --bash-completion
+assert '[[ "$("$DIR/git-migrate-commits" --bash-completion)" == *"_git_migrate_commits"* ]]'
+
 done_testing
+
