@@ -1,5 +1,14 @@
 #!/bin/bash
 
-cat "$@" | while IFS= read -r line; do
-    printf "%q" "$line"
-done
+# Escape standard input or file lines for the shell, printing space-separated arguments.
+
+cat "$@" | {
+    has_input=0
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        printf "%q " "$line"
+        has_input=1
+    done
+    if (( has_input )); then
+        echo
+    fi
+}
