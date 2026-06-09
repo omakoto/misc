@@ -1,0 +1,126 @@
+#!/bin/bash
+# git-migrate-commits: Migrate selected commits to a target directory.
+# It launches git-history-fzf to let the user pick multiple changes,
+# and applies them to the target directory's git repository.
+#
+# Run the test script to verify changes:
+#   ./git-migrate-commits_test.bash
+#
+
+set -e
+
+# Find the script directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Source mutil.sh if available
+if [[ -f "$SCRIPT_DIR/mutil.sh" ]]; then
+  . "$SCRIPT_DIR/mutil.sh"
+elif [[ -f "$SCRIPT_DIR/../mutil.sh" ]]; then
+  . "$SCRIPT_DIR/../mutil.sh"
+fi
+
+print_help() {
+  cat <<'EOF'
+git-migrate-commits - Migrate selected commits to a target directory
+
+Usage:
+  git-migrate-commits [options] TARGET_DIR
+
+Options:
+  -h, --help Show this help message.
+
+Examples:
+  git-migrate-commits /path/to/target/repo
+EOF
+}
+
+# Check for --help option before getopts loop
+if [[ "$1" == "--help" ]]; then
+  print_help
+  exit 0
+fi
+
+while getopts "h" opt; do
+  case "$opt" in
+    h)
+      print_help
+      exit 0
+      ;;
+    *)
+      print_help
+      exit 1
+      ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+target_dir="$1"
+if [[ -z "$target_dir" ]]; then
+  echo "Error: Target directory is required." >&2
+  print_help
+  exit 1
+fi
+
+if [[ ! -d "$target_dir" ]]; then
+  echo "Error: Target directory '$target_dir' does not exist." >&2
+  exit 1
+fi
+
+# Find the actual git top directory of the target
+target_git_root=$(git -C "$target_dir" rev-parse --show-toplevel 2>/dev/null)
+if [[ -z "$target_git_root" ]]; then
+  echo "Error: Target directory '$target_dir' is not inside a Git repository." >&2
+  exit 1
+fi
+
+if [[ -z "${GIT_HISTORY_FZF:-}" ]]; then
+  GIT_HISTORY_FZF="$SCRIPT_DIR/git-history-fzf"
+  if [[ ! -x "$GIT_HISTORY_FZF" ]]; then
+    # Fallback to PATH if not in same directory (though it should be)
+    GIT_HISTORY_FZF="git-history-fzf"
+  fi
+fi
+
+# Launch git-history-fzf
+if ! selected=$("$GIT_HISTORY_FZF"); then
+  # User cancelled or error
+  exit $?
+fi
+
+if [[ -z "$selected" ]]; then
+  echo "No commits selected."
+  exit 0
+fi
+
+# Extract hashes and reverse them
+hashes=()
+while read -r line; do
+  # Strip ANSI escape codes (using bash expansion for ESC)
+  clean_line=$(echo "$line" | sed $'s/\e\\[[0-9;]*m//g')
+  # Get first word (hash)
+  hash=$(echo "$clean_line" | awk '{print $1}')
+  if [[ -n "$hash" ]]; then
+    hashes+=("$hash")
+  fi
+done <<< "$selected"
+
+# Reverse order (oldest first)
+reversed_hashes=()
+for ((i=${#hashes[@]}-1; i>=0; i--)); do
+  reversed_hashes+=("${hashes[i]}")
+done
+
+echo "Migrating ${#reversed_hashes[@]} commits to $target_git_root..."
+
+# Generate patches and apply them
+(
+  for hash in "${reversed_hashes[@]}"; do
+    git format-patch -k --stdout -1 "$hash"
+  done
+) | (
+  if type ee >/dev/null 2>&1; then
+    ee git -C "$target_git_root" am -3 -k
+  else
+    git -C "$target_git_root" am -3 -k
+  fi
+)
