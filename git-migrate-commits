@@ -9,6 +9,8 @@
 
 set -e
 
+export GIT_OPTIONAL_LOCKS=0
+
 # Find the script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 

@@ -3,6 +3,8 @@
 # Nicely format a short form of git status.
 # Use with `git status -s`.
 
+export GIT_OPTIONAL_LOCKS=0
+
 print_help() {
     cat <<'EOF'
 Usage: git status -s | git-status-format [OPTIONS]

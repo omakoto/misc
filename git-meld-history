@@ -4,6 +4,8 @@
 # See git-meld-history.md for details on specifications, including dirty directory/workspace (CURRENT) handling.
 # Make sure to run git-meld-history_test.bash after making any changes.
 
+export GIT_OPTIONAL_LOCKS=0
+
 print_help() {
   cat <<'EOF'
 git-meld-history - Interactive Git history viewer using fzf and git-meld.

@@ -9,6 +9,8 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   set -e
 fi
 
+export GIT_OPTIONAL_LOCKS=0
+
 GIT_PLAYGROUND_CREATOR_SOURCE=$(readlink -f "${BASH_SOURCE[0]}")
 
 # Print the help message.

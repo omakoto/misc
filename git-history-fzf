@@ -17,6 +17,9 @@ import argparse
 import re
 import shlex
 from typing import List, Set, Optional, Any
+
+os.environ['GIT_OPTIONAL_LOCKS'] = '0'
+
 _fzf_active = False
 
 def run_command(cmd: List[str], **kwargs: Any) -> subprocess.CompletedProcess[Any]:

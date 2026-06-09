@@ -4,6 +4,8 @@
 # This script launches Meld to resolve git merge conflicts. It defaults to the
 # current directory, but accepts a path to a git repository as an optional argument.
 
+export GIT_OPTIONAL_LOCKS=0
+
 # Print the help message.
 function print_help() {
   cat <<'EOF'

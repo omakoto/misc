@@ -34,6 +34,8 @@ import stat
 import shlex
 from typing import List, Tuple, Set, Dict, Optional
 
+os.environ['GIT_OPTIONAL_LOCKS'] = '0'
+
 # Options known to take a value as the next argument in git-diff.
 # If these options are present, the next argument is skipped during revision parsing.
 OPTIONS_WITH_ARGS: Set[str] = {
