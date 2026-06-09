@@ -530,7 +530,13 @@ assert "! grep -q 'ctrl-i' '$TEST_TMP_DIR/fzf_args'"
 # 2. git-rebase-inject was NOT called
 assert "[[ ! -f '$TEST_TMP_DIR/git_rebase_inject_calls' ]]"
 
+# -------------------------------------------------------------
+# Test Case 20: --bash-completion
+# -------------------------------------------------------------
+assert '[[ "$(git-meld-history --bash-completion)" == *"_git_meld_history"* ]]'
+
 # Complete testing
 done_testing
+
 
 
