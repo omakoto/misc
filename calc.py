@@ -248,6 +248,9 @@ def main(args: list[str]) -> None:
         use_fraction = True
         args = [arg for arg in args if arg != '--fraction']
 
+    if not args and sys.stdin.isatty():
+        use_interactive = True
+
     # Update sys.argv so that fileinput doesn't get confused
     sys.argv = [sys.argv[0]] + args
 
@@ -279,6 +282,7 @@ def main(args: list[str]) -> None:
 
         show_result(result)
     else:
+        # Non-interactive mode (e.g. piped input like `echo "1+2" | calc.py` when no arguments are specified).
         for line in fileinput.input():
             line_str = line.strip()
             if not line_str:

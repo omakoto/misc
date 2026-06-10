@@ -143,6 +143,15 @@ class TestCalcExecution(unittest.TestCase):
         out_frac = self.run_calc(["-i", "-f"])
         self.assertIn("1/2", out_frac)
 
+    @patch('builtins.input')
+    @patch('sys.stdin')
+    def test_default_interactive_repl(self, mock_stdin: unittest.mock.MagicMock, mock_input: unittest.mock.MagicMock) -> None:
+        mock_stdin.isatty.return_value = True
+        mock_input.side_effect = ["1+2", "exit"]
+        out = self.run_calc([])
+        self.assertIn("calc.py Interactive REPL", out)
+        self.assertIn("3", out)
+
     def test_digit_separators(self) -> None:
         # Test commas and underscores mixed in a single execution
         out = self.run_calc(["1,000_000 + 2_000,000"])
