@@ -151,6 +151,18 @@ def get_submodules() -> List[str]:
 
 def main_inner() -> None:
     global _fzf_active
+    if sys.stderr.isatty():
+        cwd = os.getcwd()
+        home = os.path.expanduser("~")
+        if cwd == home:
+            title = "~"
+        elif cwd.startswith(home + "/"):
+            title = "~/" + cwd[len(home) + 1:]
+        else:
+            title = cwd
+        sys.stderr.write(f"\033]0;Git history: {title}\007")
+        sys.stderr.flush()
+
     if not is_inside_work_tree():
         sys.stderr.write("Error: Not a git repository\n")
         sys.exit(1)

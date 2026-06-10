@@ -4,18 +4,7 @@
 # When run inside Antigravity/Claude, it launches in a new gnome-terminal.
 script_dir=$(dirname "$(readlink -f "$0")")
 if "$script_dir/is-in-agent"; then
-  dir="$1"
-  if [[ -z "$dir" || "$dir" == -* ]]; then
-    dir="$PWD"
-  fi
-  dir_title=$(realpath "$dir" 2>/dev/null || echo "$dir")
-  if [[ "$dir_title" == "$HOME" ]]; then
-    dir_title="~"
-  elif [[ "$dir_title" == "$HOME"/* ]]; then
-    dir_title="~/${dir_title#$HOME/}"
-  fi
-
-  exec env -u ANTIGRAVITY_AGENT -u CLAUDE_AGENT gnome-terminal --title="$dir_title" -- gg "$@"
+  exec env -u ANTIGRAVITY_AGENT -u CLAUDE_AGENT gnome-terminal -- gg "$@"
 fi
 
 exec git meld-history "$@"
