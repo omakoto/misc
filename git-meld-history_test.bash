@@ -7,6 +7,16 @@ cd ${0%/*}
 SCRIPT_DIR=$(pwd)
 export PATH="$SCRIPT_DIR:$PATH"
 
+export TARGET_SCRIPT="${TARGET_SCRIPT:-git-meld-history}"
+
+git-meld-history() {
+  if [[ "$TARGET_SCRIPT" == "git-meld-history" ]]; then
+    command git-meld-history "$@"
+  else
+    "$TARGET_SCRIPT" "$@"
+  fi
+}
+
 # Setup temp directory for the test
 export TEST_TMP_DIR=$(mktemp -d -t git-meld-history-test-XXXXXX)
 export MOCK_FZF_SELECTION=""
