@@ -189,6 +189,7 @@ def run_sequence_editor(todo_file: str) -> None:
         f.writelines(new_lines)
 
 def main() -> None:
+    os.environ["GIT_OPTIONAL_LOCKS"] = "0"
     args: List[str] = sys.argv[1:]
 
     if args and args[0] == "--sequence-editor":
