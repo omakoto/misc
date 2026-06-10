@@ -535,6 +535,35 @@ assert "[[ ! -f '$TEST_TMP_DIR/git_rebase_inject_calls' ]]"
 # -------------------------------------------------------------
 assert '[[ "$(git-meld-history --bash-completion)" == *"_git_meld_history"* ]]'
 
+# -------------------------------------------------------------
+# Test Case 21: Run without arguments from a subdirectory
+# -------------------------------------------------------------
+setup_git_repo
+mkdir -p "$TEST_TMP_DIR/repo/subdir"
+clear_test_state
+
+# Re-create mock fzf that writes to fzf_cwds and exits immediately
+cat > "$TEST_TMP_DIR/bin/fzf" <<'EOF'
+#!/bin/bash
+echo "$(pwd)" >> "$TEST_TMP_DIR/fzf_cwds"
+echo "" # Empty return to break loop
+EOF
+chmod +x "$TEST_TMP_DIR/bin/fzf"
+
+cd "$TEST_TMP_DIR/repo/subdir"
+
+# Run git-meld-history without arguments (which should cd to git toplevel repo dir)
+git-meld-history
+
+# Verify:
+# 1. fzf should be run with the repository root as pwd, not the subdirectory
+assert "[[ -f '$TEST_TMP_DIR/fzf_cwds' ]]"
+assert "[[ '$(cat $TEST_TMP_DIR/fzf_cwds)' == *'/repo' ]]"
+assert "[[ '$(cat $TEST_TMP_DIR/fzf_cwds)' != *'/repo/subdir' ]]"
+
+# Return to script directory
+cd "$SCRIPT_DIR"
+
 # Complete testing
 done_testing
 

@@ -123,6 +123,14 @@ if [[ "$1" == "--bash-completion" ]]; then
 fi
 
 
+# If no arguments are provided, start from the git top-level directory
+if [[ $# -eq 0 ]]; then
+  toplevel=$(git rev-parse --show-toplevel 2>/dev/null)
+  if [[ -n "$toplevel" ]]; then
+    cd "$toplevel" || exit 1
+  fi
+fi
+
 # If the first argument is specified, assume it's a directory and change to it
 if [[ "$1" != "" ]]; then
   cd "$1" || exit 1
