@@ -1,0 +1,43 @@
+#!/bin/bash
+# is-in-agent: Detects if the process is running under an AI agent (e.g., Antigravity or Claude).
+# Returns exit code 0 if running in an agent, 1 otherwise.
+
+print_help() {
+  cat <<'EOF'
+is-in-agent - Detect if running under an AI agent.
+
+Usage:
+  is-in-agent [options]
+
+Options:
+  -h, --help    Show this help message and exit.
+
+Exit Codes:
+  0             Yes, running under an AI agent (Antigravity/Claude).
+  1             No, running in a normal user shell/terminal.
+EOF
+}
+
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+  print_help
+  exit 0
+fi
+
+# 1. Check environment variables (standard agent environments inject these).
+if [[ -n "$ANTIGRAVITY_AGENT" || -n "$CLAUDE_AGENT" ]]; then
+  exit 0
+fi
+
+# 2. Walk up parent process tree to detect agy or claude.
+# This is necessary because some agent CLI clients (like 'agy') run user commands
+# in a clean environment without exporting agent-specific environment variables.
+pid=$$
+while [[ -n "$pid" && "$pid" -ne 0 && "$pid" -ne 1 ]]; do
+  name=$(cat /proc/$pid/comm 2>/dev/null)
+  if [[ "$name" == "agy" || "$name" == "claude" ]]; then
+    exit 0
+  fi
+  pid=$(awk '{print $4}' /proc/$pid/stat 2>/dev/null)
+done
+
+exit 1
