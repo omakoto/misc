@@ -24,7 +24,7 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
 fi
 
 # 1. Check environment variables (standard agent environments inject these).
-if [[ -n "$ANTIGRAVITY_AGENT" || -n "$CLAUDE_AGENT" ]]; then
+if [[ -n "$ANTIGRAVITY_AGENT" || -n "$CLAUDE_AGENT" || -n "$IS_IN_AGENT" ]]; then
   exit 0
 fi
 

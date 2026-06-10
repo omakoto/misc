@@ -8,7 +8,7 @@ if "$script_dir/is-in-agent"; then
     echo "Error: DISPLAY is not set. Cannot launch gnome-terminal from a headless agent session." >&2
     exit 1
   fi
-  exec env -u ANTIGRAVITY_AGENT -u CLAUDE_AGENT gnome-terminal --geometry=140x45 -- gg "$@"
+  exec env -u ANTIGRAVITY_AGENT -u CLAUDE_AGENT -u IS_IN_AGENT gnome-terminal --geometry=140x45 -- gg "$@"
 fi
 
 exec git meld-history "$@"
