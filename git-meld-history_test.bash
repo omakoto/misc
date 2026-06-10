@@ -564,6 +564,67 @@ assert "[[ '$(cat $TEST_TMP_DIR/fzf_cwds)' != *'/repo/subdir' ]]"
 # Return to script directory
 cd "$SCRIPT_DIR"
 
+# -------------------------------------------------------------
+# Test Case 22: Verify parent selection traversal (Parent)
+# -------------------------------------------------------------
+setup_git_repo
+mkdir -p "$TEST_TMP_DIR/subrepo"
+(
+  cd "$TEST_TMP_DIR/subrepo"
+  git init -q
+  git config user.email "test@example.com"
+  git config user.name "Test User"
+  echo "subcontent" > subfile.txt
+  git add subfile.txt
+  git commit -q -m "Sub Commit"
+)
+git -c protocol.file.allow=always submodule add -q "$TEST_TMP_DIR/subrepo" mysub
+git commit -q -m "Add submodule"
+
+clear_test_state
+rm -f "$TEST_TMP_DIR/fzf_call_count"
+
+# Re-create mock fzf to simulate selecting "(Parent)" on first call
+cat > "$TEST_TMP_DIR/bin/fzf" <<'EOF'
+#!/bin/bash
+echo "$(pwd)" >> "$TEST_TMP_DIR/fzf_cwds"
+
+# Count calls
+count=0
+if [[ -f "$TEST_TMP_DIR/fzf_call_count" ]]; then
+  count=$(cat "$TEST_TMP_DIR/fzf_call_count")
+fi
+count=$((count + 1))
+echo "$count" > "$TEST_TMP_DIR/fzf_call_count"
+
+if (( count == 1 )); then
+  # 1st call: select "(Parent)"
+  echo ""
+  echo "(submodule) (Parent)"
+else
+  # 2nd call: return empty to break loop
+  echo ""
+fi
+EOF
+chmod +x "$TEST_TMP_DIR/bin/fzf"
+
+# Start in the submodule directory
+cd "$TEST_TMP_DIR/repo/mysub"
+
+git-meld-history
+
+# Verify:
+# 1st call should be in the submodule directory (/repo/mysub)
+# 2nd call should be in the parent repository directory (/repo) after cd'ing to Parent
+assert "[[ -f '$TEST_TMP_DIR/fzf_cwds' ]]"
+cwds=($(cat "$TEST_TMP_DIR/fzf_cwds"))
+assert "[[ ${#cwds[@]} -eq 2 ]]"
+assert "[[ '${cwds[0]}' == *'/repo/mysub' ]]"
+assert "[[ '${cwds[1]}' == *'/repo' ]]"
+
+# Return to script directory
+cd "$SCRIPT_DIR"
+
 # Complete testing
 done_testing
 

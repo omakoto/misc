@@ -59,6 +59,17 @@ class GitHistoryFzfTest(unittest.TestCase):
         mock_run.side_effect = Exception("error")
         self.assertEqual(git_history_fzf.get_submodules(), [])
 
+    @patch('subprocess.run')
+    def test_get_parent_repo(self, mock_run: MagicMock) -> None:
+        mock_run.return_value = MagicMock(returncode=0, stdout="/path/to/parent\n")
+        self.assertEqual(git_history_fzf.get_parent_repo(), "/path/to/parent")
+        
+        mock_run.return_value = MagicMock(returncode=0, stdout="\n")
+        self.assertIsNone(git_history_fzf.get_parent_repo())
+        
+        mock_run.side_effect = Exception("error")
+        self.assertIsNone(git_history_fzf.get_parent_repo())
+
     def test_format_line_too_few_parts(self) -> None:
         line: bytes = b"too\x00few\x00parts"
         res: bytes = git_history_fzf.format_line(line)
@@ -213,11 +224,13 @@ class GitHistoryFzfTest(unittest.TestCase):
     @patch('git_history_fzf.is_inside_work_tree')
     @patch('git_history_fzf.get_merge_bases')
     @patch('git_history_fzf.get_submodules')
+    @patch('git_history_fzf.get_parent_repo')
     @patch('subprocess.Popen')
-    def test_main_submodules(self, mock_popen: MagicMock, mock_get_subs: MagicMock, mock_get_merge_bases: MagicMock, mock_is_inside: MagicMock) -> None:
+    def test_main_submodules(self, mock_popen: MagicMock, mock_get_parent: MagicMock, mock_get_subs: MagicMock, mock_get_merge_bases: MagicMock, mock_is_inside: MagicMock) -> None:
         mock_is_inside.return_value = True
         mock_get_merge_bases.return_value = set()
         mock_get_subs.return_value = ["sub1", "sub2"]
+        mock_get_parent.return_value = "/path/to/parent"
         
         mock_fzf_proc = MagicMock()
         mock_fzf_proc.stdin = MagicMock()
@@ -252,6 +265,7 @@ class GitHistoryFzfTest(unittest.TestCase):
                 
             self.assertEqual(cm.exception.code, 0)
             mock_fzf_proc.stdin.write.assert_any_call(b"\x1b[35m(submodule)\x1b[m [Submodules]\n")
+            mock_fzf_proc.stdin.write.assert_any_call(b"\x1b[35m(submodule)\x1b[m (Parent)\n")
             mock_stdout.buffer.write.assert_called_once_with(b"(submodule) sub1\n")
 
     @patch('git_history_fzf.is_inside_work_tree')

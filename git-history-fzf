@@ -149,6 +149,21 @@ def get_submodules() -> List[str]:
         pass
     return []
 
+def get_parent_repo() -> Optional[str]:
+    """Retrieves the parent repository's working tree path, if in a submodule."""
+    try:
+        res = run_command(
+            ["git", "rev-parse", "--show-superproject-working-tree"],
+            capture_output=True,
+            text=True
+        )
+        if res.returncode == 0:
+            path = res.stdout.strip()
+            return path if path else None
+    except Exception:
+        pass
+    return None
+
 def main_inner() -> None:
     global _fzf_active
     if sys.stderr.isatty():
@@ -214,6 +229,18 @@ Examples:
         '      *"[Submodules]"*) '
         '        git submodule status | awk \'{print substr($0, 1, 1) substr($0, 42)}\'; '
         '        ;; '
+        '      *"(Parent)"*) '
+        '        parent_dir=$(git rev-parse --show-superproject-working-tree 2>/dev/null); '
+        '        if [ -n "$parent_dir" ]; then '
+        '          echo "Parent Repository: $parent_dir"; '
+        '          echo; '
+        '          git -C "$parent_dir" status; '
+        '          echo; '
+        '          git -C "$parent_dir" log -n 5 --oneline --color=always; '
+        '        else '
+        '          echo "No parent repository found."; '
+        '        fi; '
+        '        ;; '
         '      *) '
         '        echo "Submodule: {2}"; '
         '        echo; '
@@ -272,6 +299,9 @@ Examples:
                     fzf_proc.stdin.write(b"\x1b[33m(CURRENT)\x1b[m Local changes\n")
                 
                 if args.submodules:
+                    parent_repo = get_parent_repo()
+                    if parent_repo:
+                        fzf_proc.stdin.write(b"\x1b[35m(submodule)\x1b[m (Parent)\n")
                     subs = get_submodules()
                     if subs:
                         fzf_proc.stdin.write(b"\x1b[35m(submodule)\x1b[m [Submodules]\n")
