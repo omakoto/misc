@@ -295,7 +295,7 @@ def main() -> None:
         
     while True:
         # Check if dirty
-        status_res = run_command(["git", "status", "--porcelain"], capture_output=True, text=True)
+        status_res = run_command(["git", "status", "--porcelain", "--ignore-submodules=dirty"], capture_output=True, text=True)
         is_dirty = bool(status_res.stdout.strip())
         
         if is_dirty:

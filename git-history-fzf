@@ -17,6 +17,7 @@ import argparse
 import re
 import shlex
 from typing import List, Set, Optional, Any
+from functools import lru_cache
 
 os.environ['GIT_OPTIONAL_LOCKS'] = '0'
 
@@ -54,7 +55,7 @@ def is_inside_work_tree() -> bool:
 def is_dirty() -> bool:
     """Checks if the Git repository has any uncommitted changes."""
     res = run_command(
-        ["git", "status", "--porcelain"],
+        ["git", "status", "--porcelain", "--ignore-submodules=dirty"],
         capture_output=True
     )
     return bool(res.stdout.strip())
@@ -127,27 +128,45 @@ def format_line(line: bytes, merge_bases: Optional[Set[bytes]] = None) -> bytes:
     else:
         return hash_part + b" " + formatted_date + b" " + formatted_email + b" " + subject_part + b"\n"
 
-def get_submodules() -> List[str]:
-    """Retrieves the list of submodule paths in the repository."""
+@lru_cache(maxsize=1)
+def _get_submodules_abs() -> List[str]:
     try:
+        res = run_command(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
+        if res.returncode != 0:
+            return []
+        toplevel = res.stdout.strip()
+        
+        gitmodules_path = os.path.join(toplevel, ".gitmodules")
+        if not os.path.exists(gitmodules_path):
+            return []
+            
         res = run_command(
-            ["git", "submodule", "status"],
+            ["git", "config", "--file", gitmodules_path, "--get-regexp", "path"],
             capture_output=True,
             text=True
         )
-        if res.returncode == 0:
-            subfiles: List[str] = []
-            for line in res.stdout.splitlines():
-                line = line.strip()
-                if not line:
-                    continue
-                parts = line.split()
-                if len(parts) >= 2:
-                    subfiles.append(parts[1])
-            return subfiles
+        if res.returncode != 0:
+            return []
+            
+        subs = []
+        for line in res.stdout.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split(None, 1)
+            if len(parts) == 2:
+                sub_path = parts[1]
+                abs_sub_path = os.path.join(toplevel, sub_path)
+                if os.path.exists(os.path.join(abs_sub_path, ".git")):
+                    subs.append(abs_sub_path)
+        return subs
     except Exception:
         pass
     return []
+
+def get_submodules() -> List[str]:
+    """Retrieves the list of submodule paths in the repository."""
+    return [os.path.relpath(p, os.getcwd()) for p in _get_submodules_abs()]
 
 def get_parent_repo() -> Optional[str]:
     """Retrieves the parent repository's working tree path, if in a submodule."""

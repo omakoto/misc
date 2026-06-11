@@ -50,12 +50,34 @@ class GitHistoryFzfTest(unittest.TestCase):
         mock_run.side_effect = Exception("error")
         self.assertEqual(git_history_fzf.get_merge_bases(), set())
 
+    @patch('os.path.exists')
     @patch('subprocess.run')
-    def test_get_submodules(self, mock_run: MagicMock) -> None:
-        # Since text=True is used, stdout is expected to be a string
-        mock_run.return_value = MagicMock(returncode=0, stdout=" 12345 path/to/sub1 (heads/master)\n+67890 path/to/sub2\n")
-        self.assertEqual(git_history_fzf.get_submodules(), ["path/to/sub1", "path/to/sub2"])
+    def test_get_submodules(self, mock_run: MagicMock, mock_exists: MagicMock) -> None:
+        git_history_fzf._get_submodules_abs.cache_clear()
         
+        def run_side_effect(cmd, **kwargs):
+            if cmd == ["git", "rev-parse", "--show-toplevel"]:
+                return MagicMock(returncode=0, stdout="/toplevel\n")
+            elif cmd == ["git", "config", "--file", "/toplevel/.gitmodules", "--get-regexp", "path"]:
+                return MagicMock(returncode=0, stdout="submodule.sub1.path path/to/sub1\nsubmodule.sub2.path path/to/sub2\n")
+            return MagicMock(returncode=1)
+            
+        mock_run.side_effect = run_side_effect
+        
+        def exists_side_effect(path):
+            if path in (
+                "/toplevel/.gitmodules",
+                "/toplevel/path/to/sub1/.git",
+                "/toplevel/path/to/sub2/.git"
+            ):
+                return True
+            return False
+        mock_exists.side_effect = exists_side_effect
+        
+        with patch('os.getcwd', return_value='/toplevel'):
+            self.assertEqual(git_history_fzf.get_submodules(), ["path/to/sub1", "path/to/sub2"])
+            
+        git_history_fzf._get_submodules_abs.cache_clear()
         mock_run.side_effect = Exception("error")
         self.assertEqual(git_history_fzf.get_submodules(), [])
 
