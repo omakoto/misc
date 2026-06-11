@@ -191,6 +191,18 @@ def get_parent_repo() -> Optional[str]:
         pass
     return None
 
+def has_limit(args: List[str]) -> bool:
+    """Checks if git log arguments already contain a limit (e.g. -n 100, -100, --max-count=100)."""
+    for i, arg in enumerate(args):
+        if arg == "-n" or arg == "--max-count":
+            return True
+        if arg.startswith("--max-count="):
+            return True
+        if re.match(r"^-\d+$", arg):
+            return True
+    return False
+
+
 def main_inner() -> None:
     global _fzf_active
     if sys.stderr.isatty():
@@ -235,6 +247,10 @@ Examples:
     # Strip the leading '--' if it was used to separate options
     if git_log_args and git_log_args[0] == "--":
         git_log_args = git_log_args[1:]
+        
+    if not has_limit(git_log_args):
+        git_log_args.insert(0, "1000")
+        git_log_args.insert(0, "-n")
 
     # Construct fzf options
     fzf_cmd: List[str] = [
