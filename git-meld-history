@@ -305,6 +305,17 @@ def main() -> None:
             header = "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), [^G]: Edit commit msg, [^E]: Edit, Multi-select [^S]: Squash commits"
             fzf_cmd = ["git-history-fzf", "-c", "--submodules", "-e", "ctrl-s,ctrl-g,ctrl-e", "-h", header] + args + extra_args
             
+        # Set terminal title using OSC escape sequence
+        cwd = os.getcwd()
+        home = os.path.expanduser('~')
+        if cwd == home:
+            display_dir = "~"
+        elif cwd.startswith(home + "/"):
+            display_dir = "~" + cwd[len(home):]
+        else:
+            display_dir = cwd
+        sys.stderr.write(f"\033]0;Git history: {display_dir}\a")
+        sys.stderr.flush()
         fzf_res = run_command(fzf_cmd, capture_output=True, text=True)
         fzf_output = fzf_res.stdout
         
