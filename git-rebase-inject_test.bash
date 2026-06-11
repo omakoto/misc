@@ -152,5 +152,29 @@ assert "[[ \$(git status --porcelain) == *'M file2.txt'* ]]"
 content=$(git show HEAD~1:file1.txt)
 assert "[[ '$content' == *'injected change'* ]]"
 
+# -------------------------------------------------------------
+# Test Case 6: Attempting to inject into a commit already on remote
+# -------------------------------------------------------------
+setup_git_repo
+echo "injected change to file1" >> file1.txt
+clear_test_state
+
+commit1_hash=$(git rev-parse --short HEAD~1)
+full_commit1_hash=$(git rev-parse HEAD~1)
+
+# Simulate pushing Commit 1 to remote
+git update-ref refs/remotes/origin/master "$full_commit1_hash"
+
+MOCK_FZF_FILES=" M file1.txt"
+MOCK_FZF_COMMIT="$commit1_hash Commit 1"
+
+# Capture stderr to check for error
+git-rebase-inject 2> "$TEST_TMP_DIR/inject_err" || true
+
+# Verify that the inject was refused and error message printed in bold-yellow
+assert "grep -q 'Error: Cannot inject into commits already on remote' '$TEST_TMP_DIR/inject_err'"
+# Verify the workspace is still dirty (injection did not complete)
+assert "[[ \$(git status --porcelain) == *'M file1.txt'* ]]"
+
 # Complete testing
 done_testing

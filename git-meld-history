@@ -299,8 +299,8 @@ def main() -> None:
         is_dirty = bool(status_res.stdout.strip())
         
         if is_dirty:
-            header = "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), [^E]: Edit commit msg, Multi-select [^S]: Squash commits, [^I]: Inject"
-            fzf_cmd = ["git-history-fzf", "-c", "--submodules", "-e", "ctrl-s,ctrl-i,ctrl-e", "-h", header] + args + extra_args
+            header = "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), [^E]: Edit commit msg, Multi-select [^S]: Squash commits, [^K]: Inject"
+            fzf_cmd = ["git-history-fzf", "-c", "--submodules", "-e", "ctrl-s,ctrl-k,ctrl-e", "-h", header] + args + extra_args
         else:
             header = "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), [^E]: Edit commit msg, Multi-select [^S]: Squash commits"
             fzf_cmd = ["git-history-fzf", "-c", "--submodules", "-e", "ctrl-s,ctrl-e", "-h", header] + args + extra_args
@@ -318,7 +318,7 @@ def main() -> None:
         key = lines[0]
         selections = lines[1:]
         
-        if key == "ctrl-i":
+        if key == "ctrl-k":
             if is_dirty:
                 res_inject = run_command(["git-rebase-inject"] + args)
                 sys.exit(res_inject.returncode)

@@ -498,7 +498,7 @@ assert "[[ '$(cat $TEST_TMP_DIR/git_meld_calls)' == '${commit3_hash}^..${commit3
 unset MOCK_FZF_SELECTION
 
 # -------------------------------------------------------------
-# Test Case 18: Inject (ctrl-i) when dirty
+# Test Case 18: Inject (ctrl-k) when dirty
 # -------------------------------------------------------------
 setup_git_repo
 echo "dirty changes" > untracked.txt
@@ -512,11 +512,11 @@ echo "inject called with args: $*" >> "$TEST_TMP_DIR/git_rebase_inject_calls"
 EOF
 chmod +x "$TEST_TMP_DIR/bin/git-rebase-inject"
 
-# Mock fzf that returns ctrl-i key on first call
+# Mock fzf that returns ctrl-k key on first call
 cat > "$TEST_TMP_DIR/bin/fzf" <<'EOF'
 #!/bin/bash
 echo "$*" > "$TEST_TMP_DIR/fzf_args"
-echo "ctrl-i"
+echo "ctrl-k"
 EOF
 chmod +x "$TEST_TMP_DIR/bin/fzf"
 
@@ -527,13 +527,13 @@ git-meld-history . --author="Test"
 # 1. git-rebase-inject was called with the arguments passed to git-meld-history
 assert "[[ -f '$TEST_TMP_DIR/git_rebase_inject_calls' ]]"
 assert "[[ '$(cat $TEST_TMP_DIR/git_rebase_inject_calls)' == 'inject called with args: --author=Test' ]]"
-# 2. fzf expected ctrl-i
-assert "grep -q 'ctrl-i' '$TEST_TMP_DIR/fzf_args'"
+# 2. fzf expected ctrl-k
+assert "grep -q 'ctrl-k' '$TEST_TMP_DIR/fzf_args'"
 # 3. git-meld was not called
 assert "[[ ! -f '$TEST_TMP_DIR/git_meld_calls' ]]"
 
 # -------------------------------------------------------------
-# Test Case 19: Inject (ctrl-i) not available when clean
+# Test Case 19: Inject (ctrl-k) not available when clean
 # -------------------------------------------------------------
 setup_git_repo
 clear_test_state
@@ -550,8 +550,8 @@ chmod +x "$TEST_TMP_DIR/bin/fzf"
 git-meld-history
 
 # Verify:
-# 1. fzf did NOT expect ctrl-i
-assert "! grep -q 'ctrl-i' '$TEST_TMP_DIR/fzf_args'"
+# 1. fzf did NOT expect ctrl-k
+assert "! grep -q 'ctrl-k' '$TEST_TMP_DIR/fzf_args'"
 # 2. git-rebase-inject was NOT called
 assert "[[ ! -f '$TEST_TMP_DIR/git_rebase_inject_calls' ]]"
 

@@ -63,6 +63,12 @@ if [[ -z "$target_commit" ]]; then
   exit 1
 fi
 
+# Ensure target commit is not already on remote
+if [[ -n "$(git branch -r --contains "$target_commit")" ]]; then
+  printf "\a\033[1;33mError: Cannot inject into commits already on remote\033[m\n" >&2
+  exit 1
+fi
+
 # 3. Perform injection
 echo "Staging selected files..."
 git add -- "${selected_files[@]}"
