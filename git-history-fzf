@@ -54,11 +54,19 @@ def is_inside_work_tree() -> bool:
 
 def is_dirty() -> bool:
     """Checks if the Git repository has any uncommitted changes."""
-    res = run_command(
-        ["git", "status", "--porcelain", "--ignore-submodules=dirty"],
-        capture_output=True
-    )
-    return bool(res.stdout.strip())
+    if run_command(["git", "diff-files", "--quiet"]).returncode != 0:
+        return True
+    if run_command(["git", "diff-index", "--cached", "--quiet", "HEAD"]).returncode != 0:
+        return True
+    
+    proc = popen_command(["git", "ls-files", "--others", "--exclude-standard"], stdout=subprocess.PIPE)
+    is_dirty = False
+    if proc.stdout is not None:
+        first_line = proc.stdout.readline()
+        terminate_process(proc)
+        if first_line:
+            is_dirty = True
+    return is_dirty
 
 def get_merge_bases() -> Set[bytes]:
     """Retrieves the merge base commit SHAs with the upstream branch."""

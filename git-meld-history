@@ -134,6 +134,18 @@ def is_on_remote(commit: str) -> bool:
     res = run_command(["git", "branch", "-r", "--contains", commit], capture_output=True, text=True)
     return bool(res.stdout.strip())
 
+def is_dirty_repo() -> bool:
+    """Checks if the Git repository has any uncommitted changes (tracked or untracked)."""
+    if subprocess.run(["git", "diff-files", "--quiet"]).returncode != 0:
+        return True
+    if subprocess.run(["git", "diff-index", "--cached", "--quiet", "HEAD"]).returncode != 0:
+        return True
+    res = subprocess.run(["git", "ls-files", "--others", "--exclude-standard"], capture_output=True)
+    if res.returncode == 0 and res.stdout.strip():
+        return True
+    return False
+
+
 def run_sequence_editor(todo_file: str) -> None:
     squash_hashes_str = os.environ.get("SQUASH_HASHES", "")
     squash_hashes = set(squash_hashes_str.split())
@@ -294,16 +306,8 @@ def main() -> None:
         extra_args.append(".")
         
     while True:
-        # Check if dirty
-        status_res = run_command(["git", "status", "--porcelain", "--ignore-submodules=dirty"], capture_output=True, text=True)
-        is_dirty = bool(status_res.stdout.strip())
-        
-        if is_dirty:
-            header = "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), [^G]: Edit commit msg, [^E]: Edit, Multi-select [^S]: Squash commits, [^K]: Inject"
-            fzf_cmd = ["git-history-fzf", "-c", "--submodules", "-e", "ctrl-s,ctrl-k,ctrl-g,ctrl-e", "-h", header] + args + extra_args
-        else:
-            header = "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), [^G]: Edit commit msg, [^E]: Edit, Multi-select [^S]: Squash commits"
-            fzf_cmd = ["git-history-fzf", "-c", "--submodules", "-e", "ctrl-s,ctrl-g,ctrl-e", "-h", header] + args + extra_args
+        header = "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), [^G]: Edit commit msg, [^E]: Edit, Multi-select [^S]: Squash commits, [^K]: Inject"
+        fzf_cmd = ["git-history-fzf", "-c", "--submodules", "-e", "ctrl-s,ctrl-k,ctrl-g,ctrl-e", "-h", header] + args + extra_args
             
         # Set terminal title using OSC escape sequence
         cwd = os.getcwd()
@@ -538,7 +542,7 @@ def main() -> None:
             continue
             
         if key == "ctrl-k":
-            if not is_dirty:
+            if not is_dirty_repo():
                 print_error("Error: Inject is only available when the worktree is dirty.")
                 time.sleep(2)
                 continue

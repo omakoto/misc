@@ -34,12 +34,34 @@ class GitHistoryFzfTest(unittest.TestCase):
         mock_run.return_value = MagicMock(returncode=1)
         self.assertFalse(git_history_fzf.is_inside_work_tree())
         
+    @patch('git_history_fzf.popen_command')
     @patch('subprocess.run')
-    def test_is_dirty(self, mock_run: MagicMock) -> None:
-        mock_run.return_value = MagicMock(stdout=b" M file.txt\n")
+    def test_is_dirty(self, mock_run: MagicMock, mock_popen: MagicMock) -> None:
+        # Case 1: Unstaged changes (diff-files returns 1)
+        mock_run.return_value = MagicMock(returncode=1)
+        self.assertTrue(git_history_fzf.is_dirty())
+        mock_run.assert_called_with(["git", "diff-files", "--quiet"])
+        
+        # Case 2: Staged changes (diff-files returns 0, diff-index returns 1)
+        mock_run.side_effect = [MagicMock(returncode=0), MagicMock(returncode=1)]
         self.assertTrue(git_history_fzf.is_dirty())
         
-        mock_run.return_value = MagicMock(stdout=b"")
+        # Case 3: Untracked files
+        mock_run.side_effect = [MagicMock(returncode=0), MagicMock(returncode=0)]
+        mock_proc = MagicMock()
+        mock_proc.stdout.readline.return_value = b"untracked.txt\n"
+        mock_proc.poll.return_value = None
+        mock_proc.wait.return_value = 0
+        mock_popen.return_value = mock_proc
+        self.assertTrue(git_history_fzf.is_dirty())
+        
+        # Case 4: Clean
+        mock_run.side_effect = [MagicMock(returncode=0), MagicMock(returncode=0)]
+        mock_proc = MagicMock()
+        mock_proc.stdout.readline.return_value = b""
+        mock_proc.poll.return_value = None
+        mock_proc.wait.return_value = 0
+        mock_popen.return_value = mock_proc
         self.assertFalse(git_history_fzf.is_dirty())
         
     @patch('subprocess.run')
