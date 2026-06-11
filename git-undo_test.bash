@@ -71,6 +71,10 @@ clear_test_state() {
   setup_mock_fzf
 }
 
+get_tag_name() {
+  grep 'Creating backup tag: ' "$TEST_TMP_DIR/stdout" | sed 's/\x1b\[[0-9;]*m//g' | sed 's/Creating backup tag: //'
+}
+
 # -------------------------------------------------------------
 # Test Case 1: Undo a modified file
 # -------------------------------------------------------------
@@ -86,8 +90,8 @@ git-undo > "$TEST_TMP_DIR/stdout" 2> "$TEST_TMP_DIR/stderr"
 # 1. file1.txt is reverted
 assert "[[ '$(cat file1.txt)' == 'content1' ]]"
 # 2. Backup tag created and printed
-assert "grep -q 'Creating backup tag: undo-tag-' '$TEST_TMP_DIR/stdout'"
-tag_name=$(grep 'Creating backup tag: ' "$TEST_TMP_DIR/stdout" | sed 's/Creating backup tag: //')
+assert "grep -q 'Creating backup tag: .*undo-tag-' '$TEST_TMP_DIR/stdout'"
+tag_name=$(get_tag_name)
 assert "[[ -n '$tag_name' ]]"
 # 3. Check that the tag has the modified content
 assert "[[ '$(git show $tag_name:file1.txt)' == *'modified content'* ]]"
@@ -106,7 +110,7 @@ git-undo > "$TEST_TMP_DIR/stdout" 2> "$TEST_TMP_DIR/stderr"
 # 1. file2.txt is deleted
 assert "[[ ! -f file2.txt ]]"
 # 2. Tag has the untracked file
-tag_name=$(grep 'Creating backup tag: ' "$TEST_TMP_DIR/stdout" | sed 's/Creating backup tag: //')
+tag_name=$(get_tag_name)
 assert "[[ -n '$tag_name' ]]"
 assert "[[ '$(git show $tag_name:file2.txt)' == 'untracked content' ]]"
 
@@ -127,7 +131,7 @@ assert "[[ ! -f file2.txt ]]"
 # 2. file1.txt remains modified
 assert "[[ '$(cat file1.txt)' == *'modified file1'* ]]"
 # 3. Tag contains both
-tag_name=$(grep 'Creating backup tag: ' "$TEST_TMP_DIR/stdout" | sed 's/Creating backup tag: //')
+tag_name=$(get_tag_name)
 assert "[[ -n '$tag_name' ]]"
 assert "[[ '$(git show $tag_name:file2.txt)' == 'untracked file2' ]]"
 assert "[[ '$(git show $tag_name:file1.txt)' == *'modified file1'* ]]"

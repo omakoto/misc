@@ -135,7 +135,7 @@ def main() -> None:
     tag_name = f"undo-tag-{timestamp}"
 
     # Create backup tag
-    sys.stdout.write(f"Creating backup tag: {tag_name}\n")
+    sys.stdout.write(f"Creating backup tag: \033[1;33m{tag_name}\033[m\n")
     sys.stdout.flush()
 
     try:
