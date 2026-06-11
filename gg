@@ -1,6 +1,29 @@
 #!/bin/bash
 # Shortcut script to execute git-meld-history.
 # Simple script, no help needed.
+# Run gg_test.bash after making any changes.
+
+# Make sure the target directory is a git repository (unless it's a help flag)
+if [[ "$1" == "-h" || "$1" == "--help" || "$1" == "--bash-completion" ]]; then
+  :
+else
+  target_dir="."
+  for arg in "$@"; do
+    if [[ "$arg" != -* ]]; then
+      target_dir="$arg"
+      break
+    fi
+  done
+
+  if [[ ! -d "$target_dir" ]]; then
+    echo "Error: Directory '$target_dir' does not exist." >&2
+    exit 1
+  fi
+  if ! git -C "$target_dir" rev-parse --is-inside-work-tree &>/dev/null; then
+    echo "Error: '$target_dir' is not a git repository." >&2
+    exit 1
+  fi
+fi
 
 # When run inside Antigravity/Claude, it launches in a new gnome-terminal.
 script_dir=$(dirname "$(readlink -f "$0")")
