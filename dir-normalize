@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+# Shorten a directory name based on specific rules.
+#
+# Run test: misc/dir-normalize_test.bash
+
+import argparse
+import os
+import re
+import sys
+
+
+def normalize_dir(path: str, home: str) -> str:
+  """Normalize and shorten the directory path."""
+  # 1. HOME replacement
+  if home:
+    if path == home:
+      path = '~'
+    elif path.startswith(home + '/'):
+      path = '~/' + path[len(home) + 1 :]
+
+  # 2. ~/cbin/ -> ~/c/
+  if path == '~/cbin':
+    path = '~/c'
+  elif path.startswith('~/cbin/'):
+    path = '~/c/' + path[len('~/cbin/') :]
+
+  # 3. Android prefix replacement
+  m = re.match(r'^/android/main-without-vendor(.*)', path)
+  if m:
+    path = '/a/mwv' + m.group(1)
+  else:
+    m = re.match(r'^/android/main(.*)', path)
+    if m:
+      path = '/a/m' + m.group(1)
+    else:
+      m = re.match(r'^/android(/.*)?$', path)
+      if m:
+        path = '/a' + (m.group(1) if m.group(1) else '')
+
+  # 4. frameworks/ -> f/, frameworks/base/ -> f/b/ inside /a/mXXX/ or /a/mwvXXX/
+  if re.match(r'^/a/(m|mwv)[^/]*/', path):
+    path = re.sub(r'/frameworks/base/', '/f/b/', path)
+    path = re.sub(r'/frameworks/base$', '/f/b/', path)
+    path = re.sub(r'/frameworks/', '/f/', path)
+    path = re.sub(r'/frameworks$', '/f/', path)
+
+  return path
+
+
+def main() -> None:
+  parser = argparse.ArgumentParser(
+      description='Shorten a directory name for display.',
+      formatter_class=argparse.RawDescriptionHelpFormatter,
+      epilog="""Examples:
+  dir-normalize /android/main1/frameworks/base -> /a/m1/f/b/
+  dir-normalize $HOME/src                       -> ~/src
+""",
+  )
+  parser.add_argument('dir', help='Directory to normalize')
+  args = parser.parse_args()
+
+  home = os.environ.get('HOME', '')
+  print(normalize_dir(args.dir, home))
+
+
+if __name__ == '__main__':
+  main()
