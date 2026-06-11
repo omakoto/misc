@@ -98,6 +98,8 @@ clear_test_state() {
   rm -f "$TEST_TMP_DIR/fzf_cwds"
   rm -f "$TEST_TMP_DIR/fzf_call_count"
   rm -f "$TEST_TMP_DIR/fzf_debug"
+  rm -f "$TEST_TMP_DIR/fzf_calls"
+  rm -f "$TEST_TMP_DIR/editor_calls"
   export MOCK_FZF_SELECTION=""
   export MOCK_FZF_KEY=""
   setup_mock_fzf
@@ -820,6 +822,114 @@ assert "grep -q 'Error: Cannot inject into local changes (CURRENT)' '$TEST_TMP_D
 # Verify file2.txt is still dirty
 assert "[[ -n \$(git status --porcelain file2.txt) ]]"
 export MOCK_FZF_KEY=""
+
+# -------------------------------------------------------------
+# Test Case 30: Edit files in a commit using ctrl-e
+# -------------------------------------------------------------
+setup_git_repo
+clear_test_state
+commit1_hash=$(git rev-parse --short HEAD~1)
+
+# Overwrite fzf mock to handle multiple calls
+cat > "$TEST_TMP_DIR/bin/fzf" <<'EOF'
+#!/bin/bash
+count=0
+if [[ -f "$TEST_TMP_DIR/fzf_call_count" ]]; then
+  count=$(cat "$TEST_TMP_DIR/fzf_call_count")
+fi
+count=$((count + 1))
+echo "$count" > "$TEST_TMP_DIR/fzf_call_count"
+
+echo "fzf called (count=$count) with args: $*" >> "$TEST_TMP_DIR/fzf_calls"
+cat > "$TEST_TMP_DIR/fzf_stdin_$count"
+
+if (( count == 1 )); then
+  # 1st call: commit selection, return ctrl-e and commit1_hash
+  echo "ctrl-e"
+  echo "$MOCK_FZF_SELECTION"
+elif (( count == 2 )); then
+  # 2nd call: file selection, return file1.txt
+  echo "file1.txt"
+else
+  echo ""
+fi
+EOF
+chmod +x "$TEST_TMP_DIR/bin/fzf"
+
+# Create mock editor
+cat > "$TEST_TMP_DIR/bin/mock_editor" <<'EOF'
+#!/bin/bash
+echo "editor called with: $*" >> "$TEST_TMP_DIR/editor_calls"
+EOF
+chmod +x "$TEST_TMP_DIR/bin/mock_editor"
+export EDITOR="mock_editor"
+
+export MOCK_FZF_SELECTION="$commit1_hash Commit 1"
+
+git-meld-history
+
+# Verify:
+# 1. fzf was called three times (first commit, second file selection, third commit exit)
+assert "[[ -f '$TEST_TMP_DIR/fzf_calls' ]]"
+assert "[[ \$(wc -l < '$TEST_TMP_DIR/fzf_calls') -eq 3 ]]"
+# 2. 2nd fzf call's stdin contains file1.txt (which is in Commit 1)
+assert "grep -q 'file1.txt' '$TEST_TMP_DIR/fzf_stdin_2'"
+# 3. Editor was called with absolute path to file1.txt
+assert "[[ -f '$TEST_TMP_DIR/editor_calls' ]]"
+assert "grep -q 'editor called with: .*/repo/file1.txt' '$TEST_TMP_DIR/editor_calls'"
+unset EDITOR
+
+# -------------------------------------------------------------
+# Test Case 31: Edit files in (CURRENT) using ctrl-e
+# -------------------------------------------------------------
+setup_git_repo
+echo "dirty changes" > untracked.txt
+clear_test_state
+
+# Overwrite fzf mock to handle multiple calls
+cat > "$TEST_TMP_DIR/bin/fzf" <<'EOF'
+#!/bin/bash
+count=0
+if [[ -f "$TEST_TMP_DIR/fzf_call_count" ]]; then
+  count=$(cat "$TEST_TMP_DIR/fzf_call_count")
+fi
+count=$((count + 1))
+echo "$count" > "$TEST_TMP_DIR/fzf_call_count"
+
+echo "fzf called (count=$count) with args: $*" >> "$TEST_TMP_DIR/fzf_calls"
+cat > "$TEST_TMP_DIR/fzf_stdin_$count"
+
+if (( count == 1 )); then
+  # 1st call: commit selection, return ctrl-e and (CURRENT)
+  echo "ctrl-e"
+  echo "(CURRENT) Local changes"
+elif (( count == 2 )); then
+  # 2nd call: file selection, return untracked.txt
+  echo "untracked.txt"
+else
+  echo ""
+fi
+EOF
+chmod +x "$TEST_TMP_DIR/bin/fzf"
+
+# Create mock editor
+cat > "$TEST_TMP_DIR/bin/mock_editor" <<'EOF'
+#!/bin/bash
+echo "editor called with: $*" >> "$TEST_TMP_DIR/editor_calls"
+EOF
+chmod +x "$TEST_TMP_DIR/bin/mock_editor"
+export EDITOR="mock_editor"
+
+git-meld-history
+
+# Verify:
+# 1. fzf was called three times
+assert "[[ \$(wc -l < '$TEST_TMP_DIR/fzf_calls') -eq 3 ]]"
+# 2. 2nd fzf call's stdin contains untracked.txt
+assert "grep -q 'untracked.txt' '$TEST_TMP_DIR/fzf_stdin_2'"
+# 3. Editor was called with absolute path to untracked.txt
+assert "grep -q 'editor called with: .*/repo/untracked.txt' '$TEST_TMP_DIR/editor_calls'"
+unset EDITOR
 
 # Return to script directory
 cd "$SCRIPT_DIR"

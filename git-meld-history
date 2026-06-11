@@ -299,11 +299,11 @@ def main() -> None:
         is_dirty = bool(status_res.stdout.strip())
         
         if is_dirty:
-            header = "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), [^G]: Edit commit msg, Multi-select [^S]: Squash commits, [^K]: Inject"
-            fzf_cmd = ["git-history-fzf", "-c", "--submodules", "-e", "ctrl-s,ctrl-k,ctrl-g", "-h", header] + args + extra_args
+            header = "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), [^G]: Edit commit msg, [^E]: Edit, Multi-select [^S]: Squash commits, [^K]: Inject"
+            fzf_cmd = ["git-history-fzf", "-c", "--submodules", "-e", "ctrl-s,ctrl-k,ctrl-g,ctrl-e", "-h", header] + args + extra_args
         else:
-            header = "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), [^G]: Edit commit msg, Multi-select [^S]: Squash commits"
-            fzf_cmd = ["git-history-fzf", "-c", "--submodules", "-e", "ctrl-s,ctrl-g", "-h", header] + args + extra_args
+            header = "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), [^G]: Edit commit msg, [^E]: Edit, Multi-select [^S]: Squash commits"
+            fzf_cmd = ["git-history-fzf", "-c", "--submodules", "-e", "ctrl-s,ctrl-g,ctrl-e", "-h", header] + args + extra_args
             
         fzf_res = run_command(fzf_cmd, capture_output=True, text=True)
         fzf_output = fzf_res.stdout
@@ -401,6 +401,71 @@ def main() -> None:
             if rebase_status != 0:
                 print_error("Rebase failed or paused for conflict resolution.\nExiting script so you can resolve it in your terminal (using git rebase --continue/--abort).")
                 break
+            continue
+            
+        if key == "ctrl-e":
+            if num_hashes != 1:
+                print_error("Error: Please select exactly 1 commit to edit files")
+                time.sleep(2)
+                continue
+            
+            target_commit = hashes[0]
+            if target_commit == "(CURRENT)":
+                status_res = run_command(["git", "status", "--porcelain"], capture_output=True, text=True)
+                commit_files = []
+                for line in status_res.stdout.splitlines():
+                    if line.strip():
+                        file_path = line[3:]
+                        if " -> " in file_path:
+                            file_path = file_path.split(" -> ")[-1]
+                        commit_files.append(file_path)
+            else:
+                verify_res = run_command(["git", "rev-parse", "--verify", target_commit], capture_output=True, text=True)
+                full_sha = verify_res.stdout.strip()
+                show_res = run_command(["git", "show", "--name-only", "--format=", full_sha], capture_output=True, text=True)
+                commit_files = [f for f in show_res.stdout.splitlines() if f.strip()]
+                
+            if not commit_files:
+                print_error("No files found in the selected commit.")
+                time.sleep(2)
+                continue
+                
+            fzf_input = "\n".join(commit_files)
+            if target_commit == "(CURRENT)":
+                preview_script = (
+                    'file="$1"; '
+                    f'if [ -f {shlex.quote(toplevel)}/"$file" ] && ! git -C {shlex.quote(toplevel)} ls-files --error-unmatch "$file" >/dev/null 2>&1; then '
+                    f'  git -C {shlex.quote(toplevel)} diff --color=always --no-index /dev/null "$file" 2>/dev/null || cat {shlex.quote(toplevel)}/"$file"; '
+                    'else '
+                    f'  git -C {shlex.quote(toplevel)} diff --color=always -- "$file"; '
+                    'fi'
+                )
+                preview_cmd = f"bash -c {shlex.quote(preview_script)} -- {{}}"
+            else:
+                preview_cmd = f"git -C {shlex.quote(toplevel)} show --color=always {shlex.quote(target_commit)} -- {{}}"
+                
+            fzf_proc = subprocess.run(
+                [
+                    "fzf",
+                    "--multi",
+                    "--prompt=Select files to edit: ",
+                    "--preview", preview_cmd,
+                    "--preview-window", "top:60%"
+                ],
+                input=fzf_input,
+                capture_output=True,
+                text=True
+            )
+            if fzf_proc.returncode != 0:
+                continue
+                
+            fzf_selections = [l for l in fzf_proc.stdout.splitlines() if l.strip()]
+            if not fzf_selections:
+                continue
+                
+            editor = os.environ.get("EDITOR", "vi")
+            abs_paths = [os.path.join(toplevel, f) for f in fzf_selections]
+            subprocess.run([editor] + abs_paths)
             continue
             
         if key == "ctrl-s":
