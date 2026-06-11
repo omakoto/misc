@@ -21,6 +21,11 @@ git-meld-history() {
 export TEST_TMP_DIR=$(mktemp -d -t git-meld-history-test-XXXXXX)
 export MOCK_FZF_SELECTION=""
 cleanup() {
+  if [[ -f "$TEST_TMP_DIR/fzf_debug" ]]; then
+    echo "=== fzf_debug ==="
+    cat "$TEST_TMP_DIR/fzf_debug"
+    echo "================="
+  fi
   rm -rf "$TEST_TMP_DIR"
 }
 trap cleanup EXIT
@@ -29,12 +34,14 @@ trap cleanup EXIT
 mkdir -p "$TEST_TMP_DIR/bin"
 export PATH="$TEST_TMP_DIR/bin:$PATH"
 
-# Create mock fzf
-cat > "$TEST_TMP_DIR/bin/fzf" <<'EOF'
+# Create mock fzf function
+setup_mock_fzf() {
+  cat > "$TEST_TMP_DIR/bin/fzf" <<'EOF'
 #!/bin/bash
 echo "$(pwd)" >> "$TEST_TMP_DIR/fzf_cwds"
 echo "$*" > "$TEST_TMP_DIR/fzf_args"
 cat > "$TEST_TMP_DIR/fzf_stdin"
+echo "MOCK_FZF_SELECTION='$MOCK_FZF_SELECTION' MOCK_FZF_KEY='$MOCK_FZF_KEY'" >> "$TEST_TMP_DIR/fzf_debug"
 
 if [[ -f "$TEST_TMP_DIR/fzf_called" ]]; then
   # Second call: return empty to break the loop
@@ -49,7 +56,10 @@ else
   fi
 fi
 EOF
-chmod +x "$TEST_TMP_DIR/bin/fzf"
+  chmod +x "$TEST_TMP_DIR/bin/fzf"
+}
+
+setup_mock_fzf
 
 # Create mock git-meld
 cat > "$TEST_TMP_DIR/bin/git-meld" <<'EOF'
@@ -86,6 +96,11 @@ clear_test_state() {
   rm -f "$TEST_TMP_DIR/fzf_called"
   rm -f "$TEST_TMP_DIR/git_meld_calls"
   rm -f "$TEST_TMP_DIR/fzf_cwds"
+  rm -f "$TEST_TMP_DIR/fzf_call_count"
+  rm -f "$TEST_TMP_DIR/fzf_debug"
+  export MOCK_FZF_SELECTION=""
+  export MOCK_FZF_KEY=""
+  setup_mock_fzf
 }
 
 # -------------------------------------------------------------
@@ -631,6 +646,101 @@ cwds=($(cat "$TEST_TMP_DIR/fzf_cwds"))
 assert "[[ ${#cwds[@]} -eq 2 ]]"
 assert "[[ '${cwds[0]}' == *'/repo/mysub' ]]"
 assert "[[ '${cwds[1]}' == *'/repo' ]]"
+
+# Return to script directory
+cd "$SCRIPT_DIR"
+
+# -------------------------------------------------------------
+# Test Case 23: Edit commit message using ctrl-e
+# -------------------------------------------------------------
+setup_git_repo
+clear_test_state
+commit1_hash=$(git rev-parse --short HEAD~1)
+
+export MOCK_FZF_KEY="ctrl-e"
+MOCK_FZF_SELECTION="$commit1_hash Commit 1"
+
+export GIT_EDITOR="sed -i 's/Commit 1/Commit 1 Edited/g'"
+
+git-meld-history
+
+# Verify the commit message was indeed edited
+assert "git log --format='%s' | grep -q 'Commit 1 Edited'"
+export MOCK_FZF_KEY=""
+unset GIT_EDITOR
+
+# -------------------------------------------------------------
+# Test Case 24: Edit commit message using ctrl-e with dirty repo (autostash)
+# -------------------------------------------------------------
+setup_git_repo
+echo "dirty changes" > untracked.txt
+echo "more changes" >> file2.txt
+clear_test_state
+commit1_hash=$(git rev-parse --short HEAD~1)
+
+export MOCK_FZF_KEY="ctrl-e"
+MOCK_FZF_SELECTION="$commit1_hash Commit 1"
+
+export GIT_EDITOR="sed -i 's/Commit 1/Commit 1 Edited Dirty/g'"
+
+git-meld-history
+
+# Verify the commit message was edited and dirty changes are preserved
+assert "git log --format='%s' | grep -q 'Commit 1 Edited Dirty'"
+assert "[[ -f untracked.txt ]]"
+assert "git diff file2.txt | grep -q 'more changes'"
+export MOCK_FZF_KEY=""
+unset GIT_EDITOR
+
+# Return to script directory
+cd "$SCRIPT_DIR"
+
+# -------------------------------------------------------------
+# Test Case 25: Attempting to edit a commit already on remote using ctrl-e (should error)
+# -------------------------------------------------------------
+setup_git_repo
+clear_test_state
+commit1_hash=$(git rev-parse --short HEAD~1)
+full_commit1_hash=$(git rev-parse HEAD~1)
+
+# Simulate pushing Commit 1 to remote by creating a remote tracking branch pointing to it
+git update-ref refs/remotes/origin/master "$full_commit1_hash"
+
+export MOCK_FZF_KEY="ctrl-e"
+MOCK_FZF_SELECTION="$commit1_hash Commit 1"
+
+# We capture stderr to check the error message
+git-meld-history 2> "$TEST_TMP_DIR/git_meld_err"
+
+# Verify that edit was refused and error message printed
+assert "grep -q 'Error: Cannot edit message of commits already on remote' '$TEST_TMP_DIR/git_meld_err'"
+# Verify the commit message remains unchanged
+assert "git log --format='%s' | grep -q 'Commit 1'"
+assert "! git log --format='%s' | grep -q 'Commit 1 Edited'"
+export MOCK_FZF_KEY=""
+
+# -------------------------------------------------------------
+# Test Case 26: Attempting to squash commits already on remote using ctrl-s (should error)
+# -------------------------------------------------------------
+setup_git_repo
+clear_test_state
+commit1_hash=$(git rev-parse --short HEAD~1)
+commit2_hash=$(git rev-parse --short HEAD)
+full_commit1_hash=$(git rev-parse HEAD~1)
+
+# Simulate pushing Commit 1 to remote
+git update-ref refs/remotes/origin/master "$full_commit1_hash"
+
+export MOCK_FZF_KEY="ctrl-s"
+MOCK_FZF_SELECTION="$commit2_hash Commit 2\n$commit1_hash Commit 1"
+
+git-meld-history 2> "$TEST_TMP_DIR/git_meld_err"
+
+# Verify squash was refused and error message printed
+assert "grep -q 'Error: Cannot squash commits that are already on remote' '$TEST_TMP_DIR/git_meld_err'"
+# Verify the commit history is unchanged (still has 2 commits)
+assert "[[ \$(git log --oneline | wc -l) -eq 2 ]]"
+export MOCK_FZF_KEY=""
 
 # Return to script directory
 cd "$SCRIPT_DIR"

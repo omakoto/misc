@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # Interactive Git history viewer using fzf and git-meld (Python implementation).
 # See git-meld-history.md for details on specifications.
+# Make sure to run git-meld-history_test.bash after making any changes.
 
 import sys
 import os
@@ -22,6 +23,10 @@ def run_command(
     sys.stderr.write(f"+ {shlex.join(cmd)}\n")
     sys.stderr.flush()
     return subprocess.run(cmd, check=check, capture_output=capture_output, text=text, env=env)
+
+def print_error(msg: str) -> None:
+    sys.stderr.write(f"\a\033[1;33m{msg}\033[m\n")
+    sys.stderr.flush()
 
 def print_help() -> None:
     sys.stdout.write("""git-meld-history - Interactive Git history viewer using fzf and git-meld.
@@ -124,11 +129,57 @@ def is_inside_work_tree() -> bool:
     res = run_command(["git", "rev-parse", "--is-inside-work-tree"], capture_output=True)
     return res.returncode == 0
 
+def is_on_remote(commit: str) -> bool:
+    """Checks if a commit is already present on any remote branch."""
+    res = run_command(["git", "branch", "-r", "--contains", commit], capture_output=True, text=True)
+    return bool(res.stdout.strip())
+
 def run_sequence_editor(todo_file: str) -> None:
     squash_hashes_str = os.environ.get("SQUASH_HASHES", "")
     squash_hashes = set(squash_hashes_str.split())
+    reword_hash = os.environ.get("REWORD_HASH", "")
     
-    if not squash_hashes:
+    if not squash_hashes and not reword_hash:
+        return
+
+    if reword_hash:
+        try:
+            full_reword_sha = subprocess.check_output(
+                ["git", "rev-parse", "--verify", reword_hash],
+                stderr=subprocess.DEVNULL,
+                text=True
+            ).strip()
+        except subprocess.CalledProcessError:
+            full_reword_sha = ""
+
+        with open(todo_file, "r") as f:
+            lines = f.readlines()
+
+        new_lines = []
+        for line in lines:
+            parts = line.strip().split()
+            if len(parts) >= 2 and not line.startswith("#"):
+                cmd = parts[0]
+                sha = parts[1]
+                try:
+                    full_sha = subprocess.check_output(
+                        ["git", "rev-parse", "--verify", sha],
+                        stderr=subprocess.DEVNULL,
+                        text=True
+                    ).strip()
+                except subprocess.CalledProcessError:
+                    full_sha = ""
+                
+                if full_sha == full_reword_sha:
+                    rest = line[len(cmd):]
+                    new_lines.append(f"reword{rest}")
+                else:
+                    new_lines.append(line)
+            else:
+                new_lines.append(line)
+
+        with open(todo_file, "w") as f:
+            f.writelines(new_lines)
         return
 
     with open(todo_file, "r") as f:
@@ -194,7 +245,7 @@ def main() -> None:
 
     if args and args[0] == "--sequence-editor":
         if len(args) < 2:
-            sys.stderr.write("Error: Missing todo file path for --sequence-editor\n")
+            print_error("Error: Missing todo file path for --sequence-editor")
             sys.exit(1)
         run_sequence_editor(args[1])
         sys.exit(0)
@@ -216,7 +267,7 @@ def main() -> None:
                 try:
                     os.chdir(toplevel)
                 except Exception as e:
-                    sys.stderr.write(f"Error: Could not change directory to {toplevel}: {e}\n")
+                    print_error(f"Error: Could not change directory to {toplevel}: {e}")
                     sys.exit(1)
                     
     # If the first argument is specified, assume it's a directory and change to it
@@ -225,13 +276,13 @@ def main() -> None:
         try:
             os.chdir(target_dir)
         except Exception as e:
-            sys.stderr.write(f"Error: Could not change directory to {target_dir}: {e}\n")
+            print_error(f"Error: Could not change directory to {target_dir}: {e}")
             sys.exit(1)
         args = args[1:]
         
     # Ensure we are inside a git repository
     if not is_inside_work_tree():
-        sys.stderr.write("Error: Not a git repository\n")
+        print_error("Error: Not a git repository")
         sys.exit(1)
         
     toplevel_res = run_command(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
@@ -248,11 +299,11 @@ def main() -> None:
         is_dirty = bool(status_res.stdout.strip())
         
         if is_dirty:
-            header = "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), Multi-select [^S]: Squash commits, [^I]: Inject"
-            fzf_cmd = ["git-history-fzf", "-c", "--submodules", "-e", "ctrl-s,ctrl-i", "-h", header] + args + extra_args
+            header = "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), [^E]: Edit commit msg, Multi-select [^S]: Squash commits, [^I]: Inject"
+            fzf_cmd = ["git-history-fzf", "-c", "--submodules", "-e", "ctrl-s,ctrl-i,ctrl-e", "-h", header] + args + extra_args
         else:
-            header = "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), Multi-select [^S]: Squash commits"
-            fzf_cmd = ["git-history-fzf", "-c", "--submodules", "-e", "ctrl-s", "-h", header] + args + extra_args
+            header = "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), [^E]: Edit commit msg, Multi-select [^S]: Squash commits"
+            fzf_cmd = ["git-history-fzf", "-c", "--submodules", "-e", "ctrl-s,ctrl-e", "-h", header] + args + extra_args
             
         fzf_res = run_command(fzf_cmd, capture_output=True, text=True)
         fzf_output = fzf_res.stdout
@@ -272,8 +323,7 @@ def main() -> None:
                 res_inject = run_command(["git-rebase-inject"] + args)
                 sys.exit(res_inject.returncode)
             else:
-                sys.stderr.write("Error: Inject is only available when the worktree is dirty.\n")
-                sys.stderr.flush()
+                print_error("Error: Inject is only available when the worktree is dirty.")
                 time.sleep(2)
                 continue
                 
@@ -293,15 +343,13 @@ def main() -> None:
                 if parent_dir:
                     submodule_dir = parent_dir
                 else:
-                    sys.stderr.write("Error: Not inside a submodule\n")
-                    sys.stderr.flush()
+                    print_error("Error: Not inside a submodule")
                     time.sleep(2)
                     continue
             try:
                 os.chdir(submodule_dir)
             except Exception as e:
-                sys.stderr.write(f"Error: Could not change directory to {submodule_dir}: {e}\n")
-                sys.stderr.flush()
+                print_error(f"Error: Could not change directory to {submodule_dir}: {e}")
                 time.sleep(2)
             continue
             
@@ -322,15 +370,55 @@ def main() -> None:
         if num_hashes == 0:
             break
             
+        if key == "ctrl-e":
+            if has_current:
+                print_error("Error: Cannot edit message of local changes (CURRENT)")
+                time.sleep(2)
+                continue
+            if num_hashes != 1:
+                print_error("Error: Please select exactly 1 commit to edit message")
+                time.sleep(2)
+                continue
+                
+            verify_res = run_command(["git", "rev-parse", "--verify", hashes[0]], capture_output=True, text=True)
+            reword_sha = verify_res.stdout.strip()
+            
+            if is_on_remote(reword_sha):
+                print_error("Error: Cannot edit message of commits already on remote")
+                time.sleep(2)
+                continue
+            
+            parent_verify = run_command(["git", "rev-parse", "--verify", f"{reword_sha}^"], capture_output=True)
+            if parent_verify.returncode == 0:
+                rebase_base = f"{reword_sha}^"
+            else:
+                rebase_base = "--root"
+                
+            editor_script = os.path.abspath(sys.argv[0])
+            env = os.environ.copy()
+            env["REWORD_HASH"] = reword_sha
+            env["GIT_SEQUENCE_EDITOR"] = f"{sys.executable} {shlex.quote(editor_script)} --sequence-editor"
+            
+            if rebase_base == "--root":
+                rebase_cmd = ["git", "rebase", "-i", "--autostash", "--root"]
+            else:
+                rebase_cmd = ["git", "rebase", "-i", "--autostash", rebase_base]
+                
+            res_rebase = run_command(rebase_cmd, env=env)
+            rebase_status = res_rebase.returncode
+            
+            if rebase_status != 0:
+                print_error("Rebase failed or paused for conflict resolution.\nExiting script so you can resolve it in your terminal (using git rebase --continue/--abort).")
+                break
+            continue
+            
         if key == "ctrl-s":
             if has_current:
-                sys.stderr.write("Error: Cannot squash local changes (CURRENT)\n")
-                sys.stderr.flush()
+                print_error("Error: Cannot squash local changes (CURRENT)")
                 time.sleep(2)
                 continue
             if num_hashes < 2:
-                sys.stderr.write("Error: Please select at least 2 commits to squash\n")
-                sys.stderr.flush()
+                print_error("Error: Please select at least 2 commits to squash")
                 time.sleep(2)
                 continue
                 
@@ -338,6 +426,16 @@ def main() -> None:
             for h in hashes:
                 verify_res = run_command(["git", "rev-parse", "--verify", h], capture_output=True, text=True)
                 full_selected_hashes.append(verify_res.stdout.strip())
+                
+            has_remote_commit = False
+            for sha in full_selected_hashes:
+                if is_on_remote(sha):
+                    print_error("Error: Cannot squash commits that are already on remote")
+                    time.sleep(2)
+                    has_remote_commit = True
+                    break
+            if has_remote_commit:
+                continue
                 
             sort_res = run_command(
                 ["git", "log", "--no-walk", "--date-order", "--reverse", "--format=%H"] + full_selected_hashes,
@@ -368,9 +466,7 @@ def main() -> None:
             rebase_status = res_rebase.returncode
                     
             if rebase_status != 0:
-                sys.stderr.write("Rebase/squash failed or paused for conflict resolution.\n")
-                sys.stderr.write("Exiting script so you can resolve it in your terminal (using git rebase --continue/--abort).\n")
-                sys.stderr.flush()
+                print_error("Rebase/squash failed or paused for conflict resolution.\nExiting script so you can resolve it in your terminal (using git rebase --continue/--abort).")
                 break
             continue
             
