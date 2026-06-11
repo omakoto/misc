@@ -35,8 +35,8 @@ def popen_command(cmd: List[str], **kwargs: Any) -> subprocess.Popen[Any]:
         sys.stderr.flush()
     return subprocess.Popen(cmd, **kwargs)
 
-def terminate_process(proc: subprocess.Popen[Any]) -> None:
-    if proc.poll() is None:
+def terminate_process(proc: Optional[subprocess.Popen[Any]]) -> None:
+    if proc is not None and proc.poll() is None:
         proc.terminate()
         try:
             proc.wait(timeout=0.2)
@@ -221,8 +221,6 @@ def main_inner() -> None:
         sys.stderr.write("Error: Not a git repository\n")
         sys.exit(1)
 
-    merge_bases = get_merge_bases()
-
     parser = argparse.ArgumentParser(
         description="Reusable interactive Git history selector using fzf.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -315,6 +313,17 @@ Examples:
 
     _fzf_active = True
     while True:
+        # Start parallel checks for this iteration
+        mb_proc = popen_command(["git", "merge-base", "HEAD", "@{u}"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        
+        df_proc = None
+        di_proc = None
+        lf_proc = None
+        if args.current:
+            df_proc = popen_command(["git", "diff-files", "--quiet"], stderr=subprocess.DEVNULL)
+            di_proc = popen_command(["git", "diff-index", "--cached", "--quiet", "HEAD"], stderr=subprocess.DEVNULL)
+            lf_proc = popen_command(["git", "ls-files", "--others", "--exclude-standard"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+
         # Start fzf process
         fzf_proc = popen_command(
             fzf_cmd,
@@ -338,8 +347,37 @@ Examples:
 
         try:
             if fzf_proc.stdin is not None:
-                if args.current and is_dirty():
+                # Resolve is_dirty
+                is_dirty_val = False
+                if args.current and df_proc and di_proc and lf_proc:
+                    if df_proc.wait() != 0:
+                        is_dirty_val = True
+                    
+                    if not is_dirty_val:
+                        if di_proc.wait() != 0:
+                            is_dirty_val = True
+                    else:
+                        terminate_process(di_proc)
+                        
+                    if not is_dirty_val:
+                        first_line = lf_proc.stdout.readline() if lf_proc.stdout else b""
+                        if first_line:
+                            is_dirty_val = True
+                        terminate_process(lf_proc)
+                    else:
+                        terminate_process(lf_proc)
+                        
+                if args.current and is_dirty_val:
                     fzf_proc.stdin.write(b"\x1b[33m(CURRENT)\x1b[m Local changes\n")
+                
+                # Resolve merge bases
+                merge_bases = set()
+                try:
+                    mb_out, _ = mb_proc.communicate()
+                    if mb_proc.returncode == 0:
+                        merge_bases = set(mb_out.splitlines())
+                except Exception:
+                    pass
                 
                 if args.submodules:
                     parent_repo = get_parent_repo()
@@ -349,9 +387,13 @@ Examples:
                     if subs:
                         fzf_proc.stdin.write(b"\x1b[35m(submodule)\x1b[m [Submodules]\n")
                 
+                # Flush initial items to ensure they show up immediately
+                fzf_proc.stdin.flush()
+                
                 if git_proc.stdout is not None:
                     for line in git_proc.stdout:
                         fzf_proc.stdin.write(format_line(line, merge_bases))
+                        fzf_proc.stdin.flush()
                 
                 fzf_proc.stdin.close()
         except BrokenPipeError:
@@ -360,6 +402,10 @@ Examples:
         fzf_output, _ = fzf_proc.communicate()
         fzf_code = fzf_proc.wait()
         terminate_process(git_proc)
+        terminate_process(mb_proc)
+        terminate_process(df_proc)
+        terminate_process(di_proc)
+        terminate_process(lf_proc)
 
         if fzf_code != 0:
             sys.exit(fzf_code)

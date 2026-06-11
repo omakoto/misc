@@ -24,6 +24,15 @@ git_history_fzf: Any = importlib.util.module_from_spec(spec)
 sys.modules["git_history_fzf"] = git_history_fzf
 spec.loader.exec_module(git_history_fzf)
 
+def make_mock_proc(stdout: bytes = b"", returncode: int = 0) -> MagicMock:
+    proc = MagicMock()
+    proc.stdout = BytesIO(stdout)
+    proc.stdin = MagicMock()
+    proc.communicate.return_value = (stdout, None)
+    proc.wait.return_value = returncode
+    proc.poll.return_value = returncode
+    return proc
+
 class GitHistoryFzfTest(unittest.TestCase):
     
     @patch('subprocess.run')
@@ -155,28 +164,22 @@ class GitHistoryFzfTest(unittest.TestCase):
         )
 
     @patch('git_history_fzf.is_inside_work_tree')
-    @patch('git_history_fzf.get_merge_bases')
     @patch('subprocess.Popen')
-    def test_main_standard_flow(self, mock_popen: MagicMock, mock_get_merge_bases: MagicMock, mock_is_inside: MagicMock) -> None:
+    def test_main_standard_flow(self, mock_popen: MagicMock, mock_is_inside: MagicMock) -> None:
         mock_is_inside.return_value = True
-        mock_get_merge_bases.return_value = {b"12345ab"}
         
-        mock_fzf_proc = MagicMock()
-        mock_fzf_proc.stdin = BytesIO()
-        mock_fzf_proc.communicate.return_value = (b"12345ab commit message\n", None)
-        mock_fzf_proc.wait.return_value = 0
-        
-        mock_git_proc = MagicMock()
-        mock_git_proc.stdout = [
-            b"12345ab\x002026-06-08\x00user@example.com\x00\x00Initial commit\n"
-        ]
-        mock_git_proc.wait.return_value = 0
+        mock_fzf_proc = make_mock_proc(b"12345ab commit message\n", 0)
+        mock_mb_proc = make_mock_proc(b"12345ab\n", 0)
+        mock_git_proc = make_mock_proc(b"12345ab\x002026-06-08\x00user@example.com\x00\x00Initial commit\n", 0)
         
         def popen_side_effect(cmd: List[str], **kwargs: Any) -> MagicMock:
             if cmd[0] == "fzf":
                 return mock_fzf_proc
             elif cmd[0] == "git":
-                return mock_git_proc
+                if cmd[1] == "merge-base":
+                    return mock_mb_proc
+                elif cmd[1] == "log":
+                    return mock_git_proc
             raise ValueError(f"Unexpected Popen call: {cmd}")
             
         mock_popen.side_effect = popen_side_effect
@@ -190,31 +193,27 @@ class GitHistoryFzfTest(unittest.TestCase):
             self.assertEqual(cm.exception.code, 0)
             mock_stdout.buffer.write.assert_called_once_with(b"12345ab commit message\n")
             
-            fzf_args = mock_popen.call_args_list[0][0][0]
+            fzf_args = mock_popen.call_args_list[1][0][0]
             self.assertIn("--multi", fzf_args)
             self.assertNotIn("--single", fzf_args)
 
     @patch('git_history_fzf.is_inside_work_tree')
-    @patch('git_history_fzf.get_merge_bases')
     @patch('subprocess.Popen')
-    def test_main_single_mode(self, mock_popen: MagicMock, mock_get_merge_bases: MagicMock, mock_is_inside: MagicMock) -> None:
+    def test_main_single_mode(self, mock_popen: MagicMock, mock_is_inside: MagicMock) -> None:
         mock_is_inside.return_value = True
-        mock_get_merge_bases.return_value = set()
         
-        mock_fzf_proc = MagicMock()
-        mock_fzf_proc.stdin = BytesIO()
-        mock_fzf_proc.communicate.return_value = (b"12345ab commit message\n", None)
-        mock_fzf_proc.wait.return_value = 0
-        
-        mock_git_proc = MagicMock()
-        mock_git_proc.stdout = []
-        mock_git_proc.wait.return_value = 0
+        mock_fzf_proc = make_mock_proc(b"12345ab commit message\n", 0)
+        mock_mb_proc = make_mock_proc(b"", 0)
+        mock_git_proc = make_mock_proc(b"", 0)
         
         def popen_side_effect(cmd: List[str], **kwargs: Any) -> MagicMock:
             if cmd[0] == "fzf":
                 return mock_fzf_proc
             elif cmd[0] == "git":
-                return mock_git_proc
+                if cmd[1] == "merge-base":
+                    return mock_mb_proc
+                elif cmd[1] == "log":
+                    return mock_git_proc
             raise ValueError(f"Unexpected Popen call: {cmd}")
             
         mock_popen.side_effect = popen_side_effect
@@ -226,34 +225,38 @@ class GitHistoryFzfTest(unittest.TestCase):
                 git_history_fzf.main()
                 
             self.assertEqual(cm.exception.code, 0)
-            fzf_args = mock_popen.call_args_list[0][0][0]
+            fzf_args = mock_popen.call_args_list[1][0][0]
             self.assertNotIn("--multi", fzf_args)
             self.assertIn("--header=Test Header", fzf_args)
             self.assertIn("--expect=ctrl-s", fzf_args)
 
     @patch('git_history_fzf.is_inside_work_tree')
-    @patch('git_history_fzf.get_merge_bases')
-    @patch('git_history_fzf.is_dirty')
     @patch('subprocess.Popen')
-    def test_main_current_dirty(self, mock_popen: MagicMock, mock_is_dirty: MagicMock, mock_get_merge_bases: MagicMock, mock_is_inside: MagicMock) -> None:
+    def test_main_current_dirty(self, mock_popen: MagicMock, mock_is_inside: MagicMock) -> None:
         mock_is_inside.return_value = True
-        mock_get_merge_bases.return_value = set()
-        mock_is_dirty.return_value = True
         
-        mock_fzf_proc = MagicMock()
-        mock_fzf_proc.stdin = MagicMock()
-        mock_fzf_proc.communicate.return_value = (b"selection\n", None)
-        mock_fzf_proc.wait.return_value = 0
+        mock_fzf_proc = make_mock_proc(b"selection\n", 0)
+        mock_mb_proc = make_mock_proc(b"", 0)
+        mock_git_proc = make_mock_proc(b"", 0)
         
-        mock_git_proc = MagicMock()
-        mock_git_proc.stdout = []
-        mock_git_proc.wait.return_value = 0
+        mock_df_proc = make_mock_proc(b"", 1) # dirty!
+        mock_di_proc = make_mock_proc(b"", 0)
+        mock_lf_proc = make_mock_proc(b"", 0)
         
         def popen_side_effect(cmd: List[str], **kwargs: Any) -> MagicMock:
             if cmd[0] == "fzf":
                 return mock_fzf_proc
             elif cmd[0] == "git":
-                return mock_git_proc
+                if cmd[1] == "merge-base":
+                    return mock_mb_proc
+                elif cmd[1] == "log":
+                    return mock_git_proc
+                elif cmd[1] == "diff-files":
+                    return mock_df_proc
+                elif cmd[1] == "diff-index":
+                    return mock_di_proc
+                elif cmd[1] == "ls-files":
+                    return mock_lf_proc
             raise ValueError(f"Unexpected Popen call: {cmd}")
             
         mock_popen.side_effect = popen_side_effect
@@ -266,29 +269,18 @@ class GitHistoryFzfTest(unittest.TestCase):
             mock_fzf_proc.stdin.write.assert_any_call(b"\x1b[33m(CURRENT)\x1b[m Local changes\n")
 
     @patch('git_history_fzf.is_inside_work_tree')
-    @patch('git_history_fzf.get_merge_bases')
     @patch('git_history_fzf.get_submodules')
     @patch('git_history_fzf.get_parent_repo')
     @patch('subprocess.Popen')
-    def test_main_submodules(self, mock_popen: MagicMock, mock_get_parent: MagicMock, mock_get_subs: MagicMock, mock_get_merge_bases: MagicMock, mock_is_inside: MagicMock) -> None:
+    def test_main_submodules(self, mock_popen: MagicMock, mock_get_parent: MagicMock, mock_get_subs: MagicMock, mock_is_inside: MagicMock) -> None:
         mock_is_inside.return_value = True
-        mock_get_merge_bases.return_value = set()
         mock_get_subs.return_value = ["sub1", "sub2"]
         mock_get_parent.return_value = "/path/to/parent"
         
-        mock_fzf_proc = MagicMock()
-        mock_fzf_proc.stdin = MagicMock()
-        mock_fzf_proc.communicate.return_value = (b"(submodule) [Submodules]\n", None)
-        mock_fzf_proc.wait.return_value = 0
-        
-        mock_fzf_sub_proc = MagicMock()
-        mock_fzf_sub_proc.stdin = MagicMock()
-        mock_fzf_sub_proc.communicate.return_value = (b"sub1\n", None)
-        mock_fzf_sub_proc.wait.return_value = 0
-        
-        mock_git_proc = MagicMock()
-        mock_git_proc.stdout = []
-        mock_git_proc.wait.return_value = 0
+        mock_fzf_proc = make_mock_proc(b"(submodule) [Submodules]\n", 0)
+        mock_fzf_sub_proc = make_mock_proc(b"sub1\n", 0)
+        mock_mb_proc = make_mock_proc(b"", 0)
+        mock_git_proc = make_mock_proc(b"", 0)
         
         def popen_side_effect(cmd: List[str], **kwargs: Any) -> MagicMock:
             if cmd[0] == "fzf":
@@ -296,7 +288,10 @@ class GitHistoryFzfTest(unittest.TestCase):
                     return mock_fzf_sub_proc
                 return mock_fzf_proc
             elif cmd[0] == "git":
-                return mock_git_proc
+                if cmd[1] == "merge-base":
+                    return mock_mb_proc
+                elif cmd[1] == "log":
+                    return mock_git_proc
             raise ValueError(f"Unexpected Popen call: {cmd}")
             
         mock_popen.side_effect = popen_side_effect
