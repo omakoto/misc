@@ -299,11 +299,11 @@ def main() -> None:
         is_dirty = bool(status_res.stdout.strip())
         
         if is_dirty:
-            header = "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), [^E]: Edit commit msg, Multi-select [^S]: Squash commits, [^K]: Inject"
-            fzf_cmd = ["git-history-fzf", "-c", "--submodules", "-e", "ctrl-s,ctrl-k,ctrl-e", "-h", header] + args + extra_args
+            header = "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), [^G]: Edit commit msg, Multi-select [^S]: Squash commits, [^K]: Inject"
+            fzf_cmd = ["git-history-fzf", "-c", "--submodules", "-e", "ctrl-s,ctrl-k,ctrl-g", "-h", header] + args + extra_args
         else:
-            header = "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), [^E]: Edit commit msg, Multi-select [^S]: Squash commits"
-            fzf_cmd = ["git-history-fzf", "-c", "--submodules", "-e", "ctrl-s,ctrl-e", "-h", header] + args + extra_args
+            header = "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), [^G]: Edit commit msg, Multi-select [^S]: Squash commits"
+            fzf_cmd = ["git-history-fzf", "-c", "--submodules", "-e", "ctrl-s,ctrl-g", "-h", header] + args + extra_args
             
         fzf_res = run_command(fzf_cmd, capture_output=True, text=True)
         fzf_output = fzf_res.stdout
@@ -361,7 +361,7 @@ def main() -> None:
         if num_hashes == 0:
             break
             
-        if key == "ctrl-e":
+        if key == "ctrl-g":
             if has_current:
                 print_error("Error: Cannot edit message of local changes (CURRENT)")
                 time.sleep(2)

@@ -669,13 +669,13 @@ assert "[[ '${cwds[1]}' == *'/repo' ]]"
 cd "$SCRIPT_DIR"
 
 # -------------------------------------------------------------
-# Test Case 23: Edit commit message using ctrl-e
+# Test Case 23: Edit commit message using ctrl-g
 # -------------------------------------------------------------
 setup_git_repo
 clear_test_state
 commit1_hash=$(git rev-parse --short HEAD~1)
 
-export MOCK_FZF_KEY="ctrl-e"
+export MOCK_FZF_KEY="ctrl-g"
 MOCK_FZF_SELECTION="$commit1_hash Commit 1"
 
 export GIT_EDITOR="sed -i 's/Commit 1/Commit 1 Edited/g'"
@@ -688,7 +688,7 @@ export MOCK_FZF_KEY=""
 unset GIT_EDITOR
 
 # -------------------------------------------------------------
-# Test Case 24: Edit commit message using ctrl-e with dirty repo (autostash)
+# Test Case 24: Edit commit message using ctrl-g with dirty repo (autostash)
 # -------------------------------------------------------------
 setup_git_repo
 echo "dirty changes" > untracked.txt
@@ -696,7 +696,7 @@ echo "more changes" >> file2.txt
 clear_test_state
 commit1_hash=$(git rev-parse --short HEAD~1)
 
-export MOCK_FZF_KEY="ctrl-e"
+export MOCK_FZF_KEY="ctrl-g"
 MOCK_FZF_SELECTION="$commit1_hash Commit 1"
 
 export GIT_EDITOR="sed -i 's/Commit 1/Commit 1 Edited Dirty/g'"
@@ -714,7 +714,7 @@ unset GIT_EDITOR
 cd "$SCRIPT_DIR"
 
 # -------------------------------------------------------------
-# Test Case 25: Attempting to edit a commit already on remote using ctrl-e (should error)
+# Test Case 25: Attempting to edit a commit already on remote using ctrl-g (should error)
 # -------------------------------------------------------------
 setup_git_repo
 clear_test_state
@@ -724,7 +724,7 @@ full_commit1_hash=$(git rev-parse HEAD~1)
 # Simulate pushing Commit 1 to remote by creating a remote tracking branch pointing to it
 git update-ref refs/remotes/origin/master "$full_commit1_hash"
 
-export MOCK_FZF_KEY="ctrl-e"
+export MOCK_FZF_KEY="ctrl-g"
 MOCK_FZF_SELECTION="$commit1_hash Commit 1"
 
 # We capture stderr to check the error message
