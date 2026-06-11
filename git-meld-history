@@ -318,15 +318,6 @@ def main() -> None:
         key = lines[0]
         selections = lines[1:]
         
-        if key == "ctrl-k":
-            if is_dirty:
-                res_inject = run_command(["git-rebase-inject"] + args)
-                sys.exit(res_inject.returncode)
-            else:
-                print_error("Error: Inject is only available when the worktree is dirty.")
-                time.sleep(2)
-                continue
-                
         if not selections:
             break
             
@@ -467,6 +458,86 @@ def main() -> None:
                     
             if rebase_status != 0:
                 print_error("Rebase/squash failed or paused for conflict resolution.\nExiting script so you can resolve it in your terminal (using git rebase --continue/--abort).")
+                break
+            continue
+            
+        if key == "ctrl-k":
+            if not is_dirty:
+                print_error("Error: Inject is only available when the worktree is dirty.")
+                time.sleep(2)
+                continue
+            if has_current:
+                print_error("Error: Cannot inject into local changes (CURRENT)")
+                time.sleep(2)
+                continue
+            if num_hashes != 1:
+                print_error("Error: Please select exactly 1 commit to inject into")
+                time.sleep(2)
+                continue
+                
+            verify_res = run_command(["git", "rev-parse", "--verify", hashes[0]], capture_output=True, text=True)
+            target_commit = verify_res.stdout.strip()
+            
+            if is_on_remote(target_commit):
+                print_error("Error: Cannot inject into commits already on remote")
+                time.sleep(2)
+                continue
+
+            # Retrieve subject of target commit
+            subject_res = run_command(["git", "log", "-1", "--format=%s", target_commit], capture_output=True, text=True)
+            subject = subject_res.stdout.strip()
+            prompt_str = f"Inject to {subject}: "
+
+            # Run FZF to select dirty files to inject
+            status_res = run_command(["git", "status", "--porcelain"], capture_output=True, text=True)
+            fzf_proc = subprocess.run(
+                ["fzf", "--multi", f"--prompt={prompt_str}"],
+                input=status_res.stdout,
+                capture_output=True,
+                text=True
+            )
+            if fzf_proc.returncode != 0:
+                continue
+                
+            fzf_selections = [l for l in fzf_proc.stdout.splitlines() if l.strip()]
+            if not fzf_selections:
+                continue
+
+            selected_files = []
+            for line in fzf_selections:
+                file_path = line[3:]
+                if " -> " in file_path:
+                    file_path = file_path.split(" -> ")[-1]
+                selected_files.append(os.path.join(toplevel, file_path))
+
+            if not selected_files:
+                continue
+
+            # Perform injection
+            run_command(["git", "add", "--"] + selected_files)
+
+            commit_res = run_command(["git", "commit", f"--fixup={target_commit}", "--"] + selected_files)
+            if commit_res.returncode != 0:
+                print_error("Error: Creating fixup commit failed.")
+                time.sleep(2)
+                continue
+
+            # Check if target commit has a parent
+            parent_verify = run_command(["git", "rev-parse", "--verify", f"{target_commit}^"], capture_output=True)
+            if parent_verify.returncode == 0:
+                rebase_base = f"{target_commit}^"
+                rebase_cmd = ["git", "rebase", "-i", "--autosquash", "--autostash", rebase_base]
+            else:
+                rebase_cmd = ["git", "rebase", "-i", "--autosquash", "--autostash", "--root"]
+
+            env = os.environ.copy()
+            env["GIT_SEQUENCE_EDITOR"] = ":"
+            rebase_res = run_command(rebase_cmd, env=env)
+            
+            if rebase_res.returncode != 0:
+                print_error("Error: Rebase failed due to conflicts.\n"
+                            "Please resolve conflicts and run 'git rebase --continue'.\n"
+                            "If you abort with 'git rebase --abort', the fixup commit will remain at HEAD; undo it with 'git reset HEAD~1'.")
                 break
             continue
             

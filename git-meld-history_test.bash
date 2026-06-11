@@ -497,63 +497,81 @@ assert "[[ '$(cat $TEST_TMP_DIR/git_meld_calls)' == '${commit3_hash}^..${commit3
 # Clean up environment
 unset MOCK_FZF_SELECTION
 
-# -------------------------------------------------------------
-# Test Case 18: Inject (ctrl-k) when dirty
+## -------------------------------------------------------------
+# Test Case 18: Inject (ctrl-k) when dirty (native implementation)
 # -------------------------------------------------------------
 setup_git_repo
-echo "dirty changes" > untracked.txt
+echo "dirty changes" >> file1.txt
 clear_test_state
-rm -f "$TEST_TMP_DIR/git_rebase_inject_calls"
 
-# Re-create mock git-rebase-inject
-cat > "$TEST_TMP_DIR/bin/git-rebase-inject" <<'EOF'
-#!/bin/bash
-echo "inject called with args: $*" >> "$TEST_TMP_DIR/git_rebase_inject_calls"
-EOF
-chmod +x "$TEST_TMP_DIR/bin/git-rebase-inject"
-
-# Mock fzf that returns ctrl-k key on first call
+# Overwrite fzf mock to handle multiple calls
 cat > "$TEST_TMP_DIR/bin/fzf" <<'EOF'
 #!/bin/bash
-echo "$*" > "$TEST_TMP_DIR/fzf_args"
-echo "ctrl-k"
+count=0
+if [[ -f "$TEST_TMP_DIR/fzf_call_count" ]]; then
+  count=$(cat "$TEST_TMP_DIR/fzf_call_count")
+fi
+count=$((count + 1))
+echo "$count" > "$TEST_TMP_DIR/fzf_call_count"
+
+echo "fzf called (count=$count) with args: $*" >> "$TEST_TMP_DIR/fzf_calls"
+cat > "$TEST_TMP_DIR/fzf_stdin_$count"
+
+if (( count == 1 )); then
+  # 1st call: commit selection, return ctrl-k and commit1_hash
+  echo "ctrl-k"
+  echo "$MOCK_FZF_SELECTION"
+elif (( count == 2 )); then
+  # 2nd call: file selection, return file1.txt
+  echo " M file1.txt"
+else
+  echo ""
+fi
 EOF
 chmod +x "$TEST_TMP_DIR/bin/fzf"
 
-# Run git-meld-history with some log args
-git-meld-history . --author="Test"
-
-# Verify:
-# 1. git-rebase-inject was called with the arguments passed to git-meld-history
-assert "[[ -f '$TEST_TMP_DIR/git_rebase_inject_calls' ]]"
-assert "[[ '$(cat $TEST_TMP_DIR/git_rebase_inject_calls)' == 'inject called with args: --author=Test' ]]"
-# 2. fzf expected ctrl-k
-assert "grep -q 'ctrl-k' '$TEST_TMP_DIR/fzf_args'"
-# 3. git-meld was not called
-assert "[[ ! -f '$TEST_TMP_DIR/git_meld_calls' ]]"
-
-# -------------------------------------------------------------
-# Test Case 19: Inject (ctrl-k) not available when clean
-# -------------------------------------------------------------
-setup_git_repo
-clear_test_state
-rm -f "$TEST_TMP_DIR/git_rebase_inject_calls"
-
-# Mock fzf that exits on first call (so we can check args)
-cat > "$TEST_TMP_DIR/bin/fzf" <<'EOF'
-#!/bin/bash
-echo "$*" > "$TEST_TMP_DIR/fzf_args"
-echo "" # Empty return to break loop
-EOF
-chmod +x "$TEST_TMP_DIR/bin/fzf"
+commit1_hash=$(git rev-parse --short HEAD~1)
+export MOCK_FZF_SELECTION="$commit1_hash Commit 1"
 
 git-meld-history
 
 # Verify:
-# 1. fzf did NOT expect ctrl-k
-assert "! grep -q 'ctrl-k' '$TEST_TMP_DIR/fzf_args'"
-# 2. git-rebase-inject was NOT called
-assert "[[ ! -f '$TEST_TMP_DIR/git_rebase_inject_calls' ]]"
+# 1. fzf was called three times (first commit, second file selection, third commit exit)
+assert "[[ -f '$TEST_TMP_DIR/fzf_calls' ]]"
+assert "[[ \$(wc -l < '$TEST_TMP_DIR/fzf_calls') -eq 3 ]]"
+# 2. 2nd fzf call's prompt contains the commit subject: "Inject to Commit 1"
+assert "grep -q 'Inject to Commit 1' '$TEST_TMP_DIR/fzf_calls'"
+# 3. file1.txt changes were injected into Commit 1
+assert "git show HEAD~1:file1.txt | grep -q 'dirty changes'"
+# 4. Working tree is clean
+assert "[[ -z \$(git status --porcelain file1.txt) ]]"
+
+# -------------------------------------------------------------
+# Test Case 19: Inject (ctrl-k) error when clean
+# -------------------------------------------------------------
+setup_git_repo
+clear_test_state
+
+# Mock fzf that returns ctrl-k key on first call, and empty on second to avoid infinite loop
+cat > "$TEST_TMP_DIR/bin/fzf" <<'EOF'
+#!/bin/bash
+if [[ -f "$TEST_TMP_DIR/fzf_called" ]]; then
+  echo ""
+else
+  touch "$TEST_TMP_DIR/fzf_called"
+  echo "ctrl-k"
+  echo "$MOCK_FZF_SELECTION"
+fi
+EOF
+chmod +x "$TEST_TMP_DIR/bin/fzf"
+
+commit1_hash=$(git rev-parse --short HEAD~1)
+export MOCK_FZF_SELECTION="$commit1_hash Commit 1"
+
+git-meld-history 2> "$TEST_TMP_DIR/git_meld_err"
+
+# Verify that it printed the clean error message
+assert "grep -q 'Error: Inject is only available when the worktree is dirty' '$TEST_TMP_DIR/git_meld_err'"
 
 # -------------------------------------------------------------
 # Test Case 20: --bash-completion
@@ -740,6 +758,67 @@ git-meld-history 2> "$TEST_TMP_DIR/git_meld_err"
 assert "grep -q 'Error: Cannot squash commits that are already on remote' '$TEST_TMP_DIR/git_meld_err'"
 # Verify the commit history is unchanged (still has 2 commits)
 assert "[[ \$(git log --oneline | wc -l) -eq 2 ]]"
+export MOCK_FZF_KEY=""
+
+# -------------------------------------------------------------
+# Test Case 27: Inject (ctrl-k) on remote commit should error
+# -------------------------------------------------------------
+setup_git_repo
+echo "dirty changes" > file2.txt
+clear_test_state
+commit1_hash=$(git rev-parse --short HEAD~1)
+full_commit1_hash=$(git rev-parse HEAD~1)
+
+# Simulate pushing Commit 1 to remote
+git update-ref refs/remotes/origin/master "$full_commit1_hash"
+
+export MOCK_FZF_KEY="ctrl-k"
+MOCK_FZF_SELECTION="$commit1_hash Commit 1"
+
+git-meld-history 2> "$TEST_TMP_DIR/git_meld_err"
+
+# Verify that the inject was refused and error message printed
+assert "grep -q 'Error: Cannot inject into commits already on remote' '$TEST_TMP_DIR/git_meld_err'"
+# Verify file2.txt is still dirty (injection did not complete)
+assert "[[ -n \$(git status --porcelain file2.txt) ]]"
+export MOCK_FZF_KEY=""
+
+# -------------------------------------------------------------
+# Test Case 28: Inject (ctrl-k) on multiple commits should error
+# -------------------------------------------------------------
+setup_git_repo
+echo "dirty changes" > file2.txt
+clear_test_state
+commit1_hash=$(git rev-parse --short HEAD~1)
+commit2_hash=$(git rev-parse --short HEAD)
+
+export MOCK_FZF_KEY="ctrl-k"
+MOCK_FZF_SELECTION="$commit2_hash Commit 2\n$commit1_hash Commit 1"
+
+git-meld-history 2> "$TEST_TMP_DIR/git_meld_err"
+
+# Verify that the inject was refused and error message printed
+assert "grep -q 'Error: Please select exactly 1 commit to inject into' '$TEST_TMP_DIR/git_meld_err'"
+# Verify file2.txt is still dirty
+assert "[[ -n \$(git status --porcelain file2.txt) ]]"
+export MOCK_FZF_KEY=""
+
+# -------------------------------------------------------------
+# Test Case 29: Inject (ctrl-k) on (CURRENT) should error
+# -------------------------------------------------------------
+setup_git_repo
+echo "dirty changes" > file2.txt
+clear_test_state
+
+export MOCK_FZF_KEY="ctrl-k"
+MOCK_FZF_SELECTION="(CURRENT) Local changes"
+
+git-meld-history 2> "$TEST_TMP_DIR/git_meld_err"
+
+# Verify that the inject was refused and error message printed
+assert "grep -q 'Error: Cannot inject into local changes (CURRENT)' '$TEST_TMP_DIR/git_meld_err'"
+# Verify file2.txt is still dirty
+assert "[[ -n \$(git status --porcelain file2.txt) ]]"
 export MOCK_FZF_KEY=""
 
 # Return to script directory
