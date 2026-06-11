@@ -490,8 +490,26 @@ def main() -> None:
 
             # Run FZF to select dirty files to inject
             status_res = run_command(["git", "status", "--porcelain"], capture_output=True, text=True)
+            preview_script = (
+                'line="$1"; '
+                'status="${line:0:2}"; '
+                'file="${line:3}"; '
+                'file="${file##* -> }"; '
+                'if [ "$status" = "??" ]; then '
+                f'  git -C {shlex.quote(toplevel)} diff --color=always --no-index /dev/null "$file" 2>/dev/null || cat {shlex.quote(toplevel)}/"$file"; '
+                'else '
+                f'  git -C {shlex.quote(toplevel)} diff --color=always -- "$file"; '
+                'fi'
+            )
+            preview_cmd = f"bash -c {shlex.quote(preview_script)} -- {{}}"
             fzf_proc = subprocess.run(
-                ["fzf", "--multi", f"--prompt={prompt_str}"],
+                [
+                    "fzf",
+                    "--multi",
+                    f"--prompt={prompt_str}",
+                    "--preview", preview_cmd,
+                    "--preview-window", "top:60%"
+                ],
                 input=status_res.stdout,
                 capture_output=True,
                 text=True
