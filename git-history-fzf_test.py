@@ -35,6 +35,13 @@ def make_mock_proc(stdout: bytes = b"", returncode: int = 0) -> MagicMock:
 
 class GitHistoryFzfTest(unittest.TestCase):
     
+    def setUp(self) -> None:
+        self.normalize_patcher = patch('git_history_fzf.normalize_path', return_value="mocked_title")
+        self.mock_normalize = self.normalize_patcher.start()
+
+    def tearDown(self) -> None:
+        self.normalize_patcher.stop()
+
     @patch('subprocess.run')
     def test_is_inside_work_tree(self, mock_run: MagicMock) -> None:
         mock_run.return_value = MagicMock(returncode=0)

@@ -202,18 +202,21 @@ def has_limit(args: List[str]) -> bool:
             return True
     return False
 
+def normalize_path(path: str) -> str:
+    """Normalize and shorten path using dir-normalize script."""
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    dir_normalize_path = os.path.join(script_dir, "dir-normalize")
+    try:
+        res = subprocess.run([dir_normalize_path, path], capture_output=True, text=True, check=True)
+        return res.stdout.strip()
+    except Exception:
+        return path
+
 
 def main_inner() -> None:
     global _fzf_active
     if sys.stderr.isatty():
-        cwd = os.getcwd()
-        home = os.path.expanduser("~")
-        if cwd == home:
-            title = "~"
-        elif cwd.startswith(home + "/"):
-            title = "~/" + cwd[len(home) + 1:]
-        else:
-            title = cwd
+        title = normalize_path(os.getcwd())
         sys.stderr.write(f"\033]0;Git history: {title}\007")
         sys.stderr.flush()
 
