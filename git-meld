@@ -468,10 +468,10 @@ def main() -> None:
     # Query changed files
     src_changed_files, dest_changed_files, rename_map = query_diff_status(filtered_diff_args, no_rename_detection)
 
-    # If no changes are found, we can exit early
+    # If no changes are found, we can exit early with status 3
     if not src_changed_files and not dest_changed_files:
         print("No changes found.")
-        sys.exit(0)
+        sys.exit(3)
 
     # Create temporary directory structure
     tmp_dir = tempfile.mkdtemp(prefix="git-meld-")

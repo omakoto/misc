@@ -148,6 +148,23 @@ def is_dirty_repo() -> bool:
     return False
 
 
+def run_git_meld(meld_args: List[str]) -> None:
+    """Runs git meld with the specified arguments. Captures stdout/stderr and prints in bold-yellow if failed."""
+    res = run_command(["git", "meld"] + meld_args, capture_output=True, text=True)
+    if res.returncode != 0:
+        out = (res.stdout or "") + (res.stderr or "")
+        if out.strip():
+            print_error(out.strip())
+        time.sleep(2)
+    else:
+        if res.stdout:
+            sys.stdout.write(res.stdout)
+            sys.stdout.flush()
+        if res.stderr:
+            sys.stderr.write(res.stderr)
+            sys.stderr.flush()
+
+
 def run_sequence_editor(todo_file: str) -> None:
     squash_hashes_str = os.environ.get("SQUASH_HASHES", "")
     squash_hashes = set(squash_hashes_str.split())
@@ -638,16 +655,16 @@ def main() -> None:
                 if untracked_files:
                     run_command(["git", "add", "-N", "--"] + untracked_files)
                     
-                run_command(["git", "meld", "HEAD"])
+                run_git_meld(["HEAD"])
                 
                 if untracked_files:
                     run_command(["git", "reset", "HEAD", "--"] + untracked_files)
             else:
                 parent_verify = run_command(["git", "rev-parse", "--verify", f"{commit}^"], capture_output=True)
                 if parent_verify.returncode == 0:
-                    run_command(["git", "meld", f"{commit}^..{commit}"])
+                    run_git_meld([f"{commit}^..{commit}"])
                 else:
-                    run_command(["git", "meld", f"4b825dc642cb6eb9a001e5408d69288fbee4904f..{commit}"])
+                    run_git_meld([f"4b825dc642cb6eb9a001e5408d69288fbee4904f..{commit}"])
         else:
             if has_current:
                 historical_hashes = [h for h in hashes if h != "(CURRENT)"]
@@ -666,9 +683,9 @@ def main() -> None:
                         
                     parent_verify = run_command(["git", "rev-parse", "--verify", f"{oldest}^"], capture_output=True)
                     if parent_verify.returncode == 0:
-                        run_command(["git", "meld", f"{oldest}^"])
+                        run_git_meld([f"{oldest}^"])
                     else:
-                        run_command(["git", "meld", "4b825dc642cb6eb9a001e5408d69288fbee4904f"])
+                        run_git_meld(["4b825dc642cb6eb9a001e5408d69288fbee4904f"])
                         
                     if untracked_files:
                         run_command(["git", "reset", "HEAD", "--"] + untracked_files)
@@ -683,9 +700,9 @@ def main() -> None:
                     newest = sorted_hashes[-1]
                     parent_verify = run_command(["git", "rev-parse", "--verify", f"{oldest}^"], capture_output=True)
                     if parent_verify.returncode == 0:
-                        run_command(["git", "meld", f"{oldest}^..{newest}"])
+                        run_git_meld([f"{oldest}^..{newest}"])
                     else:
-                        run_command(["git", "meld", f"4b825dc642cb6eb9a001e5408d69288fbee4904f..{newest}"])
+                        run_git_meld([f"4b825dc642cb6eb9a001e5408d69288fbee4904f..{newest}"])
 
 if __name__ == "__main__":
     main()
