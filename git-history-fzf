@@ -250,7 +250,7 @@ Examples:
         git_log_args = git_log_args[1:]
         
     if not has_limit(git_log_args):
-        git_log_args.insert(0, "1000")
+        git_log_args.insert(0, "5000")
         git_log_args.insert(0, "-n")
 
     # Construct fzf options
