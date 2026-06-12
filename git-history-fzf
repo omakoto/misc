@@ -171,10 +171,28 @@ def _get_submodules_abs() -> List[str]:
     except Exception:
         pass
     return []
+def get_submodule_commit_time(abs_path: str) -> int:
+    """Retrieves the commit timestamp of the last commit in the submodule."""
+    try:
+        res = run_command(
+            ["git", "-C", abs_path, "log", "-1", "--format=%ct"],
+            capture_output=True,
+            text=True
+        )
+        if res.returncode == 0:
+            val = res.stdout.strip()
+            if val.isdigit():
+                return int(val)
+    except Exception:
+        pass
+    return 0
+
 
 def get_submodules() -> List[str]:
-    """Retrieves the list of submodule paths in the repository."""
-    return [os.path.relpath(p, os.getcwd()) for p in _get_submodules_abs()]
+    """Retrieves the list of submodule paths in the repository, sorted by last commit time (newest first)."""
+    subs = _get_submodules_abs()
+    sorted_subs = sorted(subs, key=lambda p: (-get_submodule_commit_time(p), p))
+    return [os.path.relpath(p, os.getcwd()) for p in sorted_subs]
 
 def get_parent_repo() -> Optional[str]:
     """Retrieves the parent repository's working tree path, if in a submodule."""

@@ -119,6 +119,40 @@ class GitHistoryFzfTest(unittest.TestCase):
         mock_run.side_effect = Exception("error")
         self.assertEqual(git_history_fzf.get_submodules(), [])
 
+    @patch('os.path.exists')
+    @patch('subprocess.run')
+    def test_get_submodules_sorted(self, mock_run: MagicMock, mock_exists: MagicMock) -> None:
+        git_history_fzf._get_submodules_abs.cache_clear()
+        
+        def run_side_effect(cmd, **kwargs):
+            if cmd == ["git", "rev-parse", "--show-toplevel"]:
+                return MagicMock(returncode=0, stdout="/toplevel\n")
+            elif cmd == ["git", "config", "--file", "/toplevel/.gitmodules", "--get-regexp", "path"]:
+                return MagicMock(returncode=0, stdout="submodule.sub1.path path/to/sub1\nsubmodule.sub2.path path/to/sub2\n")
+            elif "-C" in cmd:
+                subpath = cmd[2]
+                if "sub1" in subpath:
+                    return MagicMock(returncode=0, stdout="1000\n")
+                elif "sub2" in subpath:
+                    return MagicMock(returncode=0, stdout="2000\n")
+            return MagicMock(returncode=1)
+            
+        mock_run.side_effect = run_side_effect
+        
+        def exists_side_effect(path):
+            if path in (
+                "/toplevel/.gitmodules",
+                "/toplevel/path/to/sub1/.git",
+                "/toplevel/path/to/sub2/.git"
+            ):
+                return True
+            return False
+        mock_exists.side_effect = exists_side_effect
+        
+        with patch('os.getcwd', return_value='/toplevel'):
+            # Since sub2 has a newer commit time (2000 > 1000), it should be first in the list
+            self.assertEqual(git_history_fzf.get_submodules(), ["path/to/sub2", "path/to/sub1"])
+
     @patch('subprocess.run')
     def test_get_parent_repo(self, mock_run: MagicMock) -> None:
         mock_run.return_value = MagicMock(returncode=0, stdout="/path/to/parent\n")
