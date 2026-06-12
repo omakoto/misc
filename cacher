@@ -1,6 +1,10 @@
-#!/bin/env python3
+#!/usr/bin/env python3
+#
+# cacher - Cache command stdout, run command in background when expired.
+# Run 'cacher_test.bash' to verify changes to this script.
+#
 
-'''
+"""
 todo: implement it. Keep this comment for future reference.
 
 usage:
@@ -9,7 +13,7 @@ cacher
     -c|--command "COMMAND"      commad to run. Use /bin/sh -c to run it. required
     -f|--file CACHE-FILE        required. cache file to store command stdout
     -a|--max-age SECONDS        optional. if the cache file is older than this, run the command, unless it's already running.
-    -d|--default TEXT           optional. default string to put in the file if it's the first run
+    -d|--default TEXT           optional. default string to put in the file if it's the first run. Default is "?"
     -l|--lock-file LOCK-FILE    optional. lock file to detect double-run. default is CACHE-FILE.lock
 
 - cacher runs the command and out it's stdout to CACHE-FILE. Don't redirect the command to CACHE-FILE directly. Instead, redirect to CACHE-FILE.tmp and then do a rename once the command finishes.
@@ -21,5 +25,178 @@ cacher
       the main "side" should still print the cached content and exit instantly.
 
 
-'''
+"""
+
+import argparse
+import fcntl
+import os
+import subprocess
+import sys
+import time
+from typing import IO
+
+
+def daemonize_and_run(command: str, cache_file: str, lock_fp: IO[str]) -> None:
+    sys.stdout.flush()
+    sys.stderr.flush()
+    try:
+        pid = os.fork()
+        if pid > 0:
+            # First parent returns to the main flow to exit quickly.
+            return
+    except OSError as e:
+        sys.stderr.write(f"fork #1 failed: {e}\n")
+        sys.exit(1)
+
+    # Decouple from parent environment
+    os.setsid()
+    os.umask(0)
+
+    try:
+        pid = os.fork()
+        if pid > 0:
+            # Second parent (first child) exits, leaving grandchild running under init
+            os._exit(0)
+    except OSError as e:
+        sys.stderr.write(f"fork #2 failed: {e}\n")
+        os._exit(1)
+
+    # Grandchild:
+    # Redirect standard file descriptors to /dev/null
+    try:
+        si = open(os.devnull, 'r')
+        so = open(os.devnull, 'w')
+        se = open(os.devnull, 'w')
+        os.dup2(si.fileno(), sys.stdin.fileno())
+        os.dup2(so.fileno(), sys.stdout.fileno())
+        os.dup2(se.fileno(), sys.stderr.fileno())
+    except Exception:
+        pass
+
+    tmp_file = f"{cache_file}.tmp"
+    try:
+        # Run command using /bin/sh -c and write output to cache_file.tmp
+        with open(tmp_file, 'w') as out_f:
+            subprocess.run(['/bin/sh', '-c', command], stdout=out_f, stderr=subprocess.DEVNULL)
+        
+        # When finishes, rename to cache_file
+        if os.path.exists(tmp_file):
+            os.replace(tmp_file, cache_file)
+    except Exception:
+        pass
+    finally:
+        try:
+            if os.path.exists(tmp_file):
+                os.remove(tmp_file)
+        except Exception:
+            pass
+        try:
+            lock_fp.close()
+        except Exception:
+            pass
+        os._exit(0)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description='Cache command stdout and run command in background when expired.',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  cacher -c "curl -s https://api.ipify.org" -f /tmp/myip.txt -a 300
+  cacher -c "sleep 5 && echo done" -f /tmp/test.cache -a 10 -d "default-val"
+"""
+    )
+    parser.add_argument('-c', '--command', required=True, help='Command to run. Use /bin/sh -c to run it.')
+    parser.add_argument('-f', '--file', required=True, help='Cache file to store command stdout.')
+    parser.add_argument('-a', '--max-age', type=int, help='If the cache file is older than this (in seconds), run the command, unless it\'s already running.')
+    parser.add_argument('-d', '--default', default='?', help='Default string to put in the file if it\'s the first run.')
+    parser.add_argument('-l', '--lock-file', help='Lock file to detect double-run. Default is CACHE-FILE.lock.')
+
+    args = parser.parse_args()
+
+    if args.max_age is not None and args.max_age < 0:
+        parser.error("max-age must be a non-negative integer")
+
+    cache_file = os.path.abspath(args.file)
+    lock_file = os.path.abspath(args.lock_file) if args.lock_file else f"{cache_file}.lock"
+
+    # Create parent directories if they don't exist
+    for path in (cache_file, lock_file):
+        parent = os.path.dirname(path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+
+    # 1. Open and try to acquire lock
+    lock_fp = open(lock_file, 'w')
+    locked = False
+    try:
+        fcntl.flock(lock_fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        locked = True
+    except (IOError, BlockingIOError):
+        pass
+
+    if not locked:
+        # Lock is already held by another instance.
+        # Print the cached content (or default if cache file doesn't exist yet) and exit.
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'r', errors='replace') as f:
+                    print(f.read(), end="")
+            except Exception as e:
+                sys.stderr.write(f"Failed to read cache file: {e}\n")
+        else:
+            default_text = args.default
+            print(default_text, end="")
+        sys.exit(0)
+
+    # We hold the lock.
+    # Check if cache file exists.
+    if not os.path.exists(cache_file):
+        # First run.
+        default_text = args.default
+        try:
+            with open(cache_file, 'w') as f:
+                f.write(default_text)
+        except Exception as e:
+            sys.stderr.write(f"Failed to write default text to cache file: {e}\n")
+            lock_fp.close()
+            sys.exit(1)
+
+        print(default_text, end="")
+        # Start command in background (which will inherit the lock).
+        daemonize_and_run(args.command, cache_file, lock_fp)
+        sys.exit(0)
+
+    # Cache file exists. Read cached content.
+    try:
+        with open(cache_file, 'r', errors='replace') as f:
+            cached_content = f.read()
+    except Exception as e:
+        sys.stderr.write(f"Failed to read cache file: {e}\n")
+        lock_fp.close()
+        sys.exit(1)
+
+    # Check if it is new enough.
+    mtime = os.path.getmtime(cache_file)
+    age = time.time() - mtime
+    is_new_enough = (args.max_age is None) or (age <= args.max_age)
+
+    if is_new_enough:
+        # Cache is fresh. Close lock and print.
+        lock_fp.close()
+        print(cached_content, end="")
+        sys.exit(0)
+    else:
+        # Cache is stale.
+        # Print cached content.
+        print(cached_content, end="")
+        # Start command in background to refresh (inheriting lock).
+        daemonize_and_run(args.command, cache_file, lock_fp)
+        sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()
+
 
