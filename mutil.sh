@@ -81,21 +81,6 @@ iscon() {
   [[ -t ${1:-1} || $FORCE_CON = 1 ]]
 }
 
-fixcon() {
-  local fd=${1:-1}
-  if iscon $fd ; then
-    export FORCE_CON=1
-    export C${fd}=1
-  else
-    unset FORCE_CON
-    unset C${fd}
-  fi
-}
-
-fixcon2() {
-  fixcon 2
-}
-
 firstdir() {
   local d
   for d in "${@}" ; do
