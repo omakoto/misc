@@ -15,6 +15,7 @@ cacher
     -a|--max-age SECONDS        optional. if the cache file is older than this, run the command, unless it's already running.
     -d|--default TEXT           optional. default string to put in the file if it's the first run. Default is "?"
     -l|--lock-file LOCK-FILE    optional. lock file to detect double-run. default is CACHE-FILE.lock
+    -v|--verbose                optional. enable verbose logging to stderr.
 
 - cacher runs the command and out it's stdout to CACHE-FILE. Don't redirect the command to CACHE-FILE directly. Instead, redirect to CACHE-FILE.tmp and then do a rename once the command finishes.
 - the command is supposed to more than a few seconds.Tthe point of this command is to return the cached content instantly and start the command in the BG to refresh the cache if if needed. The command should always finish quickly without waiting for the BG process to finish.
@@ -112,8 +113,17 @@ Examples:
     parser.add_argument('-a', '--max-age', type=int, help='If the cache file is older than this (in seconds), run the command, unless it\'s already running.')
     parser.add_argument('-d', '--default', default='?', help='Default string to put in the file if it\'s the first run.')
     parser.add_argument('-l', '--lock-file', help='Lock file to detect double-run. Default is CACHE-FILE.lock.')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose logging to stderr.')
 
     args = parser.parse_args()
+
+    def log(msg: str) -> None:
+        if args.verbose:
+            if sys.stderr.isatty():
+                sys.stderr.write(f"\033[90mcacher: {msg}\033[0m\n")
+            else:
+                sys.stderr.write(f"cacher: {msg}\n")
+            sys.stderr.flush()
 
     if args.max_age is not None and args.max_age < 0:
         parser.error("max-age must be a non-negative integer")
@@ -127,6 +137,7 @@ Examples:
         if parent:
             os.makedirs(parent, exist_ok=True)
 
+    log(f"Checking lock file: {lock_file}")
     # 1. Open and try to acquire lock
     lock_fp = open(lock_file, 'w')
     locked = False
@@ -137,6 +148,7 @@ Examples:
         pass
 
     if not locked:
+        log("Lock already held by another instance. Printing cached content (or default) and exiting.")
         # Lock is already held by another instance.
         # Print the cached content (or default if cache file doesn't exist yet) and exit.
         if os.path.exists(cache_file):
@@ -150,10 +162,13 @@ Examples:
             print(default_text, end="")
         sys.exit(0)
 
+    log("Lock acquired successfully.")
+
     # We hold the lock.
     # Check if cache file exists.
     if not os.path.exists(cache_file):
         # First run.
+        log(f"First run detected (cache file {cache_file} does not exist), writing default string: {args.default}")
         default_text = args.default
         try:
             with open(cache_file, 'w') as f:
@@ -165,10 +180,12 @@ Examples:
 
         print(default_text, end="")
         # Start command in background (which will inherit the lock).
+        log(f"Starting background command: {args.command}")
         daemonize_and_run(args.command, cache_file, lock_fp)
         sys.exit(0)
 
     # Cache file exists. Read cached content.
+    log(f"Reading cached content from: {cache_file}")
     try:
         with open(cache_file, 'r', errors='replace') as f:
             cached_content = f.read()
@@ -180,15 +197,18 @@ Examples:
     # Check if it is new enough.
     mtime = os.path.getmtime(cache_file)
     age = time.time() - mtime
+    log(f"Cache age: {age:.2f}s, max-age: {args.max_age}s")
     is_new_enough = (args.max_age is None) or (age <= args.max_age)
 
     if is_new_enough:
         # Cache is fresh. Close lock and print.
+        log("Cache file is fresh. Releasing lock and exiting.")
         lock_fp.close()
         print(cached_content, end="")
         sys.exit(0)
     else:
         # Cache is stale.
+        log(f"Cache file is stale. Starting background command to refresh: {args.command}")
         # Print cached content.
         print(cached_content, end="")
         # Start command in background to refresh (inheriting lock).

@@ -97,4 +97,14 @@ sleep 2.0
 assert "[[ \$(cat '$CACHE_FILE') == 'first_bg' ]]"
 
 
+# Test 6: Verbose logging
+clear_files
+VERBOSE_LOG="$TEST_DIR/verbose.log"
+# Run cacher with -v, capturing stderr
+./cacher -c "echo -n new_val" -f "$CACHE_FILE" -v 2> "$VERBOSE_LOG"
+assert "grep -q 'Checking lock file' '$VERBOSE_LOG'"
+assert "grep -q 'First run detected' '$VERBOSE_LOG'"
+assert "grep -q 'Starting background command' '$VERBOSE_LOG'"
+
+
 done_testing
