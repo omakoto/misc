@@ -17,6 +17,7 @@ cacher
     -l|--lock-file LOCK-FILE    optional. lock file to detect double-run. default is CACHE-FILE.lock
     -v|--verbose                optional. enable verbose logging to stderr.
     --show-stderr               optional. redirect command stderr to original stderr.
+    -F|--force                  optional. force refresh cache and kill running instance if any.
 
 - cacher runs the command and out it's stdout to CACHE-FILE. Don't redirect the command to CACHE-FILE directly. Instead, redirect to CACHE-FILE.tmp and then do a rename once the command finishes.
 - the command is supposed to more than a few seconds.Tthe point of this command is to return the cached content instantly and start the command in the BG to refresh the cache if if needed. The command should always finish quickly without waiting for the BG process to finish.
@@ -133,6 +134,7 @@ Examples:
     parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose logging to stderr.')
     parser.add_argument('-t', '--timeout', type=int, help='If the previous run was taking more than this (in seconds), kill it and start over.')
     parser.add_argument('--show-stderr', action='store_true', help='Redirect command stderr to original stderr for debugging.')
+    parser.add_argument('-F', '--force', action='store_true', help='Force run the command: kill the previous running instance if any, and refresh the cache even if it is recent.')
 
     args = parser.parse_args()
 
@@ -180,20 +182,45 @@ Examples:
         pass
 
     if not locked:
-        if args.timeout is not None and prev_mtime is not None:
+        should_kill = False
+        kill_reason = ""
+        lock_age = 0.0
+        if args.force:
+            should_kill = True
+            kill_reason = "Force option specified"
+        elif args.timeout is not None and prev_mtime is not None:
             lock_age = time.time() - prev_mtime
             if lock_age > args.timeout:
-                try:
-                    lock_fp.seek(0)
-                    pid_str = lock_fp.read().strip()
-                    if pid_str.isdigit():
-                        prev_pid = int(pid_str)
-                        log(f"Stale process detected: PID {prev_pid} has been running for {lock_age:.2f}s (timeout {args.timeout}s). Killing it...")
-                        
-                        import signal
-                        try:
-                            os.killpg(prev_pid, signal.SIGTERM)
-                            for _ in range(10):
+                should_kill = True
+                kill_reason = f"Stale process detected: ran for {lock_age:.2f}s (timeout {args.timeout}s)"
+
+        if should_kill:
+            try:
+                lock_fp.seek(0)
+                pid_str = lock_fp.read().strip()
+                if pid_str.isdigit():
+                    prev_pid = int(prev_pid) if 'prev_pid' in locals() else int(pid_str)
+                    if not kill_reason.startswith("Stale"):
+                        kill_reason = f"Force option specified. Killing running instance PID {prev_pid}"
+                    else:
+                        kill_reason = f"{kill_reason}. Killing PID {prev_pid}"
+                    log(f"{kill_reason}...")
+                    
+                    import signal
+                    try:
+                        os.killpg(prev_pid, signal.SIGTERM)
+                        for _ in range(10):
+                            time.sleep(0.1)
+                            try:
+                                fcntl.flock(lock_fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                                locked = True
+                                break
+                            except (IOError, BlockingIOError):
+                                pass
+                        if not locked:
+                            log(f"Process group {prev_pid} did not exit on SIGTERM. Sending SIGKILL...")
+                            os.killpg(prev_pid, signal.SIGKILL)
+                            for _ in range(5):
                                 time.sleep(0.1)
                                 try:
                                     fcntl.flock(lock_fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -201,21 +228,10 @@ Examples:
                                     break
                                 except (IOError, BlockingIOError):
                                     pass
-                            if not locked:
-                                log(f"Process group {prev_pid} did not exit on SIGTERM. Sending SIGKILL...")
-                                os.killpg(prev_pid, signal.SIGKILL)
-                                for _ in range(5):
-                                    time.sleep(0.1)
-                                    try:
-                                        fcntl.flock(lock_fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                                        locked = True
-                                        break
-                                    except (IOError, BlockingIOError):
-                                        pass
-                        except Exception as e:
-                            log(f"Failed to kill process group {prev_pid}: {e}")
-                except Exception as e:
-                    log(f"Error checking stale lock: {e}")
+                    except Exception as e:
+                        log(f"Failed to kill process group {prev_pid}: {e}")
+            except Exception as e:
+                log(f"Error checking stale/force lock: {e}")
 
     if not locked:
         log("Lock already held by another instance. Printing cached content (or default) and exiting.")
@@ -269,6 +285,8 @@ Examples:
     age = time.time() - mtime
     log(f"Cache age: {age:.2f}s, max-age: {args.max_age}s")
     is_new_enough = (args.max_age is None) or (age <= args.max_age)
+    if args.force:
+        is_new_enough = False
 
     if is_new_enough:
         # Cache is fresh. Close lock and print.

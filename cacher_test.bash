@@ -135,4 +135,28 @@ sleep 0.5
 assert "grep -q 'command_error' '$STDERR_OUT'"
 
 
+# Test 9: --force runs BG command even if cache is fresh
+clear_files
+echo -n "fresh_val" > "$CACHE_FILE"
+# Run with max-age 100 (cache is fresh), but with -F.
+# It should output "fresh_val" immediately, and start BG command to refresh it.
+echo -n "fresh_val" | assert_out -d -- ./cacher -c "sleep 1 && echo -n forced_fresh" -f "$CACHE_FILE" -a 100 -F
+# Wait for the BG command to complete
+sleep 1.5
+assert "[[ \$(cat '$CACHE_FILE') == 'forced_fresh' ]]"
+
+
+# Test 10: --force kills currently running process group without timeout limit
+clear_files
+echo -n "init_val" > "$CACHE_FILE"
+# Start a long-running BG process
+./cacher -c "sleep 10 && echo -n long_bg" -f "$CACHE_FILE" -a 0 &
+sleep 0.5
+# Run second process with --force. It should output "init_val", kill the first, and start the new one.
+echo -n "init_val" | assert_out -d -- ./cacher -c "sleep 1 && echo -n forced_bg" -f "$CACHE_FILE" -a 0 --force
+# Wait for the new BG process to complete
+sleep 1.5
+assert "[[ \$(cat '$CACHE_FILE') == 'forced_bg' ]]"
+
+
 done_testing
