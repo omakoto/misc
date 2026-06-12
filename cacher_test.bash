@@ -126,4 +126,13 @@ sleep 1.5
 assert "[[ \$(cat '$CACHE_FILE') == 'new_bg' ]]"
 
 
+# Test 8: --show-stderr redirection
+clear_files
+STDERR_OUT="$TEST_DIR/stderr.log"
+# The command prints to stderr, wait 0.5s so it runs in background and prints it.
+./cacher -c "echo -n command_error >&2" -f "$CACHE_FILE" --show-stderr 2> "$STDERR_OUT"
+sleep 0.5
+assert "grep -q 'command_error' '$STDERR_OUT'"
+
+
 done_testing
