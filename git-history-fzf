@@ -231,12 +231,29 @@ def normalize_path(path: str) -> str:
         return path
 
 
+def update_title(title: str) -> None:
+    """Updates the terminal title with the given string, using /dev/tty or sys.stderr if available."""
+    seq = f"\033]0;{title}\007"
+    try:
+        with open("/dev/tty", "w") as f:
+            f.write(seq)
+            f.flush()
+        return
+    except Exception:
+        pass
+
+    if sys.stderr.isatty():
+        try:
+            sys.stderr.write(seq)
+            sys.stderr.flush()
+        except Exception:
+            pass
+
+
 def main_inner() -> None:
     global _fzf_active
-    if sys.stderr.isatty():
-        title = normalize_path(os.getcwd())
-        sys.stderr.write(f"\033]0;Git history: {title}\007")
-        sys.stderr.flush()
+    title = normalize_path(os.getcwd())
+    update_title(f"Git history: {title}")
 
     if not is_inside_work_tree():
         sys.stderr.write("Error: Not a git repository\n")
