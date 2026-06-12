@@ -1,0 +1,25 @@
+#!/bin/env python3
+
+'''
+todo: implement it. Keep this comment for future reference.
+
+usage:
+
+cacher
+    -c|--command "COMMAND"      commad to run. Use /bin/sh -c to run it. required
+    -f|--file CACHE-FILE        required. cache file to store command stdout
+    -a|--max-age SECONDS        optional. if the cache file is older than this, run the command, unless it's already running.
+    -d|--default TEXT           optional. default string to put in the file if it's the first run
+    -l|--lock-file LOCK-FILE    optional. lock file to detect double-run. default is CACHE-FILE.lock
+
+- cacher runs the command and out it's stdout to CACHE-FILE. Don't redirect the command to CACHE-FILE directly. Instead, redirect to CACHE-FILE.tmp and then do a rename once the command finishes.
+- the command is supposed to more than a few seconds.Tthe point of this command is to return the cached content instantly and start the command in the BG to refresh the cache if if needed. The command should always finish quickly without waiting for the BG process to finish.
+    - If it's the first run, write the default text to the cache file, print it, and start the command in the BG.
+    - Print the cached content if it's new enough.
+    - otherwise, check if there's another instance started already using the lock file. If there's one, print the cached content and exit.
+    - if there's no command started yet, run the command in the BG, redirect stdout to temp file, and rename it to the cache file when it finishes.
+      the main "side" should still print the cached content and exit instantly.
+
+
+'''
+
