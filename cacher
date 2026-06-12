@@ -37,7 +37,7 @@ import time
 from typing import IO
 
 
-def daemonize_and_run(command: str, cache_file: str, lock_fp: IO[str]) -> None:
+def daemonize_and_run(command: str, cache_file: str, lock_file: str, lock_fp: IO[str]) -> None:
     sys.stdout.flush()
     sys.stderr.flush()
     try:
@@ -63,6 +63,11 @@ def daemonize_and_run(command: str, cache_file: str, lock_fp: IO[str]) -> None:
         os._exit(1)
 
     # Grandchild:
+    try:
+        os.setpgid(0, 0)
+    except Exception:
+        pass
+
     # Redirect standard file descriptors to /dev/null
     try:
         si = open(os.devnull, 'r')
@@ -71,6 +76,15 @@ def daemonize_and_run(command: str, cache_file: str, lock_fp: IO[str]) -> None:
         os.dup2(si.fileno(), sys.stdin.fileno())
         os.dup2(so.fileno(), sys.stdout.fileno())
         os.dup2(se.fileno(), sys.stderr.fileno())
+    except Exception:
+        pass
+
+    try:
+        lock_fp.seek(0)
+        lock_fp.write(f"{os.getpid()}\n")
+        lock_fp.truncate()
+        lock_fp.flush()
+        os.utime(lock_file, None)
     except Exception:
         pass
 
@@ -114,6 +128,7 @@ Examples:
     parser.add_argument('-d', '--default', default='?', help='Default string to put in the file if it\'s the first run.')
     parser.add_argument('-l', '--lock-file', help='Lock file to detect double-run. Default is CACHE-FILE.lock.')
     parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose logging to stderr.')
+    parser.add_argument('-t', '--timeout', type=int, help='If the previous run was taking more than this (in seconds), kill it and start over.')
 
     args = parser.parse_args()
 
@@ -127,6 +142,8 @@ Examples:
 
     if args.max_age is not None and args.max_age < 0:
         parser.error("max-age must be a non-negative integer")
+    if args.timeout is not None and args.timeout < 0:
+        parser.error("timeout must be a non-negative integer")
 
     cache_file = os.path.abspath(args.file)
     lock_file = os.path.abspath(args.lock_file) if args.lock_file else f"{cache_file}.lock"
@@ -138,14 +155,63 @@ Examples:
             os.makedirs(parent, exist_ok=True)
 
     log(f"Checking lock file: {lock_file}")
-    # 1. Open and try to acquire lock
-    lock_fp = open(lock_file, 'w')
+    try:
+        prev_mtime = os.path.getmtime(lock_file)
+    except OSError:
+        prev_mtime = None
+
+    # Open/create lock file without truncating
+    try:
+        fd = os.open(lock_file, os.O_RDWR | os.O_CREAT)
+        lock_fp = os.fdopen(fd, 'r+')
+    except Exception as e:
+        sys.stderr.write(f"Failed to open lock file {lock_file}: {e}\n")
+        sys.exit(1)
+
     locked = False
     try:
         fcntl.flock(lock_fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
         locked = True
     except (IOError, BlockingIOError):
         pass
+
+    if not locked:
+        if args.timeout is not None and prev_mtime is not None:
+            lock_age = time.time() - prev_mtime
+            if lock_age > args.timeout:
+                try:
+                    lock_fp.seek(0)
+                    pid_str = lock_fp.read().strip()
+                    if pid_str.isdigit():
+                        prev_pid = int(pid_str)
+                        log(f"Stale process detected: PID {prev_pid} has been running for {lock_age:.2f}s (timeout {args.timeout}s). Killing it...")
+                        
+                        import signal
+                        try:
+                            os.killpg(prev_pid, signal.SIGTERM)
+                            for _ in range(10):
+                                time.sleep(0.1)
+                                try:
+                                    fcntl.flock(lock_fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                                    locked = True
+                                    break
+                                except (IOError, BlockingIOError):
+                                    pass
+                            if not locked:
+                                log(f"Process group {prev_pid} did not exit on SIGTERM. Sending SIGKILL...")
+                                os.killpg(prev_pid, signal.SIGKILL)
+                                for _ in range(5):
+                                    time.sleep(0.1)
+                                    try:
+                                        fcntl.flock(lock_fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                                        locked = True
+                                        break
+                                    except (IOError, BlockingIOError):
+                                        pass
+                        except Exception as e:
+                            log(f"Failed to kill process group {prev_pid}: {e}")
+                except Exception as e:
+                    log(f"Error checking stale lock: {e}")
 
     if not locked:
         log("Lock already held by another instance. Printing cached content (or default) and exiting.")
@@ -181,7 +247,7 @@ Examples:
         print(default_text, end="")
         # Start command in background (which will inherit the lock).
         log(f"Starting background command: {args.command}")
-        daemonize_and_run(args.command, cache_file, lock_fp)
+        daemonize_and_run(args.command, cache_file, lock_file, lock_fp)
         sys.exit(0)
 
     # Cache file exists. Read cached content.
@@ -212,7 +278,7 @@ Examples:
         # Print cached content.
         print(cached_content, end="")
         # Start command in background to refresh (inheriting lock).
-        daemonize_and_run(args.command, cache_file, lock_fp)
+        daemonize_and_run(args.command, cache_file, lock_file, lock_fp)
         sys.exit(0)
 
 

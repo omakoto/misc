@@ -107,4 +107,23 @@ assert "grep -q 'First run detected' '$VERBOSE_LOG'"
 assert "grep -q 'Starting background command' '$VERBOSE_LOG'"
 
 
+# Test 7: Timeout / Auto-kill of stale process
+clear_files
+echo -n "init_val" > "$CACHE_FILE"
+
+# Start a BG command that takes 10 seconds
+./cacher -c "sleep 10 && echo -n long_bg" -f "$CACHE_FILE" -a 0 &
+sleep 0.5
+
+# Run a second cacher with timeout 0 (instant timeout)
+# It should detect the stale process group, kill it, and start the new command in background.
+# Output should be the old cached value ("init_val") immediately
+echo -n "init_val" | assert_out -d -- ./cacher -c "sleep 1 && echo -n new_bg" -f "$CACHE_FILE" -a 0 -t 0
+
+# Wait for the new background command to finish
+sleep 1.5
+# Check if the cache has been updated to "new_bg" (shows the 10-second one was killed and new one completed)
+assert "[[ \$(cat '$CACHE_FILE') == 'new_bg' ]]"
+
+
 done_testing
