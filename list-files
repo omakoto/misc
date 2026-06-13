@@ -8,9 +8,19 @@
 import argparse
 import os
 import sys
-from typing import List
+from typing import List, Optional
 
-def traverse_dir(start_dir: str, reverse: bool) -> bool:
+class TraversalState:
+    """Tracks the state of traversal, including limits on max files printed."""
+    def __init__(self, max_files: Optional[int] = None) -> None:
+        self.max_files = max_files
+        self.printed = 0
+
+    @property
+    def limit_reached(self) -> bool:
+        return self.max_files is not None and self.printed >= self.max_files
+
+def traverse_dir(start_dir: str, reverse: bool, state: Optional[TraversalState] = None) -> bool:
     """Traverses start_dir in a depth-first manner and prints files and directories.
     
     Inside each directory, the entries are sorted alphabetically (or reverse alphabetical
@@ -23,9 +33,11 @@ def traverse_dir(start_dir: str, reverse: bool) -> bool:
         print(f"Error: '{start_dir}' is not a directory.", file=sys.stderr)
         return False
 
-    return _traverse_dir_recursive(start_dir, reverse)
+    if state is None:
+        state = TraversalState()
+    return _traverse_dir_recursive(start_dir, reverse, state)
 
-def _traverse_dir_recursive(current_dir: str, reverse: bool) -> bool:
+def _traverse_dir_recursive(current_dir: str, reverse: bool, state: TraversalState) -> bool:
     """Recursive helper for depth-first traversal."""
     try:
         with os.scandir(current_dir) as it:
@@ -40,11 +52,17 @@ def _traverse_dir_recursive(current_dir: str, reverse: bool) -> bool:
     success = True
     # Print all files and directories, and recurse into directories
     for entry in entries:
+        if state.limit_reached:
+            break
         print(entry.path)
+        state.printed += 1
+
         try:
             # Avoid traversing symlinks to directories to prevent infinite recursion/loops
             if entry.is_dir(follow_symlinks=False):
-                if not _traverse_dir_recursive(entry.path, reverse):
+                if state.limit_reached:
+                    break
+                if not _traverse_dir_recursive(entry.path, reverse, state):
                     success = False
         except OSError as e:
             print(f"Error checking entry '{entry.path}': {e}", file=sys.stderr)
@@ -69,6 +87,14 @@ Examples:
         help="Sort files and directories in reverse alphabetical order."
     )
     parser.add_argument(
+        "-n",
+        "--max-files",
+        type=int,
+        default=None,
+        metavar="MAX-FILES",
+        help="Limit the number of files and directories listed."
+    )
+    parser.add_argument(
         "directories",
         nargs="*",
         default=["."],
@@ -78,9 +104,15 @@ Examples:
 
     args = parser.parse_args()
 
+    if args.max_files is not None and args.max_files < 0:
+        parser.error("argument -n/--max-files: must be a non-negative integer")
+
     overall_success = True
+    state = TraversalState(args.max_files)
     for directory in args.directories:
-        if not traverse_dir(directory, args.reverse):
+        if state.limit_reached:
+            break
+        if not traverse_dir(directory, args.reverse, state):
             overall_success = False
 
     if not overall_success:

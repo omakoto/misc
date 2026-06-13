@@ -10,7 +10,7 @@ import os
 import sys
 import tempfile
 import unittest
-from typing import Tuple
+from typing import Tuple, Optional
 
 # Dynamically import list-files (extensionless script)
 import importlib.machinery
@@ -56,13 +56,14 @@ class TestListFiles(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
 
-    def run_traverse(self, start_dir: str, reverse: bool) -> Tuple[bool, str, str]:
+    def run_traverse(self, start_dir: str, reverse: bool, max_files: Optional[int] = None) -> Tuple[bool, str, str]:
         old_stdout = sys.stdout
         old_stderr = sys.stderr
         sys.stdout = io.StringIO()
         sys.stderr = io.StringIO()
         try:
-            success = list_files.traverse_dir(start_dir, reverse)
+            state = list_files.TraversalState(max_files) if max_files is not None else None
+            success = list_files.traverse_dir(start_dir, reverse, state)
             return success, sys.stdout.getvalue(), sys.stderr.getvalue()
         finally:
             sys.stdout = old_stdout
@@ -118,6 +119,48 @@ class TestListFiles(unittest.TestCase):
         self.assertFalse(success)
         self.assertEqual(stdout, "")
         self.assertIn("is not a directory", stderr)
+
+    def test_max_files_limit(self) -> None:
+        # Test limit of 3 files/dirs in alphabetical order
+        success, stdout, stderr = self.run_traverse(self.dir_path, reverse=False, max_files=3)
+        self.assertTrue(success)
+        self.assertEqual(stderr, "")
+        lines = [os.path.relpath(line, self.dir_path) for line in stdout.strip().split("\n")]
+        expected = ["a", "a/x.txt", "b"]
+        self.assertEqual(lines, expected)
+
+        # Test limit of 5 files/dirs in reverse alphabetical order
+        success, stdout, stderr = self.run_traverse(self.dir_path, reverse=True, max_files=5)
+        self.assertTrue(success)
+        self.assertEqual(stderr, "")
+        lines = [os.path.relpath(line, self.dir_path) for line in stdout.strip().split("\n")]
+        expected = ["d", "d/e", "d/e/z.txt", "c.txt", "b"]
+        self.assertEqual(lines, expected)
+
+    def test_max_files_zero(self) -> None:
+        # Test limit of 0 files/dirs
+        success, stdout, stderr = self.run_traverse(self.dir_path, reverse=False, max_files=0)
+        self.assertTrue(success)
+        self.assertEqual(stderr, "")
+        self.assertEqual(stdout.strip(), "")
+
+    def test_max_files_larger_than_total(self) -> None:
+        # Test limit of 10 files/dirs (total is 8)
+        success, stdout, stderr = self.run_traverse(self.dir_path, reverse=False, max_files=10)
+        self.assertTrue(success)
+        self.assertEqual(stderr, "")
+        lines = [os.path.relpath(line, self.dir_path) for line in stdout.strip().split("\n")]
+        expected = [
+            "a",
+            "a/x.txt",
+            "b",
+            "b/y.txt",
+            "c.txt",
+            "d",
+            "d/e",
+            "d/e/z.txt"
+        ]
+        self.assertEqual(lines, expected)
 
 
 if __name__ == "__main__":
