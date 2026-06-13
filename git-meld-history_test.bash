@@ -125,7 +125,9 @@ setup_git_repo_with_submodule() {
   cp -a "$TEST_TMP_DIR/template_repo_with_submodule" "$TEST_TMP_DIR/repo"
   cd "$TEST_TMP_DIR/repo"
   git update-index -q --refresh
-  git submodule foreach --recursive 'git update-index -q --refresh' >/dev/null 2>&1
+  if [[ -d mysub ]]; then
+    git -C mysub update-index -q --refresh >/dev/null 2>&1
+  fi
 }
 
 # Helper to reset state for each test

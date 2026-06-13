@@ -130,10 +130,6 @@ complete -o filenames -o bashdefault -F _git_meld_history git-meld-history git-m
 """)
     sys.stdout.flush()
 
-def is_inside_work_tree() -> bool:
-    res = run_command(["git", "rev-parse", "--is-inside-work-tree"], capture_output=True)
-    return res.returncode == 0
-
 def is_on_remote(commit: str) -> bool:
     """Checks if a commit is already present on any remote branch."""
     res = run_command(["git", "branch", "-r", "--contains", commit], capture_output=True, text=True)
@@ -292,6 +288,7 @@ def main() -> None:
         print_completion()
         sys.exit(0)
         
+    toplevel = ""
     # If no arguments are provided, start from the git top-level directory
     if not args:
         toplevel_res = run_command(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
@@ -314,13 +311,12 @@ def main() -> None:
             sys.exit(1)
         args = args[1:]
         
-    # Ensure we are inside a git repository
-    if not is_inside_work_tree():
-        print_error("Error: Not a git repository")
-        sys.exit(1)
-        
-    toplevel_res = run_command(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
-    toplevel = toplevel_res.stdout.strip() if toplevel_res.returncode == 0 else ""
+    if not toplevel:
+        toplevel_res = run_command(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
+        if toplevel_res.returncode != 0:
+            print_error("Error: Not a git repository")
+            sys.exit(1)
+        toplevel = toplevel_res.stdout.strip()
     current_dir = os.path.realpath(os.getcwd())
     
     extra_args: List[str] = []

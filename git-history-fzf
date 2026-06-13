@@ -236,6 +236,19 @@ def normalize_path(path: str) -> str:
     script_dir = os.path.dirname(os.path.realpath(__file__))
     dir_normalize_path = os.path.join(script_dir, "dir-normalize")
     try:
+        import importlib.machinery
+        import importlib.util
+        loader = importlib.machinery.SourceFileLoader("dir_normalize", dir_normalize_path)
+        spec = importlib.util.spec_from_file_location("dir_normalize", dir_normalize_path, loader=loader)
+        if spec is not None and spec.loader is not None:
+            dir_normalize = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(dir_normalize)
+            home = os.environ.get("HOME", "")
+            return dir_normalize.normalize_dir(path, home)
+    except Exception:
+        pass
+
+    try:
         res = subprocess.run([dir_normalize_path, path], capture_output=True, text=True, check=True)
         return res.stdout.strip()
     except Exception:
