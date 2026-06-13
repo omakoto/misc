@@ -789,5 +789,14 @@ record_last_activity_time() {
 }
 
 last_activity_age_sec() {
-  fileage -s $LAST_ACTIVITY_FILE
+  local file=${LAST_ACTIVITY_FILE:-}
+  if ! [[ -f "$file" ]] ; then
+    echo 999999999
+    return 0
+  fi
+  local fdate
+  fdate=$(stat -c %Y "$file" 2>/dev/null || date +%s -r "$file")
+  local now
+  printf -v now '%(%s)T' -1
+  echo $(( now - fdate ))
 }
