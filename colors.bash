@@ -238,3 +238,5 @@ function WARN() {
     fi
     echo
 }
+
+export -f _do_color nocolor black red green yellow blue magenta cyan white gray bred bgreen byellow bblue bmagenta bcyan bwhite DEBUG INFO ERROR WARN

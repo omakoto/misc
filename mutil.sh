@@ -328,6 +328,7 @@ ee() {
   fi
   return $rc
 }
+export -f ee
 
 echo-and-exec() {
   ee "${@}"
