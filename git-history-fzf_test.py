@@ -349,6 +349,45 @@ class GitHistoryFzfTest(unittest.TestCase):
             mock_stdout.buffer.write.assert_called_once_with(b"(submodule) sub1\n")
 
     @patch('git_history_fzf.is_inside_work_tree')
+    @patch('git_history_fzf.get_submodules')
+    @patch('git_history_fzf.get_parent_repo')
+    @patch('git_history_fzf.is_submodule_dirty')
+    @patch('subprocess.Popen')
+    def test_main_submodules_dirty(self, mock_popen: MagicMock, mock_is_sub_dirty: MagicMock, mock_get_parent: MagicMock, mock_get_subs: MagicMock, mock_is_inside: MagicMock) -> None:
+        mock_is_inside.return_value = True
+        mock_get_subs.return_value = ["sub1", "sub2"]
+        mock_get_parent.return_value = None
+        mock_is_sub_dirty.side_effect = lambda s: s == "sub1"
+        
+        mock_fzf_proc = make_mock_proc(b"(submodule) sub1 (dirty)\n", 0)
+        mock_mb_proc = make_mock_proc(b"", 0)
+        mock_git_proc = make_mock_proc(b"", 0)
+        
+        def popen_side_effect(cmd: List[str], **kwargs: Any) -> MagicMock:
+            if cmd[0] == "fzf":
+                return mock_fzf_proc
+            elif cmd[0] == "git":
+                if cmd[1] == "merge-base":
+                    return mock_mb_proc
+                elif cmd[1] == "log":
+                    return mock_git_proc
+            raise ValueError(f"Unexpected Popen call: {cmd}")
+            
+        mock_popen.side_effect = popen_side_effect
+        
+        with patch('sys.argv', ['git-history-fzf', '--submodules']), \
+             patch('sys.stdout') as mock_stdout:
+            
+            with self.assertRaises(SystemExit) as cm:
+                git_history_fzf.main()
+                
+            self.assertEqual(cm.exception.code, 0)
+            mock_fzf_proc.stdin.write.assert_any_call(b"\x1b[35m(submodule)\x1b[m sub1 \x1b[31m(dirty)\x1b[m\n")
+            for call in mock_fzf_proc.stdin.write.call_args_list:
+                self.assertNotIn(b"sub2 (dirty)", call[0][0])
+            mock_stdout.buffer.write.assert_called_once_with(b"(submodule) sub1\n")
+
+    @patch('git_history_fzf.is_inside_work_tree')
     @patch('sys.stderr.write')
     def test_main_not_in_git_repo(self, mock_stderr_write: MagicMock, mock_is_inside: MagicMock) -> None:
         mock_is_inside.return_value = False

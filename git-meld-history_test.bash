@@ -931,6 +931,55 @@ assert "grep -q 'untracked.txt' '$TEST_TMP_DIR/fzf_stdin_2'"
 assert "grep -q 'editor called with: .*/repo/untracked.txt' '$TEST_TMP_DIR/editor_calls'"
 unset EDITOR
 
+# -------------------------------------------------------------
+# Test Case 32: Verify dirty submodules listing and selection
+# -------------------------------------------------------------
+setup_git_repo
+mkdir -p "$TEST_TMP_DIR/subrepo"
+(
+  cd "$TEST_TMP_DIR/subrepo"
+  git init -q
+  git config user.email "test@example.com"
+  git config user.name "Test User"
+  echo "subcontent" > subfile.txt
+  git add subfile.txt
+  git commit -q -m "Sub Commit"
+)
+git -c protocol.file.allow=always submodule add -q "$TEST_TMP_DIR/subrepo" mysub
+git commit -q -m "Add submodule"
+
+# Make the submodule dirty
+echo "dirty in sub" >> mysub/subfile.txt
+
+clear_test_state
+cat > "$TEST_TMP_DIR/bin/fzf" <<'EOF'
+#!/bin/bash
+echo "$(pwd)" >> "$TEST_TMP_DIR/fzf_cwds"
+
+if [[ -f "$TEST_TMP_DIR/fzf_called" ]]; then
+  cat > /dev/null
+  echo ""
+else
+  cat > "$TEST_TMP_DIR/fzf_stdin"
+  touch "$TEST_TMP_DIR/fzf_called"
+  echo ""
+  echo "(submodule) mysub (dirty)"
+fi
+EOF
+chmod +x "$TEST_TMP_DIR/bin/fzf"
+
+git-meld-history
+
+# Verify:
+# 1. fzf_stdin should contain the dirty submodule line: '(submodule) mysub (dirty)'
+assert "grep -q 'mysub.*dirty' '$TEST_TMP_DIR/fzf_stdin'"
+# 2. fzf was called twice: 1st in repo root, 2nd in submodule repo root
+assert "[[ -f '$TEST_TMP_DIR/fzf_cwds' ]]"
+cwds=($(cat "$TEST_TMP_DIR/fzf_cwds"))
+assert "[[ ${#cwds[@]} -eq 2 ]]"
+assert "[[ '${cwds[0]}' == *'/repo' ]]"
+assert "[[ '${cwds[1]}' == *'/repo/mysub' ]]"
+
 # Return to script directory
 cd "$SCRIPT_DIR"
 

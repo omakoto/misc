@@ -194,6 +194,17 @@ def get_submodules() -> List[str]:
     sorted_subs = sorted(subs, key=lambda p: (-get_submodule_commit_time(p), p))
     return [os.path.relpath(p, os.getcwd()) for p in sorted_subs]
 
+def is_submodule_dirty(sub: str) -> bool:
+    """Checks if a submodule has any uncommitted changes (tracked or untracked)."""
+    try:
+        res = run_command(
+            ["git", "-C", sub, "status", "--porcelain"],
+            capture_output=True
+        )
+        return res.returncode == 0 and bool(res.stdout.strip())
+    except Exception:
+        return False
+
 def get_parent_repo() -> Optional[str]:
     """Retrieves the parent repository's working tree path, if in a submodule."""
     try:
@@ -422,6 +433,9 @@ Examples:
                     if parent_repo:
                         fzf_proc.stdin.write(b"\x1b[35m(submodule)\x1b[m (Parent)\n")
                     subs = get_submodules()
+                    for sub in subs:
+                        if is_submodule_dirty(sub):
+                            fzf_proc.stdin.write(f"\x1b[35m(submodule)\x1b[m {sub} \x1b[31m(dirty)\x1b[m\n".encode('utf-8'))
                     if subs:
                         fzf_proc.stdin.write(b"\x1b[35m(submodule)\x1b[m [Submodules]\n")
                 
@@ -452,6 +466,12 @@ Examples:
         lines = fzf_output.split(b"\n")
         if lines and lines[-1] == b"":
             lines.pop()
+
+        for i in range(len(lines)):
+            if args.expect and i == 0:
+                continue
+            if lines[i].startswith(b"(submodule) ") and lines[i].endswith(b" (dirty)"):
+                lines[i] = lines[i][:-8]
 
         selections = lines[1:] if args.expect else lines
         has_submodules_trigger = False
@@ -499,7 +519,7 @@ Examples:
                 # User cancelled submodules selector, return to main loop
                 continue
         else:
-            sys.stdout.buffer.write(fzf_output)
+            sys.stdout.buffer.write(b"\n".join(lines) + (b"\n" if lines else b""))
             sys.stdout.buffer.flush()
             sys.exit(0)
 
