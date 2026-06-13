@@ -42,11 +42,11 @@ class TestHelperFunctions(unittest.TestCase):
 
 
 class TestCalcExecution(unittest.TestCase):
-    def run_calc(self, args: list[str], stdin_data: str = "") -> str:
+    def run_calc(self, args: list[str], stdin_data: str = "", stdout_class=io.StringIO) -> str:
         old_stdout = sys.stdout
         old_stdin = sys.stdin
         old_argv = sys.argv
-        sys.stdout = io.StringIO()
+        sys.stdout = stdout_class()
         if stdin_data:
             sys.stdin = io.StringIO(stdin_data)
         try:
@@ -71,13 +71,13 @@ class TestCalcExecution(unittest.TestCase):
         self.assertIn("Usage: calc.py", out_long)
 
     def test_float_fraction_approximation(self) -> None:
-        out = self.run_calc(["0.25"])
+        out = self.run_calc(["-n", "0.25"])
         self.assertIn("# Fraction: 1/4", out)
 
-        out = self.run_calc(["1.6666666666666667"])
+        out = self.run_calc(["-n", "1.6666666666666667"])
         self.assertIn("# Fraction: 1 + 2/3 (5/3)", out)
 
-        out = self.run_calc(["-1.6666666666666667"])
+        out = self.run_calc(["-n", "-1.6666666666666667"])
         self.assertIn("# Fraction: -(1 + 2/3) (-5/3)", out)
 
     def test_fraction_mode(self) -> None:
@@ -93,7 +93,7 @@ class TestCalcExecution(unittest.TestCase):
         self.assertIn("1/2", out)
 
     def test_stdin_input(self) -> None:
-        out = self.run_calc([], stdin_data="1+2\n0.25\n")
+        out = self.run_calc(["-n"], stdin_data="1+2\n0.25\n")
         self.assertIn("3", out)
         self.assertIn("# Fraction: 1/4", out)
 
@@ -120,11 +120,11 @@ class TestCalcExecution(unittest.TestCase):
         self.assertIn("1/2", out_frac)
 
         # Test float with x
-        out_float = self.run_calc(["2.5x4"])
+        out_float = self.run_calc(["-n", "2.5x4"])
         self.assertIn("10.0", out_float)
-        self.assertIn("10.0", self.run_calc(["2.5 x 4"]))
-        self.assertIn("10.0", self.run_calc(["2.5 x4"]))
-        self.assertIn("10.0", self.run_calc(["2.5x 4"]))
+        self.assertIn("10.0", self.run_calc(["-n", "2.5 x 4"]))
+        self.assertIn("10.0", self.run_calc(["-n", "2.5 x4"]))
+        self.assertIn("10.0", self.run_calc(["-n", "2.5x 4"]))
 
         # Test stdin with x multiplication
         out_stdin = self.run_calc([], stdin_data="2x3\n")
@@ -154,8 +154,65 @@ class TestCalcExecution(unittest.TestCase):
 
     def test_digit_separators(self) -> None:
         # Test commas and underscores mixed in a single execution
-        out = self.run_calc(["1,000_000 + 2_000,000"])
+        out = self.run_calc(["-n", "1,000_000 + 2_000,000"])
         self.assertIn("3000000", out)
+
+    def test_big_decimal_precision(self) -> None:
+        # 0.1 + 0.2 should evaluate to exactly 0.3 without floating point error
+        out = self.run_calc(["-n", "0.1 + 0.2"])
+        self.assertIn("0.3", out)
+        self.assertNotIn("0.30000000000000004", out)
+
+        # 1.1 * 3 should be exactly 3.3
+        out = self.run_calc(["-n", "1.1 * 3"])
+        self.assertIn("3.3", out)
+        self.assertNotIn("3.3000000000000003", out)
+
+        # division of integers: 1 / 10 + 0.2 should evaluate to 0.3 without error
+        out = self.run_calc(["-n", "1 / 10 + 0.2"])
+        self.assertIn("0.3", out)
+
+    def test_no_fraction_flag(self) -> None:
+        # By default, "1/3 + 1/6" is Fraction mode -> evaluates to "1/2"
+        out_default = self.run_calc(["1/3 + 1/6"])
+        lines_default = [l for l in out_default.strip().split('\n') if not l.startswith('#')]
+        self.assertEqual(lines_default[0], "1/2")
+
+        # With -n / --no-fraction, it should evaluate to 0.5 (BigDecimal)
+        out_no_frac = self.run_calc(["-n", "1/3 + 1/6"])
+        lines_no_frac = [l for l in out_no_frac.strip().split('\n') if not l.startswith('#')]
+        self.assertEqual(lines_no_frac[0], "0.5000000000000000000000000000")
+
+        out_no_frac_long = self.run_calc(["--no-fraction", "1/3 + 1/6"])
+        lines_no_frac_long = [l for l in out_no_frac_long.strip().split('\n') if not l.startswith('#')]
+        self.assertEqual(lines_no_frac_long[0], "0.5000000000000000000000000000")
+
+    def test_bold_yellow_primary_answer(self) -> None:
+        class TTYStringIO(io.StringIO):
+            def isatty(self) -> bool:
+                return True
+        out = self.run_calc(["1 + 2"], stdout_class=TTYStringIO)
+        # The primary answer (3) should be in bold-yellow: \033[1;33m3\033[0m
+        self.assertIn("\033[1;33m3\033[0m", out)
+        # But other lines like 0b11 should not be highlighted
+        self.assertIn("0b11", out)
+        self.assertNotIn("\033[1;33m0b11\033[0m", out)
+
+    @patch('builtins.input')
+    def test_interactive_repl_prompt(self, mock_input: unittest.mock.MagicMock) -> None:
+        mock_input.side_effect = ["exit", "exit"]
+        
+        # Test default isatty=False StringIO
+        self.run_calc(["-i"])
+        mock_input.assert_called_with("calc> ")
+        
+        # Test isatty=True StringIO
+        class TTYStringIO(io.StringIO):
+            def isatty(self) -> bool:
+                return True
+        
+        self.run_calc(["-i"], stdout_class=TTYStringIO)
+        mock_input.assert_called_with("\033[1;32mcalc> \033[0m")
 
 
 if __name__ == '__main__':

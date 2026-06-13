@@ -9,18 +9,95 @@
 #
 
 import ast
+from decimal import Decimal
 import fileinput
 from fractions import Fraction
+import math
+import numpy as np
 import re
 import sys
 import time
-import math
-import numpy as np
 import typing
 
 # Refer the following packages to prevent from getting removed
 np
 math
+
+# Custom print wrapper to highlight the first non-comment line in bold-yellow
+_original_print = print
+_primary_printed = True
+
+def print(*args, **kwargs):
+    global _primary_printed
+    if _primary_printed or kwargs.get('file', sys.stdout) is not sys.stdout:
+        _original_print(*args, **kwargs)
+        return
+
+    sep = kwargs.get('sep', ' ')
+    end = kwargs.get('end', '\n')
+    content = sep.join(str(arg) for arg in args)
+
+    if content.startswith('#') or not content.strip():
+        _original_print(*args, **kwargs)
+    else:
+        if sys.stdout.isatty():
+            _original_print(f"\033[1;33m{content}\033[0m", end=end, sep=sep, file=kwargs.get('file', sys.stdout))
+        else:
+            _original_print(*args, **kwargs)
+        _primary_printed = True
+
+
+class BigDecimal(Decimal):
+    pass
+
+for op in ['__add__', '__sub__', '__mul__', '__truediv__', '__floordiv__', '__mod__', '__pow__',
+           '__radd__', '__rsub__', '__rmul__', '__rtruediv__', '__rfloordiv__', '__rmod__', '__rpow__',
+           '__lt__', '__le__', '__gt__', '__ge__', '__eq__', '__ne__']:
+    def make_wrapper(name=op):
+        orig = getattr(Decimal, name)
+        def wrapper(self, other):
+            if isinstance(other, float):
+                other = Decimal(str(other))
+            res = orig(self, other)
+            if isinstance(res, Decimal) and not isinstance(res, BigDecimal):
+                return BigDecimal(res)
+            return res
+        return wrapper
+    setattr(BigDecimal, op, make_wrapper())
+
+
+def _div(a, b):
+    if hasattr(a, '__array__') or hasattr(b, '__array__'):
+        return a / b
+    try:
+        da = BigDecimal(str(a)) if isinstance(a, (int, float, Decimal)) else a
+        db = BigDecimal(str(b)) if isinstance(b, (int, float, Decimal)) else b
+        return da / db
+    except Exception:
+        return a / b
+
+
+class DecimalTransformer(ast.NodeTransformer):
+    """AST transformer that converts float numeric literals into BigDecimal calls
+    and converts true division (/) into a custom division function."""
+    def visit_Constant(self, node: ast.Constant) -> ast.AST:
+        if isinstance(node.value, float):
+            return ast.Call(
+                func=ast.Name(id='BigDecimal', ctx=ast.Load()),
+                args=[ast.Constant(value=str(node.value))],
+                keywords=[]
+            )
+        return node
+
+    def visit_BinOp(self, node: ast.BinOp) -> ast.AST:
+        self.generic_visit(node)
+        if isinstance(node.op, ast.Div):
+            return ast.Call(
+                func=ast.Name(id='_div', ctx=ast.Load()),
+                args=[node.left, node.right],
+                keywords=[]
+            )
+        return node
 
 
 def print_help() -> None:
@@ -37,7 +114,8 @@ Evaluate a mathematical expression and display the result in multiple formats:
 
 Options:
   -h, --help         Show this help message and exit.
-  -f, --fraction     Evaluate the expression using Fractions (converts numeric literals to Fractions).
+  -f, --fraction     Evaluate the expression using Fractions (default).
+  -n, --no-fraction  Evaluate the expression using decimals (disables Fraction mode).
   -i, --interactive  Run in interactive REPL mode.
   -t, --test         Run the test suite (calc_test.py) and exit.
 
@@ -46,7 +124,8 @@ Examples:
   calc.py "2 x 3"
   calc.py 2x3
   calc.py "100_000 * 3"
-  calc.py -f "1/3 + 1/6"
+  calc.py "1/3 + 1/6"
+  calc.py -n "0.1 + 0.2"
   calc.py "Fraction(1, 3) + Fraction(1, 6)"
   calc.py 0.25
 """)
@@ -108,12 +187,22 @@ def format_fraction(fr: Fraction) -> str:
 
 
 def show_result(result: typing.Any) -> None:
+    global _primary_printed
+    _primary_printed = False
+
     if isinstance(result, Fraction):
         print(format_fraction(result))
         if result.denominator == 1:
             result = int(result)
         else:
             result = float(result)
+    elif isinstance(result, Decimal):
+        try:
+            fr = Fraction(result).limit_denominator()
+            if fr.denominator > 1 and fr.denominator < 1000000:
+                print(f'# Fraction: {format_fraction(fr)}')
+        except (ValueError, OverflowError):
+            pass
     elif isinstance(result, float):
         try:
             fr = Fraction(result).limit_denominator()
@@ -122,8 +211,9 @@ def show_result(result: typing.Any) -> None:
         except (ValueError, OverflowError):
             pass
 
-    if isinstance(result, bool) or not isinstance(result, (int, float)):
+    if isinstance(result, bool) or not isinstance(result, (int, float, Decimal)):
         print(result)
+        _primary_printed = True
         return
 
     print_with_grouped(f'{result}', 3)
@@ -168,6 +258,7 @@ def show_result(result: typing.Any) -> None:
         print()
         print('# Local time, as millis since epoch')
         print_time(float(result), time.localtime)
+    _primary_printed = True
 
 
 def run_repl(use_fraction: bool, globals_dict: dict[str, typing.Any]) -> None:
@@ -182,7 +273,8 @@ def run_repl(use_fraction: bool, globals_dict: dict[str, typing.Any]) -> None:
 
     while True:
         try:
-            line = input("calc> ")
+            prompt = "\033[1;32mcalc> \033[0m" if sys.stdout.isatty() else "calc> "
+            line = input(prompt)
         except (EOFError, KeyboardInterrupt):
             print()
             break
@@ -204,7 +296,12 @@ def run_repl(use_fraction: bool, globals_dict: dict[str, typing.Any]) -> None:
                 code = compile(new_tree, "<string>", "eval")
                 result = eval(code, globals_dict)
             else:
-                result = eval(line_str, globals_dict)
+                tree = ast.parse(line_str, mode="eval")
+                transformer = DecimalTransformer()
+                new_tree = transformer.visit(tree)
+                ast.fix_missing_locations(new_tree)
+                code = compile(new_tree, "<string>", "eval")
+                result = eval(code, globals_dict)
 
             show_result(result)
         except Exception as e:
@@ -240,13 +337,17 @@ def main(args: list[str]) -> None:
         args = [arg for arg in args if arg != '--interactive']
 
     # Check for fraction flag
-    use_fraction = False
+    use_fraction = True
     if '-f' in args:
-        use_fraction = True
         args = [arg for arg in args if arg != '-f']
     if '--fraction' in args:
-        use_fraction = True
         args = [arg for arg in args if arg != '--fraction']
+    if '-n' in args:
+        use_fraction = False
+        args = [arg for arg in args if arg != '-n']
+    if '--no-fraction' in args:
+        use_fraction = False
+        args = [arg for arg in args if arg != '--no-fraction']
 
     if not args and sys.stdin.isatty():
         use_interactive = True
@@ -257,6 +358,10 @@ def main(args: list[str]) -> None:
     globals_dict = {
         'Fraction': Fraction,
         'F': Fraction,
+        'Decimal': BigDecimal,
+        'D': BigDecimal,
+        'BigDecimal': BigDecimal,
+        '_div': _div,
         'math': math,
         'np': np,
         'time': time,
@@ -278,7 +383,12 @@ def main(args: list[str]) -> None:
             code = compile(new_tree, '<string>', 'eval')
             result = eval(code, globals_dict)
         else:
-            result = eval(exp, globals_dict)
+            tree = ast.parse(exp, mode='eval')
+            transformer = DecimalTransformer()
+            new_tree = transformer.visit(tree)
+            ast.fix_missing_locations(new_tree)
+            code = compile(new_tree, '<string>', 'eval')
+            result = eval(code, globals_dict)
 
         show_result(result)
     else:
@@ -298,7 +408,12 @@ def main(args: list[str]) -> None:
                 code = compile(new_tree, '<string>', 'eval')
                 result = eval(code, globals_dict)
             else:
-                result = eval(line_str, globals_dict)
+                tree = ast.parse(line_str, mode='eval')
+                transformer = DecimalTransformer()
+                new_tree = transformer.visit(tree)
+                ast.fix_missing_locations(new_tree)
+                code = compile(new_tree, '<string>', 'eval')
+                result = eval(code, globals_dict)
             
             show_result(result)
 
