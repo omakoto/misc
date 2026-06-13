@@ -1,0 +1,90 @@
+#!/usr/bin/env python3
+#
+# list-files - Traverse directories and list files/directories depth-first.
+#
+# Run the test suite via `python3 misc/list-files_test.py` whenever making changes.
+#
+
+import argparse
+import os
+import sys
+from typing import List
+
+def traverse_dir(start_dir: str, reverse: bool) -> bool:
+    """Traverses start_dir in a depth-first manner and prints files and directories.
+    
+    Inside each directory, the entries are sorted alphabetically (or reverse alphabetical
+    order if reverse is True).
+    
+    Returns:
+        True if the traversal succeeded without errors, False otherwise.
+    """
+    if not os.path.isdir(start_dir):
+        print(f"Error: '{start_dir}' is not a directory.", file=sys.stderr)
+        return False
+
+    return _traverse_dir_recursive(start_dir, reverse)
+
+def _traverse_dir_recursive(current_dir: str, reverse: bool) -> bool:
+    """Recursive helper for depth-first traversal."""
+    try:
+        with os.scandir(current_dir) as it:
+            entries = list(it)
+    except OSError as e:
+        print(f"Error reading directory '{current_dir}': {e}", file=sys.stderr)
+        return False
+
+    # Sort the entries by name alphabetically (or reverse)
+    entries.sort(key=lambda x: x.name, reverse=reverse)
+
+    success = True
+    # Print all files and directories, and recurse into directories
+    for entry in entries:
+        print(entry.path)
+        try:
+            # Avoid traversing symlinks to directories to prevent infinite recursion/loops
+            if entry.is_dir(follow_symlinks=False):
+                if not _traverse_dir_recursive(entry.path, reverse):
+                    success = False
+        except OSError as e:
+            print(f"Error checking entry '{entry.path}': {e}", file=sys.stderr)
+            success = False
+
+    return success
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Traverse directories and list files/subdirectories in a depth-first way.",
+        epilog="""
+Examples:
+  list-files dir1
+  list-files -r dir1 dir2
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "-r",
+        "--reverse",
+        action="store_true",
+        help="Sort files and directories in reverse alphabetical order."
+    )
+    parser.add_argument(
+        "directories",
+        nargs="*",
+        default=["."],
+        metavar="DIR",
+        help="One or more directory names to traverse. Defaults to the current directory if not specified."
+    )
+
+    args = parser.parse_args()
+
+    overall_success = True
+    for directory in args.directories:
+        if not traverse_dir(directory, args.reverse):
+            overall_success = False
+
+    if not overall_success:
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
