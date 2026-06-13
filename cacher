@@ -30,6 +30,7 @@ cacher
 
 """
 
+import argparse
 import fcntl
 import os
 import subprocess
@@ -116,147 +117,30 @@ def daemonize_and_run(command: str, cache_file: str, lock_file: str, lock_fp: IO
 
 
 def main() -> None:
-    # Fast-path parsing: try to parse standard arguments without importing argparse.
-    # If we find -h/--help or any unrecognized arguments, or if required args are missing,
-    # we fall back to argparse.
-    command = None
-    file_path = None
-    max_age = None
-    default_val = '?'
-    lock_file = None
-    verbose = False
-    timeout = None
-    show_stderr = False
-    force = False
-    foreground = False
-    
-    fallback = False
-    
-    sys_args = sys.argv[1:]
-    i = 0
-    try:
-        while i < len(sys_args):
-            arg = sys_args[i]
-            if arg in ('-h', '--help'):
-                fallback = True
-                break
-            elif arg in ('-c', '--command'):
-                if i + 1 < len(sys_args):
-                    command = sys_args[i+1]
-                    i += 2
-                else:
-                    fallback = True
-                    break
-            elif arg in ('-f', '--file'):
-                if i + 1 < len(sys_args):
-                    file_path = sys_args[i+1]
-                    i += 2
-                else:
-                    fallback = True
-                    break
-            elif arg in ('-a', '--max-age'):
-                if i + 1 < len(sys_args):
-                    try:
-                        max_age = int(sys_args[i+1])
-                        if max_age < 0:
-                            fallback = True
-                            break
-                    except ValueError:
-                        fallback = True
-                        break
-                    i += 2
-                else:
-                    fallback = True
-                    break
-            elif arg in ('-d', '--default'):
-                if i + 1 < len(sys_args):
-                    default_val = sys_args[i+1]
-                    i += 2
-                else:
-                    fallback = True
-                    break
-            elif arg in ('-l', '--lock-file'):
-                if i + 1 < len(sys_args):
-                    lock_file = sys_args[i+1]
-                    i += 2
-                else:
-                    fallback = True
-                    break
-            elif arg in ('-t', '--timeout'):
-                if i + 1 < len(sys_args):
-                    try:
-                        timeout = int(sys_args[i+1])
-                        if timeout < 0:
-                            fallback = True
-                            break
-                    except ValueError:
-                        fallback = True
-                        break
-                    i += 2
-                else:
-                    fallback = True
-                    break
-            elif arg in ('-v', '--verbose'):
-                verbose = True
-                i += 1
-            elif arg == '--show-stderr':
-                show_stderr = True
-                i += 1
-            elif arg in ('-F', '--force'):
-                force = True
-                i += 1
-            elif arg in ('-g', '--foreground'):
-                foreground = True
-                i += 1
-            else:
-                fallback = True
-                break
-    except Exception:
-        fallback = True
-
-    if command is None or file_path is None:
-        fallback = True
-
-    if fallback:
-        import argparse
-        parser = argparse.ArgumentParser(
-            description='Cache command stdout and run command in background when expired.',
-            formatter_class=argparse.RawDescriptionHelpFormatter,
-            epilog="""
+    parser = argparse.ArgumentParser(
+        description='Cache command stdout and run command in background when expired.',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
 Examples:
   cacher -c "curl -s https://api.ipify.org" -f /tmp/myip.txt -a 300
   cacher -c "sleep 5 && echo done" -f /tmp/test.cache -a 10 -d "default-val"
 """
-        )
-        parser.add_argument('-c', '--command', required=True, help='Command to run. Use /bin/sh -c to run it.')
-        parser.add_argument('-f', '--file', required=True, help='Cache file to store command stdout.')
-        parser.add_argument('-a', '--max-age', type=int, help='If the cache file is older than this (in seconds), run the command, unless it\'s already running.')
-        parser.add_argument('-d', '--default', default='?', help='Default string to put in the file if it\'s the first run.')
-        parser.add_argument('-l', '--lock-file', help='Lock file to detect double-run. Default is CACHE-FILE.lock.')
-        parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose logging to stderr.')
-        parser.add_argument('-t', '--timeout', type=int, help='If the previous run was taking more than this (in seconds), kill it and start over.')
-        parser.add_argument('--show-stderr', action='store_true', help='Redirect command stderr to original stderr for debugging.')
-        parser.add_argument('-F', '--force', action='store_true', help='Force run the command: kill the previous running instance if any, and refresh the cache even if it is recent.')
-        parser.add_argument('-g', '--foreground', action='store_true', help='Run the command in the foreground, without daemonizing. Always enables --force.')
+    )
+    parser.add_argument('-c', '--command', required=True, help='Command to run. Use /bin/sh -c to run it.')
+    parser.add_argument('-f', '--file', required=True, help='Cache file to store command stdout.')
+    parser.add_argument('-a', '--max-age', type=int, help='If the cache file is older than this (in seconds), run the command, unless it\'s already running.')
+    parser.add_argument('-d', '--default', default='?', help='Default string to put in the file if it\'s the first run.')
+    parser.add_argument('-l', '--lock-file', help='Lock file to detect double-run. Default is CACHE-FILE.lock.')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose logging to stderr.')
+    parser.add_argument('-t', '--timeout', type=int, help='If the previous run was taking more than this (in seconds), kill it and start over.')
+    parser.add_argument('--show-stderr', action='store_true', help='Redirect command stderr to original stderr for debugging.')
+    parser.add_argument('-F', '--force', action='store_true', help='Force run the command: kill the previous running instance if any, and refresh the cache even if it is recent.')
+    parser.add_argument('-g', '--foreground', action='store_true', help='Run the command in the foreground, without daemonizing. Always enables --force.')
 
-        args = parser.parse_args()
+    args = parser.parse_args()
 
-        if args.foreground:
-            args.force = True
-    else:
-        class Args:
-            def __init__(self, command, file, max_age, default, lock_file, verbose, timeout, show_stderr, force, foreground):
-                self.command = command
-                self.file = file
-                self.max_age = max_age
-                self.default = default
-                self.lock_file = lock_file
-                self.verbose = verbose
-                self.timeout = timeout
-                self.show_stderr = show_stderr
-                self.force = force or foreground
-                self.foreground = foreground
-        args = Args(command, file_path, max_age, default_val, lock_file, verbose, timeout, show_stderr, force, foreground)
+    if args.foreground:
+        args.force = True
 
     def log(msg: str) -> None:
         if args.verbose:
