@@ -159,4 +159,25 @@ sleep 1.5
 assert "[[ \$(cat '$CACHE_FILE') == 'forced_bg' ]]"
 
 
+# Test 11: --foreground option runs in foreground and outputs new result directly
+clear_files
+# Run cacher in foreground mode. It should block for 1 second and then output "foreground_val"
+# directly to stdout.
+echo -n "foreground_val" | assert_out -d -- ./cacher -c "sleep 1 && echo -n foreground_val" -f "$CACHE_FILE" -g
+# Cache file must have been updated immediately
+assert "[[ \$(cat '$CACHE_FILE') == 'foreground_val' ]]"
+
+
+# Test 12: --foreground kills currently running background process
+clear_files
+echo -n "init_val" > "$CACHE_FILE"
+# Start a long-running background command
+./cacher -c "sleep 10 && echo -n long_bg" -f "$CACHE_FILE" -a 0 &
+sleep 0.5
+# Run in foreground. It should kill the long-running background job, run the new command,
+# and output the new value when done.
+echo -n "foreground_killed_bg" | assert_out -d -- ./cacher -c "sleep 1 && echo -n foreground_killed_bg" -f "$CACHE_FILE" -g
+assert "[[ \$(cat '$CACHE_FILE') == 'foreground_killed_bg' ]]"
+
+
 done_testing
