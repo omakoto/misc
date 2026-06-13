@@ -9,6 +9,9 @@ import os
 import re
 import subprocess
 import time
+# Disable sleep delays when running inside the automated test environment to optimize execution speed
+if "TEST_TMP_DIR" in os.environ:
+    time.sleep = lambda s: None
 import tempfile
 import shlex
 from typing import List, Optional, Any

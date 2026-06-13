@@ -68,25 +68,64 @@ echo "$*" >> "$TEST_TMP_DIR/git_meld_calls"
 EOF
 chmod +x "$TEST_TMP_DIR/bin/git-meld"
 
+setup_git_templates() {
+  # Base template
+  rm -rf "$TEST_TMP_DIR/template_repo"
+  mkdir -p "$TEST_TMP_DIR/template_repo"
+  (
+    cd "$TEST_TMP_DIR/template_repo"
+    git init -q
+    git config user.email "test@example.com"
+    git config user.name "Test User"
+    
+    echo "content1" > file1.txt
+    git add file1.txt
+    git commit -q -m "Commit 1"
+    
+    echo "content2" > file2.txt
+    git add file2.txt
+    git commit -q -m "Commit 2"
+  )
+
+  # Submodule template
+  rm -rf "$TEST_TMP_DIR/template_subrepo"
+  mkdir -p "$TEST_TMP_DIR/template_subrepo"
+  (
+    cd "$TEST_TMP_DIR/template_subrepo"
+    git init -q
+    git config user.email "test@example.com"
+    git config user.name "Test User"
+    echo "subcontent" > subfile.txt
+    git add subfile.txt
+    git commit -q -m "Sub Commit"
+  )
+
+  rm -rf "$TEST_TMP_DIR/template_repo_with_submodule"
+  cp -a "$TEST_TMP_DIR/template_repo" "$TEST_TMP_DIR/template_repo_with_submodule"
+  (
+    cd "$TEST_TMP_DIR/template_repo_with_submodule"
+    git -c protocol.file.allow=always submodule add -q "$TEST_TMP_DIR/template_subrepo" mysub
+    git commit -q -m "Add submodule"
+  )
+}
+
+setup_git_templates
+
 # Helper to setup a test git repository
 setup_git_repo() {
   rm -rf "$TEST_TMP_DIR/repo"
-  mkdir -p "$TEST_TMP_DIR/repo"
+  cp -a "$TEST_TMP_DIR/template_repo" "$TEST_TMP_DIR/repo"
   cd "$TEST_TMP_DIR/repo"
-  
-  git init -q
-  git config user.email "test@example.com"
-  git config user.name "Test User"
-  
-  # Commit 1
-  echo "content1" > file1.txt
-  git add file1.txt
-  git commit -q -m "Commit 1"
-  
-  # Commit 2
-  echo "content2" > file2.txt
-  git add file2.txt
-  git commit -q -m "Commit 2"
+  git update-index -q --refresh
+}
+
+# Helper to setup a test git repository with a submodule
+setup_git_repo_with_submodule() {
+  rm -rf "$TEST_TMP_DIR/repo"
+  cp -a "$TEST_TMP_DIR/template_repo_with_submodule" "$TEST_TMP_DIR/repo"
+  cd "$TEST_TMP_DIR/repo"
+  git update-index -q --refresh
+  git submodule foreach --recursive 'git update-index -q --refresh' >/dev/null 2>&1
 }
 
 # Helper to reset state for each test
@@ -317,19 +356,8 @@ assert "grep -q -E '$expected_pattern' '$TEST_TMP_DIR/fzf_stdin'"
 # -------------------------------------------------------------
 # Test Case 13: Verify submodules formatting in fzf stdin
 # -------------------------------------------------------------
-setup_git_repo
-mkdir -p "$TEST_TMP_DIR/subrepo"
-(
-  cd "$TEST_TMP_DIR/subrepo"
-  git init -q
-  git config user.email "test@example.com"
-  git config user.name "Test User"
-  echo "subcontent" > subfile.txt
-  git add subfile.txt
-  git commit -q -m "Sub Commit"
-)
-git -c protocol.file.allow=always submodule add -q "$TEST_TMP_DIR/subrepo" mysub
-git commit -q -m "Add submodule"
+setup_git_repo_with_submodule
+
 
 clear_test_state
 MOCK_FZF_SELECTION=""
@@ -340,19 +368,8 @@ assert "grep -q -E '\[35m\(submodule\)' '$TEST_TMP_DIR/fzf_stdin'"
 # -------------------------------------------------------------
 # Test Case 14: Verify submodule selection directory switch
 # -------------------------------------------------------------
-setup_git_repo
-mkdir -p "$TEST_TMP_DIR/subrepo"
-(
-  cd "$TEST_TMP_DIR/subrepo"
-  git init -q
-  git config user.email "test@example.com"
-  git config user.name "Test User"
-  echo "subcontent" > subfile.txt
-  git add subfile.txt
-  git commit -q -m "Sub Commit"
-)
-git -c protocol.file.allow=always submodule add -q "$TEST_TMP_DIR/subrepo" mysub
-git commit -q -m "Add submodule"
+setup_git_repo_with_submodule
+
 
 clear_test_state
 MOCK_FZF_SELECTION="(submodule) mysub"
@@ -370,19 +387,8 @@ assert "[[ '${cwds[1]}' == *'/repo/mysub' ]]"
 # -------------------------------------------------------------
 # Test Case 15: Verify two-stage submodule selection fzf flow
 # -------------------------------------------------------------
-setup_git_repo
-mkdir -p "$TEST_TMP_DIR/subrepo"
-(
-  cd "$TEST_TMP_DIR/subrepo"
-  git init -q
-  git config user.email "test@example.com"
-  git config user.name "Test User"
-  echo "subcontent" > subfile.txt
-  git add subfile.txt
-  git commit -q -m "Sub Commit"
-)
-git -c protocol.file.allow=always submodule add -q "$TEST_TMP_DIR/subrepo" mysub
-git commit -q -m "Add submodule"
+setup_git_repo_with_submodule
+
 
 clear_test_state
 # Overwrite fzf mock to handle three calls
@@ -612,19 +618,8 @@ cd "$SCRIPT_DIR"
 # -------------------------------------------------------------
 # Test Case 22: Verify parent selection traversal (Parent)
 # -------------------------------------------------------------
-setup_git_repo
-mkdir -p "$TEST_TMP_DIR/subrepo"
-(
-  cd "$TEST_TMP_DIR/subrepo"
-  git init -q
-  git config user.email "test@example.com"
-  git config user.name "Test User"
-  echo "subcontent" > subfile.txt
-  git add subfile.txt
-  git commit -q -m "Sub Commit"
-)
-git -c protocol.file.allow=always submodule add -q "$TEST_TMP_DIR/subrepo" mysub
-git commit -q -m "Add submodule"
+setup_git_repo_with_submodule
+
 
 clear_test_state
 rm -f "$TEST_TMP_DIR/fzf_call_count"
@@ -934,19 +929,8 @@ unset EDITOR
 # -------------------------------------------------------------
 # Test Case 32: Verify dirty submodules listing and selection
 # -------------------------------------------------------------
-setup_git_repo
-mkdir -p "$TEST_TMP_DIR/subrepo"
-(
-  cd "$TEST_TMP_DIR/subrepo"
-  git init -q
-  git config user.email "test@example.com"
-  git config user.name "Test User"
-  echo "subcontent" > subfile.txt
-  git add subfile.txt
-  git commit -q -m "Sub Commit"
-)
-git -c protocol.file.allow=always submodule add -q "$TEST_TMP_DIR/subrepo" mysub
-git commit -q -m "Add submodule"
+setup_git_repo_with_submodule
+
 
 # Make the submodule dirty
 echo "dirty in sub" >> mysub/subfile.txt
