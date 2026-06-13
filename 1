@@ -183,8 +183,12 @@ for n in "${args[@]}" ; do
         ee -2 dpkg -c "$n" > "$f"
         ;;
       *.md|markdown)
-        html="$temp/${n##*/}-$$.html"
-        pandoc -f gfm -s -V maxwidth="min(95%, 120em)" "$n" -o "$html"
+        {
+          html="$temp/${n##*/}-$$.html"
+          pandoc -f gfm -s -V maxwidth="min(95%, 120em)" "$n" -o "$html"
+          # Add a styled link to the original Markdown file using the vscode:// protocol.
+          sed -i "s|</body>|<div style=\"margin-top: 2em; border-top: 1px dashed #bbb; padding-top: 1em; font-size: 0.85em; opacity: 0.7;\"><a href=\"vscode://file$n\">Open original in VS Code</a></div></body>|i" "$html"
+        }
         c "$html"
         continue
         ;;
