@@ -83,6 +83,7 @@ git-create-playground() {
   (
     set -e
     export NO_GIT_COMMIT_HOOK=1 # disable `git-co` hook.
+    . git-disable-hook.sh
     
     git init --bare "${remote_dir}"
     
