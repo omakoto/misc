@@ -173,6 +173,16 @@ class TestCalcExecution(unittest.TestCase):
         self.assertIn("10.0", self.run_calc(["-n", "2.5 x4"]))
         self.assertIn("10.0", self.run_calc(["-n", "2.5x 4"]))
 
+        # Test x with parenthesis and identifiers
+        self.assertEqual(calc.preprocess_expression("4.9x(3@9)"), "4.9*(3@9)")
+        self.assertEqual(calc.preprocess_expression("2x(3)"), "2*(3)")
+        self.assertEqual(calc.preprocess_expression("2 x (3)"), "2*(3)")
+        self.assertEqual(calc.preprocess_expression("2xmath.pi"), "2*math.pi")
+
+        # Test calculation execution of 4.9x(3@9)
+        out_paren = self.run_calc(["4.9x(3@9)"])
+        self.assertIn("49/30", out_paren)
+
         # Test stdin with x multiplication
         out_stdin = self.run_calc([], stdin_data="2x3\n")
         self.assertIn("6", out_stdin)

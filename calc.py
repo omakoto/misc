@@ -185,7 +185,7 @@ def preprocess_expression(exp: str) -> str:
     - Replaces '^' with '**' to treat it as the power operator (e.g. '2^3' -> '2**3')
     - Ignores leading zeros in numbers to prevent python syntax errors (e.g. '07' -> '7')
     """
-    exp = re.sub(r'\bx\b|(?<!\b0)(?<=\d)\s*x\s*(?=\d)', '*', exp)
+    exp = re.sub(r'\bx\b|(?<!\b0)(?<=\d)\s*x\s*(?=\d|\(|[a-zA-Z_])', '*', exp)
     exp = re.sub(r'(?<=\d)[,_](?=\d)', '', exp)
     exp = exp.replace('^', '**')
     exp = re.sub(r'(?<!\.)\b0+([0-9]+)', r'\1', exp)
