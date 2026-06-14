@@ -39,6 +39,22 @@ class TestHelperFunctions(unittest.TestCase):
         self.assertEqual(calc.preprocess_expression("100_000 * 3"), "100000 * 3")
         self.assertEqual(calc.preprocess_expression("100_000,000 * 3"), "100000000 * 3")
         self.assertEqual(calc.preprocess_expression("1,000_000,000 * 3"), "1000000000 * 3")
+        
+        # Test leading zeros removal
+        self.assertEqual(calc.preprocess_expression("07"), "7")
+        self.assertEqual(calc.preprocess_expression("007"), "7")
+        self.assertEqual(calc.preprocess_expression("000"), "0")
+        self.assertEqual(calc.preprocess_expression("0.5"), "0.5")
+        self.assertEqual(calc.preprocess_expression("00.5"), "0.5")
+        self.assertEqual(calc.preprocess_expression("1.07"), "1.07")
+        self.assertEqual(calc.preprocess_expression("0.05"), "0.05")
+        self.assertEqual(calc.preprocess_expression("000.007"), "0.007")
+        self.assertEqual(calc.preprocess_expression("0x07"), "0x07")
+        self.assertEqual(calc.preprocess_expression("0b01"), "0b01")
+        self.assertEqual(calc.preprocess_expression("0o07"), "0o07")
+        self.assertEqual(calc.preprocess_expression("1 + 07"), "1 + 7")
+        self.assertEqual(calc.preprocess_expression("07_000"), "7000")
+        self.assertEqual(calc.preprocess_expression("0_100"), "100")
 
 
 class TestCalcExecution(unittest.TestCase):
@@ -62,6 +78,12 @@ class TestCalcExecution(unittest.TestCase):
         self.assertIn("3", out)
         self.assertIn("0b11", out)
         self.assertIn("0x3", out)
+
+    def test_leading_zeros(self) -> None:
+        out = self.run_calc(["07 + 08"])
+        self.assertIn("15", out)
+        self.assertIn("0b1111", out)
+        self.assertIn("0xf", out)
 
     def test_help_flag(self) -> None:
         out = self.run_calc(["-h"])
