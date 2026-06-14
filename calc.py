@@ -58,12 +58,28 @@ for op in ['__add__', '__sub__', '__mul__', '__truediv__', '__floordiv__', '__mo
         def wrapper(self, other):
             if isinstance(other, float):
                 other = Decimal(str(other))
+            elif isinstance(other, Fraction):
+                other = Decimal(other.numerator) / Decimal(other.denominator)
             res = orig(self, other)
             if isinstance(res, Decimal) and not isinstance(res, BigDecimal):
                 return BigDecimal(res)
             return res
         return wrapper
     setattr(BigDecimal, op, make_wrapper())
+
+
+def _frac(a, b) -> Fraction:
+    if not isinstance(a, Fraction):
+        if isinstance(a, float):
+            a = Fraction(str(a))
+        else:
+            a = Fraction(a)
+    if not isinstance(b, Fraction):
+        if isinstance(b, float):
+            b = Fraction(str(b))
+        else:
+            b = Fraction(b)
+    return a / b
 
 
 def _div(a, b):
@@ -94,6 +110,12 @@ class DecimalTransformer(ast.NodeTransformer):
         if isinstance(node.op, ast.Div):
             return ast.Call(
                 func=ast.Name(id='_div', ctx=ast.Load()),
+                args=[node.left, node.right],
+                keywords=[]
+            )
+        if isinstance(node.op, ast.MatMult):
+            return ast.Call(
+                func=ast.Name(id='_frac', ctx=ast.Load()),
                 args=[node.left, node.right],
                 keywords=[]
             )
@@ -139,6 +161,16 @@ class FractionTransformer(ast.NodeTransformer):
             return ast.Call(
                 func=ast.Name(id='Fraction', ctx=ast.Load()),
                 args=[ast.Constant(value=str(node.value))],
+                keywords=[]
+            )
+        return node
+
+    def visit_BinOp(self, node: ast.BinOp) -> ast.AST:
+        self.generic_visit(node)
+        if isinstance(node.op, ast.MatMult):
+            return ast.Call(
+                func=ast.Name(id='_frac', ctx=ast.Load()),
+                args=[node.left, node.right],
                 keywords=[]
             )
         return node
@@ -366,6 +398,7 @@ def main(args: list[str]) -> None:
         'D': BigDecimal,
         'BigDecimal': BigDecimal,
         '_div': _div,
+        '_frac': _frac,
         'math': math,
         'np': np,
         'time': time,

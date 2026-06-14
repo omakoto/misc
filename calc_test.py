@@ -96,6 +96,20 @@ class TestCalcExecution(unittest.TestCase):
         out = self.run_calc(["2 * 3 ^ 2"])
         self.assertIn("18", out)
 
+    def test_fraction_operator(self) -> None:
+        # 1@2 should be 1/2
+        out = self.run_calc(["1@2"])
+        self.assertIn("1/2", out)
+        self.assertIn("0.5", out)
+
+        # 1@2@3 should be (1/2)/3 = 1/6
+        out = self.run_calc(["1@2@3"])
+        self.assertIn("1/6", out)
+
+        # mixing with floats in -n mode (Decimal compatibility)
+        out = self.run_calc(["-n", "1@2 + 0.1"])
+        self.assertIn("0.6", out)
+
     def test_help_flag(self) -> None:
         out = self.run_calc(["-h"])
         self.assertIn("Usage: calc.py", out)
