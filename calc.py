@@ -332,6 +332,10 @@ def run_repl(use_fraction: bool, globals_dict: dict[str, typing.Any]) -> None:
         if line_str.lower() in ("exit", "quit", "exit()", "quit()"):
             break
 
+        if line_str.lower() in ("?", "h", "help", "/help"):
+            print_help()
+            continue
+
         try:
             line_str = preprocess_expression(line_str)
             if use_fraction:

@@ -190,6 +190,12 @@ class TestCalcExecution(unittest.TestCase):
         out_frac = self.run_calc(["-i", "-f"])
         self.assertIn("1/2", out_frac)
 
+        # Test help commands in interactive repl
+        for cmd in ("help", "h", "?", "/help"):
+            mock_input.side_effect = [cmd, "exit"]
+            out_help = self.run_calc(["-i"])
+            self.assertIn("Usage: calc.py", out_help)
+
     @patch('builtins.input')
     @patch('sys.stdin')
     def test_default_interactive_repl(self, mock_stdin: unittest.mock.MagicMock, mock_input: unittest.mock.MagicMock) -> None:
