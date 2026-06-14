@@ -77,13 +77,9 @@ class TestListFiles(unittest.TestCase):
         # Get lines, relative to the temp dir path
         lines = [os.path.relpath(line, self.dir_path) for line in stdout.strip().split("\n")]
         expected = [
-            "a",
             "a/x.txt",
-            "b",
             "b/y.txt",
             "c.txt",
-            "d",
-            "d/e",
             "d/e/z.txt"
         ]
         self.assertEqual(lines, expected)
@@ -95,13 +91,9 @@ class TestListFiles(unittest.TestCase):
 
         lines = [os.path.relpath(line, self.dir_path) for line in stdout.strip().split("\n")]
         expected = [
-            "d",
-            "d/e",
             "d/e/z.txt",
             "c.txt",
-            "b",
             "b/y.txt",
-            "a",
             "a/x.txt"
         ]
         self.assertEqual(lines, expected)
@@ -121,20 +113,20 @@ class TestListFiles(unittest.TestCase):
         self.assertIn("is not a directory", stderr)
 
     def test_max_files_limit(self) -> None:
-        # Test limit of 3 files/dirs in alphabetical order
+        # Test limit of 3 files in alphabetical order
         success, stdout, stderr = self.run_traverse(self.dir_path, reverse=False, max_files=3)
         self.assertTrue(success)
         self.assertEqual(stderr, "")
         lines = [os.path.relpath(line, self.dir_path) for line in stdout.strip().split("\n")]
-        expected = ["a", "a/x.txt", "b"]
+        expected = ["a/x.txt", "b/y.txt", "c.txt"]
         self.assertEqual(lines, expected)
 
-        # Test limit of 5 files/dirs in reverse alphabetical order
-        success, stdout, stderr = self.run_traverse(self.dir_path, reverse=True, max_files=5)
+        # Test limit of 2 files in reverse alphabetical order
+        success, stdout, stderr = self.run_traverse(self.dir_path, reverse=True, max_files=2)
         self.assertTrue(success)
         self.assertEqual(stderr, "")
         lines = [os.path.relpath(line, self.dir_path) for line in stdout.strip().split("\n")]
-        expected = ["d", "d/e", "d/e/z.txt", "c.txt", "b"]
+        expected = ["d/e/z.txt", "c.txt"]
         self.assertEqual(lines, expected)
 
     def test_max_files_zero(self) -> None:
@@ -145,20 +137,38 @@ class TestListFiles(unittest.TestCase):
         self.assertEqual(stdout.strip(), "")
 
     def test_max_files_larger_than_total(self) -> None:
-        # Test limit of 10 files/dirs (total is 8)
+        # Test limit of 10 files (total is 4)
         success, stdout, stderr = self.run_traverse(self.dir_path, reverse=False, max_files=10)
         self.assertTrue(success)
         self.assertEqual(stderr, "")
         lines = [os.path.relpath(line, self.dir_path) for line in stdout.strip().split("\n")]
         expected = [
-            "a",
             "a/x.txt",
-            "b",
             "b/y.txt",
             "c.txt",
-            "d",
-            "d/e",
             "d/e/z.txt"
+        ]
+        self.assertEqual(lines, expected)
+
+    def test_symlinks(self) -> None:
+        # Create a symbolic link to a file:
+        os.symlink("c.txt", os.path.join(self.dir_path, "sym_file"))
+        # Create a symbolic link to a directory:
+        os.symlink("a", os.path.join(self.dir_path, "sym_dir"))
+        # Create a broken symlink:
+        os.symlink("non_existent.txt", os.path.join(self.dir_path, "sym_broken"))
+
+        success, stdout, stderr = self.run_traverse(self.dir_path, reverse=False)
+        self.assertTrue(success)
+        self.assertEqual(stderr, "")
+
+        lines = [os.path.relpath(line, self.dir_path) for line in stdout.strip().split("\n")]
+        expected = [
+            "a/x.txt",
+            "b/y.txt",
+            "c.txt",
+            "d/e/z.txt",
+            "sym_file"
         ]
         self.assertEqual(lines, expected)
 

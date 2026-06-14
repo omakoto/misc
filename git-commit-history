@@ -2,9 +2,15 @@
 
 set -e
 
-list-files -r -n 1000 ~/history/commits | xargs cat | 
-    hl '^    .*' '@cyan' \
-       '^[^ ].*' '@yellow' \
-       '\+(?=[+\-]*\s*$)' '@green' \
-       '\-(?=[+\-]*\s*$)' '@red' |
-    less --raw
+list-files -r -n 1000 ~/history/commits | xargs cat | {
+    if [[ -t 1 ]] ; then
+        hl '^    .*' '@cyan' \
+        '^[^ ].*' '@yellow' \
+        '\+(?=[+\-]*\s*$)' '@green' \
+        '\-(?=[+\-]*\s*$)' '@red' |
+        less --raw
+    else
+        cat
+    fi
+}
+

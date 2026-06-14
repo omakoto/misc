@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# list-files - Traverse directories and list files/directories depth-first.
+# list-files - Traverse directories and list files depth-first.
 #
 # Run the test suite via `python3 misc/list-files_test.py` whenever making changes.
 #
@@ -50,12 +50,21 @@ def _traverse_dir_recursive(current_dir: str, reverse: bool, state: TraversalSta
     entries.sort(key=lambda x: x.name, reverse=reverse)
 
     success = True
-    # Print all files and directories, and recurse into directories
+    # Print only files (or symlinks to files), and recurse into directories
     for entry in entries:
         if state.limit_reached:
             break
-        print(entry.path)
-        state.printed += 1
+
+        try:
+            is_file = entry.is_file()
+        except OSError as e:
+            print(f"Error checking entry '{entry.path}': {e}", file=sys.stderr)
+            success = False
+            is_file = False
+
+        if is_file:
+            print(entry.path)
+            state.printed += 1
 
         try:
             # Avoid traversing symlinks to directories to prevent infinite recursion/loops
@@ -72,7 +81,7 @@ def _traverse_dir_recursive(current_dir: str, reverse: bool, state: TraversalSta
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Traverse directories and list files/subdirectories in a depth-first way.",
+        description="Traverse directories and list files in a depth-first way.",
         epilog="""
 Examples:
   list-files dir1
@@ -84,7 +93,7 @@ Examples:
         "-r",
         "--reverse",
         action="store_true",
-        help="Sort files and directories in reverse alphabetical order."
+        help="Sort files in reverse alphabetical order."
     )
     parser.add_argument(
         "-n",
@@ -92,7 +101,7 @@ Examples:
         type=int,
         default=None,
         metavar="MAX-FILES",
-        help="Limit the number of files and directories listed."
+        help="Limit the number of files listed."
     )
     parser.add_argument(
         "directories",
