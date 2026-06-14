@@ -148,10 +148,12 @@ def preprocess_expression(exp: str) -> str:
     """Preprocesses the math expression string to support custom notations:
     - Replaces 'x' representing multiplication (e.g. '2x3', '2 x 3', '1x 3', '2x3x4') with '*'
     - Strips commas and underscores between digits (e.g. '100,000' -> '100000', '100_000' -> '100000')
+    - Replaces '^' with '**' to treat it as the power operator (e.g. '2^3' -> '2**3')
     - Ignores leading zeros in numbers to prevent python syntax errors (e.g. '07' -> '7')
     """
     exp = re.sub(r'\bx\b|(?<!\b0)(?<=\d)\s*x\s*(?=\d)', '*', exp)
     exp = re.sub(r'(?<=\d)[,_](?=\d)', '', exp)
+    exp = exp.replace('^', '**')
     exp = re.sub(r'(?<!\.)\b0+([0-9]+)', r'\1', exp)
     return exp
 

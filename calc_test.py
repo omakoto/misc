@@ -56,6 +56,11 @@ class TestHelperFunctions(unittest.TestCase):
         self.assertEqual(calc.preprocess_expression("07_000"), "7000")
         self.assertEqual(calc.preprocess_expression("0_100"), "100")
 
+        # Test power operator
+        self.assertEqual(calc.preprocess_expression("2^3"), "2**3")
+        self.assertEqual(calc.preprocess_expression("2 ^ 3"), "2 ** 3")
+        self.assertEqual(calc.preprocess_expression("2 * 3 ^ 2"), "2 * 3 ** 2")
+
 
 class TestCalcExecution(unittest.TestCase):
     def run_calc(self, args: list[str], stdin_data: str = "", stdout_class=io.StringIO) -> str:
@@ -84,6 +89,12 @@ class TestCalcExecution(unittest.TestCase):
         self.assertIn("15", out)
         self.assertIn("0b1111", out)
         self.assertIn("0xf", out)
+
+    def test_power_operator(self) -> None:
+        out = self.run_calc(["2 ^ 3"])
+        self.assertIn("8", out)
+        out = self.run_calc(["2 * 3 ^ 2"])
+        self.assertIn("18", out)
 
     def test_help_flag(self) -> None:
         out = self.run_calc(["-h"])
