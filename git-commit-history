@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -e
+
+list-files -r -n 1000 ~/history/commits | xargs cat | 
+    hl '^    .*' '@cyan' \
+       '^[^ ].*' '@yellow' \
+       '\+(?=[+\-]*\s*$)' '@green' \
+       '\-(?=[+\-]*\s*$)' '@red' |
+    less --raw
