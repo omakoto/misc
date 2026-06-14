@@ -143,11 +143,13 @@ Options:
 
 Examples:
   calc.py 1 + 2
-  calc.py "2 x 3"
+  calc.py "2 x 3"                             # 'x' is treated as '*'
   calc.py 2x3
-  calc.py "100_000 * 3"
-  calc.py "1/3 + 1/6"
-  calc.py -n "0.1 + 0.2"
+  calc.py "2 ^ 3"                             # '^' is power, same as **
+  calc.py "100_000 * 3"                       # Commas and underscores are ignored
+  calc.py "1/3 + 1/6"                         # Fraction evaluation (default)
+  calc.py "1 @ 3 + 1 @ 6"                     # '@' is dedicated fraction division
+  calc.py -n "0.1 + 0.2"                      # Evaluate as float/decimal
   calc.py "Fraction(1, 3) + Fraction(1, 6)"
   calc.py 0.25
 """)
@@ -300,7 +302,15 @@ def show_result(result: typing.Any) -> None:
 def run_repl(use_fraction: bool, globals_dict: dict[str, typing.Any]) -> None:
     """Runs an interactive REPL loop."""
     print("calc.py Interactive REPL")
-    print("Type your expression and press Enter. Type 'exit' or 'quit' to exit.")
+    lines = [
+        "Hint: Use '^' for power (e.g. 2^3) and '@' for fraction (e.g. 1@2)",
+        "Type your expression and press Enter. Type 'exit' or 'quit' to exit."
+    ]
+    for line in lines:
+        if sys.stdout.isatty():
+            print(f"\033[36m{line}\033[0m")
+        else:
+            print(line)
     
     try:
         import readline
