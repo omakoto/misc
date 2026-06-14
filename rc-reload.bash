@@ -1,3 +1,7 @@
+# rc-reload.bash - Detects changes to files loaded by *rc and reloads them.
+# Notifies other bash instances (that are idle / not running subprocesses) to
+# press Enter to reload.
+# Run rc-reload_test.bash to test.
 _reloaded_time=$(ramtmp)/$$-reload.tmp
 _reload_needed=$(ramtmp)/reload-needed.tmp
 _reload_rc_files_fingerprints=""
@@ -49,6 +53,20 @@ reload_rc_if_changed() {
     fi
 }
 
+# Returns true (0) if the given bash PID has no running child processes.
+# Uses /proc/<pid>/task/<pid>/children when available (Linux, no fork needed),
+# falling back to pgrep -P otherwise.
+_bash_is_idle() {
+    local pid=$1
+    local children=""
+    if [[ -f "/proc/$pid/task/$pid/children" ]]; then
+        read -r children < "/proc/$pid/task/$pid/children" 2>/dev/null
+    else
+        children=$(pgrep -P "$pid" 2>/dev/null)
+    fi
+    [[ -z "$children" ]]
+}
+
 rc() {
     if (( ! $_use_signal_to_reload )) ; then
         # Non-signal version.
@@ -60,8 +78,11 @@ rc() {
             if [[ $pid == $$ ]] ; then
                 continue
             fi
-            # If stdout is a terminal, show this message.
+            # Only notify bash instances that:
+            #   1. have stdout connected to a terminal, and
+            #   2. are idle (not running any subprocesses).
             (test -t 0 < /proc/$pid/fd/1) &&
+                _bash_is_idle "$pid" &&
                 byellow "Detected .bashrc update, press enter to reload." >/proc/$pid/fd/1
         done 2>/dev/null
     else
