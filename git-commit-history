@@ -2,7 +2,7 @@
 
 set -e
 
-list-files -r -n 1000 ~/history/commits | xargs cat | {
+list-files -r -n 1000 "${GIT_COMMIT_HISTORY_DIR:?}" | xargs cat | {
     if [[ -t 1 ]] ; then
         hl '^    .*' '@cyan' \
         '^[^ ].*' '@yellow' \
