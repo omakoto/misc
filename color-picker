@@ -29,7 +29,11 @@ state = {
     'bg_trans': True,     # BG transparency
     'last_copied': 'full', # Track which string is currently in the clipboard
     'text': '',           # User's typed preview text
-    'editing_text': False # True when typing in the text field
+    'editing_text': False, # True when typing in the text field
+    'fg_rgb': [5, 5, 5],
+    'bg_rgb': [0, 0, 0],
+    'use_fg_rgb': False,
+    'use_bg_rgb': False
 }
 
 click_map = {}
@@ -108,10 +112,20 @@ def get_esc_seq():
         attrs.append("3")
         
     if not state['fg_trans']:
-        attrs.append(f"38;5;{state['fg_color']}")
+        if state['use_fg_rgb']:
+            r, g, b = state['fg_rgb']
+            fg_color = 16 + 36 * r + 6 * g + b
+        else:
+            fg_color = state['fg_color']
+        attrs.append(f"38;5;{fg_color}")
         
     if not state['bg_trans']:
-        attrs.append(f"48;5;{state['bg_color']}")
+        if state['use_bg_rgb']:
+            r, g, b = state['bg_rgb']
+            bg_color = 16 + 36 * r + 6 * g + b
+        else:
+            bg_color = state['bg_color']
+        attrs.append(f"48;5;{bg_color}")
         
     if not attrs:
         return "\\e[0m"
@@ -248,6 +262,64 @@ def draw_screen():
         ep("\n")
         return y_blocks + 1
 
+    def draw_rgb_picker(y_line, is_fg):
+        nonlocal y_next
+        rgb_key = 'fg_rgb' if is_fg else 'bg_rgb'
+        use_key = 'use_fg_rgb' if is_fg else 'use_bg_rgb'
+        r_val, g_val, b_val = state[rgb_key]
+        
+        prefix = "    RGB Value: "
+        ep(prefix)
+        current_x = printable_len(prefix) + 1
+        
+        # Draw R picker
+        r_label = " \x1b[31mR:\x1b[0m"
+        ep(r_label)
+        current_x += printable_len(r_label)
+        for val in range(6):
+            is_sel = (r_val == val)
+            disp = f"[{val}]" if is_sel else f" {val} "
+            if is_sel and state[use_key]:
+                ep(f"\x1b[1;32m{disp}\x1b[0m")
+            else:
+                ep(disp)
+            for offset in range(len(disp)):
+                click_map[(current_x + offset, y_line)] = ('set_rgb', (is_fg, 0, val))
+            current_x += len(disp)
+            
+        # Draw G picker
+        g_label = " \x1b[32mG:\x1b[0m"
+        ep(g_label)
+        current_x += printable_len(g_label)
+        for val in range(6):
+            is_sel = (g_val == val)
+            disp = f"[{val}]" if is_sel else f" {val} "
+            if is_sel and state[use_key]:
+                ep(f"\x1b[1;32m{disp}\x1b[0m")
+            else:
+                ep(disp)
+            for offset in range(len(disp)):
+                click_map[(current_x + offset, y_line)] = ('set_rgb', (is_fg, 1, val))
+            current_x += len(disp)
+            
+        # Draw B picker
+        b_label = " \x1b[34mB:\x1b[0m"
+        ep(b_label)
+        current_x += printable_len(b_label)
+        for val in range(6):
+            is_sel = (b_val == val)
+            disp = f"[{val}]" if is_sel else f" {val} "
+            if is_sel and state[use_key]:
+                ep(f"\x1b[1;32m{disp}\x1b[0m")
+            else:
+                ep(disp)
+            for offset in range(len(disp)):
+                click_map[(current_x + offset, y_line)] = ('set_rgb', (is_fg, 2, val))
+            current_x += len(disp)
+            
+        ep("\n")
+        y_next += 1
+
     # Row 5: Foreground Color Section
     y = 5
     raw_line = "  Foreground Color:  "
@@ -272,6 +344,11 @@ def draw_screen():
     ep("\n")
     y_next += 1
     
+    # Foreground RGB picker
+    draw_rgb_picker(y_next, is_fg=True)
+    ep("\n")
+    y_next += 1
+    
     # Row y_next: Background Color Section
     y = y_next
     raw_line = "  Background Color:  "
@@ -293,6 +370,11 @@ def draw_screen():
     y_next += 1
     y_next = draw_color_row(range(232, 244), y_next, 'bg')
     y_next = draw_color_row(range(244, 256), y_next, 'bg')
+    ep("\n")
+    y_next += 1
+    
+    # Background RGB picker
+    draw_rgb_picker(y_next, is_fg=False)
     ep("\n")
     y_next += 1
     
@@ -331,10 +413,20 @@ def draw_screen():
         attrs.append("3")
         
     if not state['fg_trans']:
-        attrs.append(f"38;5;{state['fg_color']}")
+        if state['use_fg_rgb']:
+            r, g, b = state['fg_rgb']
+            fg_color = 16 + 36 * r + 6 * g + b
+        else:
+            fg_color = state['fg_color']
+        attrs.append(f"38;5;{fg_color}")
         
     if not state['bg_trans']:
-        attrs.append(f"48;5;{state['bg_color']}")
+        if state['use_bg_rgb']:
+            r, g, b = state['bg_rgb']
+            bg_color = 16 + 36 * r + 6 * g + b
+        else:
+            bg_color = state['bg_color']
+        attrs.append(f"48;5;{bg_color}")
         
     attr_str = ";".join(attrs)
     preview_text = state['text'] if state['text'] else "  AaBbCcDdEeFfGg 0123456789  "
@@ -581,17 +673,35 @@ def main():
                     if act_type == 'toggle':
                         if val == 'fg_trans':
                             state['fg_trans'] = not state['fg_trans']
+                            if state['fg_trans']:
+                                state['use_fg_rgb'] = False
                         elif val == 'bg_trans':
                             state['bg_trans'] = not state['bg_trans']
+                            if state['bg_trans']:
+                                state['use_bg_rgb'] = False
                         else:
                             state[val] = not state[val]
                         update_selection()
                         draw_screen()
                     elif act_type == 'pick_fg':
+                        state['use_fg_rgb'] = False
                         update_selection(fg=val)
                         draw_screen()
                     elif act_type == 'pick_bg':
+                        state['use_bg_rgb'] = False
                         update_selection(bg=val)
+                        draw_screen()
+                    elif act_type == 'set_rgb':
+                        is_fg, comp_idx, value_val = val
+                        if is_fg:
+                            state['fg_rgb'][comp_idx] = value_val
+                            state['use_fg_rgb'] = True
+                            state['fg_trans'] = False
+                        else:
+                            state['bg_rgb'][comp_idx] = value_val
+                            state['use_bg_rgb'] = True
+                            state['bg_trans'] = False
+                        update_selection()
                         draw_screen()
                     elif act_type == 'confirm':
                         select_color_and_exit()

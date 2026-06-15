@@ -28,7 +28,11 @@ class ColorPickerTest(unittest.TestCase):
             'bg_trans': True,
             'last_copied': 'full',
             'text': '',
-            'editing_text': False
+            'editing_text': False,
+            'fg_rgb': [5, 5, 5],
+            'bg_rgb': [0, 0, 0],
+            'use_fg_rgb': False,
+            'use_bg_rgb': False
         }
         # Reset click map
         color_picker.click_map = {}
@@ -249,6 +253,16 @@ class ColorPickerTest(unittest.TestCase):
         self.assertEqual(cm.exception.code, 0)
         self.assertEqual(color_picker.state['text'], "AC")
         self.assertFalse(color_picker.state['editing_text'])
+
+    def test_rgb_color_code(self):
+        color_picker.state['use_fg_rgb'] = True
+        color_picker.state['fg_rgb'] = [5, 0, 0] # red
+        color_picker.state['use_bg_rgb'] = True
+        color_picker.state['bg_rgb'] = [0, 5, 0] # green
+        color_picker.state['bg_trans'] = False
+        # R=5, G=0, B=0 -> 16 + 36*5 + 6*0 + 0 = 196
+        # R=0, G=5, B=0 -> 16 + 36*0 + 6*5 + 0 = 46
+        self.assertEqual(color_picker.get_output_string(), "\\e[38;5;196;48;5;46m")
 
 if __name__ == '__main__':
     unittest.main()
