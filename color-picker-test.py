@@ -26,7 +26,9 @@ class ColorPickerTest(unittest.TestCase):
             'fg_trans': False,
             'bg_color': 0,
             'bg_trans': True,
-            'last_copied': 'active'
+            'last_copied': 'full',
+            'text': '',
+            'editing_text': False
         }
         # Reset click map
         color_picker.click_map = {}
@@ -63,7 +65,7 @@ class ColorPickerTest(unittest.TestCase):
         self.assertEqual(color_picker.state['bg_color'], 20)
         self.assertFalse(color_picker.state['fg_trans'])
         self.assertFalse(color_picker.state['bg_trans'])
-        mock_copy.assert_called_with("\\e[38;5;10;48;5;20m")
+        mock_copy.assert_called_with("\\e[38;5;10;48;5;20m\\e[0m")
 
     @patch('color_picker.restore_terminal')
     @patch('sys.stdout')
@@ -72,7 +74,7 @@ class ColorPickerTest(unittest.TestCase):
         with self.assertRaises(SystemExit) as cm:
             color_picker.select_color_and_exit()
         self.assertEqual(cm.exception.code, 0)
-        mock_stdout.write.assert_any_call("$'\\e[38;5;15m'\n")
+        mock_stdout.write.assert_any_call("$'\\e[38;5;15m\\e[0m'\n")
 
     @patch('color_picker.setup_terminal')
     @patch('color_picker.restore_terminal')
@@ -101,7 +103,7 @@ class ColorPickerTest(unittest.TestCase):
             color_picker.main()
         self.assertEqual(cm.exception.code, 0)
         self.assertTrue(color_picker.state['bash_string'])
-        mock_copy.assert_called_with("$'\\e[38;5;15m'")
+        mock_copy.assert_called_with("$'\\e[38;5;15m\\e[0m'")
 
     @patch('color_picker.setup_terminal')
     @patch('color_picker.restore_terminal')
@@ -126,7 +128,7 @@ class ColorPickerTest(unittest.TestCase):
             color_picker.main()
         self.assertEqual(cm.exception.code, 0)
         self.assertTrue(color_picker.state['bold'])
-        mock_copy.assert_called_with("\\e[1;38;5;15m")
+        mock_copy.assert_called_with("\\e[1;38;5;15m\\e[0m")
 
     @patch('color_picker.setup_terminal')
     @patch('color_picker.restore_terminal')
@@ -212,6 +214,41 @@ class ColorPickerTest(unittest.TestCase):
         with self.assertRaises(SystemExit):
             color_picker.main()
         self.assertFalse(color_picker.state['faint'])
+
+    def test_get_full_string(self):
+        # Default options, bash_string=False, text="HELLO"
+        color_picker.state['text'] = "HELLO"
+        self.assertEqual(color_picker.get_full_string(), "\\e[38;5;15mHELLO\\e[0m")
+
+    def test_get_full_string_bash_string(self):
+        # Default options, bash_string=True, text="HELLO"
+        color_picker.state['bash_string'] = True
+        color_picker.state['text'] = "HELLO"
+        self.assertEqual(color_picker.get_full_string(), "$'\\e[38;5;15mHELLO\\e[0m'")
+
+    @patch('color_picker.setup_terminal')
+    @patch('color_picker.restore_terminal')
+    @patch('color_picker.copy_to_clipboard')
+    @patch('sys.stderr')
+    @patch('sys.stdout')
+    @patch('color_picker.read_key')
+    def test_keyboard_typing_text(self, mock_read_key, mock_stdout, mock_stderr, mock_copy, mock_restore, mock_setup):
+        # We start in normal mode, press 't' to enter editing, type 'A', 'B', Backspace, 'C', Enter to exit editing, and 'q' to quit.
+        mock_read_key.side_effect = [
+            't',
+            'A',
+            'B',
+            '\x7f',
+            'C',
+            '\n',
+            'q'
+        ]
+        
+        with self.assertRaises(SystemExit) as cm:
+            color_picker.main()
+        self.assertEqual(cm.exception.code, 0)
+        self.assertEqual(color_picker.state['text'], "AC")
+        self.assertFalse(color_picker.state['editing_text'])
 
 if __name__ == '__main__':
     unittest.main()

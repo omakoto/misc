@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # Interactive ANSI color picker.
 #
+# Run the test script every time touching this file: python3 color-picker-test.py
+#
 # Allows selecting Foreground and Background colors simultaneously with transparency options.
 # Automatically copies the active escape sequence to the clipboard on selection changes.
 # Prints the chosen escape sequence to stdout on exit (optionally formatted as a bash $'...' string).
@@ -25,7 +27,9 @@ state = {
     'fg_trans': False,    # FG transparency
     'bg_color': 0,        # Default BG: Black
     'bg_trans': True,     # BG transparency
-    'last_copied': 'active' # Track which string is currently in the clipboard
+    'last_copied': 'full', # Track which string is currently in the clipboard
+    'text': '',           # User's typed preview text
+    'editing_text': False # True when typing in the text field
 }
 
 click_map = {}
@@ -94,7 +98,7 @@ def copy_to_clipboard(text):
         ep(f"Error copying to clipboard: {e}\n")
         eflush()
 
-def get_output_string():
+def get_esc_seq():
     attrs = []
     if state['bold']:
         attrs.append("1")
@@ -110,14 +114,24 @@ def get_output_string():
         attrs.append(f"48;5;{state['bg_color']}")
         
     if not attrs:
-        esc_seq = "\\e[0m"
+        return "\\e[0m"
     else:
-        esc_seq = f"\\e[{';'.join(attrs)}m"
-        
+        return f"\\e[{';'.join(attrs)}m"
+
+def get_output_string():
+    esc_seq = get_esc_seq()
     if state['bash_string']:
         return f"$'{esc_seq}'"
     else:
         return esc_seq
+
+def get_full_string():
+    esc_seq = get_esc_seq()
+    user_text = state['text']
+    if state['bash_string']:
+        return f"$'{esc_seq}{user_text}\\e[0m'"
+    else:
+        return f"{esc_seq}{user_text}\\e[0m"
 
 def update_selection(fg=None, bg=None):
     if fg is not None:
@@ -126,8 +140,8 @@ def update_selection(fg=None, bg=None):
     if bg is not None:
         state['bg_color'] = bg
         state['bg_trans'] = False
-    state['last_copied'] = 'active'
-    out_str = get_output_string()
+    state['last_copied'] = 'full'
+    out_str = get_full_string()
     copy_to_clipboard(out_str)
 
 def draw_screen():
@@ -282,6 +296,24 @@ def draw_screen():
     ep("\n")
     y_next += 1
     
+    # Text Field Section
+    y_text = y_next
+    text_label = "  Text (click or press 't' to edit): "
+    text_val = state['text']
+    if state['editing_text']:
+        display_val = f"\x1b[4m{text_val}\x1b[0m\x1b[7m \x1b[0m"
+    else:
+        if text_val:
+            display_val = f"\x1b[4m{text_val}\x1b[0m"
+        else:
+            display_val = "\x1b[2m<click or press 't' to type preview text>\x1b[0m"
+            
+    ep(f"{text_label}{display_val}\n\n")
+    val_len = len(text_val) if text_val else len("<click or press 't' to type preview text>")
+    for x in range(1, len(text_label) + val_len + 1):
+        click_map[(x, y_text)] = ('edit_text', None)
+    y_next += 2
+
     # Preview Section
     y_preview = y_next
     ep("  Preview:\n")
@@ -305,7 +337,7 @@ def draw_screen():
         attrs.append(f"48;5;{state['bg_color']}")
         
     attr_str = ";".join(attrs)
-    preview_text = "  AaBbCcDdEeFfGg 0123456789  "
+    preview_text = state['text'] if state['text'] else "  AaBbCcDdEeFfGg 0123456789  "
     if not attr_str:
         ep(f"{preview_text}\n\n")
     else:
@@ -348,6 +380,21 @@ def draw_screen():
     y_next += 1
     
     if state['last_copied'] == 'reset':
+        ep("                \x1b[2m(Copied to clipboard)\x1b[0m\n")
+    else:
+        ep("\n")
+    y_next += 1
+
+    # Full string representation
+    y_full = y_next
+    full_label = "  Full string:  "
+    full_val = get_full_string()
+    ep(f"{full_label}\x1b[1m{full_val}\x1b[0m\n")
+    for x in range(1, len(full_label) + len(full_val) + 1):
+        click_map[(x, y_full)] = ('copy_full', None)
+    y_next += 1
+    
+    if state['last_copied'] == 'full':
         ep("                \x1b[2m(Copied to clipboard)\x1b[0m\n\n")
     else:
         ep("\n\n")
@@ -436,7 +483,12 @@ def read_key():
     return b.decode('utf-8', errors='ignore')
 
 def select_color_and_exit():
-    result = get_output_string()
+    if state['last_copied'] == 'full':
+        result = get_full_string()
+    elif state['last_copied'] == 'reset':
+        result = "$'\\e[0m'" if state['bash_string'] else "\\e[0m"
+    else:
+        result = get_output_string()
     restore_terminal()
     sys.stdout.write(result + "\n")
     sys.stdout.flush()
@@ -452,6 +504,48 @@ def main():
         if key is None:
             continue
             
+        if state['editing_text']:
+            if key == 'ctrl-c':
+                break
+            elif key in ['escape', '\x1b']:
+                state['editing_text'] = False
+                draw_screen()
+                continue
+            elif key in ['\r', '\n']:
+                state['editing_text'] = False
+                draw_screen()
+                continue
+            elif key in ['\x7f', '\x08']:
+                if state['text']:
+                    state['text'] = state['text'][:-1]
+                    if state['last_copied'] == 'full':
+                        copy_to_clipboard(get_full_string())
+                    draw_screen()
+                continue
+            elif isinstance(key, str) and len(key) == 1 and ord(key) >= 32:
+                state['text'] += key
+                if state['last_copied'] == 'full':
+                    copy_to_clipboard(get_full_string())
+                draw_screen()
+                continue
+            elif isinstance(key, tuple) and key[0] == 'mouse':
+                _, pb, px, py, is_press = key
+                if pb == 0 and not is_press:
+                    action = click_map.get((px, py))
+                    if action:
+                        act_type, val = action
+                        if act_type != 'edit_text':
+                            state['editing_text'] = False
+                            # Fall through to process mouse click below
+                        else:
+                            continue
+                    else:
+                        state['editing_text'] = False
+                        draw_screen()
+                        continue
+            else:
+                continue
+
         if key in ['ctrl-c', 'q', 'escape', '\x1b']:
             break
             
@@ -473,6 +567,9 @@ def main():
         elif key in ['f', 'F']:
             state['faint'] = not state['faint']
             update_selection()
+            draw_screen()
+        elif key in ['t', 'T']:
+            state['editing_text'] = True
             draw_screen()
             
         if isinstance(key, tuple) and key[0] == 'mouse':
@@ -506,6 +603,13 @@ def main():
                         reset_str = "$'\\e[0m'" if state['bash_string'] else "\\e[0m"
                         copy_to_clipboard(reset_str)
                         state['last_copied'] = 'reset'
+                        draw_screen()
+                    elif act_type == 'copy_full':
+                        copy_to_clipboard(get_full_string())
+                        state['last_copied'] = 'full'
+                        draw_screen()
+                    elif act_type == 'edit_text':
+                        state['editing_text'] = True
                         draw_screen()
                     elif act_type == 'exit':
                         break
