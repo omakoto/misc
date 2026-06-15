@@ -31,10 +31,10 @@ def is_inside_work_tree(cwd: Optional[str] = None) -> bool:
     return res.returncode == 0
 
 def get_upstream_label(cwd: Optional[str] = None) -> str:
-    # Get hash and decoration. Use --color=always for colored hash.
+    # Get hash and decoration. Use --color=never to avoid any colors.
     res = run_git([
-        "log", "-1", "--abbrev=8", "--color=always",
-        "--format=%C(auto)%h%x00%D", "@{u}"
+        "log", "-1", "--abbrev=8", "--color=never",
+        "--format=%h%x00%D", "@{u}"
     ], cwd=cwd)
     
     if res.returncode != 0:
@@ -44,10 +44,11 @@ def get_upstream_label(cwd: Optional[str] = None) -> str:
     if len(parts) < 2:
         return ""
         
-    hash_part = parts[0]
+    hash_part = parts[0].strip()
     deco_part = parts[1].strip()
     
-    # Strip ANSI escape codes from decoration part to parse it
+    # Strip ANSI escape codes just in case
+    clean_hash = re.sub(br"\x1b\[[0-9;]*m", b"", hash_part).strip()
     clean_deco = re.sub(br"\x1b\[[0-9;]*m", b"", deco_part).strip()
     
     branches: List[bytes] = []
@@ -71,10 +72,10 @@ def get_upstream_label(cwd: Optional[str] = None) -> str:
             unique_branches.append(b)
             
     if unique_branches:
-        green_deco = b"\x1b[32m[" + b", ".join(unique_branches) + b"]\x1b[m"
-        return (hash_part + b" " + green_deco).decode('utf-8', errors='ignore')
+        deco = b"[" + b", ".join(unique_branches) + b"]"
+        return (clean_hash + b" " + deco).decode('utf-8', errors='ignore')
     else:
-        return hash_part.decode('utf-8', errors='ignore')
+        return clean_hash.decode('utf-8', errors='ignore')
 
 def main() -> None:
     parser = argparse.ArgumentParser(

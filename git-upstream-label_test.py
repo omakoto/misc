@@ -43,7 +43,7 @@ class GitUpstreamLabelTest(unittest.TestCase):
         label = git_upstream_label.get_upstream_label()
         self.assertEqual(
             label,
-            "\x1b[33ma9c9c8da\x1b[m \x1b[32m[master, origin/master, origin/HEAD]\x1b[m"
+            "a9c9c8da [master, origin/master, origin/HEAD]"
         )
 
     @patch('git_upstream_label.run_git')
@@ -54,7 +54,7 @@ class GitUpstreamLabelTest(unittest.TestCase):
         label = git_upstream_label.get_upstream_label()
         self.assertEqual(
             label,
-            "\x1b[33ma9c9c8da\x1b[m \x1b[32m[origin/master]\x1b[m"
+            "a9c9c8da [origin/master]"
         )
 
     @patch('git_upstream_label.run_git')
@@ -65,7 +65,7 @@ class GitUpstreamLabelTest(unittest.TestCase):
         label = git_upstream_label.get_upstream_label()
         self.assertEqual(
             label,
-            "\x1b[33ma9c9c8da\x1b[m"
+            "a9c9c8da"
         )
 
     @patch('git_upstream_label.run_git')
