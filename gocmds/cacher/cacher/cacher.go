@@ -23,8 +23,9 @@ type Options struct {
 	Verbose     bool
 	ShowStderr  bool
 	Force       bool
-	Foreground  bool
-	DaemonRun   bool
+	Foreground        bool
+	DaemonRun         bool
+	UpdatingIndicator string
 }
 
 func isTerminal(fd uintptr) bool {
@@ -240,6 +241,13 @@ func Run(opts *Options, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "Error writing lock file: %v\n", err)
 		}
 
+		if opts.UpdatingIndicator != "" {
+			logMsg(fmt.Sprintf("Writing updating indicator to cache file: %s", opts.UpdatingIndicator))
+			if err := os.WriteFile(opts.CacheFile, []byte(opts.UpdatingIndicator), 0666); err != nil {
+				fmt.Fprintf(stderr, "Failed to write updating indicator: %v\n", err)
+			}
+		}
+
 		tmpFile := opts.CacheFile + ".tmp"
 		tmpF, err := os.OpenFile(tmpFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 		if err != nil {
@@ -281,6 +289,14 @@ func Run(opts *Options, stdout, stderr io.Writer) int {
 		}
 
 		fmt.Fprint(stdout, opts.DefaultText)
+
+		if opts.UpdatingIndicator != "" {
+			logMsg(fmt.Sprintf("Writing updating indicator to cache file: %s", opts.UpdatingIndicator))
+			if err := os.WriteFile(opts.CacheFile, []byte(opts.UpdatingIndicator), 0666); err != nil {
+				fmt.Fprintf(stderr, "Failed to write updating indicator: %v\n", err)
+			}
+		}
+
 		logMsg(fmt.Sprintf("Starting background command: %s", opts.Command))
 		if err := startDaemon(lockF, opts); err != nil {
 			fmt.Fprintf(stderr, "Error starting daemon: %v\n", err)
@@ -321,6 +337,14 @@ func Run(opts *Options, stdout, stderr io.Writer) int {
 
 	logMsg(fmt.Sprintf("Cache file is stale. Starting background command to refresh: %s", opts.Command))
 	stdout.Write(cachedContent)
+
+	if opts.UpdatingIndicator != "" {
+		logMsg(fmt.Sprintf("Writing updating indicator to cache file: %s", opts.UpdatingIndicator))
+		if err := os.WriteFile(opts.CacheFile, []byte(opts.UpdatingIndicator), 0666); err != nil {
+			fmt.Fprintf(stderr, "Failed to write updating indicator: %v\n", err)
+		}
+	}
+
 	if err := startDaemon(lockF, opts); err != nil {
 		fmt.Fprintf(stderr, "Error starting daemon: %v\n", err)
 		_ = lockF.Close()

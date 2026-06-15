@@ -188,4 +188,39 @@ echo -n "foreground_killed_bg" | assert_out -d -- $CACHER_BIN -c "sleep 1 && ech
 assert "[[ \$(cat '$CACHE_FILE') == 'foreground_killed_bg' ]]"
 
 
+# Test 13: Stale Cache with -u / --updating-indicator
+clear_files
+echo -n "old_cached_val" > "$CACHE_FILE"
+# Run cacher3. It should immediately print "old_cached_val"
+echo -n "old_cached_val" | assert_out -d -- $CACHER_BIN -c "sleep 1 && echo -n new_val" -f "$CACHE_FILE" -a 0 -u "updating..."
+# But the cache file should immediately have the updating indicator
+assert "[[ \$(cat '$CACHE_FILE') == 'updating...' ]]"
+# Wait for the background command to finish and update cache
+sleep 1.5
+assert "[[ \$(cat '$CACHE_FILE') == 'new_val' ]]"
+
+
+# Test 14: First Run with default and -u / --updating-indicator
+clear_files
+# Run cacher3. It should immediately return the default text "init"
+echo -n "init" | assert_out -d -- $CACHER_BIN -c "sleep 1 && echo -n new_val" -f "$CACHE_FILE" -d "init" -u "updating..."
+# But the cache file should immediately have the updating indicator
+assert "[[ \$(cat '$CACHE_FILE') == 'updating...' ]]"
+# Wait for background command to finish and update cache
+sleep 1.5
+assert "[[ \$(cat '$CACHE_FILE') == 'new_val' ]]"
+
+
+# Test 15: Foreground run with -u / --updating-indicator
+clear_files
+# Run cacher3 in the background of the shell so we can inspect the cache file during execution
+$CACHER_BIN -c "sleep 1 && echo -n foreground_val" -f "$CACHE_FILE" -g -u "updating..." > /dev/null &
+sleep 0.3
+# During the execution, the cache file must contain the updating indicator
+assert "[[ \$(cat '$CACHE_FILE') == 'updating...' ]]"
+sleep 1.2
+# After completion, it must contain "foreground_val"
+assert "[[ \$(cat '$CACHE_FILE') == 'foreground_val' ]]"
+
+
 done_testing

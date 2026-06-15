@@ -45,8 +45,11 @@ func main() {
 
 	flag.BoolVar(&opts.DaemonRun, "daemon-run", false, "")
 
+	flag.StringVar(&opts.UpdatingIndicator, "u", "", "")
+	flag.StringVar(&opts.UpdatingIndicator, "updating-indicator", "", "")
+
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: cacher3 [-h] -c COMMAND -f FILE [-a MAX_AGE] [-d DEFAULT] [-l LOCK_FILE] [-v] [-t TIMEOUT] [--show-stderr] [-F] [-g]\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: cacher3 [-h] -c COMMAND -f FILE [-a MAX_AGE] [-d DEFAULT] [-l LOCK_FILE] [-v] [-t TIMEOUT] [--show-stderr] [-F] [-g] [-u UPDATING_INDICATOR]\n\n")
 		fmt.Fprintf(os.Stderr, "Cache command stdout and run command in background when expired.\n\n")
 		fmt.Fprintf(os.Stderr, "options:\n")
 		fmt.Fprintf(os.Stderr, "  -h, --help            show this help message and exit\n")
@@ -65,6 +68,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  --show-stderr         Redirect command stderr to original stderr for debugging.\n")
 		fmt.Fprintf(os.Stderr, "  -F, --force           Force run the command: kill the previous running instance if any, and refresh the cache even if it is recent.\n")
 		fmt.Fprintf(os.Stderr, "  -g, --foreground      Run the command in the foreground, without daemonizing. Always enables --force.\n")
+		fmt.Fprintf(os.Stderr, "  -u, --updating-indicator UPDATING_INDICATOR\n")
+		fmt.Fprintf(os.Stderr, "                        If set, write this string to the cache file when the command starts.\n")
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
 		fmt.Fprintf(os.Stderr, "  cacher3 -c \"curl -s https://api.ipify.org\" -f /tmp/myip.txt -a 300\n")
 		fmt.Fprintf(os.Stderr, "  cacher3 -c \"sleep 5 && echo done\" -f /tmp/test.cache -a 10 -d \"default-val\"\n")
