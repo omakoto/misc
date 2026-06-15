@@ -1,0 +1,4 @@
+github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
+github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/omakoto/go-common v0.0.0-20250319034539-10a9de325fd9 h1:f2Xl100hjjSXpISg8flIj8+bmIkibNReHmPr4vTlx1Y=
+github.com/omakoto/go-common v0.0.0-20250319034539-10a9de325fd9/go.mod h1:vvSA9tKS7TM9Y87E7mm20GmsxP9sG7Lknff+mSbeZQk=
