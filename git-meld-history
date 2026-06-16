@@ -324,7 +324,7 @@ def main() -> None:
         extra_args.append(".")
         
     while True:
-        header = "[ESC]: Quit, Single-item [Enter]: Show diff, Two-item [Enter]: Diff between commits (inclusive), [^G]: Edit commit msg, [^E]: Edit, Multi-select [^S]: Squash commits, [^K]: Inject"
+        header = "[ESC]: Quit, Single-item-[Enter]: Show diff, Two-item-[Enter]: Diff between commits (inclusive), [^G]: Edit commit msg, [^E]: Edit, Multi-select [^S]: Squash commits, [^K]: Inject dirty files"
         fzf_cmd = ["git-history-fzf", "-c", "--submodules", "-e", "ctrl-s,ctrl-k,ctrl-g,ctrl-e", "-h", header] + args + extra_args
         fzf_res = run_command(fzf_cmd, capture_output=True, text=True)
         fzf_output = fzf_res.stdout
