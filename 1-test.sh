@@ -48,13 +48,29 @@ EOF
 
 # Create mocks for external tools executed by `1`
 mock_cmd vi 1
-mock_cmd c 1
+mock_cmd c
 mock_cmd xml-pretty
 mock_cmd json_pp
 mock_cmd hd
 mock_cmd zcat
 mock_cmd dpkg
-mock_cmd pandoc
+# Mock `pandoc` to write a dummy HTML file so that `sed -i` in `1` doesn't fail on it
+cat <<'EOF' > "$MOCK_DIR/pandoc"
+#!/bin/bash
+echo "[$0] ARGS: $*" >> "$TEST_LOG"
+output_file=""
+while (( $# > 0 )); do
+  if [[ "$1" == "-o" ]]; then
+    output_file="$2"
+    break
+  fi
+  shift
+done
+if [[ -n "$output_file" ]]; then
+  echo "<body></body>" > "$output_file"
+fi
+EOF
+chmod +x "$MOCK_DIR/pandoc"
 mock_cmd sqliteman
 
 # Mock `istext` command so it identifies text/binary files properly for tests

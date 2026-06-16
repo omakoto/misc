@@ -69,6 +69,7 @@ fi
 # build the parameters.
 
 params=()
+params+=($(chrome-flags-for-vmware))
 # params+=("--force-color-profile=srgb")
 
 if [[ -n "$profdir" ]]; then

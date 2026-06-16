@@ -316,6 +316,11 @@ if (( $line > 0 )) ; then
   fi
 fi
 
+if (( $is_code )) ; then
+  opts="$opts $(chrome-flags-for-vmware)"
+fi
+
+
 # if (( $copy )) ; then
 #   copy_temp=$(tempfile -p 1catfile)
 #   cat "${files[@]}" > "$copy_temp"
