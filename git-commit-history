@@ -2,6 +2,16 @@
 
 set -e
 
+# When run inside Antigravity/Claude, it launches in a new gnome-terminal using run-in-terminal.
+script_dir=$(dirname "$(readlink -f "$0")")
+if "$script_dir/is-in-agent"; then
+  if [[ -z "$DISPLAY" ]]; then
+    echo "Error: DISPLAY is not set. Cannot launch gnome-terminal from a headless agent session." >&2
+    exit 1
+  fi
+  exec env -u ANTIGRAVITY_AGENT -u CLAUDE_AGENT -u IS_IN_AGENT run-in-terminal --geometry=160x45 -- git-commit-history "$@"
+fi
+
 list-files -r -n 1000 "${GIT_COMMIT_HISTORY_DIR:?}" | xargs cat | {
     if [[ -t 1 ]] ; then
         hl '^    .*' '@cyan' \
