@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Shows the symbolic names and 8-digit SHA1 of the upstream branch (@{u}).
+# Format matches git-history-fzf's decoration style.
+#
+# Make sure to run git-upstream-label_test.py after making any changes.
+#
+# Usage:
+#   git-upstream-label [DIR]
+#   git-upstream-label --help
+#
+
+import argparse
+import os
+import re
+import subprocess
+import sys
+from typing import List, Optional
+
+def run_git(args: List[str], cwd: Optional[str] = None) -> subprocess.CompletedProcess[bytes]:
+    """Runs a git command and returns the completed process."""
+    return subprocess.run(
+        ["git"] + args,
+        cwd=cwd,
+        capture_output=True
+    )
+
+def is_inside_work_tree(cwd: Optional[str] = None) -> bool:
+    res = run_git(["rev-parse", "--is-inside-work-tree"], cwd=cwd)
+    return res.returncode == 0
+
+def get_upstream_label(cwd: Optional[str] = None) -> str:
+    # Get hash and decoration. Use --color=never to avoid any colors.
+    res = run_git([
+        "log", "-1", "--abbrev=8", "--color=never",
+        "--format=%h%x00%D", "@{u}"
+    ], cwd=cwd)
+    
+    if res.returncode != 0:
+        return ""
+        
+    parts = res.stdout.split(b"\x00")
+    if len(parts) < 2:
+        return ""
+        
+    hash_part = parts[0].strip()
+    deco_part = parts[1].strip()
+    
+    # Strip ANSI escape codes just in case
+    clean_hash = re.sub(br"\x1b\[[0-9;]*m", b"", hash_part).strip()
+    clean_deco = re.sub(br"\x1b\[[0-9;]*m", b"", deco_part).strip()
+    
+    branches: List[bytes] = []
+    if clean_deco:
+        for item in clean_deco.split(b","):
+            item = item.strip()
+            if not item or item.startswith(b"tag:"):
+                continue
+            if b"->" in item:
+                left, right = item.split(b"->", 1)
+                left, right = left.strip(), right.strip()
+                if left != b"HEAD":
+                    branches.append(left)
+                branches.append(right)
+            else:
+                branches.append(item)
+                
+    unique_branches: List[bytes] = []
+    for b in branches:
+        if b not in unique_branches:
+            unique_branches.append(b)
+            
+    if unique_branches:
+        deco = b"[" + b", ".join(unique_branches) + b"]"
+        return (clean_hash + b" " + deco).decode('utf-8', errors='ignore')
+    else:
+        return clean_hash.decode('utf-8', errors='ignore')
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Shows the symbolic names and 8-digit SHA1 of the upstream branch (@{u}) "
+                    "in the format that git-history-fzf uses.",
+        add_help=False
+    )
+    parser.add_argument("-h", "--help", action="help", help="show this help message and exit")
+    parser.add_argument("dir", nargs="?", help="Git directory (or subdirectory) to query")
+    
+    args = parser.parse_args()
+    
+    target_dir = args.dir
+    if target_dir:
+        if not os.path.isdir(target_dir):
+            sys.stderr.write(f"Error: Directory not found: {target_dir}\n")
+            sys.exit(1)
+        target_dir = os.path.abspath(target_dir)
+    else:
+        target_dir = os.getcwd()
+        
+    if not is_inside_work_tree(target_dir):
+        sys.stderr.write("Error: Not a git repository\n")
+        sys.exit(1)
+        
+    label = get_upstream_label(target_dir)
+    if label:
+        print(label)
+    else:
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

@@ -1,6 +1,14 @@
 #!/bin/bash
 
-. minit.sh
+# Set or print an android repo label.
+
+#
+# Usage:
+#  label LABEL  # Set a label to current $ANDROID_BUILD_TOP
+#  label -p [DIR] # Show the label for a dir.
+#
+
+#. minit.sh
 
 if (( $# > 0 )) && [[ "$1" == "-p" ]]; then
     shift
@@ -9,6 +17,7 @@ if (( $# > 0 )) && [[ "$1" == "-p" ]]; then
     while [[ "$dir" != "/" ]] ;do
         if [[ -f "$DIR_LABEL_FILE" ]]; then
             cat "$DIR_LABEL_FILE"
+            exit 0
         fi
         cd ..
         dir=$PWD
