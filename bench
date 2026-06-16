@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+#
+# Benchmarking utility that runs a command multiple times and measures its real execution time.
+#
+# To run the tests, execute:
+#   python3 bench_test.py
+# (Run it every time this file is modified)
+#
+
+import argparse
+import sys
+import time
+import subprocess
+from typing import List
+
+def run_benchmark(command: List[str], count: int, no_stdout: bool = False, no_stderr: bool = False) -> None:
+    """Runs the specified command N times, measuring the elapsed real time for each run."""
+    times: List[float] = []
+    
+    print(f"Benchmarking command: {' '.join(command)}", file=sys.stderr)
+    print(f"Number of runs: {count}\n", file=sys.stderr)
+    
+    for i in range(1, count + 1):
+        print(f"--- Run {i}/{count} ---", file=sys.stderr)
+        start = time.perf_counter()
+        
+        # Run command, allowing output to flow to stdout/stderr or suppressing it.
+        stdout_dest = subprocess.DEVNULL if no_stdout else None
+        stderr_dest = subprocess.DEVNULL if no_stderr else None
+        result = subprocess.run(command, stdout=stdout_dest, stderr=stderr_dest)
+        
+        end = time.perf_counter()
+        elapsed = end - start
+        times.append(elapsed)
+        
+        status_str = f"status: {result.returncode}" if result.returncode != 0 else "success"
+        print(f"Duration: {elapsed:.4f}s ({status_str})\n", file=sys.stderr)
+        
+    avg_time = sum(times) / len(times)
+    min_time = min(times)
+    max_time = max(times)
+    
+    print("=== Results ===", file=sys.stderr)
+    print(f"Average real time: {avg_time:.4f}s")
+    print(f"Min real time:     {min_time:.4f}s", file=sys.stderr)
+    print(f"Max real time:     {max_time:.4f}s", file=sys.stderr)
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Run a command N times and show the average real (wall-clock) time.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  bench -n 5 sleep 1
+  bench echo ok
+"""
+    )
+    parser.add_argument(
+        "-n", "--count",
+        type=int,
+        default=10,
+        help="Number of times to run the command (default: 10)"
+    )
+    parser.add_argument(
+        "--no-stdout",
+        action="store_true",
+        help="Suppress stdout of the benchmarked command"
+    )
+    parser.add_argument(
+        "--no-stderr",
+        action="store_true",
+        help="Suppress stderr of the benchmarked command"
+    )
+    parser.add_argument(
+        "command",
+        nargs="+",
+        help="Command to benchmark (along with its arguments)"
+    )
+    
+    args = parser.parse_args()
+    
+    if args.count <= 0:
+        parser.error("count must be a positive integer.")
+        
+    run_benchmark(args.command, args.count, no_stdout=args.no_stdout, no_stderr=args.no_stderr)
+
+if __name__ == "__main__":
+    main()
