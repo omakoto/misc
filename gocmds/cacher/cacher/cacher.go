@@ -14,15 +14,15 @@ import (
 )
 
 type Options struct {
-	Command     string
-	CacheFile   string
-	LockFile    string
-	MaxAge      int // in seconds, -1 if not set
-	DefaultText string
-	Timeout     int // in seconds, -1 if not set
-	Verbose     bool
-	ShowStderr  bool
-	Force       bool
+	Command           string
+	CacheFile         string
+	LockFile          string
+	MaxAge            int // in seconds, -1 if not set
+	DefaultText       string
+	Timeout           int // in seconds, -1 if not set
+	Verbose           bool
+	ShowStderr        bool
+	Force             bool
 	Foreground        bool
 	DaemonRun         bool
 	UpdatingIndicator string
