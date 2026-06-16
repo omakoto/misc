@@ -27,3 +27,8 @@ fi
 
 echo "==> Running tests..."
 go test -v ./...
+
+if [[ -f scripts/cacher_test.bash ]]; then
+  echo "==> Running integration tests..."
+  bash scripts/cacher_test.bash
+fi

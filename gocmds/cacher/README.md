@@ -1,6 +1,6 @@
-# cacher3
+# cacher
 
-`cacher3` is a Go-based command-line utility that caches command standard output (`stdout`) and executes the command in the background when the cache expires. It is designed to return cached content instantly and refresh the cache asynchronously.
+`cacher` is a Go-based command-line utility that caches command standard output (`stdout`) and executes the command in the background when the cache expires. It is designed to return cached content instantly and refresh the cache asynchronously.
 
 It is a drop-in replacement for the Python-based `cacher` utility.
 
@@ -14,7 +14,7 @@ It is a drop-in replacement for the Python-based `cacher` utility.
 ## Usage
 
 ```
-cacher3 [-h] -c COMMAND -f FILE [-a MAX_AGE] [-d DEFAULT] [-l LOCK_FILE] [-v] [-t TIMEOUT] [--show-stderr] [-F] [-g]
+cacher [-h] -c COMMAND -f FILE [-a MAX_AGE] [-d DEFAULT] [-l LOCK_FILE] [-v] [-t TIMEOUT] [--show-stderr] [-F] [-g]
 ```
 
 ### Options
@@ -44,11 +44,11 @@ cacher3 [-h] -c COMMAND -f FILE [-a MAX_AGE] [-d DEFAULT] [-l LOCK_FILE] [-v] [-
 
 1. Cache an external IP query for 5 minutes (300 seconds):
    ```bash
-   cacher3 -c "curl -s https://api.ipify.org" -f /tmp/myip.txt -a 300
+   cacher -c "curl -s https://api.ipify.org" -f /tmp/myip.txt -a 300
    ```
 2. Sleep for 5 seconds and write result, showing default text on first run:
    ```bash
-   cacher3 -c "sleep 5 && echo done" -f /tmp/test.cache -a 10 -d "loading..."
+   cacher -c "sleep 5 && echo done" -f /tmp/test.cache -a 10 -d "loading..."
    ```
 
 ## Development
@@ -56,17 +56,17 @@ cacher3 [-h] -c COMMAND -f FILE [-a MAX_AGE] [-d DEFAULT] [-l LOCK_FILE] [-v] [-
 ### Setup Workspace
 Initialize local `go.work` file:
 ```bash
-./000-setup.sh
+./0-setup.sh
 ```
 
 ### Build and Run Locally
-Build the binary into `bin/cacher3` and run it:
+Build the binary into `bin/cacher` and run it:
 ```bash
 ./00-run.sh [args...]
 ```
 
 ### Install
-Build and install `cacher3` into `$GOBIN` (falls back to `$(go env GOPATH)/bin`):
+Build and install `cacher` into `$GOBIN` (falls back to `$(go env GOPATH)/bin`):
 ```bash
 ./01-install.sh
 ```
@@ -78,7 +78,7 @@ Run formatting (`gofmt`), static analysis (`go vet` and `staticcheck`), and unit
 ```
 
 ### Integration Tests
-Run the integration test suite located in the parent directory:
+Run the integration test suite:
 ```bash
-../../cacher3_test.bash
+./scripts/cacher_test.bash
 ```

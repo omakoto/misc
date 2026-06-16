@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build and run cacher3.
+# Build and run cacher.
 
 set -euo pipefail
 
@@ -10,8 +10,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 (
   cd "$SCRIPT_DIR"
   ./0-setup.sh
-  go build -o bin/cacher3 ./cacher/cmd
+  go build -o bin/cacher ./cacher/cmd
 )
 
 # Run the compiled binary using its absolute path (preserving original pwd for arguments)
-exec "$SCRIPT_DIR/bin/cacher3" "$@"
+exec "$SCRIPT_DIR/bin/cacher" "$@"

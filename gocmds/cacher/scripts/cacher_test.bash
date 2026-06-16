@@ -1,21 +1,24 @@
 #!/bin/bash
 #
-# cacher3_test.bash - Integration test suite for cacher3.
-# Run this test script to verify cacher3 functionality.
+# cacher_test.bash - Integration test suite for cacher.
+# Run this test script to verify cacher functionality.
 #
 
-. testutil.bash
+# Get the script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Ensure cacher3 is compiled
+. "$SCRIPT_DIR/../../../testutil.bash"
+
+# Ensure cacher is compiled
 (
-  cd gocmds/cacher
+  cd "$SCRIPT_DIR/.."
   ./00-run.sh --help > /dev/null
 )
 
-CACHER_BIN="./gocmds/cacher/bin/cacher3"
+CACHER_BIN="$SCRIPT_DIR/../bin/cacher"
 
 # Temporary directory for tests
-TEST_DIR=$(mktemp -d -t cacher3_test_XXXXXX)
+TEST_DIR=$(mktemp -d -t cacher_test_XXXXXX)
 trap 'rm -rf "$TEST_DIR"' EXIT
 
 CACHE_FILE="$TEST_DIR/cache.txt"
@@ -32,7 +35,7 @@ assert "$CACHER_BIN --help 2>&1 | grep -q 'Cache command stdout'"
 
 # Test 2: First run with default text
 clear_files
-# Run cacher3. It should:
+# Run cacher. It should:
 # 1. Immediately return "default_val"
 # 2. Start the command (which sleeps 1 then prints "new_val") in background
 echo -n "default_val" | assert_out -d -- $CACHER_BIN -c "sleep 1 && echo -n new_val" -f "$CACHE_FILE" -d "default_val"
@@ -48,7 +51,7 @@ assert "[[ \$(cat '$CACHE_FILE') == 'new_val' ]]"
 
 # Test 2b: First run with omitted default text (should default to "?")
 clear_files
-# Run cacher3 without -d. It should return "?" immediately
+# Run cacher without -d. It should return "?" immediately
 echo -n "?" | assert_out -d -- $CACHER_BIN -c "sleep 1 && echo -n new_val" -f "$CACHE_FILE"
 
 # Verify that the cache file has been created and initially has "?"
@@ -95,7 +98,7 @@ $CACHER_BIN -c "sleep 2 && echo -n first_bg" -f "$CACHE_FILE" -a 0 &
 # Wait a bit to let it acquire the lock and start running
 sleep 0.5
 
-# Now run a second cacher3 with command to update to "second_bg"
+# Now run a second cacher with command to update to "second_bg"
 # It should print "init_val" (since lock is held, it won't run "second_bg")
 echo -n "init_val" | assert_out -d -- $CACHER_BIN -c "sleep 2 && echo -n second_bg" -f "$CACHE_FILE" -a 0
 
@@ -108,7 +111,7 @@ assert "[[ \$(cat '$CACHE_FILE') == 'first_bg' ]]"
 # Test 6: Verbose logging
 clear_files
 VERBOSE_LOG="$TEST_DIR/verbose.log"
-# Run cacher3 with -v, capturing stderr
+# Run cacher with -v, capturing stderr
 $CACHER_BIN -c "echo -n new_val" -f "$CACHE_FILE" -v 2> "$VERBOSE_LOG"
 assert "grep -q 'Checking lock file' '$VERBOSE_LOG'"
 assert "grep -q 'First run detected' '$VERBOSE_LOG'"
@@ -123,7 +126,7 @@ echo -n "init_val" > "$CACHE_FILE"
 $CACHER_BIN -c "sleep 10 && echo -n long_bg" -f "$CACHE_FILE" -a 0 &
 sleep 0.5
 
-# Run a second cacher3 with timeout 0 (instant timeout)
+# Run a second cacher with timeout 0 (instant timeout)
 # It should detect the stale process group, kill it, and start the new command in background.
 # Output should be the old cached value ("init_val") immediately
 echo -n "init_val" | assert_out -d -- $CACHER_BIN -c "sleep 1 && echo -n new_bg" -f "$CACHE_FILE" -a 0 -t 0
@@ -169,7 +172,7 @@ assert "[[ \$(cat '$CACHE_FILE') == 'forced_bg' ]]"
 
 # Test 11: --foreground option runs in foreground and outputs new result directly
 clear_files
-# Run cacher3 in foreground mode. It should block for 1 second and then output "foreground_val"
+# Run cacher in foreground mode. It should block for 1 second and then output "foreground_val"
 # directly to stdout.
 echo -n "foreground_val" | assert_out -d -- $CACHER_BIN -c "sleep 1 && echo -n foreground_val" -f "$CACHE_FILE" -g
 # Cache file must have been updated immediately
@@ -191,7 +194,7 @@ assert "[[ \$(cat '$CACHE_FILE') == 'foreground_killed_bg' ]]"
 # Test 13: Stale Cache with -u / --updating-indicator
 clear_files
 echo -n "old_cached_val" > "$CACHE_FILE"
-# Run cacher3. It should immediately print "old_cached_val"
+# Run cacher. It should immediately print "old_cached_val"
 echo -n "old_cached_val" | assert_out -d -- $CACHER_BIN -c "sleep 1 && echo -n new_val" -f "$CACHE_FILE" -a 0 -u "updating..."
 # But the cache file should immediately have the updating indicator
 assert "[[ \$(cat '$CACHE_FILE') == 'updating...' ]]"
@@ -202,7 +205,7 @@ assert "[[ \$(cat '$CACHE_FILE') == 'new_val' ]]"
 
 # Test 14: First Run with default and -u / --updating-indicator
 clear_files
-# Run cacher3. It should immediately return the default text "init"
+# Run cacher. It should immediately return the default text "init"
 echo -n "init" | assert_out -d -- $CACHER_BIN -c "sleep 1 && echo -n new_val" -f "$CACHE_FILE" -d "init" -u "updating..."
 # But the cache file should immediately have the updating indicator
 assert "[[ \$(cat '$CACHE_FILE') == 'updating...' ]]"
@@ -213,7 +216,7 @@ assert "[[ \$(cat '$CACHE_FILE') == 'new_val' ]]"
 
 # Test 15: Foreground run with -u / --updating-indicator
 clear_files
-# Run cacher3 in the background of the shell so we can inspect the cache file during execution
+# Run cacher in the background of the shell so we can inspect the cache file during execution
 $CACHER_BIN -c "sleep 1 && echo -n foreground_val" -f "$CACHE_FILE" -g -u "updating..." > /dev/null &
 sleep 0.3
 # During the execution, the cache file must contain the updating indicator
