@@ -40,5 +40,7 @@ while read -r var; do
   fi
 done < <(compgen -e)
 
+export NEW_PWD=$PWD
+
 # Run gnome-terminal with the cleared environment
 exec env "${env_args[@]}" gnome-terminal "$@"
