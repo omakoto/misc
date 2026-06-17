@@ -125,4 +125,20 @@ assert '[[ $exit_code -eq 0 ]]'
 assert '[[ -f "$TEST_TMP_DIR/calls" ]]'
 assert '[[ "$(cat "$TEST_TMP_DIR/calls")" == "git-meld-history called with: --author=Test --another-flag '"$GIT_DIR"'" ]]'
 
+# 8. Valid git ref inside git dir
+rm -f "$TEST_TMP_DIR/calls"
+out=$(run_gg_in_dir "$GIT_DIR" "master" 2>&1)
+exit_code=$?
+assert '[[ $exit_code -eq 0 ]]'
+assert '[[ -f "$TEST_TMP_DIR/calls" ]]'
+assert '[[ "$(cat "$TEST_TMP_DIR/calls")" == "git-meld-history called with: master" ]]'
+
+# 9. Invalid git ref inside git dir
+rm -f "$TEST_TMP_DIR/calls"
+out=$(run_gg_in_dir "$GIT_DIR" "invalidbranch" 2>&1)
+exit_code=$?
+assert '[[ $exit_code -ne 0 ]]'
+assert '[[ "$out" == *"is not a directory or a valid git reference"* ]]'
+assert '[[ ! -f "$TEST_TMP_DIR/calls" ]]'
+
 done_testing

@@ -4,6 +4,8 @@
 # Run gg_test.bash after making any changes.
 
 # Make sure the target directory is a git repository (unless it's a help flag)
+# We want to show the error to the caller app (agy) directly, rather than showing
+# the message in gnome-terminal.
 if [[ "$1" == "-h" || "$1" == "--help" || "$1" == "--bash-completion" ]]; then
   :
 else
@@ -15,13 +17,20 @@ else
     fi
   done
 
-  if [[ ! -d "$target_dir" ]]; then
-    echo "Error: Directory '$target_dir' does not exist." >&2
-    exit 1
-  fi
-  if ! git -C "$target_dir" rev-parse --is-inside-work-tree &>/dev/null; then
-    echo "Error: '$target_dir' is not a git repository." >&2
-    exit 1
+  if [[ -d "$target_dir" ]]; then
+    if ! git -C "$target_dir" rev-parse --is-inside-work-tree &>/dev/null; then
+      echo "Error: '$target_dir' is not a git repository." >&2
+      exit 1
+    fi
+  else
+    if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+      echo "Error: Directory '$target_dir' does not exist." >&2
+      exit 1
+    fi
+    if ! git rev-parse --verify --quiet "$target_dir"^{commit} &>/dev/null; then
+      echo "Error: '$target_dir' is not a directory or a valid git reference." >&2
+      exit 1
+    fi
   fi
 fi
 
