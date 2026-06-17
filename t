@@ -7,8 +7,8 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
 Usage: ${0##*/} [gnome-terminal-options]
 
 Start gnome-terminal with an almost clean environment, preserving only essential
-GUI, session, and terminal environment variables (like DISPLAY, WAYLAND_DISPLAY,
-DBUS_SESSION_BUS_ADDRESS, PATH, HOME, USER, etc.).
+GUI and session environment variables (like DISPLAY, WAYLAND_DISPLAY,
+DBUS_SESSION_BUS_ADDRESS, HOME, USER, etc.).
 
 All other exported environment variables are removed.
 EOF
