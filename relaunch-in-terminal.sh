@@ -59,6 +59,6 @@ if [[ $# -eq 0 ]]; then
   exit 1
 fi
 
-export FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS:+$FZF_DEFAULT_OPTS }--color=bg:#222222,bg+:#262626"
+export FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS:+$FZF_DEFAULT_OPTS }--color=bg:#121212,bg+:#262626"
 
 exec env -u ANTIGRAVITY_AGENT -u CLAUDE_AGENT -u IS_IN_AGENT "$_relaunch_cmd" --geometry="$_relaunch_geom" -- "$@"
