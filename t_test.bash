@@ -54,11 +54,34 @@ export LC_ALL="en_US.UTF-8"
 # Run t with arguments
 (
   cd "$TEST_TMP_DIR"
-  ./t --geometry 80x24 --title "My Terminal"
+  ./t --geometry=80x24 --title="My Terminal"
 )
 
 # Assert arguments were passed to gnome-terminal
-assert "grep -q 'args: --geometry 80x24 --title My Terminal' '$TEST_TMP_DIR/calls'"
+assert "grep -q 'args: --geometry=80x24 --title=My Terminal' '$TEST_TMP_DIR/calls'"
+
+# 3. Test insertion of "--" before first non-flag argument
+(
+  cd "$TEST_TMP_DIR"
+  ./t man fzf
+)
+assert "grep -q 'args: -- man fzf' '$TEST_TMP_DIR/calls'"
+
+# 4. Test no insertion of "--" if "--" is already present
+(
+  cd "$TEST_TMP_DIR"
+  ./t --geometry=80x24 --title="My Terminal" -- man fzf
+)
+assert "grep -q 'args: --geometry=80x24 --title=My Terminal -- man fzf' '$TEST_TMP_DIR/calls'"
+
+# 5. Test option parsing with non-flag arguments
+(
+  cd "$TEST_TMP_DIR"
+  ./t --geometry=80x24 --title="My Terminal" man fzf
+)
+assert "grep -q 'args: --geometry=80x24 --title=My Terminal -- man fzf' '$TEST_TMP_DIR/calls'"
+
+
 
 # Assert DISPLAY was kept
 assert "grep -q '^DISPLAY$' '$TEST_TMP_DIR/env'"
