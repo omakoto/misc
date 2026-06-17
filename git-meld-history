@@ -84,7 +84,10 @@ _git_meld_history() {
       COMPREPLY=( $(compgen -W "-h --help --bash-completion" -- "$cur") )
       return 0
     fi
-    COMPREPLY=( $(compgen -d -- "$cur") )
+    local branches remotes
+    branches=$(git branch --format='%(refname:short)' 2>/dev/null)
+    remotes=$(git branch -r --format='%(refname:short)' 2>/dev/null | grep -v '/HEAD$')
+    COMPREPLY=( $(compgen -W "$branches $remotes" -- "$cur") $(compgen -d -- "$cur") )
     return 0
   fi
 
