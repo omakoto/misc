@@ -80,6 +80,7 @@ else
   done
 fi
 
+# In .bash_profile (~/cbin/dot_bash_profile), we check it and do a cd if set.
 export NEW_PWD=$PWD
 
 # Run gnome-terminal with the cleared environment
