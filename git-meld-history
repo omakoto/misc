@@ -269,6 +269,21 @@ def run_sequence_editor(todo_file: str) -> None:
     with open(todo_file, "w") as f:
         f.writelines(new_lines)
 
+
+def is_git_ref(ref: str) -> bool:
+    """Checks if a string is a valid Git commit-ish reference (branch, tag, sha1, etc.)."""
+    if not ref or ref.startswith("-"):
+        return False
+    try:
+        res = subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", ref + "^{commit}"],
+            capture_output=True
+        )
+        return res.returncode == 0
+    except Exception:
+        return False
+
+
 def main() -> None:
     os.environ["GIT_OPTIONAL_LOCKS"] = "0"
     args: List[str] = sys.argv[1:]
@@ -289,8 +304,9 @@ def main() -> None:
         sys.exit(0)
         
     toplevel = ""
-    # If no arguments are provided, start from the git top-level directory
-    if not args:
+    # If the first argument is specified and is a git reference, do not treat it as a directory.
+    # Instead, we keep it in args and start from the git top-level directory.
+    if args and args[0] != "" and not args[0].startswith("-") and is_git_ref(args[0]):
         toplevel_res = run_command(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
         if toplevel_res.returncode == 0:
             toplevel = toplevel_res.stdout.strip()
@@ -300,16 +316,28 @@ def main() -> None:
                 except Exception as e:
                     print_error(f"Error: Could not change directory to {toplevel}: {e}")
                     sys.exit(1)
-                    
-    # If the first argument is specified, assume it's a directory and change to it
-    if args and args[0] != "":
-        target_dir = args[0]
-        try:
-            os.chdir(target_dir)
-        except Exception as e:
-            print_error(f"Error: Could not change directory to {target_dir}: {e}")
-            sys.exit(1)
-        args = args[1:]
+    else:
+        # If no arguments are provided, start from the git top-level directory
+        if not args:
+            toplevel_res = run_command(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
+            if toplevel_res.returncode == 0:
+                toplevel = toplevel_res.stdout.strip()
+                if toplevel:
+                    try:
+                        os.chdir(toplevel)
+                    except Exception as e:
+                        print_error(f"Error: Could not change directory to {toplevel}: {e}")
+                        sys.exit(1)
+                        
+        # If the first argument is specified and is not a git reference, assume it's a directory and change to it
+        elif args and args[0] != "":
+            target_dir = args[0]
+            try:
+                os.chdir(target_dir)
+            except Exception as e:
+                print_error(f"Error: Could not change directory to {target_dir}: {e}")
+                sys.exit(1)
+            args = args[1:]
         
     if not toplevel:
         toplevel_res = run_command(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)

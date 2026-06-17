@@ -966,6 +966,22 @@ assert "[[ ${#cwds[@]} -eq 2 ]]"
 assert "[[ '${cwds[0]}' == *'/repo' ]]"
 assert "[[ '${cwds[1]}' == *'/repo/mysub' ]]"
 
+# -------------------------------------------------------------
+# Test Case 33: Run passing a git reference as first argument
+# -------------------------------------------------------------
+setup_git_repo
+clear_test_state
+
+# We run with a branch name "master"
+git-meld-history "master" 2> "$TEST_TMP_DIR/git_meld_err"
+
+# Verify that:
+# 1. fzf was called in the repository root (not a subdirectory named master)
+assert "[[ -f '$TEST_TMP_DIR/fzf_cwds' ]]"
+assert "[[ '$(cat $TEST_TMP_DIR/fzf_cwds)' == *'/repo' ]]"
+# 2. git-history-fzf was called with 'master'
+assert "grep -q 'git-history-fzf.*master' '$TEST_TMP_DIR/git_meld_err'"
+
 # Return to script directory
 cd "$SCRIPT_DIR"
 
