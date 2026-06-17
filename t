@@ -93,7 +93,7 @@ for idx in "${!new_args[@]}"; do
   fi
 done
 
-# If a command is specified, execute it via bash -c for consistency
+# If a command is specified, execute it via bash -c
 if (( double_dash_idx != -1 )); then
   options=("${new_args[@]:0:double_dash_idx}")
   cmd_start=$((double_dash_idx + 1))
@@ -118,7 +118,7 @@ if (( double_dash_idx != -1 )); then
 fi
 
 # In .bash_profile (~/cbin/dot_bash_profile), we check it and do a cd if set.
-export NEW_PWD=$PWD
+export NEW_PWD="$PWD"
 
 # Run gnome-terminal with the cleared environment
 exec env "${env_args[@]}" gnome-terminal "${new_args[@]}"
