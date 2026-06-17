@@ -16,7 +16,6 @@ _is_wsl=0
 
 #. <( ~/cbin/zenlog -s )
 . ~/cbin/misc/colors.bash
-. ~/cbin/getopts.bash # Legacy one
 
 interactive() {
   (( $_interactive ))
