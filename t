@@ -12,6 +12,10 @@ DBUS_SESSION_BUS_ADDRESS, HOME, USER, etc.).
 
 All other exported environment variables are removed.
 
+If invoked as 'tt' (e.g. via symlink), the window will remain open after the
+command exits, waiting for you to press [ENTER].
+
+
 Examples:
   # Start a shell in gnome-terminal with a clean environment
   ${0##*/}
@@ -31,7 +35,7 @@ should_keep() {
     # Exact matches for essential variables
     DISPLAY | WAYLAND_DISPLAY | XAUTHORITY | DESKTOP_SESSION | GDMSESSION | \
     SYSTEMD_EXEC_PID | XMODIFIERS | USER | USERNAME | LOGNAME | HOME | PATH | \
-    TERM | SHELL | LANG | SSH_AUTH_SOCK | GPG_AGENT_INFO | VTE_VERSION)
+    SHELL | LANG | SSH_AUTH_SOCK | GPG_AGENT_INFO)
       return 0
       ;;
     # Wildcard matches for specific groups
@@ -78,6 +82,39 @@ else
     fi
     ((i++))
   done
+fi
+
+# Find the index of "--" in new_args
+double_dash_idx=-1
+for idx in "${!new_args[@]}"; do
+  if [[ "${new_args[idx]}" == "--" ]]; then
+    double_dash_idx=$idx
+    break
+  fi
+done
+
+# If a command is specified, execute it via bash -c for consistency
+if (( double_dash_idx != -1 )); then
+  options=("${new_args[@]:0:double_dash_idx}")
+  cmd_start=$((double_dash_idx + 1))
+  cmd=("${new_args[@]:cmd_start}")
+
+  script='"$@"'
+  # In tt mode, wait for keypress before closing the window
+  if [[ "$(basename "$0")" == "tt" ]]; then
+    script+='; echo; echo "Press [ENTER] to close the window"; read'
+  fi
+
+  new_args=(
+    "${options[@]}"
+    "--"
+    "bash"
+    "-c"
+    "$script"
+    # t-wrapper is passed as $0 so that "${cmd[@]}" elements start at $1 and are correctly expanded by "$@"
+    "t-wrapper"
+    "${cmd[@]}"
+  )
 fi
 
 # In .bash_profile (~/cbin/dot_bash_profile), we check it and do a cd if set.

@@ -19,9 +19,10 @@ trap cleanup EXIT
 mkdir -p "$TEST_TMP_DIR/bin"
 export PATH="$TEST_TMP_DIR/bin:$PATH"
 
-# Copy t to temp dir
+# Copy t to temp dir and create tt symlink
 cp "$SCRIPT_DIR/t" "$TEST_TMP_DIR/t"
 chmod +x "$TEST_TMP_DIR/t"
+ln -sf t "$TEST_TMP_DIR/tt"
 
 # Mock gnome-terminal
 cat > "$TEST_TMP_DIR/bin/gnome-terminal" <<EOF
@@ -65,21 +66,43 @@ assert "grep -q 'args: --geometry=80x24 --title=My Terminal' '$TEST_TMP_DIR/call
   cd "$TEST_TMP_DIR"
   ./t man fzf
 )
-assert "grep -q 'args: -- man fzf' '$TEST_TMP_DIR/calls'"
+assert "grep -F -q 'args: -- bash -c \"\$@\" t-wrapper man fzf' '$TEST_TMP_DIR/calls'"
 
 # 4. Test no insertion of "--" if "--" is already present
 (
   cd "$TEST_TMP_DIR"
   ./t --geometry=80x24 --title="My Terminal" -- man fzf
 )
-assert "grep -q 'args: --geometry=80x24 --title=My Terminal -- man fzf' '$TEST_TMP_DIR/calls'"
+assert "grep -F -q 'args: --geometry=80x24 --title=My Terminal -- bash -c \"\$@\" t-wrapper man fzf' '$TEST_TMP_DIR/calls'"
 
 # 5. Test option parsing with non-flag arguments
 (
   cd "$TEST_TMP_DIR"
   ./t --geometry=80x24 --title="My Terminal" man fzf
 )
-assert "grep -q 'args: --geometry=80x24 --title=My Terminal -- man fzf' '$TEST_TMP_DIR/calls'"
+assert "grep -F -q 'args: --geometry=80x24 --title=My Terminal -- bash -c \"\$@\" t-wrapper man fzf' '$TEST_TMP_DIR/calls'"
+
+# 6. Test tt command wrapping with options and command
+(
+  cd "$TEST_TMP_DIR"
+  ./tt --geometry=80x24 --title="My Terminal" man fzf
+)
+assert "grep -F -q 'args: --geometry=80x24 --title=My Terminal -- bash -c \"\$@\"; echo; echo \"Press [ENTER] to close the window\"; read t-wrapper man fzf' '$TEST_TMP_DIR/calls'"
+
+# 7. Test tt command wrapping without options
+(
+  cd "$TEST_TMP_DIR"
+  ./tt man fzf
+)
+assert "grep -F -q 'args: -- bash -c \"\$@\"; echo; echo \"Press [ENTER] to close the window\"; read t-wrapper man fzf' '$TEST_TMP_DIR/calls'"
+
+# 8. Test tt command without command arguments (should open normal window without wrapping)
+(
+  cd "$TEST_TMP_DIR"
+  ./tt
+)
+assert "grep -F -q 'args: ' '$TEST_TMP_DIR/calls'"
+
 
 
 
