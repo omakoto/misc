@@ -130,7 +130,7 @@ _git_meld_history() {
   fi
 }
 
-complete -o filenames -o bashdefault -F _git_meld_history git-meld-history git-meld-history.bash
+complete -o filenames -o bashdefault -F _git_meld_history git-meld-history git-meld-history.bash gg
 """)
     sys.stdout.flush()
 
