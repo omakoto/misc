@@ -45,6 +45,11 @@ export TEST_KEEP_VAR="not_a_kept_var" # this should be cleared
 export TEST_WANTED_VAR_BUT_NOT_IN_WHITELIST="cleared_anyway"
 export USER="testuser"
 export HOME="/home/testuser"
+export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/1000/bus"
+export XDG_DATA_DIRS="/usr/share"
+export GTK_MODULES="canberra-gtk-module"
+export QT_IM_MODULE="ibus"
+export LC_ALL="en_US.UTF-8"
 
 # Run t with arguments
 (
@@ -63,6 +68,13 @@ assert "grep -q '^USER$' '$TEST_TMP_DIR/env'"
 
 # Assert HOME was kept
 assert "grep -q '^HOME$' '$TEST_TMP_DIR/env'"
+
+# Assert glob variables (DBUS_*, XDG_*, GTK_*, QT_*, LC_*) were kept
+assert "grep -q '^DBUS_SESSION_BUS_ADDRESS$' '$TEST_TMP_DIR/env'"
+assert "grep -q '^XDG_DATA_DIRS$' '$TEST_TMP_DIR/env'"
+assert "grep -q '^GTK_MODULES$' '$TEST_TMP_DIR/env'"
+assert "grep -q '^QT_IM_MODULE$' '$TEST_TMP_DIR/env'"
+assert "grep -q '^LC_ALL$' '$TEST_TMP_DIR/env'"
 
 # Assert unwanted variables were cleared
 assert "! grep -q '^TEST_KEEP_VAR$' '$TEST_TMP_DIR/env'"
