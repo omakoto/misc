@@ -45,21 +45,6 @@ if ! interactive && (( $# == 1 )) ; then
   fi
 fi
 
-
-function prologue() {
-    SCRIPT="${0##*/}"
-    SCRIPT_DIR="${0%/*}"
-
-    local OPTIND
-    local OPTARG
-    while getopts "d" opt; do
-      case "$opt" in
-        d) cd "$SCRIPT_DIR" ;;
-      esac
-    done
-    shift $(($OPTIND - 1))
-}
-
 die() {
   {
     echo -n "${0##*/}: "
@@ -143,16 +128,6 @@ addmanpath() {
       export MANPATH="$MANPATH:$d"
     fi
   done
-}
-
-con() {
-#  LD_LIBRARY_PATH=${LD_LIBRARY_PATH}${LD_LIBRARY_PATH:+:}$HOME/cbin/so/32:$HOME/cbin/so/64 \
-#      LD_PRELOAD=fake_isatty.so \
-      "$@"
-}
-
-c1() {
-  C1=1 con "$@"
 }
 
 likely-command() {
