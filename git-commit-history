@@ -3,7 +3,7 @@
 set -e
 
 # When run inside Antigravity/Claude, it launches in a new gnome-terminal using run-in-terminal.
-. "$(dirname "$(readlink -f "$0")")/relaunch-in-terminal.sh" --geometry=160x45 --command=run-in-terminal -- $(basename "$0") "$@"
+. relaunch-in-terminal.sh --geometry=160x45 --command=run-in-terminal -- $(basename "$0") "$@"
 
 git-commit-history-raw | {
     if [[ -t 1 ]] ; then

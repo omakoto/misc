@@ -39,7 +39,7 @@ should_keep() {
       return 0
       ;;
     # Wildcard matches for specific groups
-    DBUS_* | GNOME_* | XDG_* | GTK_* | QT_* | LC_*)
+    DBUS_* | GNOME_* | XDG_* | GTK_* | QT_* | LC_* | GIT_*)
       return 0
       ;;
   esac
