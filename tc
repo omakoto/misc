@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# Run `term --capture`.
+
+exec term -c "$@"
