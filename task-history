@@ -1,0 +1,78 @@
+#!/bin/bash
+#
+# task-history - Interactive tasklog selector.
+# Lists files in ~/history/tasklog/ and lets the user select one in fzf.
+# The preview pane renders markdown files using pandoc if available.
+# The selected file is opened using '1'.
+#
+# Run the test suite via `misc/task-history_test.bash` whenever making changes.
+#
+
+set -o pipefail
+
+usage() {
+  cat <<EOF
+
+  task-history: Interactive tasklog selector.
+
+  Usage: task-history [options] [query]
+
+  Options:
+    -h, --help    Show this help message.
+
+  Examples:
+    task-history
+    task-history planning
+EOF
+}
+
+# Parse options using GNU getopt
+TEMP=$(getopt -o 'h' --long 'help' -n 'task-history' -- "$@")
+if [[ $? -ne 0 ]]; then
+  echo "Error parsing options." >&2
+  exit 1
+fi
+eval set -- "$TEMP"
+
+while true; do
+  case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      echo "Internal error!" >&2
+      exit 1
+      ;;
+  esac
+done
+
+query="$*"
+
+TASKLOG_DIR="${TASKLOG_DIR:-$HOME/history/tasklog}"
+TASKLOG_DIR="${TASKLOG_DIR%/}"
+
+if [[ ! -d "$TASKLOG_DIR" ]]; then
+  echo "Error: Directory '$TASKLOG_DIR' does not exist." >&2
+  exit 1
+fi
+
+fzf_args=(
+  "--ansi"
+  "--no-sort"
+  "--preview" "file=\$(echo {} | sed \"s|^~/|\$HOME/|\"); if command -v glow >/dev/null 2>&1; then glow \"\$file\"; elif command -v pandoc >/dev/null 2>&1; then pandoc -t ansi --highlight-style=breezedark \"\$file\"; else cat \"\$file\"; fi"
+  "--preview-window" "top:60%:wrap"
+)
+if [[ -n "$query" ]]; then
+  fzf_args+=("--query" "$query")
+fi
+
+selected=$(list-files -n 1000 -r "$TASKLOG_DIR" | sed "s|^$HOME/|~/|" | fzf "${fzf_args[@]}")
+
+if [[ -n "$selected" ]]; then
+  exec 1 "${selected/#\~/$HOME}"
+fi
