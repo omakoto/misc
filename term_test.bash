@@ -21,12 +21,15 @@ unset WAYLAND_DISPLAY
 cp "$SCRIPT_DIR/term" "$TEST_TMP_DIR/term"
 chmod +x "$TEST_TMP_DIR/term"
 
-# Mock gnome-terminal: records args to $calls, records env to $env,
-# and executes the command after '--' if present (so capture/stdin tests work).
+# Mock gnome-terminal: records args to $calls, env var names to $env,
+# env var values to $envval, and executes the command after '--' if present.
 cat > "$TEST_TMP_DIR/bin/gnome-terminal" <<EOF
 #!/bin/bash
 echo "ARGS: \$*" >> "$TEST_TMP_DIR/calls"
 compgen -e | sort > "$TEST_TMP_DIR/env"
+while IFS= read -r var; do
+  printf '%s=%s\n' "\$var" "\${!var}"
+done < <(compgen -e | sort) > "$TEST_TMP_DIR/envval"
 for ((i=1; i<=\$#; i++)); do
   if [[ "\${!i}" == "--" ]]; then
     shift \$i
@@ -45,7 +48,7 @@ EOF
 chmod +x "$TEST_TMP_DIR/bin/fzf"
 
 reset_files() {
-  rm -f "$TEST_TMP_DIR/calls" "$TEST_TMP_DIR/env"
+  rm -f "$TEST_TMP_DIR/calls" "$TEST_TMP_DIR/env" "$TEST_TMP_DIR/envval"
 }
 
 run_term() {
@@ -69,6 +72,7 @@ assert "! grep -q '^TERM_TEST_REMOVED$' '$TEST_TMP_DIR/env'"
 assert "grep -q '^DISPLAY$' '$TEST_TMP_DIR/env'"
 assert "grep -q '^HOME$' '$TEST_TMP_DIR/env'"
 assert "grep -q '^NEW_PWD$' '$TEST_TMP_DIR/env'"
+assert "grep -qF 'NEW_PWD=$TEST_TMP_DIR' '$TEST_TMP_DIR/envval'"
 unset TERM_TEST_REMOVED
 
 # 4. Shell mode with --no-clean: env is preserved

@@ -112,6 +112,7 @@ fi
 # any external commands run by this script (mktemp, shescape, etc.) still have
 # access to the full environment.
 _prepare_env() {
+  local saved_pwd="$PWD"
   if (( clean )); then
     _should_keep() {
       case "$1" in
@@ -138,7 +139,7 @@ _prepare_env() {
   unset ANTIGRAVITY_AGENT CLAUDE_AGENT IS_IN_AGENT
 
   # Signal the new shell to cd to the caller's directory (read in dot_bash_profile)
-  export NEW_PWD="$PWD"
+  export NEW_PWD="$saved_pwd"
 }
 
 if (( ! has_command )); then
