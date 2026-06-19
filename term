@@ -1,7 +1,7 @@
 #!/bin/bash
 # Unified terminal launcher: open a new gnome-terminal, optionally with a clean
 # environment and/or running a specific command (with stdin piping and stdout capture).
-# Combines the functionality of t, relaunch-in-terminal.sh, and run-in-terminal.
+#
 # Run term_test.bash after making any changes.
 
 shescape() {
@@ -18,19 +18,20 @@ Without COMMAND, opens an interactive shell (--clean is assumed by default).
 With COMMAND, runs it in a new terminal (--no-clean is the default).
 
 General options:
-  --geometry WxH            Window geometry (default: 140x45)
-  --clean                   Start with a clean environment, keeping only essential
+  -g, --geometry WxH        Window geometry (default: 140x45)
+  -n, --clean               Start with a clean environment, keeping only essential
                             GUI/session variables (DISPLAY, HOME, PATH, LANG,
                             DBUS_*, XDG_*, GNOME_*, GTK_*, QT_*, LC_*, GIT_*, etc.)
-  --no-clean                Keep the full current environment (default with COMMAND)
+      --no-clean            Keep the full current environment (default with COMMAND)
   -h, --help                Show this help
 
 Command-mode options (only applicable when COMMAND is given):
-  --title TITLE             Terminal window title (default: name of COMMAND)
-  --wait                    Show "Press [ENTER]" prompt before the terminal closes
-  --no-wait                 Close terminal immediately when COMMAND exits (default)
-  --capture                 Capture COMMAND's stdout and print it after exit
-  --no-capture              Do not capture stdout (default)
+  -t, --title TITLE         Terminal window title (default: name of COMMAND)
+  -w, --wait                Show "Press [ENTER]" prompt before the terminal closes
+                            (default unless --capture is used)
+      --no-wait             Close terminal immediately when COMMAND exits
+  -c, --capture             Capture COMMAND's stdout and print it after exit
+      --no-capture          Do not capture stdout (default)
 
 ANTIGRAVITY_AGENT, CLAUDE_AGENT, and IS_IN_AGENT are always unset regardless
 of --clean / --no-clean.
@@ -59,7 +60,7 @@ Examples:
 EOF
 }
 
-TEMP=$(getopt -o 'h' \
+TEMP=$(getopt -o 'hg:nct:w' \
   --long 'geometry:,clean,no-clean,title:,wait,no-wait,capture,no-capture,help' \
   -n "${0##*/}" -- "$@")
 if [[ $? -ne 0 ]]; then
@@ -71,19 +72,20 @@ geometry="140x45"
 clean=""
 title=""
 wait_mode=0
+wait_mode_set=0
 capture=0
 
 while true; do
   case "$1" in
-    '--geometry')   geometry="$2"; shift 2 ;;
-    '--clean')      clean=1; shift ;;
-    '--no-clean')   clean=0; shift ;;
-    '--title')      title="$2"; shift 2 ;;
-    '--wait')       wait_mode=1; shift ;;
-    '--no-wait')    wait_mode=0; shift ;;
-    '--capture')    capture=1; shift ;;
-    '--no-capture') capture=0; shift ;;
-    '-h'|'--help')  show_help; exit 0 ;;
+    '-g'|'--geometry')   geometry="$2"; shift 2 ;;
+    '-n'|'--clean')      clean=1; shift ;;
+    '--no-clean')        clean=0; shift ;;
+    '-t'|'--title')      title="$2"; shift 2 ;;
+    '-w'|'--wait')       wait_mode=1; wait_mode_set=1; shift ;;
+    '--no-wait')         wait_mode=0; wait_mode_set=1; shift ;;
+    '-c'|'--capture')    capture=1; shift ;;
+    '--no-capture')      capture=0; shift ;;
+    '-h'|'--help')       show_help; exit 0 ;;
     '--')           shift; break ;;
     *)              echo "${0##*/}: internal error" >&2; exit 1 ;;
   esac
@@ -94,13 +96,16 @@ if [[ $# -gt 0 ]]; then
   has_command=1
 fi
 
-# Apply mode-specific defaults for --clean
+# Apply mode-specific defaults
 if [[ -z "$clean" ]]; then
   if (( has_command )); then
     clean=0
   else
     clean=1
   fi
+fi
+if (( has_command && ! wait_mode_set && ! capture )); then
+  wait_mode=1
 fi
 
 if [[ -z "$DISPLAY" && -z "$WAYLAND_DISPLAY" ]]; then

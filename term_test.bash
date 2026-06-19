@@ -91,28 +91,31 @@ assert "! grep -q '^CLAUDE_AGENT$' '$TEST_TMP_DIR/env'"
 assert "! grep -q '^IS_IN_AGENT$' '$TEST_TMP_DIR/env'"
 unset ANTIGRAVITY_AGENT CLAUDE_AGENT IS_IN_AGENT
 
-# 6. Command mode: gnome-terminal gets --wait, --hide-menubar, -t, and bash -c
+# 6. Command mode: gnome-terminal gets --wait, --hide-menubar, -t, and bash -c;
+#    --wait is the default so "Press [ENTER]" appears without explicit --wait
 reset_files
 run_term echo hello
 assert "grep -q -- '--wait' '$TEST_TMP_DIR/calls'"
 assert "grep -q -- '--hide-menubar' '$TEST_TMP_DIR/calls'"
 assert "grep -q -- '-t \*echo' '$TEST_TMP_DIR/calls'"
 assert "grep -q 'bash -c' '$TEST_TMP_DIR/calls'"
+assert "grep -q 'Press \[ENTER\]' '$TEST_TMP_DIR/calls'"
 
-# 7. Command mode: --capture captures stdout
+# 7. Command mode: --capture captures stdout; no "Press [ENTER]" injected by default
 reset_files
 run_term --capture echo hello > "$TEST_TMP_DIR/capture_out"
 assert "grep -q '^hello$' '$TEST_TMP_DIR/capture_out'"
+assert "! grep -q 'Press' '$TEST_TMP_DIR/capture_out'"
 
 # 8. Command mode: piped stdin is fed to the command, --capture returns output
 reset_files
 echo "piped_line" | run_term --capture fzf > "$TEST_TMP_DIR/stdin_out"
 assert "grep -q '^piped_line$' '$TEST_TMP_DIR/stdin_out'"
 
-# 9. Command mode: --wait appends "Press [ENTER]" to the inner command
+# 9. Command mode: --no-wait suppresses the "Press [ENTER]" prompt
 reset_files
-run_term --wait echo hello
-assert "grep -q 'Press \[ENTER\]' '$TEST_TMP_DIR/calls'"
+run_term --no-wait echo hello
+assert "! grep -q 'Press \[ENTER\]' '$TEST_TMP_DIR/calls'"
 
 # 10. Command mode: --geometry is passed to gnome-terminal
 reset_files
