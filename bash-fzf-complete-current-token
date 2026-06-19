@@ -58,7 +58,7 @@ candidate_files() {
 print() {
   local prefix="$1"
   shift
-  timeout 1 perl -pe "print '$prefix'" "$@"
+  tout 1 perl -pe "print '$prefix'" "$@"
 }
 
 cap() {
@@ -128,13 +128,13 @@ envs() {
 
 recent_dirs() {
   print "[RECENT-DIR] " <(
-    timeout 0.2 recent-dirs -n 50 -z
+    tout 0.2 recent-dirs -n 50 -z
   )
 }
 
 # recent_urls() {
 #   print "[$2] " <(
-#     timeout 0.1 zenlog-last-n-contents -R -n $1 | perl -ne '
+#     tout 0.1 zenlog-last-n-contents -R -n $1 | perl -ne '
 #       while (m! ( (?: file | https? ) \:\/\/ [^ \) ] + ) !xg) {
 #         print $1, "\n"
 #       }
@@ -144,13 +144,13 @@ recent_dirs() {
 
 recent_files() {
   print "[$2] " <(
-    timeout 0.2 zenlog-recent-files -d -n $1 | cap 1000 | dir-slash
+    tout 0.2 zenlog-recent-files -d -n $1 | cap 1000 | dir-slash
   )
 }
 
 recent_ee() {
   print "[$2]# " <(
-    timeout 0.2 zenlog-last-n-contents -R -n $1 | perl -ne '
+    tout 0.2 zenlog-last-n-contents -R -n $1 | perl -ne '
       while (m! (?: ^Running: (.*) ) !xg) {
         print $1, "\n"
       }
@@ -160,7 +160,7 @@ recent_ee() {
 
 recent_words() {
   print "[$2] " <(
-    timeout 0.2 zenlog-last-n-contents -R -n $1 | zenlog-recent-words.pl | cap 20000
+    tout 0.2 zenlog-last-n-contents -R -n $1 | zenlog-recent-words.pl | cap 20000
   )
 }
 
@@ -169,10 +169,10 @@ bfs_inner() {
     local timeout=0.2
     local opts="-nocolor -maxdepth 6 -name .git -prune -o -name e2etests -prune -o -name .cache -prune -o -name zenlog.log -prune -o -print "
     if ! [[ "$token" =~ / ]] ; then
-      timeout $timeout bfs $opts | sed -e 's!^\./!!'
+      tout $timeout bfs $opts | sed -e 's!^\./!!'
     else
       local dir="$(get_dir)"
-      timeout $timeout bfs $opts "$dir"
+      tout $timeout bfs $opts "$dir"
     fi
   } 2>/dev/null
 }
