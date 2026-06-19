@@ -61,10 +61,29 @@ if [[ ! -d "$TASKLOG_DIR" ]]; then
   exit 1
 fi
 
+_task_history_preview() {
+  local file="${1/#\~/$HOME}"
+  local glow2_cmd="glow2"
+  if ! command -v "$glow2_cmd" >/dev/null 2>&1; then
+    if [[ -x "$HOME/go/bin/glow2" ]]; then
+      glow2_cmd="$HOME/go/bin/glow2"
+    fi
+  fi
+
+  if command -v "$glow2_cmd" >/dev/null 2>&1; then
+    "$glow2_cmd" --color=always "$file"
+  elif command -v pandoc >/dev/null 2>&1; then
+    pandoc -t ansi --highlight-style=breezedark "$file"
+  else
+    cat "$file"
+  fi
+}
+export -f _task_history_preview
+
 fzf_args=(
   "--ansi"
   "--no-sort"
-  "--preview" "file=\$(echo {} | sed \"s|^~/|\$HOME/|\"); if command -v glow >/dev/null 2>&1; then glow \"\$file\"; elif command -v pandoc >/dev/null 2>&1; then pandoc -t ansi --highlight-style=breezedark \"\$file\"; else cat \"\$file\"; fi"
+  "--preview" "bash -c '_task_history_preview {}'"
   "--preview-window" "top:60%:wrap"
 )
 if [[ -n "$query" ]]; then
