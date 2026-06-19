@@ -1,0 +1,201 @@
+#!/bin/bash
+# Unified terminal launcher: open a new gnome-terminal, optionally with a clean
+# environment and/or running a specific command (with stdin piping and stdout capture).
+# Combines the functionality of t, relaunch-in-terminal.sh, and run-in-terminal.
+# Run term_test.bash after making any changes.
+
+shescape() {
+  printf '%q ' "$@"
+}
+
+show_help() {
+  cat <<EOF
+Usage: ${0##*/} [options] [-- COMMAND [args...]]
+
+Launch a new gnome-terminal window, optionally running COMMAND inside it.
+
+Without COMMAND, opens an interactive shell (--clean is assumed by default).
+With COMMAND, runs it in a new terminal (--no-clean is the default).
+
+General options:
+  --geometry WxH            Window geometry (default: 140x45)
+  --clean                   Start with a clean environment, keeping only essential
+                            GUI/session variables (DISPLAY, HOME, PATH, LANG,
+                            DBUS_*, XDG_*, GNOME_*, GTK_*, QT_*, LC_*, GIT_*, etc.)
+  --no-clean                Keep the full current environment (default with COMMAND)
+  -h, --help                Show this help
+
+Command-mode options (only applicable when COMMAND is given):
+  --title TITLE             Terminal window title (default: name of COMMAND)
+  --wait                    Show "Press [ENTER]" prompt before the terminal closes
+  --no-wait                 Close terminal immediately when COMMAND exits (default)
+  --capture                 Capture COMMAND's stdout and print it after exit
+  --no-capture              Do not capture stdout (default)
+
+ANTIGRAVITY_AGENT, CLAUDE_AGENT, and IS_IN_AGENT are always unset regardless
+of --clean / --no-clean.
+
+If stdin is not a terminal (piped input), it is fed to COMMAND in the terminal.
+Use '--' before COMMAND only if it starts with a hyphen.
+
+Examples:
+  # Open a terminal with a clean environment
+  ${0##*/}
+
+  # Open a terminal keeping the current environment
+  ${0##*/} --no-clean
+
+  # Run fzf in a new terminal and capture the selection
+  ${0##*/} --capture fzf
+
+  # Pipe a list to fzf and capture the result
+  git branch | ${0##*/} --capture fzf
+
+  # Run with custom title, geometry, and wait for keypress
+  ${0##*/} --title "Picker" --geometry 120x30 --wait some-tool
+
+  # Command starting with a hyphen requires --
+  ${0##*/} -- -my-command --flag
+EOF
+}
+
+TEMP=$(getopt -o 'h' \
+  --long 'geometry:,clean,no-clean,title:,wait,no-wait,capture,no-capture,help' \
+  -n "${0##*/}" -- "$@")
+if [[ $? -ne 0 ]]; then
+  exit 1
+fi
+eval set -- "$TEMP"
+
+geometry="140x45"
+clean=""
+title=""
+wait_mode=0
+capture=0
+
+while true; do
+  case "$1" in
+    '--geometry')   geometry="$2"; shift 2 ;;
+    '--clean')      clean=1; shift ;;
+    '--no-clean')   clean=0; shift ;;
+    '--title')      title="$2"; shift 2 ;;
+    '--wait')       wait_mode=1; shift ;;
+    '--no-wait')    wait_mode=0; shift ;;
+    '--capture')    capture=1; shift ;;
+    '--no-capture') capture=0; shift ;;
+    '-h'|'--help')  show_help; exit 0 ;;
+    '--')           shift; break ;;
+    *)              echo "${0##*/}: internal error" >&2; exit 1 ;;
+  esac
+done
+
+has_command=0
+if [[ $# -gt 0 ]]; then
+  has_command=1
+fi
+
+# Apply mode-specific defaults for --clean
+if [[ -z "$clean" ]]; then
+  if (( has_command )); then
+    clean=0
+  else
+    clean=1
+  fi
+fi
+
+if [[ -z "$DISPLAY" && -z "$WAYLAND_DISPLAY" ]]; then
+  echo "${0##*/}: DISPLAY is not set; cannot launch a terminal window." >&2
+  exit 1
+fi
+
+# Apply environment cleanup immediately before launching gnome-terminal, so that
+# any external commands run by this script (mktemp, shescape, etc.) still have
+# access to the full environment.
+_prepare_env() {
+  if (( clean )); then
+    _should_keep() {
+      case "$1" in
+        DISPLAY | WAYLAND_DISPLAY | XAUTHORITY | DESKTOP_SESSION | GDMSESSION | \
+        SYSTEMD_EXEC_PID | XMODIFIERS | USER | USERNAME | LOGNAME | HOME | PATH | \
+        SHELL | LANG | SSH_AUTH_SOCK | GPG_AGENT_INFO)
+          return 0
+          ;;
+        DBUS_* | GNOME_* | XDG_* | GTK_* | QT_* | LC_* | GIT_*)
+          return 0
+          ;;
+      esac
+      return 1
+    }
+
+    while read -r var; do
+      if [[ -n "$var" ]] && ! _should_keep "$var"; then
+        unset "$var"
+      fi
+    done < <(compgen -e)
+  fi
+
+  # Always strip agent environment markers
+  unset ANTIGRAVITY_AGENT CLAUDE_AGENT IS_IN_AGENT
+
+  # Signal the new shell to cd to the caller's directory (read in dot_bash_profile)
+  export NEW_PWD="$PWD"
+}
+
+if (( ! has_command )); then
+  _prepare_env
+  exec gnome-terminal --geometry="$geometry"
+fi
+
+# Command mode: run COMMAND inside gnome-terminal
+user_cmd=("$@")
+[[ -z "$title" ]] && title="${user_cmd[0]##*/}"
+
+output_tmp=""
+input_tmp=""
+
+cleanup() {
+  rm -f "$input_tmp" "$output_tmp"
+}
+trap cleanup EXIT
+
+if (( capture )); then
+  output_tmp=$(mktemp "/tmp/term_output.XXXXXX")
+fi
+
+has_stdin=0
+if [[ ! -t 0 ]]; then
+  has_stdin=1
+  input_tmp=$(mktemp "/tmp/term_input.XXXXXX")
+  cat > "$input_tmp"
+fi
+
+# Build the shell command string to execute inside the terminal
+if (( has_stdin )); then
+  if (( capture )); then
+    cmd="cat $(shescape "$input_tmp") | $(shescape "${user_cmd[@]}") > $(shescape "$output_tmp")"
+  else
+    cmd="cat $(shescape "$input_tmp") | $(shescape "${user_cmd[@]}")"
+  fi
+else
+  if (( capture )); then
+    cmd="$(shescape "${user_cmd[@]}") > $(shescape "$output_tmp")"
+  else
+    cmd="$(shescape "${user_cmd[@]}")"
+  fi
+fi
+
+if (( wait_mode )); then
+  cmd+=$'; echo; echo "Press [ENTER] to close the window"; read'
+fi
+
+_prepare_env
+gnome-terminal \
+  --geometry="$geometry" \
+  --hide-menubar \
+  -t "*$title" \
+  --wait \
+  -- bash -c "$cmd"
+
+if (( capture )) && [[ -f "$output_tmp" ]]; then
+  cat "$output_tmp"
+fi
