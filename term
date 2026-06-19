@@ -182,6 +182,7 @@ if (( has_stdin )); then
   else
     cmd="cat $(shescape "$input_tmp") | $(shescape "${user_cmd[@]}")"
   fi
+  cmd+="; rm -f $(shescape "$input_tmp")"
 else
   if (( capture )); then
     cmd="$(shescape "${user_cmd[@]}") > $(shescape "$output_tmp")"
@@ -195,12 +196,23 @@ if (( wait_mode )); then
 fi
 
 _prepare_env
+gnome_opts=()
+if (( capture )) ; then
+    gnome_opts+=(--wait)
+fi
+
 gnome-terminal \
   --geometry="$geometry" \
   --hide-menubar \
   -t "*$title" \
-  --wait \
+  "${gnome_opts[@]}" \
   -- bash -c "$cmd"
+
+if (( ! capture )); then
+  # Since we are not waiting, the gnome-terminal command will run asynchronously.
+  # We clear input_tmp to prevent our EXIT trap from deleting it before the terminal reads it.
+  input_tmp=""
+fi
 
 if (( capture )) && [[ -f "$output_tmp" ]]; then
   cat "$output_tmp"

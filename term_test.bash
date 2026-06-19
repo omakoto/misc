@@ -23,6 +23,7 @@ chmod +x "$TEST_TMP_DIR/term"
 
 # Mock gnome-terminal: records args to $calls, env var names to $env,
 # env var values to $envval, and executes the command after '--' if present.
+# Runs the command in background if --wait is not passed.
 cat > "$TEST_TMP_DIR/bin/gnome-terminal" <<EOF
 #!/bin/bash
 echo "ARGS: \$*" >> "$TEST_TMP_DIR/calls"
@@ -30,10 +31,22 @@ compgen -e | sort > "$TEST_TMP_DIR/env"
 while IFS= read -r var; do
   printf '%s=%s\n' "\$var" "\${!var}"
 done < <(compgen -e | sort) > "$TEST_TMP_DIR/envval"
+has_wait=0
+for arg in "\$@"; do
+  if [[ "\$arg" == "--wait" ]]; then
+    has_wait=1
+    break
+  fi
+done
 for ((i=1; i<=\$#; i++)); do
   if [[ "\${!i}" == "--" ]]; then
     shift \$i
-    exec "\$@"
+    if (( has_wait )); then
+      exec "\$@"
+    else
+      "\$@" < /dev/null > /dev/null 2>&1 &
+      exit 0
+    fi
   fi
 done
 exit 0
@@ -91,11 +104,12 @@ assert "! grep -q '^CLAUDE_AGENT$' '$TEST_TMP_DIR/env'"
 assert "! grep -q '^IS_IN_AGENT$' '$TEST_TMP_DIR/env'"
 unset ANTIGRAVITY_AGENT CLAUDE_AGENT IS_IN_AGENT
 
-# 6. Command mode: gnome-terminal gets --wait, --hide-menubar, -t, and bash -c;
-#    --wait is the default so "Press [ENTER]" appears without explicit --wait
+# 6. Command mode: gnome-terminal does NOT get --wait (unless capturing), but
+#    gets --hide-menubar, -t, and bash -c;
+#    wait_mode is the default so "Press [ENTER]" appears without explicit --wait
 reset_files
 run_term echo hello
-assert "grep -q -- '--wait' '$TEST_TMP_DIR/calls'"
+assert "! grep -q -- '--wait' '$TEST_TMP_DIR/calls'"
 assert "grep -q -- '--hide-menubar' '$TEST_TMP_DIR/calls'"
 assert "grep -q -- '-t \*echo' '$TEST_TMP_DIR/calls'"
 assert "grep -q 'bash -c' '$TEST_TMP_DIR/calls'"
@@ -106,6 +120,7 @@ reset_files
 run_term --capture echo hello > "$TEST_TMP_DIR/capture_out"
 assert "grep -q '^hello$' '$TEST_TMP_DIR/capture_out'"
 assert "! grep -q 'Press' '$TEST_TMP_DIR/capture_out'"
+assert "grep -q -- '--wait' '$TEST_TMP_DIR/calls'"
 
 # 8. Command mode: piped stdin is fed to the command, --capture returns output
 reset_files
