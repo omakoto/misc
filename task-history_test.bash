@@ -75,4 +75,7 @@ rm -f "$TEST_TMP_DIR/fzf_calls"
 )
 assert "grep -q 'fzf_args:.*--query my-special-query' '$TEST_TMP_DIR/fzf_calls'"
 
+# 4. Test preview-file option
+assert "$TEST_TMP_DIR/task-history --preview-file $TASKLOG_DIR/2026/06/test1.md"
+
 done_testing
