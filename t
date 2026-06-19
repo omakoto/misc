@@ -12,10 +12,6 @@ DBUS_SESSION_BUS_ADDRESS, HOME, USER, etc.).
 
 All other exported environment variables are removed.
 
-If invoked as 'tt' (e.g. via symlink), the window will remain open after the
-command exits, waiting for you to press [ENTER].
-
-
 Examples:
   # Start a shell in gnome-terminal with a clean environment
   ${0##*/}
@@ -100,10 +96,10 @@ if (( double_dash_idx != -1 )); then
   cmd=("${new_args[@]:cmd_start}")
 
   script='"$@"'
-  # In tt mode, wait for keypress before closing the window
-  if [[ "$(basename "$0")" == "tt" ]]; then
-    script+='; echo; echo "Press [ENTER] to close the window"; read'
-  fi
+  # # In tt mode, wait for keypress before closing the window
+  # if [[ "$(basename "$0")" == "tt" ]]; then
+  #   script+='; echo; echo "Press [ENTER] to close the window"; read'
+  # fi
 
   new_args=(
     "${options[@]}"
