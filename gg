@@ -35,6 +35,8 @@ else
 fi
 
 # When run inside Antigravity/Claude, it launches in a new gnome-terminal.
-. "$(dirname "$(readlink -f "$0")")/relaunch-in-terminal.sh" --geometry=140x45 -- gg "$@"
+if is-in-agent; then
+  exec term --geometry=140x45 --no-wait -- gg "$@"
+fi
 
 exec git meld-history "$@"

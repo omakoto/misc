@@ -3,7 +3,9 @@
 set -e
 
 # When run inside Antigravity/Claude, it launches in a new gnome-terminal using run-in-terminal.
-. relaunch-in-terminal.sh --geometry=160x45 --command=run-in-terminal -- $(basename "$0") "$@"
+if is-in-agent; then
+  exec term --geometry=160x45 --no-wait -- "$0" "$@"
+fi
 
 git-commit-history-raw | {
     if [[ -t 1 ]] ; then
