@@ -272,7 +272,7 @@ maybe_add_space() {
   done
 }
 
-# export FZF_DEFAULT_OPTS="--color=bg+:4,header:2 --no-mouse --no-sort --algo=v1 -e"\
+# export FZF_DEFAULT_OPTS="--color=bg+:4,header:2 --no-mouse --no-sort --algo=v1 -e --preview-border=line"\
 # " --bind='ctrl-y:abort,"\
 # "home:execute(wait-for-key),"\
 # "ctrl-g:ignore,"\
