@@ -235,6 +235,9 @@ if [[ -n "$zoom" ]]; then
     gnome_opts+=(--zoom="$zoom")
 fi
 
+# When launching fzf in a sub-terminal, slightly change the BG color
+export FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS:+$FZF_DEFAULT_OPTS }--color=bg:#121212,bg+:#262626"
+
 gnome-terminal \
   --geometry="$geometry" \
   --hide-menubar \
