@@ -35,7 +35,7 @@ else
 fi
 
 # When run inside Antigravity/Claude, it launches in a new gnome-terminal.
-if is-in-agent; then
+if needs-term; then
   exec term --geometry=140x45 --no-wait -- gg "$@"
 fi
 

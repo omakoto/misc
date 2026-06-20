@@ -19,14 +19,14 @@ trap cleanup EXIT
 mkdir -p "$TEST_TMP_DIR/bin"
 export PATH="$TEST_TMP_DIR/bin:$PATH"
 
-# Copy gg to temp dir so it looks for is-in-agent in temp dir
+# Copy gg to temp dir so it looks for needs-term in temp dir
 cp "$SCRIPT_DIR/gg" "$TEST_TMP_DIR/gg"
 chmod +x "$TEST_TMP_DIR/gg"
 
-# Mock is-in-agent to return false (not in agent) by default
+# Mock needs-term to return false (don't need terminal) by default
 # We place it in bin/ so it is found in PATH
-echo -e "#!/bin/bash\nexit 1" > "$TEST_TMP_DIR/bin/is-in-agent"
-chmod +x "$TEST_TMP_DIR/bin/is-in-agent"
+echo -e "#!/bin/bash\nexit 1" > "$TEST_TMP_DIR/bin/needs-term"
+chmod +x "$TEST_TMP_DIR/bin/needs-term"
 
 # Mock git-meld-history
 cat > "$TEST_TMP_DIR/bin/git-meld-history" <<'EOF'
