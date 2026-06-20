@@ -1,0 +1,20 @@
+#!/bin/bash
+#
+# tasklog-file - Print the tasklog filename for a given description.
+# Converts the description to lowercase, hyphen-separated form and outputs
+# the full path compatible with the task-summary skill format.
+#
+# Usage:
+#   tasklog-file <description>
+#
+# Example:
+#   tasklog-file git checker performance optimization
+#   -> /home/omakoto/history/tasklog/2026/06/2026-06-19-14-30-git-checker-performance-optimization.md
+
+description=$(echo "${*:-no_title}" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/-$//')
+
+year=$(date +%Y)
+month=$(date +%m)
+datetime=$(date +%Y-%m-%d-%H-%M)
+
+echo "$HOME/history/tasklog/$year/$month/$datetime-$description.md"

@@ -82,7 +82,7 @@ fi
 
 if (( $newdoc )) ; then
   doc_dir=$HOME/cbin/docs
-  doc=$(datedir $doc_dir)/doc-$(date8).txt
+  doc="$(tasklog-file)"
   echo "$doc"
   files+=("$doc")
 fi
