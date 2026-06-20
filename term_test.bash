@@ -77,10 +77,10 @@ run_term --geometry=120x30
 assert "grep -q 'ARGS: --geometry=120x30' '$TEST_TMP_DIR/calls'"
 assert "! grep -q 'bash -c' '$TEST_TMP_DIR/calls'"
 
-# 3. Shell mode: --clean is the default; non-essential vars are removed
+# 3. Shell mode with --clean: non-essential vars are removed
 export TERM_TEST_REMOVED="yes"
 reset_files
-run_term
+run_term --clean
 assert "! grep -q '^TERM_TEST_REMOVED$' '$TEST_TMP_DIR/env'"
 assert "grep -q '^DISPLAY$' '$TEST_TMP_DIR/env'"
 assert "grep -q '^HOME$' '$TEST_TMP_DIR/env'"
@@ -88,10 +88,10 @@ assert "grep -q '^NEW_PWD$' '$TEST_TMP_DIR/env'"
 assert "grep -qF 'NEW_PWD=$TEST_TMP_DIR' '$TEST_TMP_DIR/envval'"
 unset TERM_TEST_REMOVED
 
-# 4. Shell mode with --no-clean: env is preserved
+# 4. Shell mode: env is preserved by default
 export TERM_TEST_KEPT="yes"
 reset_files
-run_term --no-clean
+run_term
 assert "grep -q '^TERM_TEST_KEPT$' '$TEST_TMP_DIR/env'"
 unset TERM_TEST_KEPT
 

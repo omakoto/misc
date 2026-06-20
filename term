@@ -14,15 +14,15 @@ Usage: ${0##*/} [options] [-- COMMAND [args...]]
 
 Launch a new gnome-terminal window, optionally running COMMAND inside it.
 
-Without COMMAND, opens an interactive shell (--clean is assumed by default).
-With COMMAND, runs it in a new terminal (--no-clean is the default).
+Without COMMAND, opens an interactive shell.
+With COMMAND, runs it in a new terminal.
 
 General options:
   -g, --geometry WxH        Window geometry (default: 140x45)
   -n, --clean               Start with a clean environment, keeping only essential
                             GUI/session variables (DISPLAY, HOME, PATH, LANG,
                             DBUS_*, XDG_*, GNOME_*, GTK_*, QT_*, LC_*, GIT_*, etc.)
-      --no-clean            Keep the full current environment (default with COMMAND)
+      --no-clean            Keep the full current environment (default)
   -h, --help                Show this help
 
 Command-mode options (only applicable when COMMAND is given):
@@ -71,8 +71,7 @@ eval set -- "$TEMP"
 geometry="140x45"
 clean=""
 title=""
-wait_mode=0
-wait_mode_set=0
+wait_mode=""
 capture=0
 
 while true; do
@@ -81,8 +80,8 @@ while true; do
     '-n'|'--clean')      clean=1; shift ;;
     '--no-clean')        clean=0; shift ;;
     '-t'|'--title')      title="$2"; shift 2 ;;
-    '-w'|'--wait')       wait_mode=1; wait_mode_set=1; shift ;;
-    '--no-wait')         wait_mode=0; wait_mode_set=1; shift ;;
+    '-w'|'--wait')       wait_mode=1; shift ;;
+    '--no-wait')         wait_mode=0; shift ;;
     '-c'|'--capture')    capture=1; shift ;;
     '--no-capture')      capture=0; shift ;;
     '-h'|'--help')       show_help; exit 0 ;;
@@ -97,15 +96,13 @@ if [[ $# -gt 0 ]]; then
 fi
 
 # Apply mode-specific defaults
-if [[ -z "$clean" ]]; then
-  if (( has_command )); then
-    clean=0
+
+if [[ -z "$wait_mode" ]]; then
+  if (( has_command && ! capture )); then
+    wait_mode=1
   else
-    clean=1
+    wait_mode=0
   fi
-fi
-if (( has_command && ! wait_mode_set && ! capture )); then
-  wait_mode=1
 fi
 
 if [[ -z "$DISPLAY" && -z "$WAYLAND_DISPLAY" ]]; then
