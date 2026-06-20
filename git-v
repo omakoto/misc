@@ -1,0 +1,59 @@
+#!/bin/bash
+# git-v: Print Git version as a single integer (e.g. 2.53.0 becomes 2053000).
+#
+# Run the test script to verify changes:
+#   ./git-v_test.bash
+#
+
+set -e
+
+# Prints usage and help message.
+function print_help() {
+  cat <<'EOF'
+git-v - Print Git version as a single integer.
+
+Usage:
+  git-v [options]
+
+Options:
+  -h, --help  Show this help message and exit.
+
+Examples:
+  git-v
+  # Outputs: 2053000
+EOF
+}
+
+# Parse options using GNU getopt
+TEMP=$(getopt -o 'h' --long 'help' -n 'git-v' -- "$@")
+eval set -- "$TEMP"
+while true; do
+  case "$1" in
+    -h|--help)
+      print_help
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      echo "Internal error!" >&2
+      exit 1
+      ;;
+  esac
+done
+
+if (( $# > 0 )); then
+  echo "git-v: Unknown option or argument: $1" >&2
+  print_help >&2
+  exit 1
+fi
+
+version=$(git version 2>/dev/null)
+if [[ "$version" =~ ([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+  printf "%d%03d%03d\n" "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}"
+else
+  echo "git-v: Failed to parse Git version string: $version" >&2
+  exit 1
+fi
