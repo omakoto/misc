@@ -95,14 +95,18 @@ run_term
 assert "grep -q '^TERM_TEST_KEPT$' '$TEST_TMP_DIR/env'"
 unset TERM_TEST_KEPT
 
-# 5. Agent vars always unset, even with --no-clean
+# 5. Agent and terminal-specific vars always unset, even by default
 export ANTIGRAVITY_AGENT="1" CLAUDE_AGENT="1" IS_IN_AGENT="1"
+export ZENLOG_TEST="1" zenlog_test="1" _TEST_VAR="1"
 reset_files
-run_term --no-clean
+run_term
 assert "! grep -q '^ANTIGRAVITY_AGENT$' '$TEST_TMP_DIR/env'"
 assert "! grep -q '^CLAUDE_AGENT$' '$TEST_TMP_DIR/env'"
 assert "! grep -q '^IS_IN_AGENT$' '$TEST_TMP_DIR/env'"
-unset ANTIGRAVITY_AGENT CLAUDE_AGENT IS_IN_AGENT
+assert "! grep -q '^ZENLOG_TEST$' '$TEST_TMP_DIR/env'"
+assert "! grep -q '^zenlog_test$' '$TEST_TMP_DIR/env'"
+assert "! grep -q '^_TEST_VAR$' '$TEST_TMP_DIR/env'"
+unset ANTIGRAVITY_AGENT CLAUDE_AGENT IS_IN_AGENT ZENLOG_TEST zenlog_test _TEST_VAR
 
 # 6. Command mode: gnome-terminal does NOT get --wait (unless capturing), but
 #    gets --hide-menubar, -t, and bash -c;

@@ -33,8 +33,8 @@ Command-mode options (only applicable when COMMAND is given):
   -c, --capture             Capture COMMAND's stdout and print it after exit
       --no-capture          Do not capture stdout (default)
 
-ANTIGRAVITY_AGENT, CLAUDE_AGENT, and IS_IN_AGENT are always unset regardless
-of --clean / --no-clean.
+ANTIGRAVITY_AGENT, CLAUDE_AGENT, IS_IN_AGENT, and variables matching
+ZENLOG*, zenlog*, and _* are always unset regardless of --clean / --no-clean.
 
 If stdin is not a terminal (piped input), it is fed to COMMAND in the terminal.
 Use '--' before COMMAND only if it starts with a hyphen.
@@ -137,7 +137,14 @@ _prepare_env() {
     done < <(compgen -e)
   fi
 
-  # Always strip agent environment markers
+  # Always strip agent environment markers and terminal-specific variables
+  local var
+  while read -r var; do
+    if [[ "$var" == ZENLOG* || "$var" == zenlog* || "$var" == _* ]]; then
+      unset "$var"
+    fi
+  done < <(compgen -e)
+
   unset ANTIGRAVITY_AGENT CLAUDE_AGENT IS_IN_AGENT
 
   # Signal the new shell to cd to the caller's directory (read in dot_bash_profile)
