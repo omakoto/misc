@@ -142,6 +142,134 @@ assert_out ./dir-normalize "/android/main1/frameworks/base/foo/frameworks/base/b
 /a/m1/f/b/foo/f/b/bar
 EOF
 
+
+# Test cases for reverse normalization (-r option)
+
+# Reverse HOME replacement
+assert_out ./dir-normalize -r "~" <<EOF
+/home/user
+EOF
+
+assert_out ./dir-normalize -r "~/foo" <<EOF
+/home/user/foo
+EOF
+
+assert_out ./dir-normalize -r "~/foo/bar" <<EOF
+/home/user/foo/bar
+EOF
+
+# Reverse cbin replacement
+assert_out ./dir-normalize -r "~/c" <<EOF
+/home/user/cbin
+EOF
+
+assert_out ./dir-normalize -r "~/c/foo" <<EOF
+/home/user/cbin/foo
+EOF
+
+# Reverse /android/ prefix
+assert_out ./dir-normalize -r "/a/foo" <<EOF
+/android/foo
+EOF
+
+assert_out ./dir-normalize -r "/a/m" <<EOF
+/android/main
+EOF
+
+assert_out ./dir-normalize -r "/a/m1" <<EOF
+/android/main1
+EOF
+
+assert_out ./dir-normalize -r "/a/mabc" <<EOF
+/android/mainabc
+EOF
+
+assert_out ./dir-normalize -r "/a/m/foo" <<EOF
+/android/main/foo
+EOF
+
+assert_out ./dir-normalize -r "/a/m1/foo" <<EOF
+/android/main1/foo
+EOF
+
+assert_out ./dir-normalize -r "/a/mwv" <<EOF
+/android/main-without-vendor
+EOF
+
+assert_out ./dir-normalize -r "/a/mwv2" <<EOF
+/android/main-without-vendor2
+EOF
+
+assert_out ./dir-normalize -r "/a/mwv-test" <<EOF
+/android/main-without-vendor-test
+EOF
+
+assert_out ./dir-normalize -r "/a/mwv/foo" <<EOF
+/android/main-without-vendor/foo
+EOF
+
+# Reverse frameworks/ inside /a/mXXX/ or /a/mwvXXX/
+assert_out ./dir-normalize -r "/a/m1/f/" <<EOF
+/android/main1/frameworks/
+EOF
+
+assert_out ./dir-normalize -r "/a/m1/f/b/" <<EOF
+/android/main1/frameworks/base/
+EOF
+
+assert_out ./dir-normalize -r "/a/m1/f/b/core" <<EOF
+/android/main1/frameworks/base/core
+EOF
+
+assert_out ./dir-normalize -r "/a/m1/f/b" <<EOF
+/android/main1/frameworks/base
+EOF
+
+assert_out ./dir-normalize -r "/a/mwv2/f/" <<EOF
+/android/main-without-vendor2/frameworks/
+EOF
+
+assert_out ./dir-normalize -r "/a/mwv2/f/b/" <<EOF
+/android/main-without-vendor2/frameworks/base/
+EOF
+
+assert_out ./dir-normalize -r "/a/m/f/" <<EOF
+/android/main/frameworks/
+EOF
+
+assert_out ./dir-normalize -r "/a/m/f/b/" <<EOF
+/android/main/frameworks/base/
+EOF
+
+assert_out ./dir-normalize -r "/a/mwv/f/" <<EOF
+/android/main-without-vendor/frameworks/
+EOF
+
+assert_out ./dir-normalize -r "/a/mwv/f/b/" <<EOF
+/android/main-without-vendor/frameworks/base/
+EOF
+
+# frameworks/ should NOT be lengthened if not in mainXXX or mwvXXX
+assert_out ./dir-normalize -r "/a/foo/frameworks" <<EOF
+/android/foo/frameworks
+EOF
+
+assert_out ./dir-normalize -r "~/android/main1/frameworks" <<EOF
+/home/user/android/main1/frameworks
+EOF
+
+assert_out ./dir-normalize -r "/a" <<EOF
+/android
+EOF
+
+assert_out ./dir-normalize -r "/a/m1/f/foo/f/bar" <<EOF
+/android/main1/frameworks/foo/frameworks/bar
+EOF
+
+assert_out ./dir-normalize -r "/a/m1/f/b/foo/f/b/bar" <<EOF
+/android/main1/frameworks/base/foo/frameworks/base/bar
+EOF
+
 done_testing
 
 
