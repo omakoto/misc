@@ -115,32 +115,36 @@ fi
 # access to the full environment.
 _prepare_env() {
   local saved_pwd="$PWD"
-  if (( clean )); then
-    _should_keep() {
-      case "$1" in
-        DISPLAY | WAYLAND_DISPLAY | XAUTHORITY | DESKTOP_SESSION | GDMSESSION | \
-        SYSTEMD_EXEC_PID | XMODIFIERS | USER | USERNAME | LOGNAME | HOME | PATH | \
-        SHELL | LANG | SSH_AUTH_SOCK | GPG_AGENT_INFO)
-          return 0
-          ;;
-        DBUS_* | GNOME_* | XDG_* | GTK_* | QT_* | LC_* | GIT_*)
-          return 0
-          ;;
-      esac
-      return 1
-    }
 
-    while read -r var; do
-      if [[ -n "$var" ]] && ! _should_keep "$var"; then
-        unset "$var"
-      fi
-    done < <(compgen -e)
-  fi
+  _should_keep() {
+    # Always unset variables that are terminal specific.
+    case "$1" in
+      ZENLOG* | zenlog* | _*)
+        return 1
+        ;;
+    esac
 
-  # Always strip agent environment markers and terminal-specific variables
+    if (( ! clean )); then
+      return 0
+    fi
+
+    case "$1" in
+      DISPLAY | WAYLAND_DISPLAY | XAUTHORITY | DESKTOP_SESSION | GDMSESSION | \
+      SYSTEMD_EXEC_PID | XMODIFIERS | USER | USERNAME | LOGNAME | HOME | PATH | \
+      SHELL | LANG | SSH_AUTH_SOCK | GPG_AGENT_INFO)
+        return 0
+        ;;
+      DBUS_* | GNOME_* | XDG_* | GTK_* | QT_* | LC_* | GIT_*)
+        return 0
+        ;;
+    esac
+
+    return 1
+  }
+
   local var
   while read -r var; do
-    if [[ "$var" == ZENLOG* || "$var" == zenlog* || "$var" == _* ]]; then
+    if [[ -n "$var" ]] && ! _should_keep "$var"; then
       unset "$var"
     fi
   done < <(compgen -e)
