@@ -20,7 +20,7 @@ git-undo() {
 }
 
 # Setup temp directory for the test
-export TEST_TMP_DIR=$(mktemp -d -t git-undo-test-XXXXXX)
+export TEST_TMP_DIR=$(mktemp -d -p /tmp/ git-undo-test-XXXXXX)
 export MOCK_FZF_SELECTION=""
 cleanup() {
   rm -rf "$TEST_TMP_DIR"

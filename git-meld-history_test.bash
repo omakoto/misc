@@ -18,7 +18,7 @@ git-meld-history() {
 }
 
 # Setup temp directory for the test
-export TEST_TMP_DIR=$(mktemp -d -t git-meld-history-test-XXXXXX)
+export TEST_TMP_DIR=$(mktemp -d -p /tmp/ git-meld-history-test-XXXXXX)
 export MOCK_FZF_SELECTION=""
 cleanup() {
   if [[ -f "$TEST_TMP_DIR/fzf_debug" ]]; then

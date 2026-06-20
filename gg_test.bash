@@ -8,8 +8,8 @@
 cd "${0%/*}"
 SCRIPT_DIR=$(pwd)
 
-# Setup temp directory for the test
-export TEST_TMP_DIR=$(mktemp -d -t gg-test-XXXXXX)
+# Setup temp directory for the test under /tmp/
+export TEST_TMP_DIR=$(mktemp -d -p /tmp/ gg-test-XXXXXX)
 cleanup() {
   rm -rf "$TEST_TMP_DIR"
 }
@@ -24,8 +24,9 @@ cp "$SCRIPT_DIR/gg" "$TEST_TMP_DIR/gg"
 chmod +x "$TEST_TMP_DIR/gg"
 
 # Mock is-in-agent to return false (not in agent) by default
-echo -e "#!/bin/bash\nexit 1" > "$TEST_TMP_DIR/is-in-agent"
-chmod +x "$TEST_TMP_DIR/is-in-agent"
+# We place it in bin/ so it is found in PATH
+echo -e "#!/bin/bash\nexit 1" > "$TEST_TMP_DIR/bin/is-in-agent"
+chmod +x "$TEST_TMP_DIR/bin/is-in-agent"
 
 # Mock git-meld-history
 cat > "$TEST_TMP_DIR/bin/git-meld-history" <<'EOF'

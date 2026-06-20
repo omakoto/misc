@@ -8,7 +8,7 @@ SCRIPT_DIR=$(pwd)
 export PATH="$SCRIPT_DIR:$PATH"
 
 # Setup temp directory for the test
-export TEST_TMP_DIR=$(mktemp -d -t git-rebase-inject-test-XXXXXX)
+export TEST_TMP_DIR=$(mktemp -d -p /tmp/ git-rebase-inject-test-XXXXXX)
 export MOCK_FZF_FILES=""
 export MOCK_FZF_COMMIT=""
 cleanup() {
