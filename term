@@ -68,7 +68,7 @@ if [[ $? -ne 0 ]]; then
 fi
 eval set -- "$TEMP"
 
-geometry="140x45"
+geometry=""
 clean=""
 title=""
 wait_mode=""
@@ -96,6 +96,24 @@ if [[ $# -gt 0 ]]; then
 fi
 
 # Apply mode-specific defaults
+
+if [[ -z "$geometry" ]]; then
+  if (( ! has_command )); then
+    cols="${COLUMNS:-}"
+    lines="${LINES:-}"
+    if [[ -z "$cols" || -z "$lines" ]] && tty -s; then
+      [[ -z "$cols" ]] && cols=$(tput cols 2>/dev/null)
+      [[ -z "$lines" ]] && lines=$(tput lines 2>/dev/null)
+    fi
+    if [[ -n "$cols" && -n "$lines" ]]; then
+      geometry="${cols}x${lines}"
+    else
+      geometry="140x45"
+    fi
+  else
+    geometry="140x45"
+  fi
+fi
 
 if [[ -z "$wait_mode" ]]; then
   if (( has_command && ! capture )); then

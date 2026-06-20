@@ -77,6 +77,12 @@ run_term --geometry=120x30
 assert "grep -q 'ARGS: --geometry=120x30' '$TEST_TMP_DIR/calls'"
 assert "! grep -q 'bash -c' '$TEST_TMP_DIR/calls'"
 
+# 2b. Shell mode: default geometry uses $COLUMNS and $LINES if set
+reset_files
+(export COLUMNS=95 LINES=35; run_term)
+assert "grep -q 'ARGS: --geometry=95x35' '$TEST_TMP_DIR/calls'"
+
+
 # 3. Shell mode with --clean: non-essential vars are removed
 export TERM_TEST_REMOVED="yes"
 reset_files
