@@ -19,6 +19,7 @@ With COMMAND, runs it in a new terminal.
 
 General options:
   -g, --geometry WxH        Window geometry (default: 140x45)
+  -z, --zoom FACTOR         Zoom factor (e.g., 1.5, 2.0, 1.0)
   -n, --clean               Start with a clean environment, keeping only essential
                             GUI/session variables (DISPLAY, HOME, PATH, LANG,
                             DBUS_*, XDG_*, GNOME_*, GTK_*, QT_*, LC_*, GIT_*, etc.)
@@ -60,8 +61,8 @@ Examples:
 EOF
 }
 
-TEMP=$(getopt -o 'hg:nct:w' \
-  --long 'geometry:,clean,no-clean,title:,wait,no-wait,capture,no-capture,help' \
+TEMP=$(getopt -o '+hg:nct:wz:' \
+  --long 'geometry:,clean,no-clean,title:,wait,no-wait,capture,no-capture,help,zoom:' \
   -n "${0##*/}" -- "$@")
 if [[ $? -ne 0 ]]; then
   exit 1
@@ -73,6 +74,7 @@ clean=""
 title=""
 wait_mode=""
 capture=0
+zoom=""
 
 while true; do
   case "$1" in
@@ -84,6 +86,7 @@ while true; do
     '--no-wait')         wait_mode=0; shift ;;
     '-c'|'--capture')    capture=1; shift ;;
     '--no-capture')      capture=0; shift ;;
+    '-z'|'--zoom')       zoom="$2"; shift 2 ;;
     '-h'|'--help')       show_help; exit 0 ;;
     '--')           shift; break ;;
     *)              echo "${0##*/}: internal error" >&2; exit 1 ;;
@@ -175,7 +178,9 @@ _prepare_env() {
 
 if (( ! has_command )); then
   _prepare_env
-  exec gnome-terminal --geometry="$geometry"
+  gnome_opts=()
+  [[ -n "$zoom" ]] && gnome_opts+=(--zoom="$zoom")
+  exec gnome-terminal --geometry="$geometry" "${gnome_opts[@]}"
 fi
 
 # Command mode: run COMMAND inside gnome-terminal
@@ -225,6 +230,9 @@ _prepare_env
 gnome_opts=()
 if (( capture )) ; then
     gnome_opts+=(--wait)
+fi
+if [[ -n "$zoom" ]]; then
+    gnome_opts+=(--zoom="$zoom")
 fi
 
 gnome-terminal \

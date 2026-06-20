@@ -82,6 +82,11 @@ reset_files
 (export COLUMNS=95 LINES=35; run_term)
 assert "grep -q 'ARGS: --geometry=95x35' '$TEST_TMP_DIR/calls'"
 
+# 2c. Shell mode with zoom: gnome-terminal called with --zoom
+reset_files
+run_term --geometry=120x30 --zoom=1.2
+assert "grep -q 'ARGS: --geometry=120x30 --zoom=1.2' '$TEST_TMP_DIR/calls'"
+
 
 # 3. Shell mode with --clean: non-essential vars are removed
 export TERM_TEST_REMOVED="yes"
@@ -146,6 +151,23 @@ assert "! grep -q 'Press \[ENTER\]' '$TEST_TMP_DIR/calls'"
 reset_files
 run_term --geometry=80x24 echo hello
 assert "grep -q -- '--geometry=80x24' '$TEST_TMP_DIR/calls'"
+
+# 10b. Command mode: --zoom is passed to gnome-terminal
+reset_files
+run_term --zoom=1.5 echo hello
+assert "grep -q -- '--zoom=1.5' '$TEST_TMP_DIR/calls'"
+
+# 10c. Command mode: -z is passed to gnome-terminal as --zoom
+reset_files
+run_term -z 2.0 echo hello
+assert "grep -q -- '--zoom=2.0' '$TEST_TMP_DIR/calls'"
+
+# 10d. Command mode: disable option permutation, so inner command options are not parsed by term
+reset_files
+run_term -g 80x24 /usr/bin/bmon -R 3 -r 1
+assert "grep -q -- '--geometry=80x24' '$TEST_TMP_DIR/calls'"
+assert "grep -q -- '-R' '$TEST_TMP_DIR/calls'"
+assert "grep -q -- '-r' '$TEST_TMP_DIR/calls'"
 
 # 11. Command mode: --title sets the window title
 reset_files

@@ -1,5 +1,0 @@
-#!/bin/bash
-
-. <(get-screen-size)
-
-ee start-terminal -z 1.3 -g 120x25+$(( $WIDTH / 2 - 800 ))+$(( $HEIGHT / 2 - 400 )) fzf-select-window

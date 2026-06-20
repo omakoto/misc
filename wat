@@ -39,7 +39,7 @@ unset COLORTERM
 set TERM=vt100
 
 if isx ; then
-  start-terminal -t "$title" "${cmd[@]}"
+  t -t "$title" "${cmd[@]}"
 else
   ee "${cmd[@]}"
 fi
