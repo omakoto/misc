@@ -54,6 +54,13 @@ echo "opened: \$*" >> "$TEST_TMP_DIR/1_calls"
 EOF
 chmod +x "$TEST_TMP_DIR/bin/1"
 
+# Mock needs-term to return false (don't need terminal) by default
+cat > "$TEST_TMP_DIR/bin/needs-term" <<EOF
+#!/bin/bash
+exit 1
+EOF
+chmod +x "$TEST_TMP_DIR/bin/needs-term"
+
 # Assertions:
 # 1. Test help option
 assert "$TEST_TMP_DIR/task-history --help | grep -q 'Usage:'"

@@ -89,6 +89,11 @@ if [[ -n "$preview_file" ]]; then
   exit 0
 fi
 
+# Relaunch in term if needed (e.g. running under agent or non-terminal)
+if needs-term; then
+  exec term --geometry=160x45 --no-wait -- "$0" "$@"
+fi
+
 REAL_SCRIPT=$(readlink -f "$0")
 
 fzf_args=(
