@@ -206,7 +206,7 @@ Examples:
         processed = process_dump_output(path, raw, home)
         sections.append(processed)
 
-    combined = ''
+    combined = f'# Use `dconf-restore FILE | dconf load /` to load it\n'
     for section in sections:
         if combined and not combined.endswith('\n\n') and section.strip():
             combined += '\n'

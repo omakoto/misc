@@ -13,4 +13,4 @@ fi
 #      the '%' separator (e.g. '/org/cinnamon%key=val' -> 'key=val').
 #      Lines without '%' (headers, blanks) are unchanged.
 #   2-3. Expand '$HOME' back to the real home directory (longer form first).
-sed -E "s|^[^%]*%||; s|'\\\$HOME/|'$HOME/|g; s|'\\\$HOME|'$HOME|g"
+sed -E "s|^[^%]*%||; s|'\\\$HOME/|'$HOME/|g; s|'\\\$HOME|'$HOME|g" "$@"
