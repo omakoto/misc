@@ -90,6 +90,30 @@ class TestProcessDumpOutput(unittest.TestCase):
         out = self._process('/org/cinnamon/desktop/keybindings/', raw)
         self.assertIn('[org/cinnamon/desktop/keybindings/custom-keybindings/custom0]\n', out)
 
+    def test_blank_line_inserted_before_section_header(self) -> None:
+        raw = "[/]\nk1='v1'\n[sub]\nk2='v2'\n"
+        out = self._process('/org/test/', raw)
+        expected = (
+            "[org/test]\n"
+            "/org/test%k1='v1'\n"
+            "\n"
+            "[org/test/sub]\n"
+            "/org/test/sub%k2='v2'\n"
+        )
+        self.assertEqual(out, expected)
+
+    def test_no_extra_blank_line_if_already_present(self) -> None:
+        raw = "[/]\nk1='v1'\n\n[sub]\nk2='v2'\n"
+        out = self._process('/org/test/', raw)
+        expected = (
+            "[org/test]\n"
+            "/org/test%k1='v1'\n"
+            "\n"
+            "[org/test/sub]\n"
+            "/org/test/sub%k2='v2'\n"
+        )
+        self.assertEqual(out, expected)
+
     # --- Key prefixes ---
 
     def test_root_section_key_gets_base_prefix(self) -> None:
