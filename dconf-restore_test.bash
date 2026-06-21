@@ -1,10 +1,10 @@
 #!/bin/bash
-# Tests for dconf-restore2.
-# Run from anywhere: bash misc/dconf-restore2_test.bash
+# Tests for dconf-restore.
+# Run from anywhere: bash misc/dconf-restore_test.bash
 
 set -uo pipefail
 
-SCRIPT="$(cd "$(dirname "$0")"; pwd)/dconf-restore2"
+SCRIPT="$(cd "$(dirname "$0")"; pwd)/dconf-restore"
 FAKE_HOME='/home/testuser'
 PASS=0
 FAIL=0
