@@ -9,8 +9,8 @@ if [[ "${1-}" == -h || "${1-}" == --help ]]; then
 fi
 
 # Three sed expressions:
-#   1. Strip path prefix from key lines (starting with /):
-#      Remove leading / plus zero-or-more path components (non-= chars + /),
-#      leaving just keyname=value.  Zero iterations handles root-level keys (/key=val).
+#   1. Strip path prefix from key lines: remove everything up to and including
+#      the '@' separator (e.g. '/org/cinnamon@key=val' -> 'key=val').
+#      Lines without '@' (headers, blanks) are unchanged.
 #   2-3. Expand '$HOME' back to the real home directory (longer form first).
-sed -E "s|^/([^=]*/)*||; s|'\\\$HOME/|'$HOME/|g; s|'\\\$HOME|'$HOME|g"
+sed -E "s|^[^@]*@||; s|'\\\$HOME/|'$HOME/|g; s|'\\\$HOME|'$HOME|g"

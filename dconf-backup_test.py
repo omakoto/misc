@@ -94,12 +94,12 @@ class TestProcessDumpOutput(unittest.TestCase):
 
     def test_root_section_key_gets_base_prefix(self) -> None:
         out = self._process('/org/cinnamon/', "[/]\nmy-key='hello'\n")
-        self.assertIn('/org/cinnamon/my-key=', out)
+        self.assertIn('/org/cinnamon@my-key=', out)
 
     def test_subsection_key_gets_full_prefix(self) -> None:
         raw = "[sub/path]\nk='v'\n"
         out = self._process('/org/cinnamon/', raw)
-        self.assertIn('/org/cinnamon/sub/path/k=', out)
+        self.assertIn('/org/cinnamon/sub/path@k=', out)
 
     def test_multiple_subsections_get_correct_prefixes(self) -> None:
         raw = (
@@ -108,9 +108,9 @@ class TestProcessDumpOutput(unittest.TestCase):
             "[custom/sub1]\nname='sub1'\n"
         )
         out = self._process('/org/cinnamon/desktop/keybindings/', raw)
-        self.assertIn('/org/cinnamon/desktop/keybindings/top=', out)
-        self.assertIn('/org/cinnamon/desktop/keybindings/custom/sub0/name=', out)
-        self.assertIn('/org/cinnamon/desktop/keybindings/custom/sub1/name=', out)
+        self.assertIn('/org/cinnamon/desktop/keybindings@top=', out)
+        self.assertIn('/org/cinnamon/desktop/keybindings/custom/sub0@name=', out)
+        self.assertIn('/org/cinnamon/desktop/keybindings/custom/sub1@name=', out)
 
     # --- Blank lines ---
 
@@ -138,11 +138,11 @@ class TestProcessDumpOutput(unittest.TestCase):
         out = self._process('/', raw)
         self.assertIn('[org/gnome]\n', out)
 
-    def test_root_dump_keys_have_slash_prefix(self) -> None:
+    def test_root_dump_keys_have_at_prefix(self) -> None:
         raw = "[/]\nkey='val'\n\n[org/gnome]\nk2='v2'\n"
         out = self._process('/', raw)
-        self.assertIn('/key=', out)
-        self.assertIn('/org/gnome/k2=', out)
+        self.assertIn('@key=', out)
+        self.assertIn('/org/gnome@k2=', out)
 
     # --- Path normalization ---
 
