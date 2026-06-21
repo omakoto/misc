@@ -1,0 +1,226 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+dconf-backup: Backup dconf settings with full path prefixes and $HOME normalization.
+
+This script wraps `dconf dump` for one or more setting directory paths,
+converting the output format so that each section header and key is prefixed
+with the dump path. Home directory paths in values are normalized to '$HOME'.
+
+The output is designed to be restored with `dconf-restore | dconf load /`.
+
+Usage examples:
+  dconf-backup /org/cinnamon/desktop/keybindings/ /org/gnome/desktop/ > settings.dconf
+  dconf-backup -o settings.dconf /org/cinnamon/ /org/gnome/
+
+Run tests before modifying:
+  python3 misc/dconf-backup_test.py
+"""
+
+import argparse
+import os
+import signal
+import subprocess
+import sys
+from typing import Optional
+
+
+# Graceful SIGPIPE handling (e.g. when piped to head)
+try:
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+except AttributeError:
+    pass
+
+
+def normalize_home(line: str, home: str) -> str:
+    """Replace the real home directory with '$HOME' in string values.
+
+    Only replaces occurrences that follow a single quote, matching the dconf
+    value format. The longer form (with trailing slash) is replaced first to
+    avoid double-substitution.
+
+    Args:
+        line: A raw key=value line from dconf dump.
+        home: The real home directory path (e.g. '/home/omakoto').
+
+    Returns:
+        The line with home directory paths normalized.
+    """
+    line = line.replace(f"'{home}/", "'$HOME/")
+    line = line.replace(f"'{home}", "'$HOME")
+    return line
+
+
+def process_dump_output(dump_path: str, raw_output: str, home: str) -> str:
+    """Transform dconf dump output by prefixing section headers and keys.
+
+    Each section header `[section]` is expanded to include the full dump path,
+    and each `key=value` line is prefixed with the full path of the current section.
+    The user's home directory in string values is replaced with '$HOME'.
+
+    Transformation example (dump_path = '/org/cinnamon/desktop/keybindings/'):
+      Input:  [/]
+              custom-list=['val']
+              [custom-keybindings/custom0]
+              name='1work'
+
+      Output: [org/cinnamon/desktop/keybindings]
+              /org/cinnamon/desktop/keybindings/custom-list=['val']
+              [org/cinnamon/desktop/keybindings/custom-keybindings/custom0]
+              /org/cinnamon/desktop/keybindings/custom-keybindings/custom0/name='1work'
+
+    Args:
+        dump_path: The path passed to dconf dump (e.g. '/org/cinnamon/').
+        raw_output: The raw stdout from `dconf dump`.
+        home: The real home directory path for $HOME normalization.
+
+    Returns:
+        The transformed output as a single string.
+    """
+    # Strip leading/trailing slashes from dump_path to get a clean base path.
+    # e.g. '/org/cinnamon/desktop/keybindings/' -> 'org/cinnamon/desktop/keybindings'
+    base_path = dump_path.strip('/')
+
+    lines = raw_output.splitlines(keepends=True)
+    out_lines: list[str] = []
+    current_key_prefix = ''
+
+    for raw_line in lines:
+        line = raw_line.rstrip('\n')
+
+        # --- Section header [section] ---
+        if line.startswith('[') and line.endswith(']'):
+            section = line[1:-1]  # strip [ and ]
+
+            if section == '/':
+                # [/] is the root section of this dump.
+                if base_path:
+                    out_lines.append(f'[{base_path}]\n')
+                    current_key_prefix = f'/{base_path}/'
+                else:
+                    # Special case: dumping '/' itself — keep [/].
+                    out_lines.append('[/]\n')
+                    current_key_prefix = '/'
+            else:
+                # [sub/path] — subsection relative to the dump root.
+                if base_path:
+                    out_lines.append(f'[{base_path}/{section}]\n')
+                    current_key_prefix = f'/{base_path}/{section}/'
+                else:
+                    # Dumping '/' itself; subsections have no base prefix.
+                    out_lines.append(f'[{section}]\n')
+                    current_key_prefix = f'/{section}/'
+
+        # --- Blank line ---
+        elif line == '':
+            out_lines.append('\n')
+
+        # --- key=value line ---
+        elif '=' in line:
+            normalized = normalize_home(line, home)
+            out_lines.append(f'{current_key_prefix}{normalized}\n')
+
+        # --- Anything else: pass through ---
+        else:
+            out_lines.append(f'{line}\n')
+
+    return ''.join(out_lines)
+
+
+def run_dconf_dump(path: str, verbose: bool = False) -> str:
+    """Run `dconf dump <path>` and return its stdout.
+
+    Args:
+        path: The dconf path to dump (trailing slash will be added if missing).
+        verbose: If True, prints the dconf command to stderr before running.
+
+    Returns:
+        The stdout of `dconf dump` as a string.
+
+    Raises:
+        SystemExit: If dconf dump returns a non-zero exit code.
+    """
+    if not path.endswith('/'):
+        path = path + '/'
+        print(f'Warning: path adjusted to {path!r} (dconf requires a trailing slash)',
+              file=sys.stderr)
+
+    cmd = ['dconf', 'dump', path]
+    if verbose:
+        print(f'Running: {" ".join(cmd)}', file=sys.stderr)
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f'Error: dconf dump {path!r} failed (exit {result.returncode}):', file=sys.stderr)
+        if result.stderr:
+            print(result.stderr.strip(), file=sys.stderr)
+        sys.exit(1)
+
+    return result.stdout
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        prog='dconf-backup',
+        description=(
+            'Backup dconf settings with full path prefixes and $HOME normalization.\n'
+            'Output can be restored with: dconf-restore FILE | dconf load /'
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""\
+Examples:
+  # Dump keybindings and desktop settings to stdout:
+  dconf-backup /org/cinnamon/desktop/keybindings/ /org/gnome/desktop/
+
+  # Write to a file:
+  dconf-backup -o ~/settings.dconf /org/cinnamon/ /org/gnome/
+
+  # Backup everything (root):
+  dconf-backup -o ~/all-settings.dconf /
+
+  # Restore from a backup:
+  dconf-restore ~/settings.dconf | dconf load /
+""")
+
+    parser.add_argument(
+        'paths', metavar='PATH', nargs='+',
+        help='dconf path(s) to dump (e.g. /org/cinnamon/desktop/keybindings/)')
+    parser.add_argument(
+        '-o', '--output', metavar='FILE',
+        help='write output to FILE instead of stdout')
+    parser.add_argument(
+        '-v', '--verbose', action='store_true',
+        help='print the dconf dump command(s) to stderr')
+
+    args = parser.parse_args()
+    home = os.environ.get('HOME', os.path.expanduser('~'))
+
+    # Process all paths and collect output.
+    sections: list[str] = []
+    for path in args.paths:
+        raw = run_dconf_dump(path, verbose=args.verbose)
+        processed = process_dump_output(path, raw, home)
+        sections.append(processed)
+
+    combined = ''.join(sections)
+
+    if args.output:
+        try:
+            with open(args.output, 'w', encoding='utf-8') as f:
+                f.write(combined)
+            if args.verbose:
+                print(f'Output written to {args.output}', file=sys.stderr)
+        except OSError as e:
+            print(f'Error: cannot write to {args.output!r}: {e}', file=sys.stderr)
+            sys.exit(1)
+    else:
+        sys.stdout.write(combined)
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(1)
+    except BrokenPipeError:
+        sys.exit(0)
