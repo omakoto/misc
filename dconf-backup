@@ -65,9 +65,9 @@ def process_dump_output(dump_path: str, raw_output: str, home: str) -> str:
               name='1work'
 
       Output: [org/cinnamon/desktop/keybindings]
-              /org/cinnamon/desktop/keybindings@custom-list=['val']
+              /org/cinnamon/desktop/keybindings%custom-list=['val']
               [org/cinnamon/desktop/keybindings/custom-keybindings/custom0]
-              /org/cinnamon/desktop/keybindings/custom-keybindings/custom0@name='1work'
+              /org/cinnamon/desktop/keybindings/custom-keybindings/custom0%name='1work'
 
     Args:
         dump_path: The path passed to dconf dump (e.g. '/org/cinnamon/').
@@ -96,20 +96,20 @@ def process_dump_output(dump_path: str, raw_output: str, home: str) -> str:
                 # [/] is the root section of this dump.
                 if base_path:
                     out_lines.append(f'[{base_path}]\n')
-                    current_key_prefix = f'/{base_path}@'
+                    current_key_prefix = f'/{base_path}%'
                 else:
                     # Special case: dumping '/' itself — keep [/].
                     out_lines.append('[/]\n')
-                    current_key_prefix = '@'
+                    current_key_prefix = '%'
             else:
                 # [sub/path] — subsection relative to the dump root.
                 if base_path:
                     out_lines.append(f'[{base_path}/{section}]\n')
-                    current_key_prefix = f'/{base_path}/{section}@'
+                    current_key_prefix = f'/{base_path}/{section}%'
                 else:
                     # Dumping '/' itself; subsections have no base prefix.
                     out_lines.append(f'[{section}]\n')
-                    current_key_prefix = f'/{section}@'
+                    current_key_prefix = f'/{section}%'
 
         # --- Blank line ---
         elif line == '':

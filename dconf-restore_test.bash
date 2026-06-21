@@ -45,44 +45,44 @@ assert_eq "blank line" \
 # ---------- Key prefix stripping ----------
 assert_eq "simple prefix stripped" \
   "custom-list=['custom9', 'custom8']" \
-  "$(r1 "/org/cinnamon/desktop/keybindings@custom-list=['custom9', 'custom8']")"
+  "$(r1 "/org/cinnamon/desktop/keybindings%custom-list=['custom9', 'custom8']")"
 
 assert_eq "deep subsection prefix stripped" \
   "binding=['<Primary><Alt>minus']" \
-  "$(r1 "/org/cinnamon/desktop/keybindings/custom-keybindings/custom0@binding=['<Primary><Alt>minus']")"
+  "$(r1 "/org/cinnamon/desktop/keybindings/custom-keybindings/custom0%binding=['<Primary><Alt>minus']")"
 
 assert_eq "GVariant @as [] value" \
   "my-key=@as []" \
-  "$(r1 "/org/test@my-key=@as []")"
+  "$(r1 "/org/test%my-key=@as []")"
 
-assert_eq "root-level key (@ with no path before it)" \
+assert_eq "root-level key (% with no path before it)" \
   "some-root-key='hello'" \
-  "$(r1 "@some-root-key='hello'")"
+  "$(r1 "%some-root-key='hello'")"
 
 assert_eq "value containing slashes" \
   "command='/home/testuser/cbin/1work'" \
-  "$(r1 "/org/test@command='/home/testuser/cbin/1work'")"
+  "$(r1 "/org/test%command='/home/testuser/cbin/1work'")"
 
 assert_eq "key with hyphen" \
   "looking-glass-keybinding=@as []" \
-  "$(r1 "/org/cinnamon/desktop/keybindings@looking-glass-keybinding=@as []")"
+  "$(r1 "/org/cinnamon/desktop/keybindings%looking-glass-keybinding=@as []")"
 
 # ---------- $HOME expansion ----------
 assert_eq "\$HOME/ expanded" \
   "command='/home/testuser/cbin/script'" \
-  "$(r1 "/org/test@command='\$HOME/cbin/script'")"
+  "$(r1 "/org/test%command='\$HOME/cbin/script'")"
 
 assert_eq "exact \$HOME (no trailing slash) expanded" \
   "path='/home/testuser'" \
-  "$(r1 "/org/test@path='\$HOME'")"
+  "$(r1 "/org/test%path='\$HOME'")"
 
 assert_eq "\$HOME in list expanded" \
   "list=['/home/testuser', '/home/testuser/sub']" \
-  "$(r1 "/org/test@list=['\$HOME', '\$HOME/sub']")"
+  "$(r1 "/org/test%list=['\$HOME', '\$HOME/sub']")"
 
 assert_eq "\$HOME not after single-quote is NOT expanded" \
   "other=\$HOME/thing" \
-  "$(r1 "/org/test@other=\$HOME/thing")"
+  "$(r1 "/org/test%other=\$HOME/thing")"
 
 # ---------- -h flag ----------
 assert_eq "-h prints help" \
@@ -91,13 +91,13 @@ assert_eq "-h prints help" \
 
 # ---------- Multi-line round-trip ----------
 MULTILINE_IN="[org/cinnamon/desktop/keybindings]
-/org/cinnamon/desktop/keybindings@custom-list=['custom9', 'custom8']
-/org/cinnamon/desktop/keybindings@looking-glass-keybinding=@as []
+/org/cinnamon/desktop/keybindings%custom-list=['custom9', 'custom8']
+/org/cinnamon/desktop/keybindings%looking-glass-keybinding=@as []
 
 [org/cinnamon/desktop/keybindings/custom-keybindings/custom0]
-/org/cinnamon/desktop/keybindings/custom-keybindings/custom0@binding=['<Primary><Alt>minus']
-/org/cinnamon/desktop/keybindings/custom-keybindings/custom0@command='\$HOME/cbin/1work'
-/org/cinnamon/desktop/keybindings/custom-keybindings/custom0@name='1work'"
+/org/cinnamon/desktop/keybindings/custom-keybindings/custom0%binding=['<Primary><Alt>minus']
+/org/cinnamon/desktop/keybindings/custom-keybindings/custom0%command='\$HOME/cbin/1work'
+/org/cinnamon/desktop/keybindings/custom-keybindings/custom0%name='1work'"
 
 MULTILINE_EXPECTED="[org/cinnamon/desktop/keybindings]
 custom-list=['custom9', 'custom8']
