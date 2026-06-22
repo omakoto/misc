@@ -69,27 +69,19 @@ if (( $copy )) || [[ ! -t 0 ]] ; then
     if ! [[ -s "$f" ]] ; then
       exit 1
     fi
-    (
-      cat "$f" | {
-        if ! iswsl ; then
-          xclip -silent -i -selection clipboard $target_opt
-        else
-          clip.exe # for wsl
-        fi
-      }
-      rm "$f"
-    ) &
-  ) # <&- 1>&- 2>&- # what's this???
+    printf -v escaped_f '%q' "$f"
+    cmd="cat $escaped_f | xclip -silent -i -selection clipboard"
+    if [[ -n "$target_opt" ]] ; then
+      printf -v escaped_target_opt '%q' "$target_opt"
+      cmd+=" $escaped_target_opt"
+    fi
+    cmd+="; rm -f $escaped_f"
+    setsid bash -c "$cmd" >/dev/null 2>&1
+  )
   (( $quiet )) || echo "${description:-[Copied to clipboard]}" 1>&2
   exit 0
 fi
-{
-  if ! iswsl ; then
-    xclip -o -selection clipboard $target_opt
-  else
-    powershell.exe -command "Get-Clipboard" # for wsl
-  fi
-} | {
+xclip -o -selection clipboard $target_opt | {
   if (( $flatten )) ; then
     shescapes
   else
