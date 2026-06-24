@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# 1. Query the terminal for window size in pixels via ANSI escape sequence
+# \e[14t returns \e[4;height;widtht
+# We write/read to/from /dev/tty if available to support running inside command substitution.
+if [[ -r /dev/tty && -w /dev/tty ]]; then
+    echo -ne "\e[14t" > /dev/tty
+    IFS=';' read -d 't' -t 0.1 -r -s escape_code height width < /dev/tty
+else
+    echo -ne "\e[14t"
+    IFS=';' read -d 't' -t 0.1 -r -s escape_code height width
+fi
+height=$(echo "$height" | tr -dc '0-9')
+width=$(echo "$width" | tr -dc '0-9')
+
+# 2. Get the current text rows and columns from stty
+read -r rows cols < <(stty size)
+
+# 3. Guard clause to prevent division by zero if terminal doesn't support \e[14t
+if [[ -z "$width" || -z "$height" || "$rows" -eq 0 || "$cols" -eq 0 ]]; then
+    echo "Error: Could not retrieve terminal pixel dimensions." >&2
+    exit 1
+fi
+
+# 4. Calculate dimensions for 1 letter (integer division)
+char_width=$((width / cols))
+char_height=$((height / rows))
+
+# 5. Output in space-delimited format: WIDTH HEIGHT
+echo "$char_width $char_height"

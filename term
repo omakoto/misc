@@ -178,9 +178,18 @@ _prepare_env() {
 
 if (( ! has_command )); then
   _prepare_env
-  gnome_opts=()
-  [[ -n "$zoom" ]] && gnome_opts+=(--zoom="$zoom")
-  exec gnome-terminal --geometry="$geometry" "${gnome_opts[@]}"
+
+  # Launch terminal in interactive mode.
+  if (( 0 )) ; then
+    # Previously, I used gnome-terminal. Now I want to switch to Terminator.
+    gnome_opts=()
+    [[ -n "$zoom" ]] && gnome_opts+=(--zoom="$zoom")
+    exec gnome-terminal --geometry="$geometry" "${gnome_opts[@]}"
+  else
+    # Terminator doesn't support --zoom, so just launch it.
+    # Terminator's --geometry seems to be in pixels, so we omit it.
+    exec terminator
+  fi
 fi
 
 # Command mode: run COMMAND inside gnome-terminal
