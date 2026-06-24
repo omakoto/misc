@@ -180,14 +180,17 @@ if (( ! has_command )); then
   _prepare_env
 
   # Launch terminal in interactive mode.
-  if (( 0 )) ; then
-    # Previously, I used gnome-terminal. Now I want to switch to Terminator.
+  if (( 1 )) ; then
+    # Default is gnome-terminal.
     gnome_opts=()
     [[ -n "$zoom" ]] && gnome_opts+=(--zoom="$zoom")
     exec gnome-terminal --geometry="$geometry" "${gnome_opts[@]}"
   else
     # Terminator doesn't support --zoom, so just launch it.
     # Terminator's --geometry seems to be in pixels, so we omit it.
+    # Unfortunately, terminator doesn't inherit environment, so we
+    # can't propagate $NEW_PWD, and because there's no clear gain
+    # I'll get from it, I gave up on trying it, for now.
     exec terminator
   fi
 fi
