@@ -2,6 +2,13 @@
 
 set -e
 
+if [[ "${0##*/}" == "gg1" ]]; then
+  tmp=$(mktemp /tmp/git-commit-history-XXXXXXXX.log)
+  git-commit-history-raw > "$tmp"
+  1 "$tmp"
+  exit 0
+fi
+
 # When run inside Antigravity/Claude, it launches in a new gnome-terminal using run-in-terminal.
 if needs-term; then
   exec term --geometry=160x45 --no-wait -- "$0" "$@"
