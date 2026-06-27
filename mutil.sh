@@ -6,10 +6,8 @@
 
 if [[ "$_interactive" == "" ]] ; then
   _interactive=0
-  eeii="" # ee-if-interactive
   if [[ "$-" == *i* ]] ; then
     _interactive=1
-    eeii=ee
   fi
 fi
 
@@ -202,6 +200,14 @@ dry-run() {
 
 eem() {
   ee --timestamp --show-result --mobile --log --unbuffer --time --pwd "$@"
+}
+
+eeii() {
+  if interactive ; then
+    ee "$@"
+  else
+    $@
+  fi
 }
 
 ee() {
