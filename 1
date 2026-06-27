@@ -264,6 +264,7 @@ command=""
 is_vi=0
 is_sublime=0
 is_code=0
+is_gnome_edit=0
 
 candidates=()
 
@@ -276,7 +277,11 @@ fi
 candidates+=(/usr/bin/code)
 
 if [[ -n "$DISPLAY" ]] ; then
-  if (( $use_vim )) || (( $IN_SANDY )) ; then
+  if (( $IN_SANDY )) ; then
+    command=gnome-text-editor
+    is_gnome_edit=1
+    bg=0
+  elif (( $use_vim )) || (( $IN_SANDY )) ; then
     command=gvim
     opts=""
     bg=1
