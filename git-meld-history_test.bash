@@ -982,6 +982,23 @@ assert "[[ '$(cat $TEST_TMP_DIR/fzf_cwds)' == *'/repo' ]]"
 # 2. git-history-fzf was called with 'master'
 assert "grep -q 'git-history-fzf.*master' '$TEST_TMP_DIR/git_meld_err'"
 
+# -------------------------------------------------------------
+# Test Case 34: Verify only dirty submodule does not show (CURRENT) but shows submodule
+# -------------------------------------------------------------
+setup_git_repo_with_submodule
+
+# Make the submodule dirty
+echo "dirty in sub" >> mysub/subfile.txt
+
+clear_test_state
+git-meld-history
+
+# Verify:
+# 1. fzf_stdin does NOT contain '(CURRENT)'
+assert "! grep -q '(CURRENT)' '$TEST_TMP_DIR/fzf_stdin'"
+# 2. fzf_stdin contains the dirty submodule
+assert "grep -q 'mysub.*dirty' '$TEST_TMP_DIR/fzf_stdin'"
+
 # Return to script directory
 cd "$SCRIPT_DIR"
 

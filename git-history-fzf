@@ -54,9 +54,9 @@ def is_inside_work_tree() -> bool:
 
 def is_dirty() -> bool:
     """Checks if the Git repository has any uncommitted changes."""
-    if run_command(["git", "diff-files", "--quiet"]).returncode != 0:
+    if run_command(["git", "diff-files", "--quiet", "--ignore-submodules"]).returncode != 0:
         return True
-    if run_command(["git", "diff-index", "--cached", "--quiet", "HEAD"]).returncode != 0:
+    if run_command(["git", "diff-index", "--cached", "--quiet", "--ignore-submodules", "HEAD"]).returncode != 0:
         return True
     
     proc = popen_command(["git", "ls-files", "--others", "--exclude-standard"], stdout=subprocess.PIPE)
@@ -382,8 +382,8 @@ Examples:
         di_proc = None
         lf_proc = None
         if args.current:
-            df_proc = popen_command(["git", "diff-files", "--quiet"], stderr=subprocess.DEVNULL)
-            di_proc = popen_command(["git", "diff-index", "--cached", "--quiet", "HEAD"], stderr=subprocess.DEVNULL)
+            df_proc = popen_command(["git", "diff-files", "--quiet", "--ignore-submodules"], stderr=subprocess.DEVNULL)
+            di_proc = popen_command(["git", "diff-index", "--cached", "--quiet", "--ignore-submodules", "HEAD"], stderr=subprocess.DEVNULL)
             lf_proc = popen_command(["git", "ls-files", "--others", "--exclude-standard"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
 
         # Start fzf process

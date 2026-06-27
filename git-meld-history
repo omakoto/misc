@@ -141,9 +141,9 @@ def is_on_remote(commit: str) -> bool:
 
 def is_dirty_repo() -> bool:
     """Checks if the Git repository has any uncommitted changes (tracked or untracked)."""
-    if subprocess.run(["git", "diff-files", "--quiet"]).returncode != 0:
+    if subprocess.run(["git", "diff-files", "--quiet", "--ignore-submodules"]).returncode != 0:
         return True
-    if subprocess.run(["git", "diff-index", "--cached", "--quiet", "HEAD"]).returncode != 0:
+    if subprocess.run(["git", "diff-index", "--cached", "--quiet", "--ignore-submodules", "HEAD"]).returncode != 0:
         return True
     res = subprocess.run(["git", "ls-files", "--others", "--exclude-standard"], capture_output=True)
     if res.returncode == 0 and res.stdout.strip():
@@ -464,7 +464,7 @@ def main() -> None:
             
             target_commit = hashes[0]
             if target_commit == "(CURRENT)":
-                status_res = run_command(["git", "status", "--porcelain"], capture_output=True, text=True)
+                status_res = run_command(["git", "status", "--porcelain", "--ignore-submodules"], capture_output=True, text=True)
                 commit_files = []
                 for line in status_res.stdout.splitlines():
                     if line.strip():
@@ -607,7 +607,7 @@ def main() -> None:
             prompt_str = f"Inject to {subject}: "
 
             # Run FZF to select dirty files to inject
-            status_res = run_command(["git", "status", "--porcelain"], capture_output=True, text=True)
+            status_res = run_command(["git", "status", "--porcelain", "--ignore-submodules"], capture_output=True, text=True)
             preview_script = (
                 'line="$1"; '
                 'status="${line:0:2}"; '
