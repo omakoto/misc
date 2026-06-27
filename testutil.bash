@@ -79,7 +79,7 @@ assert_out() {
   local rc
   if (( $use_wdiff )) ; then
     local wdiff_opts=""
-    if iscon 1 ; then
+    if [[ -t 1 ]] ; then
       wdiff_opts='-w '$'\033[30;41m'' -x '$'\033[0m'' -y '$'\033[30;42m'' -z '$'\033[0m'
     fi
     out=$(wdiff -n $wdiff_opts <("$@" | $filter) <($filter))

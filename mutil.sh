@@ -82,10 +82,6 @@ dief() {
   return 0
 }
 
-iscon() {
-  [[ -t ${1:-1} || $FORCE_CON = 1 ]]
-}
-
 firstdir() {
   local d
   for d in "${@}" ; do
@@ -109,17 +105,19 @@ firstbin() {
 }
 
 haspath() {
-  case ":$PATH:" in
-  *:${1}:*) return 0;;
-  esac
-  return 1
+  if [[ ":$PATH:" == *:${1}:* ]] ; then
+    return 0
+  else
+    return 1
+  fi
 }
 
 hasmanpath() {
-  case ":$MANPATH:" in
-  *:${1}:*) return 0;;
-  esac
-  return 1
+  if [[ ":$MANPATH:" == *:${1}:* ]] ; then
+    return 0
+  else
+    return 1
+  fi
 }
 
 addpath() {
