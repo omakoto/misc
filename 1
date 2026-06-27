@@ -281,7 +281,7 @@ if [[ -n "$DISPLAY" ]] ; then
     command=gnome-text-editor
     is_gnome_edit=1
     bg=0
-  elif (( $use_vim )) || (( $IN_SANDY )) ; then
+  elif (( $use_vim )) ; then
     command=gvim
     opts=""
     bg=1

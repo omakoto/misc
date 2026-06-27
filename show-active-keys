@@ -7,6 +7,8 @@
 # Every time this script is modified, run the corresponding test script:
 #   python3 show-active-keys_test.py
 #
+# There's also a faster version written in go: evsniff -a
+# 
 
 import sys
 from typing import Set
