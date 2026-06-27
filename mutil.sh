@@ -222,27 +222,32 @@ ee() {
   local log=0
   local unbuffer=0
   local time=0
-  eval "$(bashgetopt -d 'Echo and execute' '
-      2|stderr         to=2               # Show message on stderr instead of stdout.
-      tty tty=1                           # Show message directly to TTY instead of stdout.
-      f|notify-failure notify_opts=nf     # Notify when command fails.
-      s                notify_opts=""     # Don'\''t notify (default).
-      b|bg             bg_opts="bg-start" # Start in the background.
-      d|dry-run        dry=1              # Dry run.
-      v|notify         notify_opts="nf -v" # Verbose: Notify the result.
-      t|timestamp      with_time=1        # Display start timestamp too.
-      n|no-timestamp   with_time=0        # Don'\''t display timestamp.
-      m: marker=%                         # Set marker.
-      r: raw_marker=%                     # Set raw-marker.
-      pwd pwd=1                           # Show current directory too.
-      q|quiet          quiet=1;child_quiet=1  # Don'\''t echo back command line.
-      Q|child-quiet    child_quiet=1      # Silence inner ee executions.
-      R|show-result    show_result=1      # Show result code.
-      M|mobile         mobile=1           # Send mobile notification upon finish.
-      l|log            log=1              # Use tee to log the output
-      U|unbuffer       unbuffer=1         # Force line buffering. (command always runs as a child)
-      T|time           time=1             # Run with /usr/bin/time -v. (command always runs as a child)
-      ' "$@")"
+
+  # If the first argument starts with a -, parse the options.
+  # Otherwise, no need to do it.
+  if [[ "$1" == -* ]] ; then
+    eval "$(bashgetopt -d 'Echo and execute' '
+        2|stderr         to=2               # Show message on stderr instead of stdout.
+        tty tty=1                           # Show message directly to TTY instead of stdout.
+        f|notify-failure notify_opts=nf     # Notify when command fails.
+        s                notify_opts=""     # Don'\''t notify (default).
+        b|bg             bg_opts="bg-start" # Start in the background.
+        d|dry-run        dry=1              # Dry run.
+        v|notify         notify_opts="nf -v" # Verbose: Notify the result.
+        t|timestamp      with_time=1        # Display start timestamp too.
+        n|no-timestamp   with_time=0        # Don'\''t display timestamp.
+        m: marker=%                         # Set marker.
+        r: raw_marker=%                     # Set raw-marker.
+        pwd pwd=1                           # Show current directory too.
+        q|quiet          quiet=1;child_quiet=1  # Don'\''t echo back command line.
+        Q|child-quiet    child_quiet=1      # Silence inner ee executions.
+        R|show-result    show_result=1      # Show result code.
+        M|mobile         mobile=1           # Send mobile notification upon finish.
+        l|log            log=1              # Use tee to log the output
+        U|unbuffer       unbuffer=1         # Force line buffering. (command always runs as a child)
+        T|time           time=1             # Run with /usr/bin/time -v. (command always runs as a child)
+        ' "$@")"
+  fi
 
   if (( $dry )) || (( $DRYRUN )) || (( $DRY )) || (( $EE_DRY )) ; then
     dry=1
