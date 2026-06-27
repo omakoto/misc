@@ -4,15 +4,36 @@
 
 # fails if called by non-bash
 
-_interactive=0
-eeii="" # ee-if-interactive
-if [[ "$-" == *i* ]] ; then
-  _interactive=1
-  eeii=ee
+if [[ "$_interactive" == "" ]] ; then
+  _interactive=0
+  eeii="" # ee-if-interactive
+  if [[ "$-" == *i* ]] ; then
+    _interactive=1
+    eeii=ee
+  fi
 fi
 
-_is_wsl=0
-[[ -n "${WSL_DISTRO_NAME:-}" ]] && _is_wsl=1
+if [[ "$IS_VMWARE" == "" ]] ; then
+  export IS_VMWARE=0
+  if grep -qi ^vmware /sys/class/dmi/id/product_name ; then
+    export IS_VMWARE=1
+  fi
+fi
+
+if [[ "$IS_GOOGLE_PC" == "" ]] ; then
+  export IS_GOOGLE_PC=0
+  if [[ -d /google/ ]] || uname -a | grep -q rodete ; then
+    export IS_GOOGLE_PC=1
+  fi
+fi
+
+function is-glinux() {
+  if [[ "$IS_GOOGLE_PC" == "" ]] ; then
+    [[ "$IS_GOOGLE_PC" == "1" ]]
+    return $?
+  fi
+  uname -a | grep -q rodete
+}
 
 . ~/cbin/common_rc
 . ~/cbin/misc/colors.bash
