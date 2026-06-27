@@ -273,8 +273,9 @@ if [[ -n "$DISPLAY" ]] ; then
     bg=1
     is_vi=1
   else
+    # Update common_Rc to channge EDITOR_ANTIGRAVITY.
     command=$(firstbin \
-        /usr/bin/antigravity \
+        $EDITOR_ANTIGRAVITY \
         /usr/bin/code \
         )
     if [[ "$command" =~ /code$ ]]; then
