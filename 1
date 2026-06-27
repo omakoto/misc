@@ -320,14 +320,6 @@ if (( $is_code )) ; then
   opts="$opts $(chrome-flags-for-vmware)"
 fi
 
-
-# if (( $copy )) ; then
-#   copy_temp=$(tempfile -p 1catfile)
-#   cat "${files[@]}" > "$copy_temp"
-#   files=("$copy_temp")
-# fi
-
-
 bg_opt=""
 if (( $bg )); then
   bg_opt=-b
@@ -346,19 +338,6 @@ if (( ${#files[@]} > 0 )) ; then
         ee mkdir -p "$dir"
       fi
     done
-  fi
-  # Bring the sublime window to top
-  # This is not needed with VS.code
-  if (( $is_sublime )) ; then
-    (
-      set +e
-      for n in {1..10}; do
-        if focus-window perl -e 'exit(($ARGV[1] =~ m!/sublime_text$! and $ARGV[0] =~ m!^\Q'"$file0"'\E\s.*Sublime Text$!) ? 0 : 1)' ; then
-          break
-        fi
-        sleep 0.1
-      done
-    ) >&/dev/null &
   fi
 
   cd $HOME
