@@ -222,7 +222,7 @@ def query_diff_status(user_args: List[str], no_rename_detection: bool = False) -
         dest_files: Files to copy/link to dest_dir
         rename_map: Dict mapping dest_path -> src_path
     """
-    cmd = ["git", "diff", "-z", "--raw"]
+    cmd = ["git", "diff", "-z", "--raw", "--ignore-submodules"]
     if no_rename_detection:
         cmd.append("--no-renames")
     cmd += user_args

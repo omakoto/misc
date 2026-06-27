@@ -86,6 +86,11 @@ class GitMeldTest(unittest.TestCase):
         
         src, dest, renames = git_meld.query_diff_status(["HEAD"])
         
+        # Verify --ignore-submodules is passed
+        mock_run.assert_called_once()
+        called_args = mock_run.call_args[0][0]
+        self.assertIn("--ignore-submodules", called_args)
+        
         self.assertEqual(src, ["file1.txt", "old_file.txt", "deleted_file.txt"])
         self.assertEqual(dest, ["file1.txt", "new_file.txt", "added_file.txt"])
         self.assertEqual(renames, {"new_file.txt": "old_file.txt"})
