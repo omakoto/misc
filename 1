@@ -270,7 +270,6 @@ fi
 
 command=""
 is_vi=0
-is_sublime=0
 is_code=0
 is_antigravity=0
 is_gnome_edit=0
@@ -316,18 +315,12 @@ if [[ -z "$command" ]] ; then
 fi
 
 if (( $line > 0 )) ; then
-  if (( $is_code )) ; then
+  if (( $is_code || $is_antigravity )) ; then
     opts=("-g")
-    files[0]="$file0":$line
-  elif (( $is_sublime )) ; then
     files[0]="$file0":$line
   elif (( $is_vi )) ; then
     opts=("+$line")
   fi
-fi
-
-if (( $is_code )) ; then
-  opts+=( $(chrome-flags-for-vmware) )
 fi
 
 ee_bg_opt=""
@@ -336,6 +329,7 @@ if (( $bg )); then
 fi
 
 if (( $is_code || $is_antigravity )); then
+  opts+=( $(chrome-flags-for-vmware) )
   if (( $force_new_window )) || [[ -d "$file0" ]] ; then
     opts+=("-n")
   fi
