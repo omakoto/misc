@@ -232,6 +232,7 @@ ee() {
   # If the first argument starts with a -, parse the options.
   # Otherwise, no need to do it.
   if [[ "$1" == -* ]] ; then
+    # echo "EE used with flags!! : $*" >/dev/tty
     eval "$(bashgetopt -d 'Echo and execute' '
         2|stderr         to=2               # Show message on stderr instead of stdout.
         tty tty=1                           # Show message directly to TTY instead of stdout.
