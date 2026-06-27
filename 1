@@ -18,7 +18,7 @@ function usage() {
 EOF
 }
 
-opts=""
+opts=()
 bg=1
 pipe=0
 force_editor=0
@@ -34,6 +34,7 @@ quiet=0
 line=0
 column=0
 tee=0
+force_new_window=0
 
 #if ! is-interactive ; then
 #  no_zenlog=1
@@ -49,7 +50,7 @@ eval "$(bashgetopt -u usage '
   e|force-editor   force_editor=1  # Disable smart file handling and force editor.
   p|pretty         pretty=1        # Pretty-print for XML/Json.
   d|no-pretty      pretty=0        # No pretty-print.
-  N|newdoc         cbin=1;newdoc=1        # Open new timestamped doc.
+  N|newdoc         newdoc=1;force_new_window=1        # Open new timestamped doc.
   z|no-zenlog      no_zenlog=1     # Don'\''t use zenlog logfile to catch stdin input.
   pipe             pipe=1          # Read from stdin.
   stdin            pipe=1          # Read from stdin.
@@ -58,6 +59,7 @@ eval "$(bashgetopt -u usage '
   C|cbin           cbin=1          # Also open ~/cbin/
   q|quiet          quiet=1         # Set EE_QUIET=1
   l|line=i         line=%          # Open at a given line
+  new-window       force_new_window=1 # Force new window
 ' "$@")"
 
 args=( "$@" )
@@ -81,15 +83,14 @@ if (( $quiet )) ; then
 fi
 
 if (( $newdoc )) ; then
-  doc_dir=$HOME/cbin/docs
   doc="$(tasklog-file)"
   echo "$doc"
   files+=("$doc")
 fi
 
 if (( $cbin )) ; then
-  # opts="$opts --add $HOME/cbin"
-  opts="$opts $HOME/cbin/workspace.code-workspace"
+  # opts+=("--add" "$HOME/cbin")
+  opts+=("$HOME/cbin/workspace.code-workspace")
 fi
 
 if (( ${#args} == 0 && ${#files} == 0 )) ; then
@@ -271,6 +272,7 @@ command=""
 is_vi=0
 is_sublime=0
 is_code=0
+is_antigravity=0
 is_gnome_edit=0
 
 candidates=()
@@ -290,7 +292,7 @@ if [[ -n "$DISPLAY" ]] ; then
     bg=0
   elif (( $use_vim )) ; then
     command=gvim
-    opts=""
+    opts=()
     bg=1
     is_vi=1
   else
@@ -302,30 +304,30 @@ if [[ -n "$DISPLAY" ]] ; then
       is_antigravity=1
     fi
     if ! (( $bg )) ; then
-      opts="$opts --new-window --wait"
+      opts+=("--new-window" "--wait")
     fi
   fi
 fi
 if [[ -z "$command" ]] ; then
   command=vi
-  opts=""
+  opts=()
   bg=0
   is_vi=1
 fi
 
 if (( $line > 0 )) ; then
   if (( $is_code )) ; then
-    opts="-g"
+    opts=("-g")
     files[0]="$file0":$line
   elif (( $is_sublime )) ; then
     files[0]="$file0":$line
   elif (( $is_vi )) ; then
-    opts="+$line"
+    opts=("+$line")
   fi
 fi
 
 if (( $is_code )) ; then
-  opts="$opts $(chrome-flags-for-vmware)"
+  opts+=( $(chrome-flags-for-vmware) )
 fi
 
 ee_bg_opt=""
@@ -333,10 +335,11 @@ if (( $bg )); then
   ee_bg_opt=-b
 fi
 
-if [[ -d "$file0" ]] ; then
-  opts+=("-n")
+if (( $is_code || $is_antigravity )); then
+  if (( $force_new_window )) || [[ -d "$file0" ]] ; then
+    opts+=("-n")
+  fi
 fi
-
 
 if (( ${#files[@]} > 0 )) ; then
   if (( $mkpath )) ; then
@@ -349,5 +352,5 @@ if (( ${#files[@]} > 0 )) ; then
   fi
 
   cd $HOME
-  ee $ee_bg_opt $command $opts "${files[@]}" #| zenlog write-to-outer
+  ee $ee_bg_opt $command "${opts[@]}" "${files[@]}" #| zenlog write-to-outer
 fi
