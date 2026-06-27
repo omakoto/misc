@@ -256,42 +256,31 @@ for n in "${args[@]}" ; do
 #      use_vim=1
 #    fi
   fi
-  f="$(l2w "$f")" # for wsl, convert to the window path
   files+=("$f")
 done
 
 file0="${files[0]}"
-
-sublime_win="$HOME/cbin/sublime-win"
 
 command=""
 is_vi=0
 is_sublime=0
 is_code=0
 
-if [[ -n "$DISPLAY" ]] || iswsl  ; then
+if [[ -n "$DISPLAY" ]] ; then
   if (( $use_vim )) ; then
     command=gvim
     opts=""
     bg=1
     is_vi=1
   else
-    if iswsl ; then
-      command="$sublime_win"
+    command=$(firstbin \
+        /usr/bin/antigravity \
+        /usr/bin/code \
+        )
+    if [[ "$command" =~ /code$ ]]; then
+      is_code=1
+    elif [[ -n "$command" ]] ; then
       is_sublime=1
-    else
-      command=$(firstbin \
-          /usr/bin/code \
-          /opt/sublime_text/sublime_text \
-          /usr/local/makoto/sublime_text_3/sublime_text \
-          /usr/local/sublime/sublime_text \
-          "$sublime_win"
-          )
-      if [[ "$command" =~ /code$ ]]; then
-        is_code=1
-      elif [[ -n "$command" ]] ; then
-        is_sublime=1
-      fi
     fi
     if ! (( $bg )) ; then
       opts="$opts -n -w"

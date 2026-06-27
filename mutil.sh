@@ -14,7 +14,7 @@ fi
 _is_wsl=0
 [[ -n "${WSL_DISTRO_NAME:-}" ]] && _is_wsl=1
 
-#. <( ~/cbin/zenlog -s )
+. ~/cbin/common_rc
 . ~/cbin/misc/colors.bash
 
 interactive() {

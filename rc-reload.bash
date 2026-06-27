@@ -12,6 +12,7 @@ _use_signal_to_reload=0
 
 _main_rc_files="
 $HOME/cbin/makotorc
+$HOME/cbin/common_rc
 $HOME/cbin/interactive-setup.bash
 $HOME/cbin/interactivefuncs.bash
 $HOME/cbin/prompt.bash
