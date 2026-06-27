@@ -276,7 +276,7 @@ fi
 candidates+=(/usr/bin/code)
 
 if [[ -n "$DISPLAY" ]] ; then
-  if (( $use_vim )) ; then
+  if (( $use_vim )) || (( $IN_SANDY )) ; then
     command=gvim
     opts=""
     bg=1
