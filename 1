@@ -65,7 +65,7 @@ eval "$(bashgetopt -u usage '
 args=( "$@" )
 files=()
 
-if (( $ALT_MODE == 1 )) ; then
+if (( ${ALT_MODE:-0} == 1 )) ; then
   case "$(select-menu '1: open/view normally' 'e: force edit')" in
     1)
       ;;
