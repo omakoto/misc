@@ -6,7 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 	"sync/atomic"
 )
@@ -135,11 +135,24 @@ func scanDirTree(currentDir string, depth int, state *TraversalState, sem chan s
 		return nil, false
 	}
 
-	sort.Slice(entries, func(i, j int) bool {
+	slices.SortFunc(entries, func(a, b fs.DirEntry) int {
+		aName, bName := a.Name(), b.Name()
 		if reverse {
-			return entries[i].Name() > entries[j].Name()
+			if aName > bName {
+				return -1
+			}
+			if aName < bName {
+				return 1
+			}
+			return 0
 		}
-		return entries[i].Name() < entries[j].Name()
+		if aName < bName {
+			return -1
+		}
+		if aName > bName {
+			return 1
+		}
+		return 0
 	})
 
 	var items []item
