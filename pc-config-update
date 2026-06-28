@@ -23,7 +23,7 @@ if [[ "$1" == "-f" ]] ; then
 fi
 
 # On VMWare, disable screensaver and lock screen.
-if $IS_VMWARE ; then
+if (( $IS_VMWARE )) ; then
   ee gsettings set org.gnome.desktop.screensaver idle-activation-enabled false
   ee gsettings set org.gnome.desktop.screensaver lock-enabled false # disable screen saver and lock screen
 fi
@@ -137,7 +137,7 @@ echo "$rdt_dpi" > ~/.remote-desktop-dpi
 #trackpoint-speedup.sh
 
 
-if [[ "$sound_device" != "" ]] ; then
-  ee pacmd set-default-sink "$sound_device"
-fi
+#if [[ "$sound_device" != "" ]] ; then
+#  ee pacmd set-default-sink "$sound_device"
+#fi
 
