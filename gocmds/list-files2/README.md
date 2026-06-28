@@ -26,5 +26,6 @@ list-files2 [options] [DIR ...]
   -d, --show-directories    Print directories too.
   -a, --show-all            Show hidden directories (like .git) that are hidden by default.
   -j, --para=PARA           Limit the number of parallel worker goroutines (defaults to min(8, CPU cores)).
+  -m, --max-depth=MAX-DEPTH Limit the max depth for subdirectories.
   -h, --help                Show help message.
 ```

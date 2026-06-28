@@ -33,6 +33,7 @@ func main() {
 	showDirs := getopt.BoolLong("show-directories", 'd', "Print directories too.")
 	showAll := getopt.BoolLong("show-all", 'a', "Show hidden directories (like .git) that are hidden by default.")
 	para := getopt.IntLong("para", 'j', 0, "Limit the number of parallel worker goroutines (defaults to min(8, CPU cores)).")
+	maxDepth := getopt.IntLong("max-depth", 'm', -1, "Limit the max depth for subdirectories.")
 	help := getopt.BoolLong("help", 'h', "Show help message.")
 
 	getopt.SetParameters("[DIR ...]")
@@ -53,6 +54,17 @@ func main() {
 		}
 		limit = int64(*maxFiles)
 		hasLimit = true
+	}
+
+	var maxDepthLimit int
+	hasMaxDepth := false
+	if getopt.Lookup('m').Seen() {
+		if *maxDepth < 0 {
+			fmt.Fprintln(os.Stderr, "list-files2: option -m/--max-depth: must be a non-negative integer")
+			os.Exit(2)
+		}
+		maxDepthLimit = *maxDepth
+		hasMaxDepth = true
 	}
 
 	dirs := getopt.Args()
@@ -104,7 +116,7 @@ func main() {
 		if state.LimitReached() {
 			break
 		}
-		if !list_files2.TraverseDir(directory, state, sem, *showDirs, *showAll, *reverse, out) {
+		if !list_files2.TraverseDir(directory, state, sem, *showDirs, *showAll, *reverse, hasMaxDepth, maxDepthLimit, out) {
 			overallSuccess = false
 		}
 	}

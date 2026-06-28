@@ -68,7 +68,7 @@ type task struct {
 }
 
 // TraverseDir starts the traversal of startDir.
-func TraverseDir(startDir string, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, out chan<- string) bool {
+func TraverseDir(startDir string, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, hasMaxDepth bool, maxDepth int, out chan<- string) bool {
 	fi, err := os.Stat(startDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: '%s' is not a directory.\n", startDir)
@@ -90,16 +90,19 @@ func TraverseDir(startDir string, state *TraversalState, sem chan struct{}, show
 		out <- p
 	}
 
-	_traverseDirRecursive(startDir, state, sem, showDirs, showAll, reverse, out)
+	_traverseDirRecursive(startDir, 0, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, out)
 	return true
 }
 
-func _traverseDirRecursive(currentDir string, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, out chan<- string) {
+func _traverseDirRecursive(currentDir string, depth int, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, hasMaxDepth bool, maxDepth int, out chan<- string) {
 	if state.LimitReached() {
 		return
 	}
+	if hasMaxDepth && depth >= maxDepth {
+		return
+	}
 
-	tasks, ok := scanDir(currentDir, state, sem, showDirs, showAll, reverse, out)
+	tasks, ok := scanDir(currentDir, depth, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, out)
 	if !ok {
 		return
 	}
@@ -125,11 +128,14 @@ func _traverseDirRecursive(currentDir string, state *TraversalState, sem chan st
 
 // scanDir acquires the semaphore, reads the directory entries, schedules child goroutines,
 // and releases the semaphore before returning the tasks.
-func scanDir(currentDir string, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, out chan<- string) ([]task, bool) {
+func scanDir(currentDir string, depth int, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, hasMaxDepth bool, maxDepth int, out chan<- string) ([]task, bool) {
 	sem <- struct{}{}
 	defer func() { <-sem }()
 
 	if state.LimitReached() {
+		return nil, false
+	}
+	if hasMaxDepth && depth >= maxDepth {
 		return nil, false
 	}
 
@@ -183,12 +189,14 @@ func scanDir(currentDir string, state *TraversalState, sem chan struct{}, showDi
 
 		// Avoid traversing symlinks to directories to prevent infinite recursion/loops.
 		if entry.Type().IsDir() {
-			subStream := make(chan string, 100)
-			tasks = append(tasks, task{subStream: subStream})
-			go func(path string, ch chan string) {
-				_traverseDirRecursive(path, state, sem, showDirs, showAll, reverse, ch)
-				close(ch)
-			}(entryPath, subStream)
+			if !hasMaxDepth || depth+1 < maxDepth {
+				subStream := make(chan string, 100)
+				tasks = append(tasks, task{subStream: subStream})
+				go func(path string, ch chan string, d int) {
+					_traverseDirRecursive(path, d, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, ch)
+					close(ch)
+				}(entryPath, subStream, depth+1)
+			}
 		}
 	}
 

@@ -27,3 +27,6 @@ fi
 
 echo "==> Running tests..."
 go test -v ./...
+
+echo "==> Running integration tests..."
+./scripts/integration_test.sh
