@@ -1,3 +1,13 @@
+#!/bin/bash
+
+# Show files under the current dir and let the user pick files with fzf
+
+list-files --colors always --show-fullpath | fzf --multi --ansi
+
+exit 0
+
+# Old version using find.
+
 #!/usr/bin/env python3
 #
 # file-select - Find files and select them interactively using fzf.
