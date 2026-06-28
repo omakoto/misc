@@ -65,7 +65,7 @@ func main() {
 	maxFiles := getopt.IntLong("max-files", 'n', -1, "Limit the number of files listed.")
 	showDirs := getopt.BoolLong("show-directories", 'd', "Print directories too.")
 	showAll := getopt.BoolLong("show-all", 'a', "Show hidden directories (like .git) that are hidden by default.")
-	para := getopt.IntLong("para", 'j', 0, "Limit the number of parallel worker goroutines (defaults to min(8, CPU cores)).")
+	para := getopt.IntLong("para", 'j', 0, "Limit the number of parallel worker goroutines (defaults to min(6, CPU cores)).")
 	maxDepth := getopt.IntLong("max-depth", 'm', -1, "Limit the max depth for subdirectories.")
 	help := getopt.BoolLong("help", 'h', "Show help message.")
 
@@ -180,8 +180,8 @@ func main() {
 		maxWorkers = *para
 	} else {
 		maxWorkers = runtime.NumCPU()
-		if maxWorkers > 8 {
-			maxWorkers = 8
+		if maxWorkers > 6 {
+			maxWorkers = 6
 		}
 	}
 	sem := make(chan struct{}, maxWorkers)
