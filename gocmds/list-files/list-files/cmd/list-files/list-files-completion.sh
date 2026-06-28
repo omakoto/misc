@@ -1,5 +1,6 @@
 # list-files-completion.sh - Bash completion script for list-files.
 # This script enables tab completion for options and arguments of list-files.
+# Run list-files-completion_test.sh to test this script.
 
 _list_files_completion() {
     local cur prev opts

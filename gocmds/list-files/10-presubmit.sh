@@ -30,3 +30,6 @@ go test -v ./...
 
 echo "==> Running integration tests..."
 ./scripts/integration_test.sh
+
+echo "==> Running autocomplete tests..."
+./list-files/cmd/list-files/list-files-completion_test.sh
