@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"syscall"
@@ -26,6 +27,26 @@ func isBrokenPipe(err error) bool {
 	return err == syscall.EPIPE || strings.Contains(err.Error(), "broken pipe")
 }
 
+func formatRelativePath(p string, stripStartDir bool) string {
+	if stripStartDir {
+		if strings.HasPrefix(p, "./") {
+			return p[2:]
+		}
+		if p == "." {
+			return ""
+		}
+		return p
+	} else {
+		if p == "." {
+			return "./"
+		}
+		if !filepath.IsAbs(p) && !strings.HasPrefix(p, ".") && !strings.HasPrefix(p, "~") {
+			return "./" + p
+		}
+		return p
+	}
+}
+
 func main() {
 	// Options
 	reverse := getopt.BoolLong("reverse", 'r', "Sort files in reverse alphabetical order.")
@@ -36,6 +57,16 @@ func main() {
 	maxDepth := getopt.IntLong("max-depth", 'm', -1, "Limit the max depth for subdirectories.")
 	help := getopt.BoolLong("help", 'h', "Show help message.")
 
+	// Output control options
+	stripStartDirOpt := getopt.BoolLong("strip-start-dir", 0, "Strip leading ./ from relative output path (default).")
+	noStripStartDirOpt := getopt.BoolLong("no-strip-start-dir", 0, "Do not strip leading ./ from relative output path.")
+	showFullpathOpt := getopt.BoolLong("show-fullpath", 'F', "Show full path of the file.")
+	noShowFullpathOpt := getopt.BoolLong("no-show-fullpath", 0, "Do not show full path of the file.")
+	homeTildOpt := getopt.BoolLong("home-tild", 0, "Replace user home directory with ~ in full path output (default).")
+	noHomeTildOpt := getopt.BoolLong("no-home-tild", 0, "Do not replace user home directory with ~ in full path output.")
+	showRelativeOpt := getopt.BoolLong("show-relative-path", 'R', "Show relative path output (default).")
+	noShowRelativeOpt := getopt.BoolLong("no-show-relative-path", 0, "Do not show relative path output.")
+
 	getopt.SetParameters("[DIR ...]")
 	getopt.Parse()
 
@@ -44,12 +75,45 @@ func main() {
 		os.Exit(0)
 	}
 
+	// Parse output control options
+	stripStartDir := true
+	if *noStripStartDirOpt {
+		stripStartDir = false
+	}
+	if *stripStartDirOpt {
+		stripStartDir = true
+	}
+
+	showFullpath := false
+	if *showFullpathOpt {
+		showFullpath = true
+	}
+	if *noShowFullpathOpt {
+		showFullpath = false
+	}
+
+	homeTild := true
+	if *noHomeTildOpt {
+		homeTild = false
+	}
+	if *homeTildOpt {
+		homeTild = true
+	}
+
+	showRelative := true
+	if *noShowRelativeOpt {
+		showRelative = false
+	}
+	if *showRelativeOpt {
+		showRelative = true
+	}
+
 	// Metavar checks/limit checks
 	var limit int64
 	hasLimit := false
 	if getopt.Lookup('n').Seen() {
 		if *maxFiles < 0 {
-			fmt.Fprintln(os.Stderr, "list-files2: option -n/--max-files: must be a non-negative integer")
+			fmt.Fprintln(os.Stderr, "list-files: option -n/--max-files: must be a non-negative integer")
 			os.Exit(2)
 		}
 		limit = int64(*maxFiles)
@@ -60,7 +124,7 @@ func main() {
 	hasMaxDepth := false
 	if getopt.Lookup('m').Seen() {
 		if *maxDepth < 0 {
-			fmt.Fprintln(os.Stderr, "list-files2: option -m/--max-depth: must be a non-negative integer")
+			fmt.Fprintln(os.Stderr, "list-files: option -m/--max-depth: must be a non-negative integer")
 			os.Exit(2)
 		}
 		maxDepthLimit = *maxDepth
@@ -76,7 +140,7 @@ func main() {
 	var maxWorkers int
 	if getopt.Lookup('j').Seen() {
 		if *para <= 0 {
-			fmt.Fprintln(os.Stderr, "list-files2: option -j/--para: must be a positive integer")
+			fmt.Fprintln(os.Stderr, "list-files: option -j/--para: must be a positive integer")
 			os.Exit(2)
 		}
 		maxWorkers = *para
@@ -98,15 +162,48 @@ func main() {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
+		homeDir, _ := os.UserHomeDir()
 		for p := range out {
 			if state.Increment() {
-				_, err := fmt.Println(p)
-				if err != nil {
-					if isBrokenPipe(err) {
-						os.Exit(0)
+				// 1. Relative path
+				relPath := formatRelativePath(p, stripStartDir)
+
+				// 2. Full path
+				var fullPath string
+				if showFullpath {
+					abs, err := filepath.Abs(p)
+					if err == nil {
+						fullPath = abs
+						if homeTild && homeDir != "" {
+							if fullPath == homeDir {
+								fullPath = "~"
+							} else if strings.HasPrefix(fullPath, homeDir+string(filepath.Separator)) {
+								fullPath = "~" + fullPath[len(homeDir):]
+							}
+						}
+					} else {
+						fullPath = p
 					}
-					fmt.Fprintf(os.Stderr, "Write error: %v\n", err)
-					os.Exit(2)
+				}
+
+				// 3. Print
+				if showRelative {
+					if _, err := fmt.Println(relPath); err != nil {
+						if isBrokenPipe(err) {
+							os.Exit(0)
+						}
+						fmt.Fprintf(os.Stderr, "Write error: %v\n", err)
+						os.Exit(2)
+					}
+				}
+				if showFullpath {
+					if _, err := fmt.Println(fullPath); err != nil {
+						if isBrokenPipe(err) {
+							os.Exit(0)
+						}
+						fmt.Fprintf(os.Stderr, "Write error: %v\n", err)
+						os.Exit(2)
+					}
 				}
 			}
 		}
