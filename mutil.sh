@@ -607,7 +607,7 @@ function .e() {
 }
 
 function wd() {
-  dir="/tmp/work-$(date8)${1+-}$1"
+  dir="/tmp/workdir/work-$(date8)${1+-}$1"
 
   mkdir -p "$dir" && cd "$dir"
 
