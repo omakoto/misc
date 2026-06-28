@@ -63,8 +63,9 @@ func (s *TraversalState) Increment() bool {
 }
 
 type task struct {
-	path      string
-	subStream <-chan string
+	path         string
+	inlineSubdir string
+	subStream    <-chan string
 }
 
 // TraverseDir starts the traversal of startDir.
@@ -115,6 +116,8 @@ func _traverseDirRecursive(currentDir string, depth int, state *TraversalState, 
 		}
 		if t.path != "" {
 			out <- t.path
+		} else if t.inlineSubdir != "" {
+			_traverseDirRecursive(t.inlineSubdir, depth+1, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, out)
 		} else if t.subStream != nil {
 			for p := range t.subStream {
 				if state.LimitReached() {
@@ -153,6 +156,7 @@ func scanDir(currentDir string, depth int, state *TraversalState, sem chan struc
 	})
 
 	var tasks []task
+	firstDir := true
 
 	for _, entry := range entries {
 		if state.LimitReached() {
@@ -190,12 +194,17 @@ func scanDir(currentDir string, depth int, state *TraversalState, sem chan struc
 		// Avoid traversing symlinks to directories to prevent infinite recursion/loops.
 		if entry.Type().IsDir() {
 			if !hasMaxDepth || depth+1 < maxDepth {
-				subStream := make(chan string, 100)
-				tasks = append(tasks, task{subStream: subStream})
-				go func(path string, ch chan string, d int) {
-					_traverseDirRecursive(path, d, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, ch)
-					close(ch)
-				}(entryPath, subStream, depth+1)
+				if firstDir {
+					tasks = append(tasks, task{inlineSubdir: entryPath})
+					firstDir = false
+				} else {
+					subStream := make(chan string, 100)
+					tasks = append(tasks, task{subStream: subStream})
+					go func(path string, ch chan string, d int) {
+						_traverseDirRecursive(path, d, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, ch)
+						close(ch)
+					}(entryPath, subStream, depth+1)
+				}
 			}
 		}
 	}
