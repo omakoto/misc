@@ -4,12 +4,22 @@
 
 # fails if called by non-bash
 
+
 if [[ "$_interactive" == "" ]] ; then
   _interactive=0
   if [[ "$-" == *i* ]] ; then
     _interactive=1
   fi
 fi
+
+if [[ "$UNANME_A" == "" ]] ; then
+  export UNANME_A="$(uname -a)"
+fi
+
+if [[ "$HOSTNAME_S" == "" ]] ; then
+  export HOSTNAME_S="$(hostname -s)"
+fi
+
 
 if [[ "$IS_VMWARE" == "" ]] ; then
   export IS_VMWARE=0
@@ -20,24 +30,20 @@ fi
 
 if [[ "$IS_GOOGLE_PC" == "" ]] ; then
   export IS_GOOGLE_PC=0
-  if [[ -d /google/ ]] || uname -a | grep -q rodete ; then
+  if [[ -d /google/ ]] || echo "$UNANME_A" | grep -q rodete ; then
     export IS_GOOGLE_PC=1
   fi
 fi
 
 if [[ "$SLOW_PC" == "" ]] ; then
   export SLOW_PC=0
-  if uname -a | grep -q 'aarch64' ; then
+  if echo "$UNANME_A" | grep -q 'aarch64' ; then
     export SLOW_PC=1
   fi
 fi
 
 function is-glinux() {
-  if [[ "$IS_GOOGLE_PC" == "" ]] ; then
-    [[ "$IS_GOOGLE_PC" == "1" ]]
-    return $?
-  fi
-  uname -a | grep -q rodete
+  [[ "$IS_GOOGLE_PC" == "1" ]]
 }
 
 . ~/cbin/common_rc
@@ -59,17 +65,6 @@ iswsl() {
   fi
   return $rc
 }
-
-if ! interactive && (( $# == 1 )) ; then
-  if [[ "$1" == "--l" ]] ; then
-    less "$0"
-    exit 0
-  fi
-  if [[ "$1" == "--1" ]] ; then
-    1 "$0"
-    exit 0
-  fi
-fi
 
 die() {
   {
@@ -540,17 +535,6 @@ find-root-dir() {
   done
   return 1
 }
-
-# function fzf() {
-#   local rc
-#   # hmm.. ugly.
-#   if command fzf "$@"; then
-#     rc=0
-#   else
-#     rc=$?
-#   fi
-#   return $?
-# }
 
 function generate-core() {
   # to generate core

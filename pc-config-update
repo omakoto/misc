@@ -23,7 +23,7 @@ if [[ "$1" == "-f" ]] ; then
 fi
 
 # On VMWare, disable screensaver and lock screen.
-if grep -qi ^vmware /sys/class/dmi/id/product_name ; then
+if $IS_VMWARE ; then
   ee gsettings set org.gnome.desktop.screensaver idle-activation-enabled false
   ee gsettings set org.gnome.desktop.screensaver lock-enabled false # disable screen saver and lock screen
 fi
@@ -35,7 +35,7 @@ rdt_dpi=""
 font_size="" # Default
 sound_device=""
 
-case "$(hostname -s)" in
+case "$HOSTNAME_S" in
   nuc)
     exit 0 # Do nothing for NUC
     ;;
@@ -134,7 +134,7 @@ fi
 echo "$chrome_dpi" > ~/.chromedpi
 echo "$rdt_dpi" > ~/.remote-desktop-dpi
 
-trackpoint-speedup.sh
+#trackpoint-speedup.sh
 
 
 if [[ "$sound_device" != "" ]] ; then
