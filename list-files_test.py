@@ -32,6 +32,8 @@ class TestListFiles(unittest.TestCase):
 
         # Create a directory structure:
         # self.dir_path/
+        # ├── .git/
+        # │   └── config
         # ├── a/
         # │   └── x.txt
         # ├── b/
@@ -40,10 +42,13 @@ class TestListFiles(unittest.TestCase):
         # └── d/
         #     └── e/
         #         └── z.txt
+        os.makedirs(os.path.join(self.dir_path, ".git"))
         os.makedirs(os.path.join(self.dir_path, "a"))
         os.makedirs(os.path.join(self.dir_path, "b"))
         os.makedirs(os.path.join(self.dir_path, "d", "e"))
 
+        with open(os.path.join(self.dir_path, ".git", "config"), "w") as f:
+            f.write("config")
         with open(os.path.join(self.dir_path, "a", "x.txt"), "w") as f:
             f.write("a/x")
         with open(os.path.join(self.dir_path, "b", "y.txt"), "w") as f:
@@ -56,14 +61,14 @@ class TestListFiles(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
 
-    def run_traverse(self, start_dir: str, reverse: bool, max_files: Optional[int] = None) -> Tuple[bool, str, str]:
+    def run_traverse(self, start_dir: str, reverse: bool, max_files: Optional[int] = None, show_directories: bool = False, show_all: bool = False) -> Tuple[bool, str, str]:
         old_stdout = sys.stdout
         old_stderr = sys.stderr
         sys.stdout = io.StringIO()
         sys.stderr = io.StringIO()
         try:
             state = list_files.TraversalState(max_files) if max_files is not None else None
-            success = list_files.traverse_dir(start_dir, reverse, state)
+            success = list_files.traverse_dir(start_dir, reverse, state, show_directories, show_all)
             return success, sys.stdout.getvalue(), sys.stderr.getvalue()
         finally:
             sys.stdout = old_stdout
@@ -169,6 +174,146 @@ class TestListFiles(unittest.TestCase):
             "c.txt",
             "d/e/z.txt",
             "sym_file"
+        ]
+        self.assertEqual(lines, expected)
+
+    def test_show_directories_alphabetical(self) -> None:
+        success, stdout, stderr = self.run_traverse(self.dir_path, reverse=False, show_directories=True)
+        self.assertTrue(success)
+        self.assertEqual(stderr, "")
+
+        lines = []
+        for line in stdout.strip().split("\n"):
+            rel = os.path.relpath(line, self.dir_path)
+            if line.endswith('/') and not rel.endswith('/'):
+                rel += '/'
+            lines.append(rel)
+        expected = [
+            "./",
+            "a/",
+            "a/x.txt",
+            "b/",
+            "b/y.txt",
+            "c.txt",
+            "d/",
+            "d/e/",
+            "d/e/z.txt"
+        ]
+        self.assertEqual(lines, expected)
+
+    def test_show_directories_reverse(self) -> None:
+        success, stdout, stderr = self.run_traverse(self.dir_path, reverse=True, show_directories=True)
+        self.assertTrue(success)
+        self.assertEqual(stderr, "")
+
+        lines = []
+        for line in stdout.strip().split("\n"):
+            rel = os.path.relpath(line, self.dir_path)
+            if line.endswith('/') and not rel.endswith('/'):
+                rel += '/'
+            lines.append(rel)
+        expected = [
+            "./",
+            "d/",
+            "d/e/",
+            "d/e/z.txt",
+            "c.txt",
+            "b/",
+            "b/y.txt",
+            "a/",
+            "a/x.txt"
+        ]
+        self.assertEqual(lines, expected)
+
+    def test_show_directories_limit(self) -> None:
+        success, stdout, stderr = self.run_traverse(self.dir_path, reverse=False, max_files=4, show_directories=True)
+        self.assertTrue(success)
+        self.assertEqual(stderr, "")
+
+        lines = []
+        for line in stdout.strip().split("\n"):
+            rel = os.path.relpath(line, self.dir_path)
+            if line.endswith('/') and not rel.endswith('/'):
+                rel += '/'
+            lines.append(rel)
+        expected = [
+            "./",
+            "a/",
+            "a/x.txt",
+            "b/"
+        ]
+        self.assertEqual(lines, expected)
+
+    def test_show_directories_symlinks(self) -> None:
+        os.symlink("c.txt", os.path.join(self.dir_path, "sym_file"))
+        os.symlink("a", os.path.join(self.dir_path, "sym_dir"))
+        os.symlink("non_existent.txt", os.path.join(self.dir_path, "sym_broken"))
+
+        success, stdout, stderr = self.run_traverse(self.dir_path, reverse=False, show_directories=True)
+        self.assertTrue(success)
+        self.assertEqual(stderr, "")
+
+        lines = []
+        for line in stdout.strip().split("\n"):
+            rel = os.path.relpath(line, self.dir_path)
+            if line.endswith('/') and not rel.endswith('/'):
+                rel += '/'
+            lines.append(rel)
+        expected = [
+            "./",
+            "a/",
+            "a/x.txt",
+            "b/",
+            "b/y.txt",
+            "c.txt",
+            "d/",
+            "d/e/",
+            "d/e/z.txt",
+            "sym_dir/",
+            "sym_file"
+        ]
+        self.assertEqual(lines, expected)
+
+    def test_show_all(self) -> None:
+        # Without show_directories, but show_all=True
+        # This should traverse .git and show files inside (.git/config), but not the directories themselves
+        success, stdout, stderr = self.run_traverse(self.dir_path, reverse=False, show_directories=False, show_all=True)
+        self.assertTrue(success)
+        self.assertEqual(stderr, "")
+
+        lines = [os.path.relpath(line, self.dir_path) for line in stdout.strip().split("\n")]
+        expected = [
+            ".git/config",
+            "a/x.txt",
+            "b/y.txt",
+            "c.txt",
+            "d/e/z.txt"
+        ]
+        self.assertEqual(lines, expected)
+
+    def test_show_all_with_directories(self) -> None:
+        success, stdout, stderr = self.run_traverse(self.dir_path, reverse=False, show_directories=True, show_all=True)
+        self.assertTrue(success)
+        self.assertEqual(stderr, "")
+
+        lines = []
+        for line in stdout.strip().split("\n"):
+            rel = os.path.relpath(line, self.dir_path)
+            if line.endswith('/') and not rel.endswith('/'):
+                rel += '/'
+            lines.append(rel)
+        expected = [
+            "./",
+            ".git/",
+            ".git/config",
+            "a/",
+            "a/x.txt",
+            "b/",
+            "b/y.txt",
+            "c.txt",
+            "d/",
+            "d/e/",
+            "d/e/z.txt"
         ]
         self.assertEqual(lines, expected)
 

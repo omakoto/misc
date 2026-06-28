@@ -10,6 +10,11 @@ import os
 import sys
 from typing import List, Optional
 
+# Directories that are hidden by default unless -a/--show-all is specified.
+HIDDEN_DIRECTORIES = {
+    ".git",
+}
+
 class TraversalState:
     """Tracks the state of traversal, including limits on max files printed."""
     def __init__(self, max_files: Optional[int] = None) -> None:
@@ -20,7 +25,7 @@ class TraversalState:
     def limit_reached(self) -> bool:
         return self.max_files is not None and self.printed >= self.max_files
 
-def traverse_dir(start_dir: str, reverse: bool, state: Optional[TraversalState] = None) -> bool:
+def traverse_dir(start_dir: str, reverse: bool, state: Optional[TraversalState] = None, show_directories: bool = False, show_all: bool = False) -> bool:
     """Traverses start_dir in a depth-first manner and prints files and directories.
     
     Inside each directory, the entries are sorted alphabetically (or reverse alphabetical
@@ -35,9 +40,17 @@ def traverse_dir(start_dir: str, reverse: bool, state: Optional[TraversalState] 
 
     if state is None:
         state = TraversalState()
-    return _traverse_dir_recursive(start_dir, reverse, state)
 
-def _traverse_dir_recursive(current_dir: str, reverse: bool, state: TraversalState) -> bool:
+    if show_directories:
+        if state.limit_reached:
+            return True
+        dir_path = start_dir if start_dir.endswith('/') else (start_dir + '/')
+        print(dir_path)
+        state.printed += 1
+
+    return _traverse_dir_recursive(start_dir, reverse, state, show_directories, show_all)
+
+def _traverse_dir_recursive(current_dir: str, reverse: bool, state: TraversalState, show_directories: bool = False, show_all: bool = False) -> bool:
     """Recursive helper for depth-first traversal."""
     try:
         with os.scandir(current_dir) as it:
@@ -56,14 +69,29 @@ def _traverse_dir_recursive(current_dir: str, reverse: bool, state: TraversalSta
             break
 
         try:
+            is_dir = entry.is_dir()
+        except OSError as e:
+            print(f"Error checking entry '{entry.path}': {e}", file=sys.stderr)
+            success = False
+            continue
+
+        if not show_all and is_dir and entry.name in HIDDEN_DIRECTORIES:
+            continue
+
+        try:
             is_file = entry.is_file()
+            is_dir_to_print = is_dir if show_directories else False
         except OSError as e:
             print(f"Error checking entry '{entry.path}': {e}", file=sys.stderr)
             success = False
             is_file = False
+            is_dir_to_print = False
 
-        if is_file:
-            print(entry.path)
+        if is_file or is_dir_to_print:
+            path_to_print = entry.path
+            if is_dir_to_print and not path_to_print.endswith('/'):
+                path_to_print += '/'
+            print(path_to_print)
             state.printed += 1
 
         try:
@@ -71,7 +99,7 @@ def _traverse_dir_recursive(current_dir: str, reverse: bool, state: TraversalSta
             if entry.is_dir(follow_symlinks=False):
                 if state.limit_reached:
                     break
-                if not _traverse_dir_recursive(entry.path, reverse, state):
+                if not _traverse_dir_recursive(entry.path, reverse, state, show_directories, show_all):
                     success = False
         except OSError as e:
             print(f"Error checking entry '{entry.path}': {e}", file=sys.stderr)
@@ -104,6 +132,18 @@ Examples:
         help="Limit the number of files listed."
     )
     parser.add_argument(
+        "-d",
+        "--show-directories",
+        action="store_true",
+        help="Print directories too."
+    )
+    parser.add_argument(
+        "-a",
+        "--show-all",
+        action="store_true",
+        help="Show hidden directories (like .git) that are hidden by default."
+    )
+    parser.add_argument(
         "directories",
         nargs="*",
         default=["."],
@@ -121,7 +161,7 @@ Examples:
     for directory in args.directories:
         if state.limit_reached:
             break
-        if not traverse_dir(directory, args.reverse, state):
+        if not traverse_dir(directory, args.reverse, state, args.show_directories, args.show_all):
             overall_success = False
 
     if not overall_success:
