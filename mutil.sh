@@ -25,6 +25,13 @@ if [[ "$IS_GOOGLE_PC" == "" ]] ; then
   fi
 fi
 
+if [[ "$SLOW_PC" == "" ]] ; then
+  export SLOW_PC=0
+  if uname -a | grep -q 'aarch64' ; then
+    export SLOW_PC=1
+  fi
+fi
+
 function is-glinux() {
   if [[ "$IS_GOOGLE_PC" == "" ]] ; then
     [[ "$IS_GOOGLE_PC" == "1" ]]
