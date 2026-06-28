@@ -1,5 +1,9 @@
+#/bin/bash
+# legacy script -- use evsniff -a instead.
+
+exec evsniff -a
+
 #!/usr/bin/env python3
-#
 # This script scans all input devices under /dev/input/event* and queries
 # their current active (pressed) keys. The keys are printed one per line,
 # globally sorted and deduplicated, with the "KEY_" prefix stripped.
@@ -7,8 +11,6 @@
 # Every time this script is modified, run the corresponding test script:
 #   python3 show-active-keys_test.py
 #
-# There's also a faster version written in go: evsniff -a
-# 
 
 import sys
 from typing import Set
