@@ -31,5 +31,7 @@ list-files [options] [DIR ...]
       --home-tild           Replace user home directory with ~ in full path output (default, and --no-home-tild).
   -R, --show-relative-path  Print relative path output (default, and --no-show-relative-path).
       --strip-start-dir     Strip leading ./ from relative output path (default, and --no-strip-start-dir).
+      --colors=always|never|auto
+                            Configure color output: always, never, or auto (default).
   -h, --help                Show help message.
 ```

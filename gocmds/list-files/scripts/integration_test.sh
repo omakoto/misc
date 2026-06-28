@@ -141,6 +141,41 @@ if [[ "$actual_no_rel" != "$expected_no_rel" ]]; then
   exit 1
 fi
 
+# Test --colors always (should print fullpaths in cyan ANSI escape codes)
+echo "Running test: Colors always"
+cyan_start=$'\x1b[36m'
+cyan_end=$'\x1b[0m'
+expected_colors="a/x.txt,${cyan_start}${tild_a}${cyan_end},b/y.txt,${cyan_start}${tild_b}${cyan_end},c.txt,${cyan_start}${tild_c}${cyan_end},d/e/z.txt,${cyan_start}${tild_d}${cyan_end}"
+actual_colors=$(cd "$TEMP_DIR" && "$BIN" -F --colors always | paste -sd, -)
+if [[ "$actual_colors" != "$expected_colors" ]]; then
+  echo "FAIL: Colors always"
+  echo "  Expected: $expected_colors"
+  echo "  Got:      $actual_colors"
+  exit 1
+fi
+
+# Test --colors never
+echo "Running test: Colors never"
+expected_never="a/x.txt,$tild_a,b/y.txt,$tild_b,c.txt,$tild_c,d/e/z.txt,$tild_d"
+actual_never=$(cd "$TEMP_DIR" && "$BIN" -F --colors never | paste -sd, -)
+if [[ "$actual_never" != "$expected_never" ]]; then
+  echo "FAIL: Colors never"
+  echo "  Expected: $expected_never"
+  echo "  Got:      $actual_never"
+  exit 1
+fi
+
+# Test --colors auto (piped output is not a TTY, should print without colors)
+echo "Running test: Colors auto (fallback to never)"
+expected_auto="a/x.txt,$tild_a,b/y.txt,$tild_b,c.txt,$tild_c,d/e/z.txt,$tild_d"
+actual_auto=$(cd "$TEMP_DIR" && "$BIN" -F --colors auto | paste -sd, -)
+if [[ "$actual_auto" != "$expected_auto" ]]; then
+  echo "FAIL: Colors auto"
+  echo "  Expected: $expected_auto"
+  echo "  Got:      $actual_auto"
+  exit 1
+fi
+
 # Test Broken pipe handling
 echo "Running test: Broken pipe"
 "$BIN" -d "$TEMP_DIR" | head -n 2 > /dev/null

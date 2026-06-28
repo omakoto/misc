@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"unsafe"
 
 	"github.com/pborman/getopt/v2"
 	"list-files/list-files"
@@ -25,6 +26,12 @@ func isBrokenPipe(err error) bool {
 		err = pe.Err
 	}
 	return err == syscall.EPIPE || strings.Contains(err.Error(), "broken pipe")
+}
+
+func isTerminal(fd uintptr) bool {
+	var termios syscall.Termios
+	_, _, err := syscall.Syscall(syscall.SYS_IOCTL, fd, uintptr(syscall.TCGETS), uintptr(unsafe.Pointer(&termios)))
+	return err == 0
 }
 
 func formatRelativePath(p string, stripStartDir bool) string {
@@ -67,12 +74,28 @@ func main() {
 	showRelativeOpt := getopt.BoolLong("show-relative-path", 'R', "Show relative path output (default).")
 	noShowRelativeOpt := getopt.BoolLong("no-show-relative-path", 0, "Do not show relative path output.")
 
+	colorsOpt := getopt.StringLong("colors", 0, "auto", "Configure color output: always, never, or auto (default).")
+
 	getopt.SetParameters("[DIR ...]")
 	getopt.Parse()
 
 	if *help {
 		getopt.Usage()
 		os.Exit(0)
+	}
+
+	// Parse colors option
+	colorsVal := *colorsOpt
+	if colorsVal != "always" && colorsVal != "never" && colorsVal != "auto" {
+		fmt.Fprintln(os.Stderr, "list-files: option --colors: must be 'always', 'never', or 'auto'")
+		os.Exit(2)
+	}
+
+	useColor := false
+	if colorsVal == "always" {
+		useColor = true
+	} else if colorsVal == "auto" {
+		useColor = isTerminal(os.Stdout.Fd())
 	}
 
 	// Parse output control options
@@ -197,7 +220,11 @@ func main() {
 					}
 				}
 				if showFullpath {
-					if _, err := fmt.Println(fullPath); err != nil {
+					printPath := fullPath
+					if useColor {
+						printPath = "\x1b[36m" + fullPath + "\x1b[0m"
+					}
+					if _, err := fmt.Println(printPath); err != nil {
 						if isBrokenPipe(err) {
 							os.Exit(0)
 						}
