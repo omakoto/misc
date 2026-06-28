@@ -78,9 +78,9 @@ def main() -> None:
     if not cwd.endswith("/"):
         cwd += "/"
 
-    # Run find .
+    # Run find . ignoring .git directories
     find_proc = subprocess.Popen(
-        ["find", "."],
+        ["find", ".", "-name", ".git", "-prune", "-o", "-print"],
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
         text=True
@@ -126,8 +126,10 @@ def main() -> None:
         sys.exit(fzf_proc.returncode)
 
     if fzf_stdout:
-        for selected in fzf_stdout.splitlines():
-            print(selected)
+        try:
+            subprocess.run(["cb", "-d"], input=fzf_stdout, text=True, check=True)
+        except Exception:
+            sys.stdout.write(fzf_stdout)
 
 if __name__ == "__main__":
     main()
