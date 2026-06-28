@@ -1,145 +1,36 @@
 #!/bin/bash
 
-# Show files under the current dir and let the user pick files with fzf
-
-list-files --colors always --show-fullpath 2>/dev/null | fzf --multi --ansi
-
-exit 0
-
-# Old version using find.
-
-#!/usr/bin/env python3
-#
-# file-select - Find files and select them interactively using fzf.
-#
-# Run the test script `file-select_test.py` before committing.
+# Show files under the current dir and let the user pick files with fzf.
+# The selected file names are printed to stdout and copied to the clipboard.
 #
 # Simple script, no help needed.
 
-import sys
-import os
-import subprocess
-import argparse
-from typing import Set, List
+set -e
+. mutil.sh
 
-def filter_path(line: str, home: str, home_dir: str, cwd: str) -> List[str]:
-    """Process a single input line, returning the list of paths (relative/full) to present."""
-    line = line.rstrip("\n")
-    if not line:
-        return []
+# Temporary file to store the view state.
+STATE_FILE=$(mktemp)
+export STATE_FILE
+trap 'rm -f "$STATE_FILE"' EXIT
 
-    # 1. Remove the prefix `./`
-    rel: str = line
-    if rel.startswith("./"):
-        rel = rel[2:]
+# Initial state is fullpath.
+echo "fullpath" > "$STATE_FILE"
 
-    # 2. Get full path and replace $HOME with `~/`
-    if line.startswith("/"):
-        abs_path: str = line
-    else:
-        abs_path = os.path.join(cwd, rel)
+selected=$(list-files --colors always --show-fullpath --no-show-relative-path --show-directories 2>/dev/null | fzf --multi --ansi "$@" \
+  --header "Ctrl-A: Toggle fullpath / relpath" \
+  --bind "ctrl-a:reload(bash -c '
+    state=\$(cat \"\$STATE_FILE\")
+    if [[ \"\$state\" == \"fullpath\" ]]; then
+      echo \"relpath\" > \"\$STATE_FILE\"
+      list-files --colors always --no-show-fullpath --show-directories 2>/dev/null
+    else
+      echo \"fullpath\" > \"\$STATE_FILE\"
+      list-files --colors always --show-fullpath --no-show-relative-path --show-directories 2>/dev/null
+    fi
+  ')")
 
-    abs_path = os.path.normpath(abs_path)
+if [[ -n "$selected" ]]; then
+  echo "$selected" | cb
+  echo "$selected"
+fi
 
-    if home and abs_path.startswith(home):
-        if abs_path == home:
-            display_path: str = "~"
-        elif abs_path.startswith(home_dir):
-            display_path = "~/" + abs_path[len(home_dir):]
-        else:
-            display_path = abs_path
-    else:
-        display_path = abs_path
-
-    seen: Set[str] = set()
-    result: List[str] = []
-    for p, colored_p in [(rel, rel), (display_path, f"\033[36m{display_path}\033[m")]:
-        if p and p not in seen:
-            result.append(colored_p)
-            seen.add(p)
-    return result
-
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Find files and select them interactively using fzf.",
-        epilog="Examples:\n  file-select\n",
-        formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.parse_args()
-
-    # Relaunch in a term if needed (e.g. running in Antigravity or non-tty)
-    try:
-        res = subprocess.run(["needs-term"])
-        should_relaunch = (res.returncode == 0)
-    except FileNotFoundError:
-        should_relaunch = False
-
-    if should_relaunch:
-        try:
-            os.execvp("term", ["term", "--geometry=140x45", "--no-wait", "--", "file-select"] + sys.argv[1:])
-        except OSError as e:
-            print(f"Error: failed to exec term: {e}", file=sys.stderr)
-            sys.exit(1)
-
-    home: str = os.environ.get("HOME", "")
-    home_dir: str = home + "/" if home and not home.endswith("/") else home
-
-    cwd: str = os.environ.get("PWD") or os.getcwd()
-    if not cwd.endswith("/"):
-        cwd += "/"
-
-    # Run find . ignoring .git directories
-    find_proc = subprocess.Popen(
-        ["find", ".", "-name", ".git", "-prune", "-o", "-print"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        text=True
-    )
-
-    # Start fzf process
-    fzf_proc = subprocess.Popen(
-        ["fzf", "--multi", "--ansi"],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        text=True
-    )
-
-    if find_proc.stdout is None or fzf_proc.stdin is None:
-        sys.exit(1)
-
-    try:
-        # Skip the first line (equivalent to `sed -e 1d` in bash)
-        first: bool = True
-        for line in find_proc.stdout:
-            if first:
-                first = False
-                continue
-
-            for p in filter_path(line, home, home_dir, cwd):
-                fzf_proc.stdin.write(p + "\n")
-
-    except (BrokenPipeError, IOError):
-        pass
-    finally:
-        try:
-            find_proc.terminate()
-        except OSError:
-            pass
-        try:
-            fzf_proc.stdin.close()
-        except OSError:
-            pass
-
-    # Read fzf output and print clean paths
-    fzf_stdout, _ = fzf_proc.communicate()
-    if fzf_proc.returncode != 0:
-        sys.exit(fzf_proc.returncode)
-
-    if fzf_stdout:
-        try:
-            subprocess.run(["cb", "-d"], input=fzf_stdout, text=True, check=True)
-        except Exception:
-            sys.stdout.write(fzf_stdout)
-
-if __name__ == "__main__":
-    main()

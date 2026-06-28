@@ -41,6 +41,9 @@ func isTerminal(fd uintptr) bool {
 
 func formatRelativePath(p string, stripStartDir bool) string {
 	if stripStartDir {
+		if p == "./" {
+			return "./"
+		}
 		if strings.HasPrefix(p, "./") {
 			return p[2:]
 		}
