@@ -95,6 +95,7 @@ func TestTraverseDir(t *testing.T) {
 		got := runTraverse(0, false, true, false, false, false, 0)
 		want := []string{
 			"./",
+			".git/",
 			"a/",
 			"a/x.txt",
 			"b/",
@@ -113,9 +114,9 @@ func TestTraverseDir(t *testing.T) {
 		got := runTraverse(4, true, true, false, false, false, 0)
 		want := []string{
 			"./",
+			".git/",
 			"a/",
 			"a/x.txt",
-			"b/",
 		}
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("got %v, want %v", got, want)
@@ -172,6 +173,7 @@ func TestTraverseDir(t *testing.T) {
 		got := runTraverse(0, false, true, false, false, true, 1)
 		want := []string{
 			"./",
+			".git/",
 			"a/",
 			"b/",
 			"c.txt",
@@ -196,6 +198,7 @@ func TestTraverseDir(t *testing.T) {
 		got := runTraverse(0, false, true, false, false, true, 2)
 		want := []string{
 			"./",
+			".git/",
 			"a/",
 			"a/x.txt",
 			"b/",

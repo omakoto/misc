@@ -59,10 +59,10 @@ assert_output "Default options" "a/x.txt,b/y.txt,c.txt,d/e/z.txt" "$TEMP_DIR"
 assert_output "Reverse" "d/e/z.txt,c.txt,b/y.txt,a/x.txt" -r "$TEMP_DIR"
 
 # Test --show-directories / -d
-assert_output "Show directories" ",a/,a/x.txt,b/,b/y.txt,c.txt,d/,d/e/,d/e/z.txt" -d "$TEMP_DIR"
+assert_output "Show directories" ",.git/,a/,a/x.txt,b/,b/y.txt,c.txt,d/,d/e/,d/e/z.txt" -d "$TEMP_DIR"
 
 # Test --max-files / -n
-assert_output "Max files" ",a/,a/x.txt,b/" -d -n 4 "$TEMP_DIR"
+assert_output "Max files" ",.git/,a/,a/x.txt" -d -n 4 "$TEMP_DIR"
 
 # Test --show-all / -a
 assert_output "Show all" ".git/config,a/x.txt,b/y.txt,c.txt,d/e/z.txt" -a "$TEMP_DIR"
@@ -73,8 +73,8 @@ assert_output "Parallel 10" "a/x.txt,b/y.txt,c.txt,d/e/z.txt" -j 10 "$TEMP_DIR"
 
 # Test --max-depth / -m
 assert_output "Max depth 0" "" -d -m 0 "$TEMP_DIR"
-assert_output "Max depth 1" ",a/,b/,c.txt,d/" -d -m 1 "$TEMP_DIR"
-assert_output "Max depth 2" ",a/,a/x.txt,b/,b/y.txt,c.txt,d/,d/e/" -d -m 2 "$TEMP_DIR"
+assert_output "Max depth 1" ",.git/,a/,b/,c.txt,d/" -d -m 1 "$TEMP_DIR"
+assert_output "Max depth 2" ",.git/,a/,a/x.txt,b/,b/y.txt,c.txt,d/,d/e/" -d -m 2 "$TEMP_DIR"
 
 # Test Default ./ stripping (running with . as argument)
 echo "Running test: Strip start dir (default)"
@@ -173,6 +173,15 @@ if [[ "$actual_auto" != "$expected_auto" ]]; then
   echo "FAIL: Colors auto"
   echo "  Expected: $expected_auto"
   echo "  Got:      $actual_auto"
+  exit 1
+fi
+
+# Test --bash-completion
+echo "Running test: Bash completion"
+completion_output=$("$BIN" --bash-completion)
+if [[ ! "$completion_output" == *"_list_files_completion"* ]]; then
+  echo "FAIL: --bash-completion"
+  echo "  Output did not contain '_list_files_completion'"
   exit 1
 fi
 

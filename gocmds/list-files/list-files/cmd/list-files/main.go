@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"os/signal"
@@ -13,6 +14,9 @@ import (
 	"github.com/pborman/getopt/v2"
 	"list-files/list-files"
 )
+
+//go:embed list-files-completion.sh
+var completionScript string
 
 func init() {
 	signal.Ignore(syscall.SIGPIPE)
@@ -75,12 +79,18 @@ func main() {
 	noShowRelativeOpt := getopt.BoolLong("no-show-relative-path", 0, "Do not show relative path output.")
 
 	colorsOpt := getopt.StringLong("colors", 0, "auto", "Configure color output: always, never, or auto (default).")
+	bashCompletionOpt := getopt.BoolLong("bash-completion", 0, "Print the bash completion script.")
 
 	getopt.SetParameters("[DIR ...]")
 	getopt.Parse()
 
 	if *help {
 		getopt.Usage()
+		os.Exit(0)
+	}
+
+	if *bashCompletionOpt {
+		fmt.Print(completionScript)
 		os.Exit(0)
 	}
 

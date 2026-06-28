@@ -33,5 +33,6 @@ list-files [options] [DIR ...]
       --strip-start-dir     Strip leading ./ from relative output path (default, and --no-strip-start-dir).
       --colors=always|never|auto
                             Configure color output: always, never, or auto (default).
+      --bash-completion     Print the bash completion script.
   -h, --help                Show help message.
 ```

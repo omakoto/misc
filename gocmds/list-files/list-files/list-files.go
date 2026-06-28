@@ -178,10 +178,6 @@ func scanDir(currentDir string, depth int, state *TraversalState, sem chan struc
 			isFile = !entry.Type().IsDir()
 		}
 
-		if !showAll && isDir && isHiddenDirectory(name) {
-			continue
-		}
-
 		isDirToPrint := isDir && showDirs
 		if isFile || isDirToPrint {
 			p := entryPath
@@ -193,7 +189,8 @@ func scanDir(currentDir string, depth int, state *TraversalState, sem chan struc
 
 		// Avoid traversing symlinks to directories to prevent infinite recursion/loops.
 		if entry.Type().IsDir() {
-			if !hasMaxDepth || depth+1 < maxDepth {
+			shouldTraverse := showAll || !isHiddenDirectory(name)
+			if shouldTraverse && (!hasMaxDepth || depth+1 < maxDepth) {
 				if firstDir {
 					tasks = append(tasks, task{inlineSubdir: entryPath})
 					firstDir = false
