@@ -10,5 +10,5 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 (
   cd "$SCRIPT_DIR"
   ./0-setup.sh
-  go install ./list-files/cmd
+  go install ./list-files/cmd/list-files
 )

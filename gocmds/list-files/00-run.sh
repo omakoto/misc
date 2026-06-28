@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 (
   cd "$SCRIPT_DIR"
   ./0-setup.sh
-  go build -o bin/list-files ./list-files/cmd
+  go build -o bin/list-files ./list-files/cmd/list-files
 )
 
 # Run the compiled binary using its absolute path (preserving original pwd for arguments)

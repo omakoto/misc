@@ -11,7 +11,7 @@ BIN="$PROJECT_DIR/bin/list-files"
 (
   cd "$PROJECT_DIR"
   ./0-setup.sh
-  go build -o bin/list-files ./list-files/cmd
+  go build -o bin/list-files ./list-files/cmd/list-files
 )
 
 # 2. Setup temporary directory for tests
