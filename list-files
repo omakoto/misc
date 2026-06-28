@@ -101,6 +101,8 @@ def _traverse_dir_recursive(current_dir: str, reverse: bool, state: TraversalSta
                     break
                 if not _traverse_dir_recursive(entry.path, reverse, state, show_directories, show_all):
                     success = False
+        except BrokenPipeError:
+            raise
         except OSError as e:
             print(f"Error checking entry '{entry.path}': {e}", file=sys.stderr)
             success = False
@@ -108,64 +110,71 @@ def _traverse_dir_recursive(current_dir: str, reverse: bool, state: TraversalSta
     return success
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Traverse directories and list files in a depth-first way.",
-        epilog="""
+    try:
+        parser = argparse.ArgumentParser(
+            description="Traverse directories and list files in a depth-first way.",
+            epilog="""
 Examples:
   list-files dir1
   list-files -r dir1 dir2
-        """,
-        formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument(
-        "-r",
-        "--reverse",
-        action="store_true",
-        help="Sort files in reverse alphabetical order."
-    )
-    parser.add_argument(
-        "-n",
-        "--max-files",
-        type=int,
-        default=None,
-        metavar="MAX-FILES",
-        help="Limit the number of files listed."
-    )
-    parser.add_argument(
-        "-d",
-        "--show-directories",
-        action="store_true",
-        help="Print directories too."
-    )
-    parser.add_argument(
-        "-a",
-        "--show-all",
-        action="store_true",
-        help="Show hidden directories (like .git) that are hidden by default."
-    )
-    parser.add_argument(
-        "directories",
-        nargs="*",
-        default=["."],
-        metavar="DIR",
-        help="One or more directory names to traverse. Defaults to the current directory if not specified."
-    )
+            """,
+            formatter_class=argparse.RawDescriptionHelpFormatter
+        )
+        parser.add_argument(
+            "-r",
+            "--reverse",
+            action="store_true",
+            help="Sort files in reverse alphabetical order."
+        )
+        parser.add_argument(
+            "-n",
+            "--max-files",
+            type=int,
+            default=None,
+            metavar="MAX-FILES",
+            help="Limit the number of files listed."
+        )
+        parser.add_argument(
+            "-d",
+            "--show-directories",
+            action="store_true",
+            help="Print directories too."
+        )
+        parser.add_argument(
+            "-a",
+            "--show-all",
+            action="store_true",
+            help="Show hidden directories (like .git) that are hidden by default."
+        )
+        parser.add_argument(
+            "directories",
+            nargs="*",
+            default=["."],
+            metavar="DIR",
+            help="One or more directory names to traverse. Defaults to the current directory if not specified."
+        )
 
-    args = parser.parse_args()
+        args = parser.parse_args()
 
-    if args.max_files is not None and args.max_files < 0:
-        parser.error("argument -n/--max-files: must be a non-negative integer")
+        if args.max_files is not None and args.max_files < 0:
+            parser.error("argument -n/--max-files: must be a non-negative integer")
 
-    overall_success = True
-    state = TraversalState(args.max_files)
-    for directory in args.directories:
-        if state.limit_reached:
-            break
-        if not traverse_dir(directory, args.reverse, state, args.show_directories, args.show_all):
-            overall_success = False
+        overall_success = True
+        state = TraversalState(args.max_files)
+        for directory in args.directories:
+            if state.limit_reached:
+                break
+            if not traverse_dir(directory, args.reverse, state, args.show_directories, args.show_all):
+                overall_success = False
 
-    if not overall_success:
-        sys.exit(1)
+        if not overall_success:
+            sys.exit(1)
+    except BrokenPipeError:
+        # Python flushes standard streams on exit; redirect stdout to devnull to avoid
+        # another BrokenPipeError or ignored exception print.
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+        sys.exit(0)
 
 if __name__ == "__main__":
     main()
