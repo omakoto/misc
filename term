@@ -212,7 +212,7 @@ if (( capture )); then
 fi
 
 has_stdin=0
-if [[ ! -t 0 ]]; then
+if (( has_command )) && [[ ! -t 0 ]]; then
   has_stdin=1
   input_tmp=$(mktemp "/tmp/term_input.XXXXXX")
   cat > "$input_tmp"

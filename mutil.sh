@@ -484,6 +484,7 @@ bg-start() {
   local BG_OUT=${BG_OUT:-/dev/null}
   echo "Starting: $*" >>"$BG_OUT"
   ( 
+    trap '' HUP
     (
       nohup "$@" >>"$BG_OUT" 2>&1 
       if (( $notify_end )) ; then
