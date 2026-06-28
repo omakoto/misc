@@ -62,10 +62,15 @@ func (s *TraversalState) Increment() bool {
 	return true
 }
 
-type task struct {
-	path         string
-	inlineSubdir string
-	subStream    <-chan string
+type item struct {
+	path             string
+	inlineSubdirPath string
+	inlineSubdir     *dirResultTree
+	futureChan       <-chan *dirResultTree
+}
+
+type dirResultTree struct {
+	items []item
 }
 
 // TraverseDir starts the traversal of startDir.
@@ -91,56 +96,37 @@ func TraverseDir(startDir string, state *TraversalState, sem chan struct{}, show
 		out <- p
 	}
 
-	_traverseDirRecursive(startDir, 0, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, out)
-	return true
+	tree, ok := buildDirTree(startDir, 0, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth)
+	if ok {
+		printDirTree(tree, state, out)
+	}
+	return ok
 }
 
-func _traverseDirRecursive(currentDir string, depth int, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, hasMaxDepth bool, maxDepth int, out chan<- string) {
-	if state.LimitReached() {
-		return
-	}
-	if hasMaxDepth && depth >= maxDepth {
-		return
-	}
-
-	tasks, ok := scanDir(currentDir, depth, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, out)
+func buildDirTree(currentDir string, depth int, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, hasMaxDepth bool, maxDepth int) (*dirResultTree, bool) {
+	tree, ok := scanDirTree(currentDir, depth, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth)
 	if !ok {
-		return
+		return nil, false
 	}
 
-	// Output tasks in order to preserve depth-first sorting.
-	// This part is I/O free and runs without holding a slot in the semaphore.
-	for _, t := range tasks {
-		if state.LimitReached() {
-			break
-		}
-		if t.path != "" {
-			out <- t.path
-		} else if t.inlineSubdir != "" {
-			_traverseDirRecursive(t.inlineSubdir, depth+1, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, out)
-		} else if t.subStream != nil {
-			for p := range t.subStream {
-				if state.LimitReached() {
-					break
-				}
-				out <- p
-			}
+	for i := range tree.items {
+		if tree.items[i].inlineSubdirPath != "" {
+			subTree, _ := buildDirTree(tree.items[i].inlineSubdirPath, depth+1, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth)
+			tree.items[i].inlineSubdir = subTree
 		}
 	}
-	out <- ""
+	return tree, true
 }
 
-// scanDir acquires the semaphore, reads the directory entries, schedules child goroutines,
-// and releases the semaphore before returning the tasks.
-func scanDir(currentDir string, depth int, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, hasMaxDepth bool, maxDepth int, out chan<- string) ([]task, bool) {
+func scanDirTree(currentDir string, depth int, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, hasMaxDepth bool, maxDepth int) (*dirResultTree, bool) {
 	sem <- struct{}{}
 	defer func() { <-sem }()
 
 	if state.LimitReached() {
-		return nil, false
+		return &dirResultTree{}, true
 	}
 	if hasMaxDepth && depth >= maxDepth {
-		return nil, false
+		return &dirResultTree{}, true
 	}
 
 	entries, err := os.ReadDir(currentDir)
@@ -156,7 +142,7 @@ func scanDir(currentDir string, depth int, state *TraversalState, sem chan struc
 		return entries[i].Name() < entries[j].Name()
 	})
 
-	var tasks []task
+	var items []item
 	firstDir := true
 
 	for _, entry := range entries {
@@ -185,7 +171,7 @@ func scanDir(currentDir string, depth int, state *TraversalState, sem chan struc
 			if isDirToPrint && !strings.HasSuffix(p, "/") {
 				p += "/"
 			}
-			tasks = append(tasks, task{path: p})
+			items = append(items, item{path: p})
 		}
 
 		// Avoid traversing symlinks to directories to prevent infinite recursion/loops.
@@ -193,19 +179,47 @@ func scanDir(currentDir string, depth int, state *TraversalState, sem chan struc
 			shouldTraverse := showAll || !isHiddenDirectory(name)
 			if shouldTraverse && (!hasMaxDepth || depth+1 < maxDepth) {
 				if firstDir {
-					tasks = append(tasks, task{inlineSubdir: entryPath})
+					items = append(items, item{inlineSubdirPath: entryPath})
 					firstDir = false
 				} else {
-					subStream := make(chan string, 100)
-					tasks = append(tasks, task{subStream: subStream})
-					go func(path string, ch chan string, d int) {
-						_traverseDirRecursive(path, d, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, ch)
-						close(ch)
-					}(entryPath, subStream, depth+1)
+					futureChan := make(chan *dirResultTree, 1)
+					items = append(items, item{futureChan: futureChan})
+					go func(path string, ch chan *dirResultTree, d int) {
+						defer close(ch)
+						res, ok := buildDirTree(path, d, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth)
+						if ok {
+							ch <- res
+						} else {
+							ch <- nil
+						}
+					}(entryPath, futureChan, depth+1)
 				}
 			}
 		}
 	}
 
-	return tasks, true
+	return &dirResultTree{items: items}, true
+}
+
+func printDirTree(tree *dirResultTree, state *TraversalState, out chan<- string) {
+	if tree == nil || state.LimitReached() {
+		return
+	}
+
+	for _, item := range tree.items {
+		if state.LimitReached() {
+			break
+		}
+		if item.path != "" {
+			out <- item.path
+		} else if item.inlineSubdir != nil {
+			printDirTree(item.inlineSubdir, state, out)
+		} else if item.futureChan != nil {
+			subTree := <-item.futureChan
+			if subTree != nil {
+				printDirTree(subTree, state, out)
+			}
+		}
+	}
+	out <- ""
 }
