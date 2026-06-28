@@ -2,7 +2,7 @@
 
 # Show files under the current dir and let the user pick files with fzf
 
-list-files --colors always --show-fullpath | fzf --multi --ansi
+list-files --colors always --show-fullpath 2>/dev/null | fzf --multi --ansi
 
 exit 0
 
