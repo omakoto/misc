@@ -127,6 +127,7 @@ func _traverseDirRecursive(currentDir string, depth int, state *TraversalState, 
 			}
 		}
 	}
+	out <- ""
 }
 
 // scanDir acquires the semaphore, reads the directory entries, schedules child goroutines,

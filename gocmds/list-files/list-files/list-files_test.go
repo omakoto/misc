@@ -45,6 +45,9 @@ func TestTraverseDir(t *testing.T) {
 
 		go func() {
 			for p := range out {
+				if p == "" {
+					continue
+				}
 				if state.Increment() {
 					rel, err := filepath.Rel(tempDir, p)
 					if err == nil {

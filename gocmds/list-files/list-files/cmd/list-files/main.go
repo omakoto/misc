@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	_ "embed"
 	"fmt"
 	"os"
@@ -196,7 +197,14 @@ func main() {
 	go func() {
 		defer close(done)
 		homeDir, _ := os.UserHomeDir()
+		writer := bufio.NewWriter(os.Stdout)
+		defer writer.Flush()
+
 		for p := range out {
+			if p == "" {
+				writer.Flush()
+				continue
+			}
 			if state.Increment() {
 				// 1. Relative path
 				relPath := formatRelativePath(p, stripStartDir)
@@ -221,7 +229,7 @@ func main() {
 
 				// 3. Print
 				if showRelative {
-					if _, err := fmt.Println(relPath); err != nil {
+					if _, err := writer.WriteString(relPath + "\n"); err != nil {
 						if isBrokenPipe(err) {
 							os.Exit(0)
 						}
@@ -234,7 +242,7 @@ func main() {
 					if useColor {
 						printPath = "\x1b[36m" + fullPath + "\x1b[0m"
 					}
-					if _, err := fmt.Println(printPath); err != nil {
+					if _, err := writer.WriteString(printPath + "\n"); err != nil {
 						if isBrokenPipe(err) {
 							os.Exit(0)
 						}
