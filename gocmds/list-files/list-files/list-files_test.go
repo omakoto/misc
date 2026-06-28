@@ -1,4 +1,4 @@
-package list_files2
+package list_files
 
 import (
 	"os"

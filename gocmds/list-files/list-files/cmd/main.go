@@ -9,7 +9,7 @@ import (
 	"syscall"
 
 	"github.com/pborman/getopt/v2"
-	"list-files2/list-files2"
+	"list-files/list-files"
 )
 
 func init() {
@@ -88,7 +88,7 @@ func main() {
 	}
 	sem := make(chan struct{}, maxWorkers)
 
-	state, cancel := list_files2.NewTraversalState(limit, hasLimit)
+	state, cancel := list_files.NewTraversalState(limit, hasLimit)
 	defer cancel()
 
 	overallSuccess := true
@@ -116,7 +116,7 @@ func main() {
 		if state.LimitReached() {
 			break
 		}
-		if !list_files2.TraverseDir(directory, state, sem, *showDirs, *showAll, *reverse, hasMaxDepth, maxDepthLimit, out) {
+		if !list_files.TraverseDir(directory, state, sem, *showDirs, *showAll, *reverse, hasMaxDepth, maxDepthLimit, out) {
 			overallSuccess = false
 		}
 	}

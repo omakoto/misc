@@ -1,17 +1,17 @@
 #!/bin/bash
-# integration_test.sh - Integration test suite for list-files2 CLI.
+# integration_test.sh - Integration test suite for list-files CLI.
 
 set -euo pipefail
 
 # Get the project root directory
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BIN="$PROJECT_DIR/bin/list-files2"
+BIN="$PROJECT_DIR/bin/list-files"
 
 # 1. Compile the binary if not present
 (
   cd "$PROJECT_DIR"
   ./0-setup.sh
-  go build -o bin/list-files2 ./list-files2/cmd
+  go build -o bin/list-files ./list-files/cmd
 )
 
 # 2. Setup temporary directory for tests

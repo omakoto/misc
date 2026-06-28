@@ -1,4 +1,4 @@
-module list-files2
+module list-files
 
 go 1.20
 

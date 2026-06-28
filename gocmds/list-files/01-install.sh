@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build and install list-files2 to GOBIN.
+# Build and install list-files to GOBIN.
 
 set -euo pipefail
 
@@ -10,5 +10,5 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 (
   cd "$SCRIPT_DIR"
   ./0-setup.sh
-  go install ./list-files2/cmd
+  go install ./list-files/cmd
 )

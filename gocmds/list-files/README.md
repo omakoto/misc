@@ -1,6 +1,6 @@
-# list-files2
+# list-files
 
-`list-files2` is a high-performance Go-based drop-in replacement for `list-files`. It traverses directories and lists files depth-first, using bounded concurrent workers to speed up the process while maintaining the correct sorted order of results.
+`list-files` is a high-performance Go-based drop-in replacement for `list-files`. It traverses directories and lists files depth-first, using bounded concurrent workers to speed up the process while maintaining the correct sorted order of results.
 
 ## Features
 
@@ -15,7 +15,7 @@
 ## Usage
 
 ```bash
-list-files2 [options] [DIR ...]
+list-files [options] [DIR ...]
 ```
 
 ### Options

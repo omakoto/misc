@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build and run list-files2.
+# Build and run list-files.
 
 set -euo pipefail
 
@@ -10,8 +10,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 (
   cd "$SCRIPT_DIR"
   ./0-setup.sh
-  go build -o bin/list-files2 ./list-files2/cmd
+  go build -o bin/list-files ./list-files/cmd
 )
 
 # Run the compiled binary using its absolute path (preserving original pwd for arguments)
-exec "$SCRIPT_DIR/bin/list-files2" "$@"
+exec "$SCRIPT_DIR/bin/list-files" "$@"
