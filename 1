@@ -150,6 +150,12 @@ function resolve_file() {
   return 0
 }
 
+
+if (( ${#args[@]} == 0 )) ; then
+  echo "1: No files specified" 1>&2
+  exit 1
+fi
+
 for n in "${args[@]}" ; do
   n="$(resolve_file "$n")"
   if [[ "$n" == "" ]] ; then # resolve failed
@@ -259,6 +265,13 @@ for n in "${args[@]}" ; do
   files+=("$f")
 done
 
+
+if (( ${#files[@]} == 0 )) ; then
+  # Already handled in the above loop, like *.md.
+  exit 0
+fi
+
+
 file0="${files[0]}"
 
 if [[ "$EDITOR_ANTIGRAVITY" != "" ]]; then
@@ -333,11 +346,6 @@ if (( $is_code || $is_antigravity )); then
   if (( $force_new_window )) || [[ -d "$file0" ]] ; then
     opts+=("-n")
   fi
-fi
-
-if (( ${#files[@]} == 0 )) ; then
-  echo "1: No files specified" 1>&2
-  exit 1
 fi
 
 if (( $mkpath )) ; then
