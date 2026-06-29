@@ -656,7 +656,7 @@ source-setup() {
       if [[ "$last_auto_sourced_script" != "$script" ]]; then
         INFO "Automatically running:" "$script"
         last_auto_sourced_script="$script"
-        time . "$script"
+        . "$script"
       fi
       return 0
     fi
