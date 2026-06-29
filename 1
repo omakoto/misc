@@ -156,7 +156,7 @@ function resolve_file() {
 }
 
 
-if (( ${#args[@]} == 0 )) ; then
+if (( ${#files[@]} == 0 )) && (( ${#args[@]} == 0 )) ; then
   echo "1: No files specified" 1>&2
   exit 1
 fi
