@@ -16,8 +16,11 @@ trap 'rm -f "$STATE_FILE"' EXIT
 # Initial state is fullpath.
 echo "fullpath" > "$STATE_FILE"
 
+# 1 can handle the `~/` prefix, so no need to convert to $HOME.
+
 selected=$(list-files --colors always --show-fullpath --no-show-relative-path --show-directories 2>/dev/null | fzf --multi --ansi "$@" \
-  --header "Ctrl-A: Toggle fullpath / relpath" \
+  --header "Ctrl-A: Toggle fullpath / relpath | Alt-1: Open with 1" \
+  --bind "alt-1:execute-silent(1 {+})+accept" \
   --bind "ctrl-a:reload(bash -c '
     state=\$(cat \"\$STATE_FILE\")
     if [[ \"\$state\" == \"fullpath\" ]]; then
@@ -30,6 +33,7 @@ selected=$(list-files --colors always --show-fullpath --no-show-relative-path --
   ')")
 
 if [[ -n "$selected" ]]; then
+  selected=$(echo "$selected" | sed -e "s|^~/|$HOME/|" -e "s|^~$|$HOME|")
   echo "$selected" | cb
   echo "$selected"
 fi

@@ -129,6 +129,11 @@ fi
 # then suggest opening it instead.
 function resolve_file() {
   local n="$1"
+  if [[ "$n" =~ ^\~/ ]] ; then
+    n="${n/#\~\//$HOME/}"
+  elif [[ "$n" == "~" ]] ; then
+    n="$HOME"
+  fi
   if [[ -e "$n" ]] || [[ "$n" =~ ^/ ]]  ; then
     echo "$n"
     return 0
