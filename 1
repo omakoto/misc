@@ -335,16 +335,24 @@ if (( $is_code || $is_antigravity )); then
   fi
 fi
 
-if (( ${#files[@]} > 0 )) ; then
-  if (( $mkpath )) ; then
-    for n in "${files[@]}"; do
-      dir="$(dirname "$n")"
-      if [[ ! -d "$dir" ]] ; then
-        ee mkdir -p "$dir"
-      fi
-    done
-  fi
+if (( ${#files[@]} == 0 )) ; then
+  echo "1: No files specified" 1>&2
+  exit 1
+fi
 
-  cd $HOME
-  ee $ee_bg_opt $command "${opts[@]}" "${files[@]}" #| zenlog write-to-outer
+if (( $mkpath )) ; then
+  for n in "${files[@]}"; do
+    dir="$(dirname "$n")"
+    if [[ ! -d "$dir" ]] ; then
+      ee mkdir -p "$dir"
+    fi
+  done
+fi
+
+cd $HOME
+ee $ee_bg_opt $command "${opts[@]}" "${files[@]}" #| zenlog write-to-outer
+
+if (( $bg )) ; then
+  sleep 0.2
+  gnome-focus-window "$(basename "${files[0]}")" 2>/dev/null || true
 fi
