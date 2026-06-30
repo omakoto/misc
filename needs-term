@@ -3,7 +3,7 @@
 # Tells if we have interactive terminal (where we can directly launch man / fzf / etc),
 # or we need to use term to create a new terminal.
 
-if is-in-agent; then
+if (( $NEEDS_TERM )) || is-in-agent; then
     exit 0
 fi
 

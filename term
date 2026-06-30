@@ -100,23 +100,24 @@ fi
 
 # Apply mode-specific defaults
 
-if [[ -z "$geometry" ]]; then
-  if (( ! has_command )); then
-    cols="${COLUMNS:-}"
-    lines="${LINES:-}"
-    if [[ -z "$cols" || -z "$lines" ]] && tty -s; then
-      [[ -z "$cols" ]] && cols=$(tput cols 2>/dev/null)
-      [[ -z "$lines" ]] && lines=$(tput lines 2>/dev/null)
-    fi
-    if [[ -n "$cols" && -n "$lines" ]]; then
-      geometry="${cols}x${lines}"
-    else
-      geometry="140x45"
-    fi
-  else
-    geometry="140x45"
-  fi
-fi
+# Let's not change the term size -- it's kinda not needed.
+# if [[ -z "$geometry" ]]; then
+#   if (( ! has_command )); then
+#     cols="${COLUMNS:-}"
+#     lines="${LINES:-}"
+#     if [[ -z "$cols" || -z "$lines" ]] && tty -s; then
+#       [[ -z "$cols" ]] && cols=$(tput cols 2>/dev/null)
+#       [[ -z "$lines" ]] && lines=$(tput lines 2>/dev/null)
+#     fi
+#     if [[ -n "$cols" && -n "$lines" ]]; then
+#       geometry="${cols}x${lines}"
+#     else
+#       geometry="140x45"
+#     fi
+#   else
+#     geometry="140x45"
+#   fi
+# fi
 
 if [[ -z "$wait_mode" ]]; then
   if (( has_command && ! capture )); then
@@ -170,7 +171,7 @@ _prepare_env() {
     fi
   done < <(compgen -e)
 
-  unset ANTIGRAVITY_AGENT CLAUDE_AGENT IS_IN_AGENT
+  unset ANTIGRAVITY_AGENT CLAUDE_AGENT IS_IN_AGENT NEEDS_TERM
 
   # Signal the new shell to cd to the caller's directory (read in dot_bash_profile)
   export NEW_PWD="$saved_pwd"

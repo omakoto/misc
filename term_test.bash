@@ -77,10 +77,11 @@ run_term --geometry=120x30
 assert "grep -q 'ARGS: --geometry=120x30' '$TEST_TMP_DIR/calls'"
 assert "! grep -q 'bash -c' '$TEST_TMP_DIR/calls'"
 
-# 2b. Shell mode: default geometry uses $COLUMNS and $LINES if set
+# 2b. Shell mode: default geometry is empty if not specified
 reset_files
-(export COLUMNS=95 LINES=35; run_term)
-assert "grep -q 'ARGS: --geometry=95x35' '$TEST_TMP_DIR/calls'"
+run_term
+assert "grep -q -- '--geometry=' '$TEST_TMP_DIR/calls'"
+assert "! grep -q -- '--geometry=[0-9]' '$TEST_TMP_DIR/calls'"
 
 # 2c. Shell mode with zoom: gnome-terminal called with --zoom
 reset_files
@@ -107,17 +108,18 @@ assert "grep -q '^TERM_TEST_KEPT$' '$TEST_TMP_DIR/env'"
 unset TERM_TEST_KEPT
 
 # 5. Agent and terminal-specific vars always unset, even by default
-export ANTIGRAVITY_AGENT="1" CLAUDE_AGENT="1" IS_IN_AGENT="1"
+export ANTIGRAVITY_AGENT="1" CLAUDE_AGENT="1" IS_IN_AGENT="1" NEEDS_TERM="1"
 export ZENLOG_TEST="1" zenlog_test="1" _TEST_VAR="1"
 reset_files
 run_term
 assert "! grep -q '^ANTIGRAVITY_AGENT$' '$TEST_TMP_DIR/env'"
 assert "! grep -q '^CLAUDE_AGENT$' '$TEST_TMP_DIR/env'"
 assert "! grep -q '^IS_IN_AGENT$' '$TEST_TMP_DIR/env'"
+assert "! grep -q '^NEEDS_TERM$' '$TEST_TMP_DIR/env'"
 assert "! grep -q '^ZENLOG_TEST$' '$TEST_TMP_DIR/env'"
 assert "! grep -q '^zenlog_test$' '$TEST_TMP_DIR/env'"
 assert "! grep -q '^_TEST_VAR$' '$TEST_TMP_DIR/env'"
-unset ANTIGRAVITY_AGENT CLAUDE_AGENT IS_IN_AGENT ZENLOG_TEST zenlog_test _TEST_VAR
+unset ANTIGRAVITY_AGENT CLAUDE_AGENT IS_IN_AGENT NEEDS_TERM ZENLOG_TEST zenlog_test _TEST_VAR
 
 # 6. Command mode: gnome-terminal does NOT get --wait (unless capturing), but
 #    gets --hide-menubar, -t, and bash -c;
