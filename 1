@@ -280,7 +280,7 @@ fi
 file0="${files[0]}"
 
 if [[ "$EDITOR_ANTIGRAVITY" != "" ]]; then
-  if evsniff -a | grep -q 'SHIFT$' ; then
+  if get-modifiers | grep -q 'SHIFT$' ; then
     INFO "Shift key detectd. Force disabling antigravity!" 1>&2
     export EDITOR_ANTIGRAVITY=""
   fi
