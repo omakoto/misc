@@ -28,6 +28,7 @@ list-files [options] [DIR ...]
   -j, --para=PARA           Limit the number of parallel worker goroutines (defaults to min(8, CPU cores)).
   -m, --max-depth=MAX-DEPTH Limit the max depth for subdirectories.
   -p, --pattern=PATTERN     Only list files matching the wildcard pattern.
+      --regex=REGEX         Only list files matching the regular expression.
   -F, --show-fullpath       Print the full path of the file (and --no-show-fullpath).
       --home-tild           Replace user home directory with ~ in full path output (default, and --no-home-tild).
   -R, --show-relative-path  Print relative path output (default, and --no-show-relative-path).

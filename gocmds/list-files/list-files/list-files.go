@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -74,7 +75,7 @@ type dirResultTree struct {
 }
 
 // TraverseDir starts the traversal of startDir.
-func TraverseDir(startDir string, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, hasMaxDepth bool, maxDepth int, pattern string, out chan<- string) bool {
+func TraverseDir(startDir string, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, hasMaxDepth bool, maxDepth int, pattern string, rx *regexp.Regexp, out chan<- string) bool {
 	fi, err := os.Stat(startDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: '%s' is not a directory.\n", startDir)
@@ -100,6 +101,9 @@ func TraverseDir(startDir string, state *TraversalState, sem chan struct{}, show
 		if pattern != "" {
 			matched, _ = filepath.Match(pattern, filepath.Base(startDir))
 		}
+		if matched && rx != nil {
+			matched = rx.MatchString(filepath.Base(startDir))
+		}
 		if matched {
 			p := startDir
 			if !strings.HasSuffix(p, "/") {
@@ -109,29 +113,29 @@ func TraverseDir(startDir string, state *TraversalState, sem chan struct{}, show
 		}
 	}
 
-	tree, ok := buildDirTree(startDir, 0, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, pattern)
+	tree, ok := buildDirTree(startDir, 0, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, pattern, rx)
 	if ok {
 		printDirTree(tree, state, out)
 	}
 	return ok
 }
 
-func buildDirTree(currentDir string, depth int, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, hasMaxDepth bool, maxDepth int, pattern string) (*dirResultTree, bool) {
-	tree, ok := scanDirTree(currentDir, depth, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, pattern)
+func buildDirTree(currentDir string, depth int, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, hasMaxDepth bool, maxDepth int, pattern string, rx *regexp.Regexp) (*dirResultTree, bool) {
+	tree, ok := scanDirTree(currentDir, depth, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, pattern, rx)
 	if !ok {
 		return nil, false
 	}
 
 	for i := range tree.items {
 		if tree.items[i].inlineSubdirPath != "" {
-			subTree, _ := buildDirTree(tree.items[i].inlineSubdirPath, depth+1, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, pattern)
+			subTree, _ := buildDirTree(tree.items[i].inlineSubdirPath, depth+1, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, pattern, rx)
 			tree.items[i].inlineSubdir = subTree
 		}
 	}
 	return tree, true
 }
 
-func scanDirTree(currentDir string, depth int, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, hasMaxDepth bool, maxDepth int, pattern string) (*dirResultTree, bool) {
+func scanDirTree(currentDir string, depth int, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, hasMaxDepth bool, maxDepth int, pattern string, rx *regexp.Regexp) (*dirResultTree, bool) {
 	sem <- struct{}{}
 	defer func() { <-sem }()
 
@@ -201,6 +205,9 @@ func scanDirTree(currentDir string, depth int, state *TraversalState, sem chan s
 					matched = false
 				}
 			}
+			if matched && rx != nil {
+				matched = rx.MatchString(name)
+			}
 			if matched {
 				p := entryPath
 				if isDirToPrint && !strings.HasSuffix(p, "/") {
@@ -222,7 +229,7 @@ func scanDirTree(currentDir string, depth int, state *TraversalState, sem chan s
 					items = append(items, item{futureChan: futureChan})
 					go func(path string, ch chan *dirResultTree, d int) {
 						defer close(ch)
-						res, ok := buildDirTree(path, d, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, pattern)
+						res, ok := buildDirTree(path, d, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, pattern, rx)
 						if ok {
 							ch <- res
 						} else {

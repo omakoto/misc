@@ -82,6 +82,16 @@ assert_output "Pattern x.txt" "a/x.txt" -p "x.txt" "$TEMP_DIR"
 assert_output "Pattern no match" "" -p "*.pdf" "$TEMP_DIR"
 assert_output "Pattern with directories" "d/e/" -d -p "e*" "$TEMP_DIR"
 
+# Test --regex
+assert_output "Regex" "a/x.txt,b/y.txt,c.txt,d/e/z.txt" --regex '\.txt$' "$TEMP_DIR"
+assert_output "Regex specific" "a/x.txt,b/y.txt" --regex '[xy]\.txt$' "$TEMP_DIR"
+
+echo "Running test: Mutually exclusive options"
+if "$BIN" -p "*.txt" --regex '\.txt$' "$TEMP_DIR" 2>/dev/null; then
+  echo "FAIL: Expected failure for mutually exclusive options"
+  exit 1
+fi
+
 # Test Default ./ stripping (running with . as argument)
 echo "Running test: Strip start dir (default)"
 actual_strip=$(cd "$TEMP_DIR" && "$BIN" | paste -sd, -)

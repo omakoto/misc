@@ -136,6 +136,7 @@ list-files -|
 --no-strip-start-dir
 -p
 --pattern
+--regex
 -r
 --reverse
 -R
@@ -148,6 +149,11 @@ EOF
 # Pattern option value completion (should be empty)
 run_test <<'EOF'
 list-files -p |
+EOF
+
+# Regex option value completion (should be empty)
+run_test <<'EOF'
+list-files --regex |
 EOF
 
 # Long option triggers

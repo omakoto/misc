@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -66,7 +67,7 @@ func TestTraverseDir(t *testing.T) {
 		if len(pattern) > 0 {
 			pat = pattern[0]
 		}
-		TraverseDir(tempDir, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, pat, out)
+		TraverseDir(tempDir, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, pat, nil, out)
 		close(out)
 		<-done
 		return results
@@ -253,6 +254,62 @@ func TestTraverseDir(t *testing.T) {
 		got := runTraverse(0, false, true, false, false, false, 0, "e*")
 		want := []string{
 			"d/e/",
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+
+	runTraverseRegex := func(rx *regexp.Regexp) []string {
+		sem := make(chan struct{}, 4)
+		state, cancel := NewTraversalState(0, false)
+		defer cancel()
+
+		out := make(chan string, 100)
+		done := make(chan struct{})
+		var results []string
+
+		go func() {
+			for p := range out {
+				if p == "" {
+					continue
+				}
+				if state.Increment() {
+					rel, err := filepath.Rel(tempDir, p)
+					if err == nil {
+						results = append(results, rel)
+					}
+				}
+			}
+			close(done)
+		}()
+
+		TraverseDir(tempDir, state, sem, false, false, false, false, 0, "", rx, out)
+		close(out)
+		<-done
+		return results
+	}
+
+	t.Run("Regex Match Files", func(t *testing.T) {
+		rx := regexp.MustCompile(`\.txt$`)
+		got := runTraverseRegex(rx)
+		want := []string{
+			"a/x.txt",
+			"b/y.txt",
+			"c.txt",
+			"d/e/z.txt",
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+
+	t.Run("Regex Match Specific", func(t *testing.T) {
+		rx := regexp.MustCompile(`[xy]\.txt$`)
+		got := runTraverseRegex(rx)
+		want := []string{
+			"a/x.txt",
+			"b/y.txt",
 		}
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("got %v, want %v", got, want)

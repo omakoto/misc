@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"syscall"
@@ -73,6 +74,7 @@ func main() {
 	maxDepth := getopt.IntLong("max-depth", 'm', -1, "Limit the max depth for subdirectories.")
 	help := getopt.BoolLong("help", 'h', "Show help message.")
 	pattern := getopt.StringLong("pattern", 'p', "", "Only list files matching the wildcard pattern.")
+	regexStr := getopt.StringLong("regex", 0, "", "Only list files matching the regular expression.")
 
 	// Output control options
 	stripStartDirOpt := getopt.BoolLong("strip-start-dir", 0, "Strip leading ./ from relative output path (default).")
@@ -90,10 +92,25 @@ func main() {
 	getopt.SetParameters("[DIR ...]")
 	getopt.Parse()
 
+	if *pattern != "" && *regexStr != "" {
+		fmt.Fprintln(os.Stderr, "list-files: options --pattern and --regex are mutually exclusive")
+		os.Exit(2)
+	}
+
 	if *pattern != "" {
 		_, err := filepath.Match(*pattern, "dummy")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "list-files: option -p/--pattern: invalid pattern: %v\n", err)
+			os.Exit(2)
+		}
+	}
+
+	var rx *regexp.Regexp
+	if *regexStr != "" {
+		var err error
+		rx, err = regexp.Compile(*regexStr)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "list-files: option --regex: invalid regexp: %v\n", err)
 			os.Exit(2)
 		}
 	}
@@ -271,7 +288,7 @@ func main() {
 		if state.LimitReached() {
 			break
 		}
-		if !list_files.TraverseDir(directory, state, sem, *showDirs, *showAll, *reverse, hasMaxDepth, maxDepthLimit, *pattern, out) {
+		if !list_files.TraverseDir(directory, state, sem, *showDirs, *showAll, *reverse, hasMaxDepth, maxDepthLimit, *pattern, rx, out) {
 			overallSuccess = false
 		}
 	}
