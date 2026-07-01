@@ -2,5 +2,6 @@
 
 # Shell-escape -- mutil.sh has a function version too.
 
-printf '%q ' "$@"
-echo
+declare -f shescape > /dev/null || . mutil.sh
+
+shescape "$@"

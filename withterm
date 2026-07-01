@@ -15,4 +15,4 @@ EOF
   exit 1
 fi
 
-script -q -c "$(shescape-multi "$@")" /dev/null
+script -q -c "$(shescape "$@")" /dev/null

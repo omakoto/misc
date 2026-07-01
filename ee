@@ -1,5 +1,5 @@
 #!/bin/bash
 
-. mutil.sh
+declare -f ee > /dev/null || . mutil.sh
 
-ee -2 "$@" # </dev/null |& highlighter-tests
+ee "$@" # </dev/null |& highlighter-tests

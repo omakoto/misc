@@ -2,4 +2,6 @@
 
 # Shell-escape, no newline -- mutil.sh has a function version too.
 
-printf '%q ' "$@"
+declare -f shescapen > /dev/null || . mutil.sh
+
+shescapen "$@"

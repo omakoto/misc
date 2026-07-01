@@ -77,6 +77,37 @@ function shescapen() {
   printf '%q ' "$@"
 }
 
+function shescapes() {
+  # Note, there's a script at misc/shescapen too.
+  local has_input=0
+
+  _shescapes_process_stream() {
+      local line
+      while IFS= read -r line || [[ -n "$line" ]]; do
+          printf "%q " "$line"
+          has_input=1
+      done
+  }
+
+  if (( $# == 0 )); then
+      _shescapes_process_stream
+  else
+      for file in "$@"; do
+          if [[ "$file" == "-" ]]; then
+              _shescapes_process_stream
+          else
+              _shescapes_process_stream < "$file"
+          fi
+      done
+  fi
+
+  if (( has_input )); then
+      echo
+  fi
+}
+
+export -f shescape shescapen shescapes
+
 die() {
   {
     echo -n "${0##*/}: "
@@ -352,6 +383,7 @@ ee() {
   fi
   return $rc
 }
+
 export -f ee
 
 echo-and-exec() {
