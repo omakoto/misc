@@ -32,6 +32,7 @@ list-files [options] [DIR ...]
   -F, --show-fullpath       Print the full path of the file (and --no-show-fullpath).
       --home-tild           Replace user home directory with ~ in full path output (default, and --no-home-tild).
   -R, --show-relative-path  Print relative path output (default, and --no-show-relative-path).
+  -t, --sort-by-time        Sort files by modification time (newest first).
       --strip-start-dir     Strip leading ./ from relative output path (default, and --no-strip-start-dir).
       --colors=always|never|auto
                             Configure color output: always, never, or auto (default).

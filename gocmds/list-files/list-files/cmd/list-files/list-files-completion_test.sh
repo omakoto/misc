@@ -141,6 +141,8 @@ list-files -|
 --reverse
 -R
 --show-relative-path
+-t
+--sort-by-time
 --strip-start-dir
 --colors
 --bash-completion

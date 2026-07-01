@@ -9,8 +9,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 	"syscall"
+	"time"
 	"unsafe"
 
 	list_files "list-files/list-files"
@@ -75,6 +77,7 @@ func main() {
 	help := getopt.BoolLong("help", 'h', "Show help message.")
 	pattern := getopt.StringLong("pattern", 'p', "", "Only list files matching the wildcard pattern.")
 	regexStr := getopt.StringLong("regex", 0, "", "Only list files matching the regular expression.")
+	sortByTime := getopt.BoolLong("sort-by-time", 't', "Sort files by modification time (newest first).")
 
 	// Output control options
 	stripStartDirOpt := getopt.BoolLong("strip-start-dir", 0, "Strip leading ./ from relative output path (default).")
@@ -219,6 +222,18 @@ func main() {
 	state, cancel := list_files.NewTraversalState(limit, hasLimit)
 	defer cancel()
 
+	homeDir, _ := os.UserHomeDir()
+	printer := &filePrinter{
+		writer:        bufio.NewWriter(os.Stdout),
+		homeDir:       homeDir,
+		useColor:      useColor,
+		showFullpath:  showFullpath,
+		homeTild:      homeTild,
+		showRelative:  showRelative,
+		stripStartDir: stripStartDir,
+		state:         state,
+	}
+
 	overallSuccess := true
 	out := make(chan string, 100)
 
@@ -226,61 +241,29 @@ func main() {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		homeDir, _ := os.UserHomeDir()
-		writer := bufio.NewWriter(os.Stdout)
-		defer writer.Flush()
+		defer printer.writer.Flush()
+
+		var collectedFiles []string
 
 		for p := range out {
 			if p == "" {
-				writer.Flush()
+				if !*sortByTime {
+					printer.writer.Flush()
+				}
 				continue
 			}
-			if state.Increment() {
-				// 1. Relative path
-				relPath := formatRelativePath(p, stripStartDir)
-
-				// 2. Full path
-				var fullPath string
-				if showFullpath {
-					abs, err := filepath.Abs(p)
-					if err == nil {
-						fullPath = abs
-						if homeTild && homeDir != "" {
-							if fullPath == homeDir {
-								fullPath = "~"
-							} else if strings.HasPrefix(fullPath, homeDir+string(filepath.Separator)) {
-								fullPath = "~" + fullPath[len(homeDir):]
-							}
-						}
-					} else {
-						fullPath = p
-					}
-				}
-
-				// 3. Print
-				if showRelative {
-					if _, err := writer.WriteString(relPath + "\n"); err != nil {
-						if isBrokenPipe(err) {
-							os.Exit(0)
-						}
-						fmt.Fprintf(os.Stderr, "Write error: %v\n", err)
-						os.Exit(2)
-					}
-				}
-				if showFullpath {
-					printPath := fullPath
-					if useColor {
-						printPath = "\x1b[38;5;14m" + fullPath + "\x1b[0m"
-					}
-					if _, err := writer.WriteString(printPath + "\n"); err != nil {
-						if isBrokenPipe(err) {
-							os.Exit(0)
-						}
-						fmt.Fprintf(os.Stderr, "Write error: %v\n", err)
-						os.Exit(2)
-					}
+			if *sortByTime {
+				collectedFiles = append(collectedFiles, p)
+			} else {
+				if state.Increment() {
+					printer.print(p)
 				}
 			}
+		}
+
+		if *sortByTime {
+			printer.sortAndPrint(collectedFiles, *reverse)
+			printer.writer.Flush()
 		}
 	}()
 
@@ -298,5 +281,105 @@ func main() {
 
 	if !overallSuccess {
 		os.Exit(1)
+	}
+}
+
+type filePrinter struct {
+	writer        *bufio.Writer
+	homeDir       string
+	useColor      bool
+	showFullpath  bool
+	homeTild      bool
+	showRelative  bool
+	stripStartDir bool
+	state         *list_files.TraversalState
+}
+
+func (fp *filePrinter) print(p string) {
+	// 1. Relative path
+	relPath := formatRelativePath(p, fp.stripStartDir)
+
+	// 2. Full path
+	var fullPath string
+	if fp.showFullpath {
+		abs, err := filepath.Abs(p)
+		if err == nil {
+			fullPath = abs
+			if fp.homeTild && fp.homeDir != "" {
+				if fullPath == fp.homeDir {
+					fullPath = "~"
+				} else if strings.HasPrefix(fullPath, fp.homeDir+string(filepath.Separator)) {
+					fullPath = "~" + fullPath[len(fp.homeDir):]
+				}
+			}
+		} else {
+			fullPath = p
+		}
+	}
+
+	// 3. Print
+	if fp.showRelative {
+		if _, err := fp.writer.WriteString(relPath + "\n"); err != nil {
+			if isBrokenPipe(err) {
+				os.Exit(0)
+			}
+			fmt.Fprintf(os.Stderr, "Write error: %v\n", err)
+			os.Exit(2)
+		}
+	}
+	if fp.showFullpath {
+		printPath := fullPath
+		if fp.useColor {
+			printPath = "\x1b[38;5;14m" + fullPath + "\x1b[0m"
+		}
+		if _, err := fp.writer.WriteString(printPath + "\n"); err != nil {
+			if isBrokenPipe(err) {
+				os.Exit(0)
+			}
+			fmt.Fprintf(os.Stderr, "Write error: %v\n", err)
+			os.Exit(2)
+		}
+	}
+}
+
+func (fp *filePrinter) sortAndPrint(files []string, reverse bool) {
+	type fileWithTime struct {
+		path string
+		time time.Time
+	}
+	var filesWithTime []fileWithTime
+	for _, p := range files {
+		statPath := strings.TrimSuffix(p, "/")
+		fi, err := os.Stat(statPath)
+		if err != nil {
+			filesWithTime = append(filesWithTime, fileWithTime{path: p, time: time.Time{}})
+		} else {
+			filesWithTime = append(filesWithTime, fileWithTime{path: p, time: fi.ModTime()})
+		}
+	}
+
+	slices.SortFunc(filesWithTime, func(a, b fileWithTime) int {
+		if reverse {
+			if a.time.Before(b.time) {
+				return -1
+			}
+			if a.time.After(b.time) {
+				return 1
+			}
+			return 0
+		}
+		if a.time.After(b.time) {
+			return -1
+		}
+		if a.time.Before(b.time) {
+			return 1
+		}
+		return 0
+	})
+
+	for _, ft := range filesWithTime {
+		if fp.state.Increment() {
+			fp.print(ft.path)
+		}
 	}
 }

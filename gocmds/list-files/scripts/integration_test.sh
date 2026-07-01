@@ -32,6 +32,13 @@ echo "b/y" > "$TEMP_DIR"/b/y.txt
 echo "c" > "$TEMP_DIR"/c.txt
 echo "d/e/z" > "$TEMP_DIR"/d/e/z.txt
 
+# Set explicit modification times to test sorting by time
+# c.txt (newest: 12:03), a/x.txt (12:02), d/e/z.txt (12:01), b/y.txt (oldest: 12:00)
+touch -t 202607011202.00 "$TEMP_DIR"/a/x.txt
+touch -t 202607011200.00 "$TEMP_DIR"/b/y.txt
+touch -t 202607011203.00 "$TEMP_DIR"/c.txt
+touch -t 202607011201.00 "$TEMP_DIR"/d/e/z.txt
+
 # Helper to run and compare stdout
 assert_output() {
   local label="$1"
@@ -91,6 +98,10 @@ if "$BIN" -p "*.txt" --regex '\.txt$' "$TEMP_DIR" 2>/dev/null; then
   echo "FAIL: Expected failure for mutually exclusive options"
   exit 1
 fi
+
+# Test --sort-by-time / -t
+assert_output "Sort by time" "c.txt,a/x.txt,d/e/z.txt,b/y.txt" -t "$TEMP_DIR"
+assert_output "Sort by time reverse" "b/y.txt,d/e/z.txt,a/x.txt,c.txt" -t -r "$TEMP_DIR"
 
 # Test Default ./ stripping (running with . as argument)
 echo "Running test: Strip start dir (default)"
