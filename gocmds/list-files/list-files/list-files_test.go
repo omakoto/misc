@@ -34,7 +34,7 @@ func TestTraverseDir(t *testing.T) {
 	os.WriteFile(filepath.Join(tempDir, "c.txt"), []byte("c"), 0644)
 	os.WriteFile(filepath.Join(tempDir, "d", "e", "z.txt"), []byte("d/e/z"), 0644)
 
-	runTraverse := func(limit int64, hasLimit, showDirs, showAll, reverse bool, hasMaxDepth bool, maxDepth int) []string {
+	runTraverse := func(limit int64, hasLimit, showDirs, showAll, reverse bool, hasMaxDepth bool, maxDepth int, pattern ...string) []string {
 		sem := make(chan struct{}, 4)
 		state, cancel := NewTraversalState(limit, hasLimit)
 		defer cancel()
@@ -62,7 +62,11 @@ func TestTraverseDir(t *testing.T) {
 			close(done)
 		}()
 
-		TraverseDir(tempDir, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, out)
+		pat := ""
+		if len(pattern) > 0 {
+			pat = pattern[0]
+		}
+		TraverseDir(tempDir, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, pat, out)
 		close(out)
 		<-done
 		return results
@@ -208,6 +212,46 @@ func TestTraverseDir(t *testing.T) {
 			"b/y.txt",
 			"c.txt",
 			"d/",
+			"d/e/",
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+
+	t.Run("Pattern Match Files", func(t *testing.T) {
+		got := runTraverse(0, false, false, false, false, false, 0, "*.txt")
+		want := []string{
+			"a/x.txt",
+			"b/y.txt",
+			"c.txt",
+			"d/e/z.txt",
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+
+	t.Run("Pattern Match Specific File", func(t *testing.T) {
+		got := runTraverse(0, false, false, false, false, false, 0, "x.txt")
+		want := []string{
+			"a/x.txt",
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+
+	t.Run("Pattern Match No Match", func(t *testing.T) {
+		got := runTraverse(0, false, false, false, false, false, 0, "*.pdf")
+		if len(got) != 0 {
+			t.Errorf("got %v, want empty", got)
+		}
+	})
+
+	t.Run("Pattern Match With Directories", func(t *testing.T) {
+		got := runTraverse(0, false, true, false, false, false, 0, "e*")
+		want := []string{
 			"d/e/",
 		}
 		if !reflect.DeepEqual(got, want) {

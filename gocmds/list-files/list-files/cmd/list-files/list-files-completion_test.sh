@@ -134,6 +134,8 @@ list-files -|
 --no-show-fullpath
 --no-show-relative-path
 --no-strip-start-dir
+-p
+--pattern
 -r
 --reverse
 -R
@@ -141,6 +143,11 @@ list-files -|
 --strip-start-dir
 --colors
 --bash-completion
+EOF
+
+# Pattern option value completion (should be empty)
+run_test <<'EOF'
+list-files -p |
 EOF
 
 # Long option triggers

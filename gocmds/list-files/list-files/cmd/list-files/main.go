@@ -72,6 +72,7 @@ func main() {
 	para := getopt.IntLong("para", 'j', 0, "Limit the number of parallel worker goroutines (defaults to min(6, CPU cores)).")
 	maxDepth := getopt.IntLong("max-depth", 'm', -1, "Limit the max depth for subdirectories.")
 	help := getopt.BoolLong("help", 'h', "Show help message.")
+	pattern := getopt.StringLong("pattern", 'p', "", "Only list files matching the wildcard pattern.")
 
 	// Output control options
 	stripStartDirOpt := getopt.BoolLong("strip-start-dir", 0, "Strip leading ./ from relative output path (default).")
@@ -88,6 +89,14 @@ func main() {
 
 	getopt.SetParameters("[DIR ...]")
 	getopt.Parse()
+
+	if *pattern != "" {
+		_, err := filepath.Match(*pattern, "dummy")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "list-files: option -p/--pattern: invalid pattern: %v\n", err)
+			os.Exit(2)
+		}
+	}
 
 	if *help {
 		getopt.Usage()
@@ -262,7 +271,7 @@ func main() {
 		if state.LimitReached() {
 			break
 		}
-		if !list_files.TraverseDir(directory, state, sem, *showDirs, *showAll, *reverse, hasMaxDepth, maxDepthLimit, out) {
+		if !list_files.TraverseDir(directory, state, sem, *showDirs, *showAll, *reverse, hasMaxDepth, maxDepthLimit, *pattern, out) {
 			overallSuccess = false
 		}
 	}

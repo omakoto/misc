@@ -76,6 +76,12 @@ assert_output "Max depth 0" "" -d -m 0 "$TEMP_DIR"
 assert_output "Max depth 1" ",.git/,a/,b/,c.txt,d/" -d -m 1 "$TEMP_DIR"
 assert_output "Max depth 2" ",.git/,a/,a/x.txt,b/,b/y.txt,c.txt,d/,d/e/" -d -m 2 "$TEMP_DIR"
 
+# Test --pattern / -p
+assert_output "Pattern *.txt" "a/x.txt,b/y.txt,c.txt,d/e/z.txt" -p "*.txt" "$TEMP_DIR"
+assert_output "Pattern x.txt" "a/x.txt" -p "x.txt" "$TEMP_DIR"
+assert_output "Pattern no match" "" -p "*.pdf" "$TEMP_DIR"
+assert_output "Pattern with directories" "d/e/" -d -p "e*" "$TEMP_DIR"
+
 # Test Default ./ stripping (running with . as argument)
 echo "Running test: Strip start dir (default)"
 actual_strip=$(cd "$TEMP_DIR" && "$BIN" | paste -sd, -)

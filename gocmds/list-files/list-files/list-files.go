@@ -74,7 +74,7 @@ type dirResultTree struct {
 }
 
 // TraverseDir starts the traversal of startDir.
-func TraverseDir(startDir string, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, hasMaxDepth bool, maxDepth int, out chan<- string) bool {
+func TraverseDir(startDir string, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, hasMaxDepth bool, maxDepth int, pattern string, out chan<- string) bool {
 	fi, err := os.Stat(startDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: '%s' is not a directory.\n", startDir)
@@ -89,36 +89,49 @@ func TraverseDir(startDir string, state *TraversalState, sem chan struct{}, show
 		if state.LimitReached() {
 			return true
 		}
-		p := startDir
-		if !strings.HasSuffix(p, "/") {
-			p += "/"
+		// If there is a pattern, we should check if the startDir matches it?
+		// Usually startDir is passed explicitly, so maybe we don't filter it,
+		// or maybe we do?
+		// If I run `list-files -p "matching" dir`, `dir/` itself might not match.
+		// Standard find: `find dir -name "matching"` does not print `dir` unless it matches.
+		// But `list-files` prints startDir if showDirs is true.
+		// Let's match startDir too if showDirs is true and pattern is set.
+		matched := true
+		if pattern != "" {
+			matched, _ = filepath.Match(pattern, filepath.Base(startDir))
 		}
-		out <- p
+		if matched {
+			p := startDir
+			if !strings.HasSuffix(p, "/") {
+				p += "/"
+			}
+			out <- p
+		}
 	}
 
-	tree, ok := buildDirTree(startDir, 0, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth)
+	tree, ok := buildDirTree(startDir, 0, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, pattern)
 	if ok {
 		printDirTree(tree, state, out)
 	}
 	return ok
 }
 
-func buildDirTree(currentDir string, depth int, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, hasMaxDepth bool, maxDepth int) (*dirResultTree, bool) {
-	tree, ok := scanDirTree(currentDir, depth, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth)
+func buildDirTree(currentDir string, depth int, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, hasMaxDepth bool, maxDepth int, pattern string) (*dirResultTree, bool) {
+	tree, ok := scanDirTree(currentDir, depth, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, pattern)
 	if !ok {
 		return nil, false
 	}
 
 	for i := range tree.items {
 		if tree.items[i].inlineSubdirPath != "" {
-			subTree, _ := buildDirTree(tree.items[i].inlineSubdirPath, depth+1, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth)
+			subTree, _ := buildDirTree(tree.items[i].inlineSubdirPath, depth+1, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, pattern)
 			tree.items[i].inlineSubdir = subTree
 		}
 	}
 	return tree, true
 }
 
-func scanDirTree(currentDir string, depth int, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, hasMaxDepth bool, maxDepth int) (*dirResultTree, bool) {
+func scanDirTree(currentDir string, depth int, state *TraversalState, sem chan struct{}, showDirs, showAll, reverse bool, hasMaxDepth bool, maxDepth int, pattern string) (*dirResultTree, bool) {
 	sem <- struct{}{}
 	defer func() { <-sem }()
 
@@ -180,11 +193,21 @@ func scanDirTree(currentDir string, depth int, state *TraversalState, sem chan s
 
 		isDirToPrint := isDir && showDirs
 		if isFile || isDirToPrint {
-			p := entryPath
-			if isDirToPrint && !strings.HasSuffix(p, "/") {
-				p += "/"
+			matched := true
+			if pattern != "" {
+				var err error
+				matched, err = filepath.Match(pattern, name)
+				if err != nil {
+					matched = false
+				}
 			}
-			items = append(items, item{path: p})
+			if matched {
+				p := entryPath
+				if isDirToPrint && !strings.HasSuffix(p, "/") {
+					p += "/"
+				}
+				items = append(items, item{path: p})
+			}
 		}
 
 		// Avoid traversing symlinks to directories to prevent infinite recursion/loops.
@@ -199,7 +222,7 @@ func scanDirTree(currentDir string, depth int, state *TraversalState, sem chan s
 					items = append(items, item{futureChan: futureChan})
 					go func(path string, ch chan *dirResultTree, d int) {
 						defer close(ch)
-						res, ok := buildDirTree(path, d, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth)
+						res, ok := buildDirTree(path, d, state, sem, showDirs, showAll, reverse, hasMaxDepth, maxDepth, pattern)
 						if ok {
 							ch <- res
 						} else {
