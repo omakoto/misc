@@ -66,6 +66,17 @@ iswsl() {
   return $rc
 }
 
+function shescape() {
+  # Note, there's a script at misc/shescape too.
+  printf '%q ' "$@"
+  echo
+}
+
+function shescapen() {
+  # Note, there's a script at misc/shescapen too.
+  printf '%q ' "$@"
+}
+
 die() {
   {
     echo -n "${0##*/}: "
@@ -777,4 +788,16 @@ last_activity_age_sec() {
   local now
   printf -v now '%(%s)T' -1
   echo $(( now - fdate ))
+}
+
+mkdir() {
+  # Avoid forking if the directory already exists. (very common case)
+  if (( $# == 2 )) && [[ "$1" == "-p" ]] ; then
+    if [[ -d "$2" ]] ; then
+      return 0
+    fi
+    command mkdir -p "$2"
+  else
+    command mkdir "$@"
+  fi
 }

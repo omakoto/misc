@@ -1,5 +1,5 @@
 #!/bin/bash
 
-# Shell-escape, no newline
+# Shell-escape, no newline -- mutil.sh has a function version too.
 
 printf '%q ' "$@"
