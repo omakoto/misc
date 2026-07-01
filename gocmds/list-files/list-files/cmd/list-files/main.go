@@ -12,8 +12,9 @@ import (
 	"syscall"
 	"unsafe"
 
+	list_files "list-files/list-files"
+
 	"github.com/pborman/getopt/v2"
-	"list-files/list-files"
 )
 
 //go:embed list-files-completion.sh
@@ -243,7 +244,7 @@ func main() {
 				if showFullpath {
 					printPath := fullPath
 					if useColor {
-						printPath = "\x1b[36m" + fullPath + "\x1b[0m"
+						printPath = "\x1b[38;5;14m" + fullPath + "\x1b[0m"
 					}
 					if _, err := writer.WriteString(printPath + "\n"); err != nil {
 						if isBrokenPipe(err) {

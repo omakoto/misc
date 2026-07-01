@@ -143,7 +143,7 @@ fi
 
 # Test --colors always (should print fullpaths in cyan ANSI escape codes)
 echo "Running test: Colors always"
-cyan_start=$'\x1b[36m'
+cyan_start=$'\x1b[38;5;14m'
 cyan_end=$'\x1b[0m'
 expected_colors="a/x.txt,${cyan_start}${tild_a}${cyan_end},b/y.txt,${cyan_start}${tild_b}${cyan_end},c.txt,${cyan_start}${tild_c}${cyan_end},d/e/z.txt,${cyan_start}${tild_d}${cyan_end}"
 actual_colors=$(cd "$TEMP_DIR" && "$BIN" -F --colors always | paste -sd, -)
