@@ -111,6 +111,9 @@ selected=$({
   if [[ -d "$HOME/.gemini/jetski/brain" ]] ; then
     list-files -t -r -p '*.md'  "$HOME/.gemini/jetski/brain"
   fi
+  if [[ -d "$HOME/.gemini/antigravity-cli/brain" ]] ; then
+    list-files -t -r -p '*.md'  "$HOME/.gemini/antigravity-cli/brain"
+  fi
 } | sed "s|^$HOME/|~/|" | fzf "${fzf_args[@]}")
 
 if [[ -n "$selected" ]]; then
