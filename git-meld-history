@@ -3,6 +3,9 @@
 # Interactive Git history viewer using fzf and git-meld (Python implementation).
 # See git-meld-history.md for details on specifications.
 # Make sure to run git-meld-history_test.bash after making any changes.
+#
+# When the tool shows a diff against the current working tree, the right side of the diff
+# is the real files (rather than copies), so that the user can edit them directly.
 
 import sys
 import os
@@ -415,6 +418,10 @@ def main() -> None:
                 break
                 
         if submodule_dir:
+            if submodule_dir == "(All submodules)":
+                # Show one Meld window with the dirty files of all submodules
+                run_git_meld(["--all-submodules"])
+                continue
             if submodule_dir == "(Parent)":
                 parent_res = run_command(["git", "rev-parse", "--show-superproject-working-tree"], capture_output=True, text=True)
                 parent_dir = parent_res.stdout.strip() if parent_res.returncode == 0 else ""

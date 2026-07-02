@@ -332,6 +332,16 @@ Examples:
         '      *"[Submodules]"*) '
         '        git submodule status | awk \'{print substr($0, 1, 1) substr($0, 42)}\'; '
         '        ;; '
+        '      *"(All"*) '
+        '        if [ -n "$(git status --porcelain --ignore-submodules)" ]; then '
+        '          echo "=== (Main Repository) ==="; '
+        '          git status --short --ignore-submodules; '
+        '          echo; '
+        '          git diff --color=always --ignore-submodules HEAD; '
+        '          echo; '
+        '        fi; '
+        '        git submodule foreach --quiet \'if [ -n "$(git status --porcelain)" ]; then echo "=== $displaypath ==="; git status --short; echo; git diff --color=always HEAD; echo; fi\'; '
+        '        ;; '
         '      *"(Parent)"*) '
         '        parent_dir=$(git rev-parse --show-superproject-working-tree 2>/dev/null); '
         '        if [ -n "$parent_dir" ]; then '
@@ -429,6 +439,14 @@ Examples:
                     else:
                         terminate_process(lf_proc)
                         
+                if args.submodules:
+                    subs = get_submodules()
+                    dirty_subs = [sub for sub in subs if is_submodule_dirty(sub)]
+                    main_dirty = is_dirty()
+                    if subs and (dirty_subs or main_dirty):
+                        # Write the aggregate "(All submodules)" option at the absolute top of the list if the repo has submodules
+                        fzf_proc.stdin.write(b"\x1b[35m(submodule)\x1b[m (All submodules) \x1b[31m(dirty)\x1b[m\n")
+
                 if args.current and is_dirty_val:
                     fzf_proc.stdin.write(b"\x1b[33m(CURRENT)\x1b[m Local changes\n")
                 
@@ -445,10 +463,8 @@ Examples:
                     parent_repo = get_parent_repo()
                     if parent_repo:
                         fzf_proc.stdin.write(b"\x1b[35m(submodule)\x1b[m (Parent)\n")
-                    subs = get_submodules()
-                    for sub in subs:
-                        if is_submodule_dirty(sub):
-                            fzf_proc.stdin.write(f"\x1b[35m(submodule)\x1b[m {sub} \x1b[31m(dirty)\x1b[m\n".encode('utf-8'))
+                    for sub in dirty_subs:
+                        fzf_proc.stdin.write(f"\x1b[35m(submodule)\x1b[m {sub} \x1b[31m(dirty)\x1b[m\n".encode('utf-8'))
                     if subs:
                         fzf_proc.stdin.write(b"\x1b[35m(submodule)\x1b[m [Submodules]\n")
                 

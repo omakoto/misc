@@ -56,7 +56,7 @@ class GitHistoryFzfTest(unittest.TestCase):
         # Case 1: Unstaged changes (diff-files returns 1)
         mock_run.return_value = MagicMock(returncode=1)
         self.assertTrue(git_history_fzf.is_dirty())
-        mock_run.assert_called_with(["git", "diff-files", "--quiet"])
+        mock_run.assert_called_with(["git", "diff-files", "--quiet", "--ignore-submodules"])
         
         # Case 2: Staged changes (diff-files returns 0, diff-index returns 1)
         mock_run.side_effect = [MagicMock(returncode=0), MagicMock(returncode=1)]
@@ -312,11 +312,13 @@ class GitHistoryFzfTest(unittest.TestCase):
     @patch('git_history_fzf.is_inside_work_tree')
     @patch('git_history_fzf.get_submodules')
     @patch('git_history_fzf.get_parent_repo')
+    @patch('git_history_fzf.is_dirty')
     @patch('subprocess.Popen')
-    def test_main_submodules(self, mock_popen: MagicMock, mock_get_parent: MagicMock, mock_get_subs: MagicMock, mock_is_inside: MagicMock) -> None:
+    def test_main_submodules(self, mock_popen: MagicMock, mock_is_dirty: MagicMock, mock_get_parent: MagicMock, mock_get_subs: MagicMock, mock_is_inside: MagicMock) -> None:
         mock_is_inside.return_value = True
         mock_get_subs.return_value = ["sub1", "sub2"]
         mock_get_parent.return_value = "/path/to/parent"
+        mock_is_dirty.return_value = False
         
         mock_fzf_proc = make_mock_proc(b"(submodule) [Submodules]\n", 0)
         mock_fzf_sub_proc = make_mock_proc(b"sub1\n", 0)
@@ -346,18 +348,23 @@ class GitHistoryFzfTest(unittest.TestCase):
             self.assertEqual(cm.exception.code, 0)
             mock_fzf_proc.stdin.write.assert_any_call(b"\x1b[35m(submodule)\x1b[m [Submodules]\n")
             mock_fzf_proc.stdin.write.assert_any_call(b"\x1b[35m(submodule)\x1b[m (Parent)\n")
+            # No dirty submodule and clean parent, so no "(All submodules)" entry
+            for call in mock_fzf_proc.stdin.write.call_args_list:
+                self.assertNotIn(b"(All submodules)", call[0][0])
             mock_stdout.buffer.write.assert_called_once_with(b"(submodule) sub1\n")
 
     @patch('git_history_fzf.is_inside_work_tree')
     @patch('git_history_fzf.get_submodules')
     @patch('git_history_fzf.get_parent_repo')
     @patch('git_history_fzf.is_submodule_dirty')
+    @patch('git_history_fzf.is_dirty')
     @patch('subprocess.Popen')
-    def test_main_submodules_dirty(self, mock_popen: MagicMock, mock_is_sub_dirty: MagicMock, mock_get_parent: MagicMock, mock_get_subs: MagicMock, mock_is_inside: MagicMock) -> None:
+    def test_main_submodules_dirty(self, mock_popen: MagicMock, mock_is_dirty: MagicMock, mock_is_sub_dirty: MagicMock, mock_get_parent: MagicMock, mock_get_subs: MagicMock, mock_is_inside: MagicMock) -> None:
         mock_is_inside.return_value = True
         mock_get_subs.return_value = ["sub1", "sub2"]
         mock_get_parent.return_value = None
         mock_is_sub_dirty.side_effect = lambda s: s == "sub1"
+        mock_is_dirty.return_value = False
         
         mock_fzf_proc = make_mock_proc(b"(submodule) sub1 (dirty)\n", 0)
         mock_mb_proc = make_mock_proc(b"", 0)
@@ -383,9 +390,90 @@ class GitHistoryFzfTest(unittest.TestCase):
                 
             self.assertEqual(cm.exception.code, 0)
             mock_fzf_proc.stdin.write.assert_any_call(b"\x1b[35m(submodule)\x1b[m sub1 \x1b[31m(dirty)\x1b[m\n")
+            # A dirty submodule exists, so the "(All submodules)" entry is shown
+            mock_fzf_proc.stdin.write.assert_any_call(b"\x1b[35m(submodule)\x1b[m (All submodules) \x1b[31m(dirty)\x1b[m\n")
             for call in mock_fzf_proc.stdin.write.call_args_list:
                 self.assertNotIn(b"sub2 (dirty)", call[0][0])
             mock_stdout.buffer.write.assert_called_once_with(b"(submodule) sub1\n")
+
+    @patch('git_history_fzf.is_inside_work_tree')
+    @patch('git_history_fzf.get_submodules')
+    @patch('git_history_fzf.get_parent_repo')
+    @patch('git_history_fzf.is_submodule_dirty')
+    @patch('git_history_fzf.is_dirty')
+    @patch('subprocess.Popen')
+    def test_main_submodules_parent_dirty(self, mock_popen: MagicMock, mock_is_dirty: MagicMock, mock_is_sub_dirty: MagicMock, mock_get_parent: MagicMock, mock_get_subs: MagicMock, mock_is_inside: MagicMock) -> None:
+        mock_is_inside.return_value = True
+        mock_get_subs.return_value = ["sub1", "sub2"]
+        mock_get_parent.return_value = None
+        mock_is_sub_dirty.return_value = False
+        mock_is_dirty.return_value = True
+        
+        mock_fzf_proc = make_mock_proc(b"HEAD Commit\n", 0)
+        mock_mb_proc = make_mock_proc(b"", 0)
+        mock_git_proc = make_mock_proc(b"", 0)
+        
+        def popen_side_effect(cmd: List[str], **kwargs: Any) -> MagicMock:
+            if cmd[0] == "fzf":
+                return mock_fzf_proc
+            elif cmd[0] == "git":
+                if cmd[1] == "merge-base":
+                    return mock_mb_proc
+                elif cmd[1] == "log":
+                    return mock_git_proc
+            raise ValueError(f"Unexpected Popen call: {cmd}")
+            
+        mock_popen.side_effect = popen_side_effect
+        
+        with patch('sys.argv', ['git-history-fzf', '--submodules']), \
+             patch('sys.stdout') as mock_stdout:
+            
+            with self.assertRaises(SystemExit) as cm:
+                git_history_fzf.main()
+                
+            self.assertEqual(cm.exception.code, 0)
+            # The parent repository is dirty, so the "(All submodules)" entry is shown even though submodules are clean
+            mock_fzf_proc.stdin.write.assert_any_call(b"\x1b[35m(submodule)\x1b[m (All submodules) \x1b[31m(dirty)\x1b[m\n")
+
+    @patch('git_history_fzf.is_inside_work_tree')
+    @patch('git_history_fzf.get_submodules')
+    @patch('git_history_fzf.get_parent_repo')
+    @patch('git_history_fzf.is_submodule_dirty')
+    @patch('git_history_fzf.is_dirty')
+    @patch('subprocess.Popen')
+    def test_main_submodules_no_submodules_parent_dirty(self, mock_popen: MagicMock, mock_is_dirty: MagicMock, mock_is_sub_dirty: MagicMock, mock_get_parent: MagicMock, mock_get_subs: MagicMock, mock_is_inside: MagicMock) -> None:
+        mock_is_inside.return_value = True
+        mock_get_subs.return_value = []
+        mock_get_parent.return_value = None
+        mock_is_sub_dirty.return_value = False
+        mock_is_dirty.return_value = True
+        
+        mock_fzf_proc = make_mock_proc(b"HEAD Commit\n", 0)
+        mock_mb_proc = make_mock_proc(b"", 0)
+        mock_git_proc = make_mock_proc(b"", 0)
+        
+        def popen_side_effect(cmd: List[str], **kwargs: Any) -> MagicMock:
+            if cmd[0] == "fzf":
+                return mock_fzf_proc
+            elif cmd[0] == "git":
+                if cmd[1] == "merge-base":
+                    return mock_mb_proc
+                elif cmd[1] == "log":
+                    return mock_git_proc
+            raise ValueError(f"Unexpected Popen call: {cmd}")
+            
+        mock_popen.side_effect = popen_side_effect
+        
+        with patch('sys.argv', ['git-history-fzf', '--submodules']), \
+             patch('sys.stdout') as mock_stdout:
+            
+            with self.assertRaises(SystemExit) as cm:
+                git_history_fzf.main()
+                
+            self.assertEqual(cm.exception.code, 0)
+            # The parent repository is dirty but there are no submodules, so "(All submodules)" should NOT be shown
+            for call in mock_fzf_proc.stdin.write.call_args_list:
+                self.assertNotIn(b"(All submodules)", call[0][0])
 
     @patch('git_history_fzf.is_inside_work_tree')
     @patch('sys.stderr.write')

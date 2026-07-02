@@ -25,6 +25,18 @@ When `git-meld-history` is executed:
 
 ---
 
+## All Submodules Spec
+
+When the repository has submodules (listed via `git-history-fzf --submodules`):
+1. **Dirty Submodule Check**:
+   - If any submodule has uncommitted changes (staged, unstaged, or untracked), a `(submodule) (All submodules)` entry is shown at the top of the submodule entries, above the individual dirty submodule entries.
+2. **Selection**:
+   - Selecting `(All submodules)` runs `git meld --all-submodules`, which shows a single Meld window comparing, for every dirty submodule, its `HEAD` snapshot against its working tree (untracked files included), laid out under `<submodule_path>/...`.
+   - The right side of the diff consists of symlinks to the real working files, so they can be edited directly.
+   - The viewer stays in the current repository (no directory switch), and the fzf list is shown again afterwards.
+
+---
+
 ## Testing
 
 > [!IMPORTANT]

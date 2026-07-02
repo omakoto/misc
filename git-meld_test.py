@@ -20,46 +20,58 @@ spec.loader.exec_module(git_meld)
 
 class GitMeldTest(unittest.TestCase):
     def test_parse_arguments_empty(self):
-        revs, paths, cached, no_rename, help_req = git_meld.parse_arguments([])
+        revs, paths, cached, no_rename, all_subs, help_req = git_meld.parse_arguments([])
         self.assertEqual(revs, [])
         self.assertEqual(paths, [])
         self.assertFalse(cached)
         self.assertFalse(no_rename)
+        self.assertFalse(all_subs)
         self.assertFalse(help_req)
 
     def test_parse_arguments_cached(self):
-        revs, paths, cached, no_rename, help_req = git_meld.parse_arguments(["--cached"])
+        revs, paths, cached, no_rename, all_subs, help_req = git_meld.parse_arguments(["--cached"])
         self.assertEqual(revs, [])
         self.assertEqual(paths, [])
         self.assertTrue(cached)
         self.assertFalse(no_rename)
+        self.assertFalse(all_subs)
         self.assertFalse(help_req)
 
     def test_parse_arguments_no_rename(self):
-        revs, paths, cached, no_rename, help_req = git_meld.parse_arguments(["--no-rename-detection"])
+        revs, paths, cached, no_rename, all_subs, help_req = git_meld.parse_arguments(["--no-rename-detection"])
         self.assertEqual(revs, [])
         self.assertEqual(paths, [])
         self.assertFalse(cached)
         self.assertTrue(no_rename)
+        self.assertFalse(all_subs)
+        self.assertFalse(help_req)
+
+    def test_parse_arguments_all_submodules(self):
+        revs, paths, cached, no_rename, all_subs, help_req = git_meld.parse_arguments(["--all-submodules"])
+        self.assertEqual(revs, [])
+        self.assertEqual(paths, [])
+        self.assertFalse(cached)
+        self.assertFalse(no_rename)
+        self.assertTrue(all_subs)
         self.assertFalse(help_req)
 
     def test_parse_arguments_help(self):
-        _, _, _, _, help_req = git_meld.parse_arguments(["-h"])
+        _, _, _, _, _, help_req = git_meld.parse_arguments(["-h"])
         self.assertTrue(help_req)
-        _, _, _, _, help_req = git_meld.parse_arguments(["--help"])
+        _, _, _, _, _, help_req = git_meld.parse_arguments(["--help"])
         self.assertTrue(help_req)
 
     @patch('git_meld.parse_rev_or_range')
     def test_parse_arguments_revs_and_paths(self, mock_parse_rev):
         # Mock git revision check to return True for commit names
         mock_parse_rev.side_effect = lambda x: x in {"HEAD", "HEAD~1", "master", "feature", "master..feature"}
-        
-        revs, paths, cached, no_rename, help_req = git_meld.parse_arguments(["HEAD~1", "--", "file1.txt"])
+
+        revs, paths, cached, no_rename, all_subs, help_req = git_meld.parse_arguments(["HEAD~1", "--", "file1.txt"])
         self.assertEqual(revs, ["HEAD~1"])
         self.assertEqual(paths, ["file1.txt"])
-        
+
         # Test range
-        revs, paths, cached, no_rename, help_req = git_meld.parse_arguments(["master..feature", "dir/"])
+        revs, paths, cached, no_rename, all_subs, help_req = git_meld.parse_arguments(["master..feature", "dir/"])
         self.assertEqual(revs, ["master..feature"])
         self.assertEqual(paths, ["dir/"])
 
@@ -163,6 +175,151 @@ class GitMeldTest(unittest.TestCase):
                             meld_called = True
                     self.assertTrue(meld_called, "Diff tool 'meld' was not called")
                 
+        finally:
+            os.chdir(orig_cwd)
+            shutil.rmtree(test_dir, ignore_errors=True)
+
+    @patch('os.fork')
+    @patch('os.setsid')
+    def test_main_all_submodules_integration(self, mock_setsid, mock_fork):
+        mock_fork.return_value = 0 # Simulate child process
+
+        import tempfile
+        import shutil
+        import subprocess
+
+        test_dir = tempfile.mkdtemp(dir="/tmp")
+        orig_cwd = os.getcwd()
+
+        try:
+            def init_repo(path):
+                os.makedirs(path, exist_ok=True)
+                subprocess.run(["git", "init", "-q"], cwd=path, check=True)
+                subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=path, check=True)
+                subprocess.run(["git", "config", "user.name", "Test User"], cwd=path, check=True)
+
+            # Two submodule origins: one will be dirtied, one stays clean
+            for name, filename in (("sub1_origin", "sub1file.txt"), ("sub2_origin", "sub2file.txt")):
+                repo = os.path.join(test_dir, name)
+                init_repo(repo)
+                with open(os.path.join(repo, filename), "w") as f:
+                    f.write("original content")
+                subprocess.run(["git", "add", filename], cwd=repo, check=True)
+                subprocess.run(["git", "commit", "-q", "-m", "Initial commit"], cwd=repo, check=True)
+
+            # Parent repo with the two submodules
+            parent = os.path.join(test_dir, "parent")
+            init_repo(parent)
+            with open(os.path.join(parent, "parentfile.txt"), "w") as f:
+                f.write("parent content")
+            subprocess.run(["git", "add", "parentfile.txt"], cwd=parent, check=True)
+            subprocess.run(["git", "commit", "-q", "-m", "Initial commit"], cwd=parent, check=True)
+            for name, sub in (("sub1_origin", "sub1"), ("sub2_origin", "sub2")):
+                subprocess.run(
+                    ["git", "-c", "protocol.file.allow=always", "submodule", "add", "-q",
+                     os.path.join(test_dir, name), sub],
+                    cwd=parent, check=True)
+            subprocess.run(["git", "commit", "-q", "-m", "Add submodules"], cwd=parent, check=True)
+
+            # Dirty sub1: modify a tracked file and add an untracked file
+            with open(os.path.join(parent, "sub1", "sub1file.txt"), "w") as f:
+                f.write("modified content")
+            with open(os.path.join(parent, "sub1", "untracked.txt"), "w") as f:
+                f.write("untracked content")
+
+            # Also dirty the parent repository: modify tracked and add untracked
+            with open(os.path.join(parent, "parentfile.txt"), "w") as f:
+                f.write("modified parent content")
+            with open(os.path.join(parent, "parent_untracked.txt"), "w") as f:
+                f.write("untracked parent content")
+
+            os.chdir(parent)
+
+            with patch('sys.argv', ['git-meld', '--all-submodules']):
+                with patch('subprocess.run') as mock_run:
+                    def side_effect(cmd, *args, **kwargs):
+                        if cmd[0] == 'meld' or cmd[0] == '/usr/bin/meld':
+                            source_dir = cmd[-2]
+                            dest_dir = cmd[-1]
+
+                            # Changed file appears under the submodule path on both sides
+                            with open(os.path.join(source_dir, "sub1", "sub1file.txt")) as f:
+                                self.assertEqual(f.read().strip(), "original content")
+                            with open(os.path.join(dest_dir, "sub1", "sub1file.txt")) as f:
+                                self.assertEqual(f.read().strip(), "modified content")
+
+                            # The destination side is a symlink to the real working file
+                            self.assertTrue(os.path.islink(os.path.join(dest_dir, "sub1", "sub1file.txt")))
+
+                            # Untracked file appears only on the destination side
+                            self.assertFalse(os.path.exists(os.path.join(source_dir, "sub1", "untracked.txt")))
+                            with open(os.path.join(dest_dir, "sub1", "untracked.txt")) as f:
+                                self.assertEqual(f.read().strip(), "untracked content")
+
+                            # The clean submodule does not show up at all
+                            self.assertFalse(os.path.exists(os.path.join(source_dir, "sub2")))
+                            self.assertFalse(os.path.exists(os.path.join(dest_dir, "sub2")))
+
+                            # Parent repo's modified file appears directly in the root on both sides
+                            with open(os.path.join(source_dir, "parentfile.txt")) as f:
+                                self.assertEqual(f.read().strip(), "parent content")
+                            with open(os.path.join(dest_dir, "parentfile.txt")) as f:
+                                self.assertEqual(f.read().strip(), "modified parent content")
+
+                            self.assertTrue(os.path.islink(os.path.join(dest_dir, "parentfile.txt")))
+
+                            # Parent repo's untracked file appears only on destination side
+                            self.assertFalse(os.path.exists(os.path.join(source_dir, "parent_untracked.txt")))
+                            with open(os.path.join(dest_dir, "parent_untracked.txt")) as f:
+                                self.assertEqual(f.read().strip(), "untracked parent content")
+
+                            return MagicMock(returncode=0)
+                        else:
+                            return ORIGINAL_SUBPROCESS_RUN(cmd, *args, **kwargs)
+
+                    mock_run.side_effect = side_effect
+
+                    git_meld.main()
+
+                    meld_called = False
+                    for call in mock_run.call_args_list:
+                        cmd_arg = call[0][0]
+                        if cmd_arg[0] == 'meld' or cmd_arg[0] == '/usr/bin/meld':
+                            meld_called = True
+                    self.assertTrue(meld_called, "Diff tool 'meld' was not called")
+
+        finally:
+            os.chdir(orig_cwd)
+            shutil.rmtree(test_dir, ignore_errors=True)
+
+    @patch('os.fork')
+    @patch('os.setsid')
+    def test_main_all_submodules_no_changes(self, mock_setsid, mock_fork):
+        mock_fork.return_value = 0
+
+        import tempfile
+        import shutil
+        import subprocess
+
+        test_dir = tempfile.mkdtemp(dir="/tmp")
+        orig_cwd = os.getcwd()
+
+        try:
+            os.chdir(test_dir)
+            subprocess.run(["git", "init", "-q"], check=True)
+            subprocess.run(["git", "config", "user.email", "test@example.com"], check=True)
+            subprocess.run(["git", "config", "user.name", "Test User"], check=True)
+            with open("file1.txt", "w") as f:
+                f.write("content")
+            subprocess.run(["git", "add", "file1.txt"], check=True)
+            subprocess.run(["git", "commit", "-q", "-m", "Initial commit"], check=True)
+
+            # No submodules at all -> "No changes found." and exit code 3
+            with patch('sys.argv', ['git-meld', '--all-submodules']):
+                with self.assertRaises(SystemExit) as cm:
+                    git_meld.main()
+                self.assertEqual(cm.exception.code, 3)
+
         finally:
             os.chdir(orig_cwd)
             shutil.rmtree(test_dir, ignore_errors=True)

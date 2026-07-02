@@ -366,6 +366,8 @@ MOCK_FZF_SELECTION=""
 git-meld-history
 assert "grep -q '\[Submodules\]' '$TEST_TMP_DIR/fzf_stdin'"
 assert "grep -q -E '\[35m\(submodule\)' '$TEST_TMP_DIR/fzf_stdin'"
+# No dirty submodule, so no "(All submodules)" entry
+assert "! grep -q '(All submodules)' '$TEST_TMP_DIR/fzf_stdin'"
 
 # -------------------------------------------------------------
 # Test Case 14: Verify submodule selection directory switch
@@ -998,6 +1000,74 @@ git-meld-history
 assert "! grep -q '(CURRENT)' '$TEST_TMP_DIR/fzf_stdin'"
 # 2. fzf_stdin contains the dirty submodule
 assert "grep -q 'mysub.*dirty' '$TEST_TMP_DIR/fzf_stdin'"
+
+# -------------------------------------------------------------
+# Test Case 35: Verify "(All submodules)" listing and selection
+# -------------------------------------------------------------
+setup_git_repo_with_submodule
+
+# Make the submodule dirty
+echo "dirty in sub" >> mysub/subfile.txt
+
+clear_test_state
+MOCK_FZF_SELECTION="(submodule) (All submodules)"
+git-meld-history
+
+# Verify:
+# 1. fzf_stdin contains the "(All submodules)" entry
+assert "grep -q '(All submodules)' '$TEST_TMP_DIR/fzf_stdin'"
+# 2. git-meld was invoked with --all-submodules
+assert "[[ -f '$TEST_TMP_DIR/git_meld_calls' ]]"
+assert "[[ '$(cat $TEST_TMP_DIR/git_meld_calls)' == '--all-submodules' ]]"
+# 3. Both fzf calls ran in the repository root (no directory switch)
+cwds=($(cat "$TEST_TMP_DIR/fzf_cwds"))
+assert "[[ ${#cwds[@]} -eq 2 ]]"
+assert "[[ '${cwds[0]}' == *'/repo' ]]"
+assert "[[ '${cwds[1]}' == *'/repo' ]]"
+
+# Return to script directory
+cd "$SCRIPT_DIR"
+
+# -------------------------------------------------------------
+# Test Case 36: Verify "(All submodules)" listing when only parent is dirty
+# -------------------------------------------------------------
+setup_git_repo_with_submodule
+
+# Make ONLY the parent dirty (not the submodule)
+echo "dirty parent content" >> file1.txt
+
+clear_test_state
+MOCK_FZF_SELECTION=""
+git-meld-history
+
+# Verify:
+# 1. fzf_stdin contains the "(All submodules)" entry even though the submodule is clean
+assert "grep -q '(All submodules)' '$TEST_TMP_DIR/fzf_stdin'"
+
+# Return to script directory
+cd "$SCRIPT_DIR"
+
+# -------------------------------------------------------------
+# Test Case 37: Verify "(All submodules)" appears before "(CURRENT)" in fzf_stdin
+# -------------------------------------------------------------
+setup_git_repo_with_submodule
+
+# Make both the submodule and parent repository dirty
+echo "dirty in sub" >> mysub/subfile.txt
+echo "dirty parent content" >> file1.txt
+
+clear_test_state
+MOCK_FZF_SELECTION=""
+git-meld-history
+
+# Verify:
+# 1. fzf_stdin contains both entries
+assert "grep -q '(All submodules)' '$TEST_TMP_DIR/fzf_stdin'"
+assert "grep -q '(CURRENT)' '$TEST_TMP_DIR/fzf_stdin'"
+# 2. (All submodules) is listed before (CURRENT) (its line number is smaller)
+all_subs_line=$(grep -n '(All submodules)' "$TEST_TMP_DIR/fzf_stdin" | cut -d: -f1)
+current_line=$(grep -n '(CURRENT)' "$TEST_TMP_DIR/fzf_stdin" | cut -d: -f1)
+assert "[[ \$all_subs_line -lt \$current_line ]]"
 
 # Return to script directory
 cd "$SCRIPT_DIR"
