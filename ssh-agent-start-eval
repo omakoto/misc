@@ -3,7 +3,7 @@
 . mutil.sh
 
 if [[ "$SSH_AUTH_SOCK" != "" ]] ; then
-	echo "SSH_AUTH_SOCK already set ($SSH_AUTH_SOCK)" 1>&2
+	# echo "SSH_AUTH_SOCK already set ($SSH_AUTH_SOCK)" 1>&2
 	exit 0
 fi
 
