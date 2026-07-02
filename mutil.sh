@@ -49,6 +49,18 @@ function is-glinux() {
 . ~/cbin/common_rc
 . ~/cbin/misc/colors.bash
 
+mkdir() {
+  # Avoid forking if the directory already exists. (very common case)
+  if (( $# == 2 )) && [[ "$1" == "-p" ]] ; then
+    if [[ -d "$2" ]] ; then
+      return 0
+    fi
+    command mkdir -p "$2"
+  else
+    command mkdir "$@"
+  fi
+}
+
 in-ssh() {
   # On NX, SSH* are set, so we also check if it's under X.
   # But the `isx` command returns true under `ssh -X` too, so we use this hack.
@@ -778,15 +790,14 @@ function neg() {
   fi
 }
 
+if [[ "$ramtmp_path" == "" ]]; then
+  export ramtmp_path=/dev/shm/$USER/tmp/
+  mkdir -p "$ramtmp_path"
+fi
+
 function ramtmp() {
-  local path=/dev/shm/$USER/tmp/
-  if mkdir -p $path ; then
-    echo $path
-    return 0
-  else
-    echo '/dev/shm/ does not exist?' 1>&2
-    return 1
-  fi
+  echo "ramtmp detected! Stop using it!" 1>/dev/tty
+  echo "$ramtmp_path"
 }
 
 nobuf() {
@@ -830,18 +841,6 @@ last_activity_age_sec() {
   local now
   printf -v now '%(%s)T' -1
   echo $(( now - fdate ))
-}
-
-mkdir() {
-  # Avoid forking if the directory already exists. (very common case)
-  if (( $# == 2 )) && [[ "$1" == "-p" ]] ; then
-    if [[ -d "$2" ]] ; then
-      return 0
-    fi
-    command mkdir -p "$2"
-  else
-    command mkdir "$@"
-  fi
 }
 
 label() {

@@ -2,8 +2,8 @@
 # Notifies other bash instances (that are idle / not running subprocesses) to
 # press Enter to reload.
 # Run rc-reload_test.bash to test.
-_reloaded_time=$(ramtmp)/$$-reload.tmp
-_reload_needed=$(ramtmp)/reload-needed.tmp
+_reloaded_time=$ramtmp_path/$$-reload.tmp
+_reload_needed=$ramtmp_path/reload-needed.tmp
 _reload_rc_files_fingerprints=""
 
 trap 'rm -f "$_reloaded_time"' EXIT

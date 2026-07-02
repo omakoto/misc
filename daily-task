@@ -10,7 +10,7 @@ checkfile=/tmp/task-timestamp-$taskname
 
 if [[ -f "$checkfile" ]] ; then
     if (( $(fileage "$checkfile") < $ndays )) ; then
-        INFO "Skipping task:" "$taskname"
+        # INFO "Skipping task:" "$taskname"
         exit 1
     fi
 fi
