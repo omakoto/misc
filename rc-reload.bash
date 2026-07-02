@@ -33,7 +33,7 @@ rc_files_changed() {
 reload_rc() {
     bgreen "Reloading .bashrc..."
     time source ~/.bashrc
-    touch "$_reloaded_time"
+    >"$_reloaded_time"
     bgreen "Reloaded .bashrc."
 }
 
@@ -67,7 +67,7 @@ _bash_is_idle() {
 rc() {
     if (( ! $_use_signal_to_reload )) ; then
         # Non-signal version.
-        touch "$_reload_needed"
+        >"$_reload_needed"
         reload_rc
 
         # For each bash...
@@ -90,4 +90,4 @@ rc() {
 
 (( $_use_signal_to_reload )) && trap reload_rc QUIT
 
-touch $_reloaded_time
+>"$_reloaded_time"

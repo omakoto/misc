@@ -827,7 +827,7 @@ do-unless-alt() {
 }
 
 record_last_activity_time() {
-  touch $LAST_ACTIVITY_FILE
+  >"$LAST_ACTIVITY_FILE"
 }
 
 last_activity_age_sec() {
