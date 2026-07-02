@@ -49,6 +49,16 @@ function is-glinux() {
 . ~/cbin/common_rc
 . ~/cbin/misc/colors.bash
 
+in-ssh() {
+  # On NX, SSH* are set, so we also check if it's under X.
+  # But the `isx` command returns true under `ssh -X` too, so we use this hack.
+  if [[ "$DISPLAY" =~ ^: ]] ; then
+    return 1
+  fi
+  [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" ]]
+}
+export -f in-ssh
+
 interactive() {
   (( $_interactive ))
 }
