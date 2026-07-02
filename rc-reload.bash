@@ -4,7 +4,6 @@
 # Run rc-reload_test.bash to test.
 _reloaded_time=$ramtmp_path/$$-reload.tmp
 _reload_needed=$ramtmp_path/reload-needed.tmp
-_reload_rc_files_fingerprints=""
 
 trap 'rm -f "$_reloaded_time"' EXIT
 
@@ -21,23 +20,20 @@ $HOME/cbin/abin/android-commands.bash
 $BASH_SOURCE
 "
 
-_rc_file_fingerprint() {
-    stat -c '%Y' $_main_rc_files 2>/dev/null
-}
-
-_update_rc_file_fingerprint() {
-    _reload_rc_files_fingerprints="$(_rc_file_fingerprint)"
-}
-
+# Called from every prompt; must not fork. [[ -nt ]] is a bash builtin,
+# unlike stat.
 rc_files_changed() {
-    [[ "$_reload_rc_files_fingerprints" != "$(_rc_file_fingerprint)" ]]
+    local f
+    for f in $_main_rc_files ; do
+        [[ "$f" -nt "$_reloaded_time" ]] && return 0
+    done
+    return 1
 }
 
 reload_rc() {
     bgreen "Reloading .bashrc..."
     time source ~/.bashrc
     touch "$_reloaded_time"
-    _update_rc_file_fingerprint
     bgreen "Reloaded .bashrc."
 }
 
@@ -95,4 +91,3 @@ rc() {
 (( $_use_signal_to_reload )) && trap reload_rc QUIT
 
 touch $_reloaded_time
-_update_rc_file_fingerprint
