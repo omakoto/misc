@@ -843,3 +843,34 @@ mkdir() {
     command mkdir "$@"
   fi
 }
+
+label() {
+  if (( $# > 0 )) && [[ "$1" == "-p" ]]; then
+    shift
+    local dir="${1:-$PWD}"
+    if [[ "$dir" != /* ]]; then
+      dir=$(readlink -f "$dir")
+    fi
+    while [[ -n "$dir" && "$dir" != "/" ]] ; do
+      if [[ -f "$dir/${DIR_LABEL_FILE:-.dir-label}" ]]; then
+        local label_val
+        read -r label_val < "$dir/${DIR_LABEL_FILE:-.dir-label}"
+        echo "$label_val"
+        return 0
+      fi
+      dir="${dir%/*}"
+    done
+    return 0
+  fi
+
+  local label_val="$*"
+  local target="${ANDROID_BUILD_TOP:-}"
+
+  if [[ -z "$target" ]] || ! [[ -d "$target" ]] ; then
+    echo "Target dir not found" 1>&2
+    return 1
+  fi
+
+  echo "$label_val" > "$target/${DIR_LABEL_FILE:-.dir-label}"
+}
+export -f label
