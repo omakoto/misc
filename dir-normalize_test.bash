@@ -270,6 +270,32 @@ assert_out ./dir-normalize -r "/a/m1/f/b/foo/f/b/bar" <<EOF
 /android/main1/frameworks/base/foo/frameworks/base/bar
 EOF
 
+# Test cases for frameworks/base/ravenwood -> f/b/r/
+assert_out ./dir-normalize "/android/main1/frameworks/base/ravenwood" <<EOF
+/a/m1/f/b/r/
+EOF
+
+assert_out ./dir-normalize "/android/main1/frameworks/base/ravenwood/" <<EOF
+/a/m1/f/b/r/
+EOF
+
+assert_out ./dir-normalize "/android/main1/frameworks/base/ravenwood/services" <<EOF
+/a/m1/f/b/r/services
+EOF
+
+# Reverse frameworks/base/ravenwood/
+assert_out ./dir-normalize -r "/a/m1/f/b/r/" <<EOF
+/android/main1/frameworks/base/ravenwood/
+EOF
+
+assert_out ./dir-normalize -r "/a/m1/f/b/r" <<EOF
+/android/main1/frameworks/base/ravenwood
+EOF
+
+assert_out ./dir-normalize -r "/a/m1/f/b/r/services" <<EOF
+/android/main1/frameworks/base/ravenwood/services
+EOF
+
 done_testing
 
 

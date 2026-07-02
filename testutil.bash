@@ -65,6 +65,9 @@ assert() {
 #  -s  Sort outputs before comparing.
 assert_out() {
   local use_wdiff=1
+  if ! command -v wdiff >/dev/null 2>&1 ; then
+    use_wdiff=0
+  fi
   local filter=cat
   local OPTIND
 

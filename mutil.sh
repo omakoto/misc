@@ -874,3 +874,127 @@ label() {
   echo "$label_val" > "$target/${DIR_LABEL_FILE:-.dir-label}"
 }
 export -f label
+
+# Shorten/normalize directory names.
+#
+# Conversion Cases:
+#   1. HOME replacement:
+#      - /home/user                               -> ~
+#      - /home/user/foo/bar                       -> ~/foo/bar
+#   2. ~/cbin/ replacement:
+#      - ~/cbin                                   -> ~/c
+#      - ~/cbin/foo                               -> ~/c/foo
+#   3. Android prefix replacement:
+#      - /android/foo                             -> /a/foo
+#      - /android/main                            -> /a/m
+#      - /android/main1                           -> /a/m1
+#      - /android/main-without-vendor             -> /a/mwv
+#      - /android/main-without-vendor2            -> /a/mwv2
+#   4. frameworks/ replacement (inside /a/mXXX/ or /a/mwvXXX/):
+#      - /android/main1/frameworks                -> /a/m1/f/
+#      - /android/main1/frameworks/base           -> /a/m1/f/b/
+#      - /android/main1/frameworks/base/core      -> /a/m1/f/b/core
+#
+#   All reverse conversions are supported using the -r or --reverse flag.
+#
+# Run test: cd ~/cbin/misc && ./dir-normalize_test.bash
+dir-normalize() {
+  local reverse=0
+  if [[ "$1" == "-r" || "$1" == "--reverse" ]]; then
+    reverse=1
+    shift
+  fi
+
+  local path="$1"
+  local home="${HOME:-}"
+
+  # 1. Reverse Mode (Short -> Long)
+  if (( $reverse )); then
+    if [[ "$path" =~ ^/a/(m|mwv)[^/]*/ ]]; then
+      path="${path//\/f\/b\/r\//\/frameworks\/base\/ravenwood\/}"
+      if [[ "$path" == */f/b/r/ ]]; then
+        path="${path%/f/b/r/}/frameworks/base/ravenwood/"
+      elif [[ "$path" == */f/b/r ]]; then
+        path="${path%/f/b/r}/frameworks/base/ravenwood"
+      fi
+      path="${path//\/f\/b\//\/frameworks\/base\/}"
+      if [[ "$path" == */f/b/ ]]; then
+        path="${path%/f/b/}/frameworks/base"
+      elif [[ "$path" == */f/b ]]; then
+        path="${path%/f/b}/frameworks/base"
+      fi
+      path="${path//\/f\//\/frameworks\/}"
+      if [[ "$path" == */f/ ]]; then
+        path="${path%/f/}/frameworks"
+      elif [[ "$path" == */f ]]; then
+        path="${path%/f}/frameworks"
+      fi
+    fi
+
+    if [[ "$path" =~ ^/a/mwv(.*)$ ]]; then
+      path="/android/main-without-vendor${BASH_REMATCH[1]}"
+    elif [[ "$path" =~ ^/a/m(.*)$ ]]; then
+      path="/android/main${BASH_REMATCH[1]}"
+    elif [[ "$path" =~ ^/a(.*)$ ]]; then
+      path="/android${BASH_REMATCH[1]}"
+    fi
+
+    if [[ "$path" == "~/c" ]]; then
+      path="~/cbin"
+    elif [[ "$path" == "~/c/"* ]]; then
+      path="~/cbin/${path#\~/c/}"
+    fi
+
+    if [[ -n "$home" ]]; then
+      if [[ "$path" == "~" ]]; then
+        path="$home"
+      elif [[ "$path" == "~/"* ]]; then
+        path="$home/${path#\~/}"
+      fi
+    fi
+
+    echo "$path"
+    return 0
+  fi
+
+  # 2. Normal Mode (Long -> Short)
+  if [[ -n "$home" ]]; then
+    if [[ "$path" == "$home" ]]; then
+      path="~"
+    elif [[ "$path" == "$home"/* ]]; then
+      path="~/${path#$home/}"
+    fi
+  fi
+
+  if [[ "$path" == "~/cbin" ]]; then
+    path="~/c"
+  elif [[ "$path" == "~/cbin/"* ]]; then
+    path="~/c${path:6}"
+  fi
+
+  if [[ "$path" =~ ^/android/main-without-vendor(.*)$ ]]; then
+    path="/a/mwv${BASH_REMATCH[1]}"
+  elif [[ "$path" =~ ^/android/main(.*)$ ]]; then
+    path="/a/m${BASH_REMATCH[1]}"
+  elif [[ "$path" =~ ^/android(.*)$ ]]; then
+    path="/a${BASH_REMATCH[1]}"
+  fi
+
+  if [[ "$path" =~ ^/a/(m|mwv)[^/]*/ ]]; then
+    path="${path//\/frameworks\/base\/ravenwood\///f/b/r/}"
+    if [[ "$path" == */frameworks/base/ravenwood ]]; then
+      path="${path%/frameworks/base/ravenwood}/f/b/r/"
+    fi
+    path="${path//\/frameworks\/base\///f/b/}"
+    if [[ "$path" == */frameworks/base ]]; then
+      path="${path%/frameworks/base}/f/b/"
+    fi
+    path="${path//\/frameworks\///f/}"
+    if [[ "$path" == */frameworks ]]; then
+      path="${path%/frameworks}/f/"
+    fi
+  fi
+
+  echo "$path"
+}
+export -f dir-normalize
