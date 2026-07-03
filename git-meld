@@ -333,15 +333,62 @@ def copy_files_named_tree(tree: str, file_list: List[str], out_dir: str, repo_di
         except TypeError:
             tar.extractall(path=out_dir)
 
-def copy_files_staging_area(file_list: List[str], out_dir: str) -> None:
+def get_unmerged_files(repo_dir: Optional[str] = None) -> Set[str]:
+    """Returns a set of all unmerged file paths in the repository."""
+    toplevel = repo_dir if repo_dir else get_toplevel()
+    try:
+        res = subprocess.run(
+            ["git", "ls-files", "-z", "--unmerged"],
+            cwd=toplevel,
+            capture_output=True,
+            check=True
+        )
+        unmerged = set()
+        for part in res.stdout.split(b'\0'):
+            if not part:
+                continue
+            try:
+                # Part format: <mode> <sha> <stage>\t<path>
+                subparts = part.split(b'\t', 1)
+                if len(subparts) == 2:
+                    path = subparts[1].decode('utf-8', errors='replace')
+                    unmerged.add(path)
+            except Exception:
+                pass
+        return unmerged
+    except subprocess.CalledProcessError:
+        return set()
+
+def copy_files_staging_area(file_list: List[str], out_dir: str, repo_dir: Optional[str] = None) -> None:
     """Extracts files from the staging area to the output directory."""
     if not file_list:
         return
-    toplevel = get_toplevel()
+    toplevel = repo_dir if repo_dir else get_toplevel()
     prefix = os.path.abspath(out_dir) + os.sep
-    cmd = ["git", "checkout-index", f"--prefix={prefix}", "--stdin", "-z"]
-    input_data = "\0".join(file_list).encode('utf-8') + b"\0"
-    subprocess.run(cmd, cwd=toplevel, input=input_data, check=True)
+    
+    # Deduplicate file list to avoid checking out the same file multiple times
+    file_list = list(dict.fromkeys(file_list))
+    
+    unmerged_all = get_unmerged_files(toplevel)
+    unmerged_files = [f for f in file_list if f in unmerged_all]
+    merged_files = [f for f in file_list if f not in unmerged_all]
+    
+    if merged_files:
+        cmd = ["git", "checkout-index", f"--prefix={prefix}", "--stdin", "-z"]
+        input_data = "\0".join(merged_files).encode('utf-8') + b"\0"
+        subprocess.run(cmd, cwd=toplevel, input=input_data, check=True)
+        
+    if unmerged_files:
+        for filename in unmerged_files:
+            success = False
+            for stage in ["2", "3", "1"]:
+                cmd = ["git", "checkout-index", "-f", f"--prefix={prefix}", f"--stage={stage}", "--", filename]
+                res = subprocess.run(cmd, cwd=toplevel, capture_output=True)
+                if res.returncode == 0:
+                    success = True
+                    break
+            if not success:
+                sys.stderr.write(f"Warning: Could not checkout any stage for unmerged file {filename}\n")
 
 def link_files_working_dir(file_list: List[str], out_dir: str, repo_dir: Optional[str] = None) -> None:
     """Creates symlinks from the working directory to the output directory.

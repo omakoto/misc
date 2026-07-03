@@ -439,5 +439,89 @@ class GitMeldTest(unittest.TestCase):
             os.chdir(orig_cwd)
             shutil.rmtree(test_dir, ignore_errors=True)
 
+    @patch('os.fork')
+    @patch('os.setsid')
+    def test_main_unmerged_integration(self, mock_setsid, mock_fork):
+        mock_fork.return_value = 0  # Simulate child process
+        
+        import tempfile
+        import shutil
+        import subprocess
+        
+        test_dir = tempfile.mkdtemp()
+        orig_cwd = os.getcwd()
+        os.chdir(test_dir)
+        
+        try:
+            # Initialize git repository
+            subprocess.run(["git", "init", "-q"], check=True)
+            subprocess.run(["git", "config", "user.email", "test@example.com"], check=True)
+            subprocess.run(["git", "config", "user.name", "Test User"], check=True)
+            
+            # Commit a file
+            with open("conflict.txt", "w") as f:
+                f.write("base content\n")
+            subprocess.run(["git", "add", "conflict.txt"], check=True)
+            subprocess.run(["git", "commit", "-q", "-m", "Initial commit"], check=True)
+            
+            # Create and checkout branch 'branch-a'
+            subprocess.run(["git", "checkout", "-q", "-b", "branch-a"], check=True)
+            with open("conflict.txt", "w") as f:
+                f.write("branch-a content\n")
+            subprocess.run(["git", "add", "conflict.txt"], check=True)
+            subprocess.run(["git", "commit", "-q", "-m", "Commit on branch-a"], check=True)
+            
+            # Checkout master (main)
+            subprocess.run(["git", "checkout", "-q", "master"], check=True)
+            with open("conflict.txt", "w") as f:
+                f.write("master content\n")
+            subprocess.run(["git", "add", "conflict.txt"], check=True)
+            subprocess.run(["git", "commit", "-q", "-m", "Commit on master"], check=True)
+            
+            # Merge branch-a to cause conflict
+            subprocess.run(["git", "merge", "branch-a"], capture_output=True)
+            
+            # Now running git-meld without arguments compares staging area to working tree
+            with patch('sys.argv', ['git-meld']):
+                with patch('subprocess.run') as mock_run:
+                    def side_effect(cmd, *args, **kwargs):
+                        if cmd[0] in {'meld', '/usr/bin/meld'}:
+                            source_dir = cmd[-2]
+                            dest_dir = cmd[-1]
+                            
+                            # Verify conflict.txt exists in both dirs
+                            self.assertTrue(os.path.exists(os.path.join(source_dir, "conflict.txt")))
+                            self.assertTrue(os.path.exists(os.path.join(dest_dir, "conflict.txt")))
+                            
+                            # Since we checked out staging area (which falls back to stage 2: master content)
+                            with open(os.path.join(source_dir, "conflict.txt")) as f:
+                                self.assertEqual(f.read().strip(), "master content")
+                                
+                            # Dest dir is working tree, so it will contain merge conflict markers
+                            with open(os.path.join(dest_dir, "conflict.txt")) as f:
+                                content = f.read()
+                                self.assertIn("<<<<<<< HEAD", content)
+                                self.assertIn("master content", content)
+                                self.assertIn("branch-a content", content)
+                                
+                            return MagicMock(returncode=0)
+                        else:
+                            return ORIGINAL_SUBPROCESS_RUN(cmd, *args, **kwargs)
+                            
+                    mock_run.side_effect = side_effect
+                    git_meld.main()
+                    
+                    # Verify meld was called
+                    meld_called = False
+                    for call in mock_run.call_args_list:
+                        cmd_arg = call[0][0]
+                        if cmd_arg[0] in {'meld', '/usr/bin/meld'}:
+                            meld_called = True
+                    self.assertTrue(meld_called, "Diff tool 'meld' was not called")
+                    
+        finally:
+            os.chdir(orig_cwd)
+            shutil.rmtree(test_dir, ignore_errors=True)
+
 if __name__ == '__main__':
     unittest.main()
