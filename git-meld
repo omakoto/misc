@@ -23,6 +23,9 @@ Options specific to git-meld:
 
 All other options (like -w, --ignore-all-space) are passed through to `git diff`
 to filter the list of files compared in Meld.
+
+Tests:
+  Please run python3 git-meld_test.py whenever touching this file.
 """
 # When the tool shows a diff against the current working tree, the right side of the diff
 # is the real files (rather than copies), so that the user can edit them directly.
@@ -37,6 +40,7 @@ import tarfile
 import io
 import stat
 import shlex
+import filecmp
 from typing import List, Tuple, Set, Dict, Optional
 
 os.environ['GIT_OPTIONAL_LOCKS'] = '0'
@@ -466,6 +470,27 @@ def make_writable_recursive(path: str) -> None:
                 except OSError:
                     pass
 
+def optimize_dest_with_symlinks(file_list: List[str], dest_dir: str, repo_dir: Optional[str] = None) -> None:
+    """Replaces copied files in dest_dir with symlinks to the working directory
+    if the copied file's content is identical to the working directory file.
+    """
+    toplevel = repo_dir if repo_dir else get_toplevel()
+    for filename in file_list:
+        working_file = os.path.abspath(os.path.join(toplevel, filename))
+        dest_file = os.path.abspath(os.path.join(dest_dir, filename))
+        
+        # Ensure both exist and are regular files (not symlinks, not directories)
+        if (os.path.isfile(working_file) and not os.path.islink(working_file) and
+            os.path.isfile(dest_file) and not os.path.islink(dest_file)):
+            
+            if filecmp.cmp(working_file, dest_file, shallow=False):
+                try:
+                    os.remove(dest_file)
+                    os.symlink(working_file, dest_file)
+                except OSError:
+                    # If anything goes wrong, we just keep the copied file
+                    pass
+
 def get_git_config(key: str, default: str) -> str:
     """Reads a git config value, returning default if not set."""
     try:
@@ -631,6 +656,9 @@ def main() -> None:
                 link_files_working_dir(dest_changed_files, dest_dir)
             else:
                 copy_files_named_tree(dest_tree, dest_changed_files, dest_dir)
+
+            if is_cached or dest_tree:
+                optimize_dest_with_symlinks(dest_changed_files, dest_dir)
 
             # Align renamed files in source directory so Meld can diff them
             for dest_path, src_path in rename_map.items():

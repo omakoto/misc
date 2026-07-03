@@ -324,5 +324,120 @@ class GitMeldTest(unittest.TestCase):
             os.chdir(orig_cwd)
             shutil.rmtree(test_dir, ignore_errors=True)
 
+    @patch('os.fork')
+    @patch('os.setsid')
+    def test_main_dest_symlink_optimization(self, mock_setsid, mock_fork):
+        mock_fork.return_value = 0 # Simulate child process
+        
+        import tempfile
+        import shutil
+        import subprocess
+        
+        test_dir = tempfile.mkdtemp()
+        orig_cwd = os.getcwd()
+        os.chdir(test_dir)
+        
+        try:
+            # Initialize git repository
+            subprocess.run(["git", "init", "-q"], check=True)
+            subprocess.run(["git", "config", "user.email", "test@example.com"], check=True)
+            subprocess.run(["git", "config", "user.name", "Test User"], check=True)
+            
+            # Commit 1
+            with open("file1.txt", "w") as f:
+                f.write("content 1")
+            subprocess.run(["git", "add", "file1.txt"], check=True)
+            subprocess.run(["git", "commit", "-q", "-m", "Commit 1"], check=True)
+            
+            # Commit 2 (file1 updated to "content 2", file2 added with "content A")
+            with open("file1.txt", "w") as f:
+                f.write("content 2")
+            with open("file2.txt", "w") as f:
+                f.write("content A")
+            subprocess.run(["git", "add", "file1.txt", "file2.txt"], check=True)
+            subprocess.run(["git", "commit", "-q", "-m", "Commit 2"], check=True)
+            
+            # Scenario A: dest_tree comparison (git-meld HEAD~1 HEAD)
+            # Modify file2.txt in working directory to "content B" (making it different from Commit 2)
+            # file1.txt remains "content 2" (identical to Commit 2)
+            with open("file2.txt", "w") as f:
+                f.write("content B")
+                
+            # Setup arguments to test git-meld comparing HEAD~1 to HEAD
+            with patch('sys.argv', ['git-meld', 'HEAD~1', 'HEAD']):
+                with patch('subprocess.run') as mock_run:
+                    def side_effect(cmd, *args, **kwargs):
+                        if cmd[0] == 'meld' or cmd[0] == '/usr/bin/meld':
+                            source_dir = cmd[-2]
+                            dest_dir = cmd[-1]
+                            
+                            dest_file1 = os.path.join(dest_dir, "file1.txt")
+                            dest_file2 = os.path.join(dest_dir, "file2.txt")
+                            
+                            self.assertTrue(os.path.exists(dest_file1))
+                            self.assertTrue(os.path.exists(dest_file2))
+                            
+                            # file1.txt should be a symlink because it matches working dir
+                            self.assertTrue(os.path.islink(dest_file1))
+                            self.assertEqual(os.readlink(dest_file1), os.path.abspath("file1.txt"))
+                            
+                            # file2.txt should NOT be a symlink because it differs from working dir
+                            self.assertFalse(os.path.islink(dest_file2))
+                            with open(dest_file2) as f:
+                                self.assertEqual(f.read().strip(), "content A")
+                                
+                            return MagicMock(returncode=0)
+                        else:
+                            return ORIGINAL_SUBPROCESS_RUN(cmd, *args, **kwargs)
+                            
+                    mock_run.side_effect = side_effect
+                    git_meld.main()
+
+            # Scenario B: cached comparison (git-meld --cached)
+            # Commit 2 is currently HEAD.
+            # Stage new modifications to file1.txt and file2.txt
+            with open("file1.txt", "w") as f:
+                f.write("content 3")
+            with open("file2.txt", "w") as f:
+                f.write("content C")
+            subprocess.run(["git", "add", "file1.txt", "file2.txt"], check=True)
+
+            # Working tree has same file1.txt ("content 3") but modify file2.txt to "content D"
+            with open("file2.txt", "w") as f:
+                f.write("content D")
+
+            with patch('sys.argv', ['git-meld', '--cached']):
+                with patch('subprocess.run') as mock_run:
+                    def side_effect(cmd, *args, **kwargs):
+                        if cmd[0] == 'meld' or cmd[0] == '/usr/bin/meld':
+                            source_dir = cmd[-2]
+                            dest_dir = cmd[-1]
+                            
+                            dest_file1 = os.path.join(dest_dir, "file1.txt")
+                            dest_file2 = os.path.join(dest_dir, "file2.txt")
+                            
+                            self.assertTrue(os.path.exists(dest_file1))
+                            self.assertTrue(os.path.exists(dest_file2))
+                            
+                            # file1.txt should be a symlink because staging matches working tree
+                            self.assertTrue(os.path.islink(dest_file1))
+                            self.assertEqual(os.readlink(dest_file1), os.path.abspath("file1.txt"))
+                            
+                            # file2.txt should NOT be a symlink because staging differs from working tree
+                            self.assertFalse(os.path.islink(dest_file2))
+                            with open(dest_file2) as f:
+                                self.assertEqual(f.read().strip(), "content C")
+                                
+                            return MagicMock(returncode=0)
+                        else:
+                            return ORIGINAL_SUBPROCESS_RUN(cmd, *args, **kwargs)
+                            
+                    mock_run.side_effect = side_effect
+                    git_meld.main()
+                
+        finally:
+            os.chdir(orig_cwd)
+            shutil.rmtree(test_dir, ignore_errors=True)
+
 if __name__ == '__main__':
     unittest.main()
