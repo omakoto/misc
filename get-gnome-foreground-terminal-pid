@@ -249,6 +249,22 @@ def get_cwd(pid):
     except Exception:
         return "?"
 
+def get_comm(pid):
+    try:
+        with open(f"/proc/{pid}/comm", "r") as f:
+            return f.read().strip()
+    except Exception:
+        try:
+            with open(f"/proc/{pid}/stat", "r") as f:
+                stat_line = f.read()
+            lparen = stat_line.find("(")
+            rparen = stat_line.rfind(")")
+            if lparen != -1 and rparen != -1:
+                return stat_line[lparen+1:rparen]
+        except Exception:
+            pass
+        return "?"
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
         print_help()
@@ -293,7 +309,8 @@ def main():
         
     cmdline = get_cmdline(fg_pid)
     cwd = get_cwd(fg_pid)
-    print(f"{win_id}\t{fg_pid}\t{cwd}\t{cmdline}")
+    comm = get_comm(fg_pid)
+    print(f"{win_id}\t{fg_pid}\t{cwd}\t{comm}\t{cmdline}")
     return 0
 
 if __name__ == "__main__":
