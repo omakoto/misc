@@ -1,21 +1,36 @@
 #!/bin/bash
+# Simple script to check if a daily task should run based on a timestamp file.
+# Simple script, no help needed.
 
 set -e
-. mutil.sh
+
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    printf "Usage: %s TASK_NAME [NDAYS]\n" "${0##*/}"
+    printf "Checks if TASK_NAME has run in the last NDAYS (default: 1).\n"
+    printf "Exits 1 if it has already run, 0 if it needs to run.\n"
+    exit 0
+fi
 
 taskname="${1?First argument must be task name}"
 ndays="${2:-1}"
 
-checkfile=/tmp/task-timestamp-$taskname
+checkfile="/tmp/task-timestamp-$taskname"
 
 if [[ -f "$checkfile" ]] ; then
-    if (( $(fileage "$checkfile") < $ndays )) ; then
-        # INFO "Skipping task:" "$taskname"
-        exit 1
+    if read -r fdate < "$checkfile" 2>/dev/null && [[ "$fdate" =~ ^[0-9]+$ ]] ; then
+        printf -v now '%(%s)T' -1
+        age=$(( (now - fdate) / 86400 ))
+        if (( age < ndays )) ; then
+            exit 1
+        fi
     fi
 fi
 
-INFO "Running task:" "$taskname"
-touch "$checkfile"
-exit 0
+if [[ -t 1 ]] ; then
+    printf "\e[1;33mRunning task:\e[0m \e[1;36m%s\e[0m\n" "$taskname"
+else
+    printf "Running task: %s\n" "$taskname"
+fi
 
+printf '%(%s)T\n' -1 > "$checkfile"
+exit 0
