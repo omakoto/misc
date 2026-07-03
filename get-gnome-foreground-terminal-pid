@@ -1,0 +1,300 @@
+#!/usr/bin/env python3
+#
+# Get the PID of the foreground process running in the active gnome-terminal window.
+# Works on GNOME Shell Wayland using the "window-calls" extension and gnome-terminal's D-Bus interface.
+#
+# Usage:
+#   get-gnome-foreground-terminal-pid
+#
+# How it works:
+#   1. Find the focused window: Query the active window list via D-Bus using the
+#      'window-calls' GNOME Shell extension (org.gnome.Shell.Extensions.Windows.List)
+#      to find the focused window of class 'org.gnome.Terminal' and get its title.
+#   2. Find the active terminal tab: Query gnome-terminal's internal search provider
+#      interface (org.gnome.Shell.SearchProvider2 on /org/gnome/Terminal/SearchProvider)
+#      to list all open terminal tabs (screens) and their current titles. Match the focused
+#      window's title with the screen metadata to find the terminal screen's UUID.
+#   3. Map the screen UUID to the shell process: Scan /proc/*/environ to find the shell
+#      process running in that screen (which inherits the GNOME_TERMINAL_SCREEN environment
+#      variable matching the UUID).
+#   4. Identify the foreground process: Read /proc/<pid>/stat of the matching process
+#      to extract its controlling terminal's foreground process group ID (tpgid) and
+#      locate the active leaf process running in that group.
+#
+
+import sys
+import os
+import json
+import subprocess
+import re
+
+def print_help():
+    print("Usage: get-gnome-foreground-terminal-pid [options]")
+    print()
+    print("Find the Process ID (PID) of the foreground program running in the")
+    print("currently focused gnome-terminal window on GNOME Shell Wayland.")
+    print()
+    print("Options:")
+    print("  -h, --help    Show this help message and exit")
+    print()
+    print("Requirements:")
+    print("  - GNOME Shell Wayland session")
+    print("  - 'window-calls' extension enabled in GNOME Shell")
+    print("  - gnome-terminal running")
+
+def run_command(args):
+    try:
+        res = subprocess.run(args, capture_output=True, text=True, check=True)
+        return res.stdout
+    except Exception as e:
+        print(f"Error running {' '.join(args)}: {e}", file=sys.stderr)
+        return None
+
+def gdbus_call(dest, path, method, args_str):
+    out = run_command(["gdbus", "call", "--session", "--dest", dest, "--object-path", path, "--method", method] + ([args_str] if args_str else []))
+    return out
+
+def parse_gvariant(val_str):
+    val_str = val_str.strip()
+    if val_str.startswith('(') and val_str.endswith(')'):
+        val_str = val_str[1:-1].strip()
+    if val_str.endswith(','):
+        val_str = val_str[:-1].strip()
+    
+    # Strip type annotation (like @a{sv})
+    val_str = re.sub(r'@[a-z0-9{}()]+', '', val_str)
+    
+    # Replace <'string'> with 'string'
+    val_str = re.sub(r"<('([^']*)')>", r"\1", val_str)
+    val_str = re.sub(r'<("([^"]*)")>', r'\1', val_str)
+    # Replace <true> with True, <false> with False
+    val_str = re.sub(r"<(true|false)>", lambda m: m.group(1).capitalize(), val_str)
+    # Replace general <type value> with value
+    val_str = re.sub(r"<[a-zA-Z0-9\s]+\s+([^>]+)>", r"\1", val_str)
+    # Replace any other <value> with value
+    val_str = re.sub(r"<([^>]+)>", r"\1", val_str)
+    
+    import ast
+    return ast.literal_eval(val_str)
+
+def get_focused_terminal_window():
+    # Call window-calls extension to list windows
+    out = gdbus_call("org.gnome.Shell", "/org/gnome/Shell/Extensions/Windows", "org.gnome.Shell.Extensions.Windows.List", "")
+    if not out:
+        print("Could not query window-calls extension. Is it installed and enabled?", file=sys.stderr)
+        return None, None
+    
+    try:
+        json_str = parse_gvariant(out)
+        windows = json.loads(json_str)
+    except Exception as e:
+        print(f"Failed to parse window list: {e}", file=sys.stderr)
+        return None, None
+
+    for win in windows:
+        if win.get("focus") and win.get("wm_class") == "org.gnome.Terminal":
+            return win.get("id"), win.get("title")
+    return None, None
+
+def get_terminal_screens():
+    # Call gnome-terminal search provider to get screen IDs
+    out = gdbus_call("org.gnome.Terminal", "/org/gnome/Terminal/SearchProvider", "org.gnome.Shell.SearchProvider2.GetInitialResultSet", "[]")
+    if not out:
+        return {}
+    
+    # Parse screen IDs list
+    try:
+        ids = parse_gvariant(out)
+    except Exception as e:
+        print(f"Failed to parse screen IDs: {e}", file=sys.stderr)
+        return {}
+    
+    if not ids:
+        return {}
+    
+    # Format IDs for GetResultMetas call, e.g. "['uuid1', 'uuid2']"
+    args_str = "[" + ", ".join(f"'{i}'" for i in ids) + "]"
+    out_metas = gdbus_call("org.gnome.Terminal", "/org/gnome/Terminal/SearchProvider", "org.gnome.Shell.SearchProvider2.GetResultMetas", args_str)
+    if not out_metas:
+        return {}
+    
+    try:
+        metas = parse_gvariant(out_metas)
+    except Exception as e:
+        print(f"Failed to parse screen metadata: {e}", file=sys.stderr)
+        return {}
+    
+    # Map title/name to screen UUID
+    screen_map = {}
+    for meta in metas:
+        name = meta.get("name")
+        id_str = meta.get("id")
+        if name and id_str:
+            screen_map[name] = id_str
+            # Also support stripped comparison just in case
+            screen_map[name.strip()] = id_str
+    
+    return screen_map
+
+def find_processes_with_screen(screen_uuid):
+    # Convert dashes to underscores for D-Bus path in environment
+    dbus_uuid = screen_uuid.replace("-", "_")
+    target_env = f"GNOME_TERMINAL_SCREEN=/org/gnome/Terminal/screen/{dbus_uuid}"
+    
+    matching_pids = []
+    
+    # Scan all processes in /proc/
+    try:
+        pids = [int(p) for p in os.listdir("/proc") if p.isdigit()]
+    except Exception as e:
+        print(f"Error reading /proc: {e}", file=sys.stderr)
+        return []
+    
+    uid = os.getuid()
+    for pid in pids:
+        try:
+            # Check owner
+            stat_info = os.stat(f"/proc/{pid}")
+            if stat_info.st_uid != uid:
+                continue
+            
+            # Read environ
+            with open(f"/proc/{pid}/environ", "rb") as f:
+                env_bytes = f.read()
+            
+            env_str = env_bytes.decode("utf-8", errors="ignore")
+            # Environ has null-separated values
+            env_vars = env_str.split("\0")
+            if target_env in env_vars:
+                matching_pids.append(pid)
+        except (PermissionError, FileNotFoundError):
+            continue
+            
+    return matching_pids
+
+def get_foreground_process(pids):
+    if not pids:
+        return None
+        
+    # Build the parent-child mapping for all matching pids to find the deepest one
+    # (handles nested terminal wrappers like zenlog, screen, tmux, etc.)
+    p_to_pp = {}
+    for pid in pids:
+        try:
+            with open(f"/proc/{pid}/stat", "r") as f:
+                stat_line = f.read()
+            rparen_idx = stat_line.rfind(")")
+            post_comm = stat_line[rparen_idx+2:].split()
+            ppid = int(post_comm[1])
+            p_to_pp[pid] = ppid
+        except (FileNotFoundError, PermissionError, ValueError, IndexError):
+            continue
+            
+    # A PID in pids is a leaf if it is not a parent of any other PID in pids
+    leaves = [p for p in p_to_pp if p not in p_to_pp.values()]
+    
+    # If we have leaves, pick the leaf with the highest PID
+    session_root_pid = max(leaves) if leaves else max(pids)
+    
+    # Now check the controlling terminal's foreground process group for session_root_pid
+    try:
+        with open(f"/proc/{session_root_pid}/stat", "r") as f:
+            stat_line = f.read()
+        rparen_idx = stat_line.rfind(")")
+        post_comm = stat_line[rparen_idx+2:].split()
+        tpgid = int(post_comm[5]) # 8th field is tpgid
+        
+        if tpgid > 0:
+            # We found the foreground process group ID!
+            # Let's find the leaf process in this process group.
+            group_pids = []
+            gp_to_pp = {}
+            pids_in_system = [int(p) for p in os.listdir("/proc") if p.isdigit()]
+            for gp in pids_in_system:
+                try:
+                    with open(f"/proc/{gp}/stat", "r") as gf:
+                        g_line = gf.read()
+                    rparen = g_line.rfind(")")
+                    g_post = g_line[rparen+2:].split()
+                    gp_pgrp = int(g_post[2]) # 5th field is pgrp
+                    gp_ppid = int(g_post[1]) # 4th field is ppid
+                    if gp_pgrp == tpgid:
+                        group_pids.append(gp)
+                        gp_to_pp[gp] = gp_ppid
+                except (FileNotFoundError, PermissionError):
+                    continue
+            
+            if group_pids:
+                gp_parents = set(gp_to_pp.values())
+                gp_leaves = [p for p in group_pids if p not in gp_parents]
+                if gp_leaves:
+                    return max(gp_leaves)
+                return tpgid
+    except (FileNotFoundError, PermissionError, ValueError, IndexError):
+        pass
+
+    return session_root_pid
+
+def get_cmdline(pid):
+    try:
+        with open(f"/proc/{pid}/cmdline", "rb") as f:
+            cmd = f.read().replace(b"\0", b" ").strip().decode("utf-8", errors="ignore")
+            return cmd if cmd else f"PID {pid}"
+    except Exception:
+        return f"PID {pid}"
+
+def get_cwd(pid):
+    try:
+        return os.readlink(f"/proc/{pid}/cwd")
+    except Exception:
+        return "?"
+
+def main():
+    if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
+        print_help()
+        return 0
+        
+    # 1. Get the title and ID of the focused terminal window
+    win_id, title = get_focused_terminal_window()
+    if not title:
+        print("No focused gnome-terminal window found.", file=sys.stderr)
+        return 1
+        
+    # 2. Get the screen mapping from gnome-terminal D-Bus
+    screen_map = get_terminal_screens()
+    if not screen_map:
+        print("No gnome-terminal screens found via D-Bus.", file=sys.stderr)
+        return 1
+        
+    # 3. Match title to screen UUID
+    screen_uuid = screen_map.get(title) or screen_map.get(title.strip())
+    if not screen_uuid:
+        # Try soft match if exact title match fails (e.g. title has extra whitespace or formatting)
+        for name, uuid in screen_map.items():
+            if name in title or title in name:
+                screen_uuid = uuid
+                break
+                
+    if not screen_uuid:
+        print(f"Could not map window title '{title}' to a terminal screen.", file=sys.stderr)
+        return 1
+        
+    # 4. Find all processes running in this screen
+    pids = find_processes_with_screen(screen_uuid)
+    if not pids:
+        print(f"No processes found running in terminal screen {screen_uuid}.", file=sys.stderr)
+        return 1
+        
+    # 5. Find the foreground process
+    fg_pid = get_foreground_process(pids)
+    if not fg_pid:
+        print("Could not identify foreground process PID.", file=sys.stderr)
+        return 1
+        
+    cmdline = get_cmdline(fg_pid)
+    cwd = get_cwd(fg_pid)
+    print(f"{win_id}\t{fg_pid}\t{cwd}\t{cmdline}")
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
