@@ -10,6 +10,6 @@ cd $(dirname $0)
 
 for d in  */01-install.sh; do
     if [[ -x "$d" ]] ; then
-        ee "$d"
+        echo "$d"
     fi
-done
+done | parallel -j 8 ee
