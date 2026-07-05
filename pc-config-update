@@ -22,8 +22,8 @@ fi
 disabled_file=/tmp/gnome-screensaver-disabled.txt
 if (( $IS_VMWARE )) && [[ ! -f "$disabled_file" ]] ; then
   touch "$disabled_file"
-  ee gsettings set org.gnome.desktop.screensaver idle-activation-enabled false
-  ee gsettings set org.gnome.desktop.screensaver lock-enabled false # disable screen saver and lock screen
+  gsettings set org.gnome.desktop.screensaver idle-activation-enabled false
+  gsettings set org.gnome.desktop.screensaver lock-enabled false # disable screen saver and lock screen
 fi
 
 sf=2
