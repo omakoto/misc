@@ -7,7 +7,11 @@ if (( $NEEDS_TERM )) || is-in-agent; then
     exit 0
 fi
 
-if [[ ! -t 1 ]]; then
+# If the process does _not_ have a terminal, then we need to use term to create a new terminal.
+# So if we run from "Run a command" dialog, we'll return true.
+# If the user calls "ggh | cat", for example, then we won't launch term, so the redirection would
+# still work.
+if ! true >/dev/tty 2>/dev/null; then
     exit 0
 fi
 

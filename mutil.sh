@@ -997,3 +997,9 @@ dir-normalize() {
   echo "$path"
 }
 export -f dir-normalize
+
+# Return if the current process has a controlling terminal (tty) or not.
+function has-terminal() {
+  true >/dev/tty 2>/dev/null
+}
+export -f has-terminal

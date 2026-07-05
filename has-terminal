@@ -1,0 +1,5 @@
+#!/bin/bash
+
+declare -f has-terminal > /dev/null || . mutil.sh
+
+has-terminal
