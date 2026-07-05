@@ -863,7 +863,7 @@ label() {
   fi
 
   local label_val="$*"
-  local target="${ANDROID_BUILD_TOP:-}"
+  local target="${ANDROID_BUILD_TOP:-$(repo-top)}"
 
   if [[ -z "$target" ]] || ! [[ -d "$target" ]] ; then
     echo "Target dir not found" 1>&2
