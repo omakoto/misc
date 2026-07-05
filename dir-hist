@@ -1,0 +1,179 @@
+#!/usr/bin/perl
+#
+# dir-hist: Stores and lists recently used directories.
+#
+# Specs:
+#   - Output file: ~/.dir-hist.txt
+#   - File format: DIRECTORY [TAB] LAST-USED-TIME (seconds since epoch) [TAB] USED-COUNT
+#   - Atomicity: Writes to ~/.dir-hist.txt.tmp first, then atomically renames to replace the active file.
+#   - Locking strategy: Uses flock(LOCK_EX) on ~/.dir-hist.txt.lock to serialize concurrent updates.
+#   - Performance: Only Perl built-in functions are used to ensure maximum performance.
+#
+# To run tests: ./dir-hist_test.bash
+
+use v5.36;
+use utf8;
+
+# Main entry point.
+sub main() {
+    my $mode = 'list';
+    my $days = $ENV{DIR_HIST_DAYS} // 30;
+    my $dir_to_add;
+
+    # Parse arguments
+    while (scalar @ARGV > 0) {
+        my $arg = shift @ARGV;
+        if ($arg eq '-h' || $arg eq '--help') {
+            print_help();
+            exit 0;
+        } elsif ($arg eq '-a') {
+            $mode = 'add';
+            $dir_to_add = shift @ARGV;
+            if (!defined $dir_to_add || $dir_to_add eq '') {
+                die "Error: -a requires a directory argument.\n";
+            }
+        } elsif ($arg eq '-d') {
+            my $val = shift @ARGV;
+            if (!defined $val || $val !~ /^\d+(?:\.\d+)?$/) {
+                die "Error: -d requires a non-negative number argument.\n";
+            }
+            $days = $val;
+        } else {
+            die "Error: Unknown argument: $arg\nUse -h or --help for usage.\n";
+        }
+    }
+
+    my $home = $ENV{HOME} // die "HOME environment variable not set";
+    my $file_path = "$home/.dir-hist.txt";
+
+    if ($mode eq 'add') {
+        add_dir($file_path, $dir_to_add);
+    } else {
+        list_dirs($file_path, $days);
+    }
+}
+
+# Prints the command help.
+sub print_help() {
+    print <<EOF;
+Usage: dir-hist [options]
+
+Manage and query the directory usage history.
+
+Options:
+  -d DAYS          List directories used within the last DAYS days (default: \$DIR_HIST_DAYS or 30).
+                   -d 1 shows directories accessed within the last 24 hours. Accepts decimals (e.g. 0.5).
+  -a DIRECTORY     Add or update a directory in the history file.
+  -h, --help       Show this help message.
+
+Examples:
+  dir-hist
+  dir-hist -d 5
+  dir-hist -a /home/user/projects
+EOF
+}
+
+# Normalizes the directory path to be absolute and cleans up slashes, '.' and '..'.
+# Does NOT resolve symlinks.
+sub normalize_path($path) {
+    if ($path !~ m!^/!) {
+        my $pwd = $ENV{PWD} // `pwd`;
+        chomp $pwd;
+        $path = "$pwd/$path";
+    }
+    # Replace double slashes
+    $path =~ s!/+!/!g;
+    # Remove trailing slash unless it's just "/"
+    if ($path ne '/') {
+        $path =~ s!/+$!!;
+    }
+    # Resolve /./
+    $path =~ s!/\./!/!g;
+    $path =~ s!/\.$!!;
+    # Resolve /foo/../ to /
+    while ($path =~ s!/[^/]+/\.\.(?:/|$)!/!) {}
+    # Clean up leading parent directories above root
+    $path =~ s!^(?:/\.\.)+(?:/|$)!/!;
+    # Clean up double slashes again
+    $path =~ s!/+!/!g;
+    if ($path ne '/') {
+        $path =~ s!/+$!!;
+    }
+    return $path;
+}
+
+# Adds/updates a directory in the history file.
+sub add_dir($file_path, $dir) {
+    $dir = normalize_path($dir);
+    my $lock_path = "$file_path.lock";
+    my $tmp_path = "$file_path.tmp";
+
+    # Open and lock the lock file to serialize updates
+    open(my $lock_fh, '>>', $lock_path) or die "Cannot open lock file $lock_path: $!";
+    flock($lock_fh, 2) or die "Cannot lock $lock_path: $!";
+
+    # Read existing entries
+    my @lines;
+    if (-e $file_path) {
+        open(my $in_fh, '<', $file_path) or die "Cannot read $file_path: $!";
+        while (my $line = <$in_fh>) {
+            chomp $line;
+            next if $line eq '';
+            push @lines, $line;
+        }
+        close($in_fh);
+    }
+
+    # Find and update/add the directory
+    my $found = 0;
+    my $old_count = 0;
+    my @other_lines;
+    for my $line (@lines) {
+        my ($d, $t, $c) = split(/\t/, $line, 3);
+        if (defined $d && $d eq $dir) {
+            $found = 1;
+            $old_count = $c // 0;
+        } else {
+            push @other_lines, $line;
+        }
+    }
+
+    my $new_count = $found ? ($old_count + 1) : 1;
+    my $now = time();
+    unshift @other_lines, "$dir\t$now\t$new_count";
+
+    # Write to a temporary file
+    open(my $tmp_fh, '>', $tmp_path) or die "Cannot write $tmp_path: $!";
+    for my $line (@other_lines) {
+        print $tmp_fh "$line\n";
+    }
+    close($tmp_fh) or die "Cannot close $tmp_path: $!";
+
+    # Atomically rename to replace the destination file
+    rename($tmp_path, $file_path) or die "Cannot rename $tmp_path to $file_path: $!";
+
+    close($lock_fh);
+}
+
+# Lists directories from the history file within the specified day window.
+sub list_dirs($file_path, $days) {
+    return unless -e $file_path;
+
+    my $now = time();
+    my $cutoff = $now - $days * 86400;
+
+    open(my $fh, '<', $file_path) or die "Cannot read $file_path: $!";
+    while (my $line = <$fh>) {
+        chomp $line;
+        next if $line eq '';
+        my ($d, $t, $c) = split(/\t/, $line, 3);
+        next unless defined $d && defined $t;
+        next unless $t =~ /^\d+$/;
+        if ($t >= $cutoff) {
+            print "$d\n";
+        }
+    }
+    close($fh);
+}
+
+main();
