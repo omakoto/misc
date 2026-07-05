@@ -32,6 +32,10 @@ sub main() {
             if (!defined $dir_to_add || $dir_to_add eq '') {
                 die "Error: -a requires a directory argument.\n";
             }
+        } elsif ($arg eq '-f') {
+            $mode = 'raw';
+        } elsif ($arg eq '-F') {
+            $mode = 'raw_days';
         } elsif ($arg eq '-d') {
             my $val = shift @ARGV;
             if (!defined $val || $val !~ /^\d+(?:\.\d+)?$/) {
@@ -48,6 +52,10 @@ sub main() {
 
     if ($mode eq 'add') {
         add_dir($file_path, $dir_to_add);
+    } elsif ($mode eq 'raw') {
+        print_raw_file($file_path, 0);
+    } elsif ($mode eq 'raw_days') {
+        print_raw_file($file_path, 1);
     } else {
         list_dirs($file_path, $days);
     }
@@ -63,12 +71,16 @@ Manage and query the directory usage history.
 Options:
   -d DAYS          List directories used within the last DAYS days (default: \$DIR_HIST_DAYS or 30).
                    -d 1 shows directories accessed within the last 24 hours. Accepts decimals (e.g. 0.5).
+  -f               Print the whole history file content, unmodified.
+  -F               Print the whole history file content, with timestamps converted to days old.
   -a DIRECTORY     Add or update a directory in the history file.
   -h, --help       Show this help message.
 
 Examples:
   dir-hist
   dir-hist -d 5
+  dir-hist -f
+  dir-hist -F
   dir-hist -a /home/user/projects
 EOF
 }
@@ -171,6 +183,32 @@ sub list_dirs($file_path, $days) {
         next unless $t =~ /^\d+$/;
         if ($t >= $cutoff) {
             print "$d\n";
+        }
+    }
+}
+
+# Prints the raw history file contents unmodified, or with timestamps converted to days old.
+sub print_raw_file($file_path, $convert_days) {
+    return unless -e $file_path;
+    my $now = time();
+    open(my $fh, '<', $file_path) or die "Cannot read $file_path: $!";
+    while (my $line = <$fh>) {
+        if ($convert_days) {
+            chomp $line;
+            next if $line eq '';
+            my ($d, $t, $c) = split(/\t/, $line, 3);
+            if (defined $d && defined $t && $t =~ /^\d+$/) {
+                my $days_old = int(($now - $t) / 86400);
+                if (defined $c) {
+                    print "$d\t$days_old\t$c\n";
+                } else {
+                    print "$d\t$days_old\n";
+                }
+            } else {
+                print "$line\n";
+            }
+        } else {
+            print $line;
         }
     }
     close($fh);

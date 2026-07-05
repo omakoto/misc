@@ -101,6 +101,24 @@ assert_out ./dir-hist <<EOF
 /dir-old
 EOF
 
+# -f should print the entire file content unmodified (tab-separated)
+assert_out ./dir-hist -f <<EOF
+/dir-now	$NOW	1
+/dir-12h	$H12	1
+/dir-24h	$H24	1
+/dir-36h	$H36	1
+/dir-old	$D3	1
+EOF
+
+# -F should print the entire file content with timestamps converted to integer days old
+assert_out ./dir-hist -F <<EOF
+/dir-now	0	1
+/dir-12h	0	1
+/dir-24h	1	1
+/dir-36h	1	1
+/dir-old	3	1
+EOF
+
 # 6. Concurrency stress test
 > "$HOME/.dir-hist.txt"
 for i in {1..20}; do
