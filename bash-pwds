@@ -1,5 +1,9 @@
 #!/bin/bash
 
+echo "bash-pwds -- do I still need it?" >/dev/tty
+
+exit 9
+
 set -e
 . mutil.sh
 
