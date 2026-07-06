@@ -12,14 +12,38 @@ import (
 	"sync/atomic"
 )
 
-// hiddenDirectories maps directory names that should be hidden by default.
-// It is easy to add more hidden directories here.
-var hiddenDirectories = map[string]bool{
-	".git": true,
+// ignorePatterns holds wildcard patterns for directory names that should be hidden by default.
+var ignorePatterns []string
+
+func init() {
+	initIgnorePatterns()
+}
+
+// initIgnorePatterns reads the LIST_FILES_IGNORE_PAT environment variable
+// and parses it as a semicolon-separated list of wildcard patterns.
+// If the variable is not set, it defaults to ignoring ".git".
+func initIgnorePatterns() {
+	pat := os.Getenv("LIST_FILES_IGNORE_PAT")
+	if pat == "" {
+		ignorePatterns = []string{".git"}
+		return
+	}
+	parts := strings.Split(pat, ";")
+	ignorePatterns = make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p != "" {
+			ignorePatterns = append(ignorePatterns, p)
+		}
+	}
 }
 
 func isHiddenDirectory(name string) bool {
-	return hiddenDirectories[name]
+	for _, pat := range ignorePatterns {
+		if matched, err := filepath.Match(pat, name); err == nil && matched {
+			return true
+		}
+	}
+	return false
 }
 
 // TraversalState tracks the state of traversal, including limits on max files printed.

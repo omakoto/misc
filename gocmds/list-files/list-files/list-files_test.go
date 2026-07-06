@@ -315,4 +315,27 @@ func TestTraverseDir(t *testing.T) {
 			t.Errorf("got %v, want %v", got, want)
 		}
 	})
+
+	t.Run("Ignore Pattern Env Var", func(t *testing.T) {
+		t.Setenv("LIST_FILES_IGNORE_PAT", "b;d*")
+		initIgnorePatterns()
+		t.Cleanup(func() {
+			initIgnorePatterns()
+		})
+
+		got := runTraverse(0, false, true, false, false, false, 0)
+		want := []string{
+			"./",
+			".git/",
+			".git/config",
+			"a/",
+			"a/x.txt",
+			"b/",
+			"c.txt",
+			"d/",
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
 }

@@ -120,6 +120,10 @@ func main() {
 
 	if *help {
 		getopt.Usage()
+		fmt.Fprintln(os.Stderr, "\nEnvironment variables:")
+		fmt.Fprintln(os.Stderr, "  LIST_FILES_IGNORE_PAT   Semicolon-separated list of wildcard patterns for directories")
+		fmt.Fprintln(os.Stderr, "                          to ignore by default (e.g. \".git;.claude;tempdir*\").")
+		fmt.Fprintln(os.Stderr, "                          Defaults to \".git\" if not set.")
 		os.Exit(0)
 	}
 

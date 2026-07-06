@@ -209,6 +209,16 @@ completion_output=$("$BIN" --bash-completion)
 if [[ ! "$completion_output" == *"_list_files_completion"* ]]; then
   echo "FAIL: --bash-completion"
   echo "  Output did not contain '_list_files_completion'"
+fi
+
+# Test LIST_FILES_IGNORE_PAT environment variable
+echo "Running test: LIST_FILES_IGNORE_PAT"
+actual_ignore_pat=$(LIST_FILES_IGNORE_PAT="b;d*" "$BIN" -d "$TEMP_DIR" | sed "s|$TEMP_DIR/||g" | paste -sd, -)
+expected_ignore_pat=",.git/,.git/config,a/,a/x.txt,b/,c.txt,d/"
+if [[ "$actual_ignore_pat" != "$expected_ignore_pat" ]]; then
+  echo "FAIL: LIST_FILES_IGNORE_PAT"
+  echo "  Expected: $expected_ignore_pat"
+  echo "  Got:      $actual_ignore_pat"
   exit 1
 fi
 

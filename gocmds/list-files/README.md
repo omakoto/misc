@@ -39,3 +39,8 @@ list-files [options] [DIR ...]
       --bash-completion     Print the bash completion script.
   -h, --help                Show help message.
 ```
+
+## Environment Variables
+
+- `LIST_FILES_IGNORE_PAT`: A semicolon-separated list of wildcard patterns specifying directory names to ignore by default (e.g., `.git;.claude;tempdir*`). If not defined, it defaults to ignoring `.git` only.
+
