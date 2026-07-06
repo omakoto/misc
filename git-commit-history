@@ -14,15 +14,19 @@ if needs-term; then
   exec term --geometry=160x45 --no-wait -- "$0" "$@"
 fi
 
+function _ggh_preview() {
+  hl '^    .*' '@cyan' \
+  '^[^ ].*' '@yellow' \
+  '\+(?=[+\-]*\s*$)' '@green' \
+  '\-(?=[+\-]*\s*$)' '@red'
+}
+export -f _ggh_preview
+
 if [[ "${0##*/}" == "ggl" ]]; then
   # Original, less-based viewer.
   git-commit-history-raw | {
       if [[ -t 1 ]] ; then
-          hl '^    .*' '@cyan' \
-          '^[^ ].*' '@yellow' \
-          '\+(?=[+\-]*\s*$)' '@green' \
-          '\-(?=[+\-]*\s*$)' '@red' |
-          less --raw
+          _ggh_preview | less --raw
       else
           cat
       fi
@@ -30,4 +34,4 @@ if [[ "${0##*/}" == "ggl" ]]; then
   exit $?
 fi
 
-exec prowl --sort=path-desc --preview-height 70% $HOME/history/commits/
+exec prowl --sort=path-desc --preview-height 70% --preview '_ggh_preview < {}' $HOME/history/commits/
