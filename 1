@@ -138,7 +138,7 @@ function resolve_file() {
     echo "$n"
     return 0
   fi
-  {
+  selected=$({
     echo "[NEW] ./$n"
     for path in $(paths-to-root "$PWD") $(recent-dirs -z -n 30) ; do
       local f="$path$n"
@@ -151,7 +151,11 @@ function resolve_file() {
         fi
       fi
     done
-  } | global-unique | fzf --ansi -1 | ansi-remove| sed -e 's/^[^ ]*  *//'
+  } | global-unique | fzf --ansi -1 | ansi-remove| sed -e 's/^[^ ]*  *//')
+  if [[ "$selected" != "" ]] ; then
+    touch "$selected"
+    echo "$selected"
+  fi
   return 0
 }
 
