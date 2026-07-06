@@ -68,20 +68,7 @@ fi
 
 _task_history_preview() {
   local file="${1/#\~/$HOME}"
-  local glow2_cmd="glow2"
-  if ! command -v "$glow2_cmd" >/dev/null 2>&1; then
-    if [[ -x "$HOME/go/bin/glow2" ]]; then
-      glow2_cmd="$HOME/go/bin/glow2"
-    fi
-  fi
-
-  if command -v "$glow2_cmd" >/dev/null 2>&1; then
-    "$glow2_cmd" --color=always "$file"
-  elif command -v pandoc >/dev/null 2>&1; then
-    pandoc -t ansi --highlight-style=breezedark "$file"
-  else
-    cat "$file"
-  fi
+  glow2 --color=always "$file"
 }
 
 if [[ -n "$preview_file" ]]; then
@@ -96,26 +83,46 @@ fi
 
 REAL_SCRIPT=$(readlink -f "$0")
 
-fzf_args=(
-  "--ansi"
-  "--no-sort"
-  "--preview" "\"$REAL_SCRIPT\" --preview-file {}"
-  "--preview-window" "top:60%:wrap"
+
+prowl_args=(
+  "--preview-height" "70%"
+  "--sort=path-desc"
+  "--preview" "glow2 --color=always {}"
+  "-f" "*.md"
 )
 if [[ -n "$query" ]]; then
-  fzf_args+=("--query" "$query")
+  prowl_args+=("--query" "$query")
 fi
 
-selected=$({
-  list-files -n 1000 -r "$TASKLOG_DIR"
-  if [[ -d "$HOME/.gemini/jetski/brain" ]] ; then
-    list-files -t -r -p '*.md'  "$HOME/.gemini/jetski/brain"
-  fi
-  if [[ -d "$HOME/.gemini/antigravity-cli/brain" ]] ; then
-    list-files -t -r -p '*.md'  "$HOME/.gemini/antigravity-cli/brain"
-  fi
-} | sed "s|^$HOME/|~/|" | fzf "${fzf_args[@]}")
+selected="$(
+  prowl "${prowl_args[@]}" "$TASKLOG_DIR" "$HOME/.gemini/antigravity-cli/brain"
+)"
 
 if [[ -n "$selected" ]]; then
-  exec 1 "${selected/#\~/$HOME}"
+  exec 1 "${selected}"
 fi
+
+# Old, FZF based implementation (kept for reference):
+# fzf_args=(
+#   "--ansi"
+#   "--no-sort"
+#   "--preview" "\"$REAL_SCRIPT\" --preview-file {}"
+#   "--preview-window" "top:60%:wrap"
+# )
+# if [[ -n "$query" ]]; then
+#   fzf_args+=("--query" "$query")
+# fi
+
+# selected=$({
+#   list-files -n 1000 -r "$TASKLOG_DIR"
+#   if [[ -d "$HOME/.gemini/jetski/brain" ]] ; then
+#     list-files -t -r -p '*.md'  "$HOME/.gemini/jetski/brain"
+#   fi
+#   if [[ -d "$HOME/.gemini/antigravity-cli/brain" ]] ; then
+#     list-files -t -r -p '*.md' "$HOME/.gemini/antigravity-cli/brain"
+#   fi
+# } | sed "s|^$HOME/|~/|" | fzf "${fzf_args[@]}")
+
+# if [[ -n "$selected" ]]; then
+#   exec 1 "${selected/#\~/$HOME}"
+# fi

@@ -14,15 +14,20 @@ if needs-term; then
   exec term --geometry=160x45 --no-wait -- "$0" "$@"
 fi
 
-git-commit-history-raw | {
-    if [[ -t 1 ]] ; then
-        hl '^    .*' '@cyan' \
-        '^[^ ].*' '@yellow' \
-        '\+(?=[+\-]*\s*$)' '@green' \
-        '\-(?=[+\-]*\s*$)' '@red' |
-        less --raw
-    else
-        cat
-    fi
-}
+if [[ "${0##*/}" == "ggl" ]]; then
+  # Original, less-based viewer.
+  git-commit-history-raw | {
+      if [[ -t 1 ]] ; then
+          hl '^    .*' '@cyan' \
+          '^[^ ].*' '@yellow' \
+          '\+(?=[+\-]*\s*$)' '@green' \
+          '\-(?=[+\-]*\s*$)' '@red' |
+          less --raw
+      else
+          cat
+      fi
+  }
+  exit $?
+fi
 
+exec prowl --sort=path-desc --preview-height 70% $HOME/history/commits/

@@ -20,32 +20,34 @@ trap cleanup EXIT
 mkdir -p "$TEST_TMP_DIR/bin"
 export PATH="$TEST_TMP_DIR/bin:$PATH"
 
-# Create a dummy tasklog directory
+# Create a dummy tasklog directory and brain directory
 export TASKLOG_DIR="$TEST_TMP_DIR/tasklog"
 mkdir -p "$TASKLOG_DIR/2026/06"
 touch "$TASKLOG_DIR/2026/06/test1.md"
 touch "$TASKLOG_DIR/2026/06/test2.md"
 
+mkdir -p "$TEST_TMP_DIR/.gemini/antigravity-cli/brain"
+touch "$TEST_TMP_DIR/.gemini/antigravity-cli/brain/brain1.md"
+
 # Copy task-history to temp dir
 cp "$SCRIPT_DIR/task-history" "$TEST_TMP_DIR/task-history"
 chmod +x "$TEST_TMP_DIR/task-history"
 
-# Mock list-files
-cat > "$TEST_TMP_DIR/bin/list-files" <<EOF
+# Mock prowl
+cat > "$TEST_TMP_DIR/bin/prowl" <<EOF
 #!/bin/bash
+echo "prowl_args: \$*" >> "$TEST_TMP_DIR/prowl_calls"
+# Simulate selecting test1.md
 echo "$TASKLOG_DIR/2026/06/test1.md"
-echo "$TASKLOG_DIR/2026/06/test2.md"
 EOF
-chmod +x "$TEST_TMP_DIR/bin/list-files"
+chmod +x "$TEST_TMP_DIR/bin/prowl"
 
-# Mock fzf
-cat > "$TEST_TMP_DIR/bin/fzf" <<EOF
+# Mock glow2
+cat > "$TEST_TMP_DIR/bin/glow2" <<EOF
 #!/bin/bash
-echo "fzf_args: \$*" >> "$TEST_TMP_DIR/fzf_calls"
-# Simulate selecting test1.md with home prefix
-echo "~/tasklog/2026/06/test1.md"
+echo "glow2_args: \$*" >> "$TEST_TMP_DIR/glow2_calls"
 EOF
-chmod +x "$TEST_TMP_DIR/bin/fzf"
+chmod +x "$TEST_TMP_DIR/bin/glow2"
 
 # Mock 1
 cat > "$TEST_TMP_DIR/bin/1" <<EOF
@@ -71,18 +73,20 @@ assert "$TEST_TMP_DIR/task-history --help | grep -q 'Usage:'"
   ./task-history
 )
 assert "grep -q 'opened: $TASKLOG_DIR/2026/06/test1.md' '$TEST_TMP_DIR/1_calls'"
-assert "grep -q 'fzf_args:.*--ansi' '$TEST_TMP_DIR/fzf_calls'"
-assert "grep -q 'fzf_args:.*--no-sort' '$TEST_TMP_DIR/fzf_calls'"
+assert "grep -q 'prowl_args:.*--preview' '$TEST_TMP_DIR/prowl_calls'"
+assert "grep -q 'prowl_args:.*--sort=path-desc' '$TEST_TMP_DIR/prowl_calls'"
+assert "grep -q 'prowl_args:.*-f \*\.md' '$TEST_TMP_DIR/prowl_calls'"
 
 # 3. Test run with query
-rm -f "$TEST_TMP_DIR/fzf_calls"
+rm -f "$TEST_TMP_DIR/prowl_calls"
 (
   cd "$TEST_TMP_DIR"
   ./task-history my-special-query
 )
-assert "grep -q 'fzf_args:.*--query my-special-query' '$TEST_TMP_DIR/fzf_calls'"
+assert "grep -q 'prowl_args:.*--query my-special-query' '$TEST_TMP_DIR/prowl_calls'"
 
 # 4. Test preview-file option
 assert "$TEST_TMP_DIR/task-history --preview-file $TASKLOG_DIR/2026/06/test1.md"
+assert "grep -q 'glow2_args: --color=always $TASKLOG_DIR/2026/06/test1.md' '$TEST_TMP_DIR/glow2_calls'"
 
 done_testing
