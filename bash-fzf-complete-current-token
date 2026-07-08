@@ -120,6 +120,17 @@ $ANDROID_HOST_OUT/testcases/ravenwood-runtime/
 EOF
 }
 
+ravenwood_vars() {
+  if [[ "$ANDROID_BUILD_TOP" == "" ]] ; then
+    return
+  fi
+  print '[RAVEN] ' <<'EOF'
+RAVENWOOD_LOG_OUT=-
+RAVENWOOD_DIE_TIMEOUT_SECONDS=10
+RAVENWOOD_FILTER_REGEX=""
+EOF
+}
+
 envs() {
   print '[ENV]# $' <(
     compgen -A export
@@ -307,6 +318,7 @@ completed=$({
     cat \
       <(git_branches) \
       <(git_changed_files) \
+      <(ravenwood_vars) \
       <(android_env) \
       <(recent_dirs) \
       <(envs) \
