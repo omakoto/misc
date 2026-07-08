@@ -1,0 +1,118 @@
+#!/bin/bash
+# term-closer: Monitors input to the current TTY periodically and closes it on timeout.
+#
+# Run the test script every time touching this script:
+#   ./term-closer_test.bash
+#
+
+set -e
+
+# Prints usage and help message.
+function print_help() {
+  cat <<'EOF'
+term-closer - Monitor input to the current TTY and close on idle timeout.
+
+Usage:
+  term-closer [options]
+
+Options:
+  -i, --interval SECONDS  Monitoring check interval in seconds (default: 60)
+  -t, --timeout SECONDS   Idle timeout in seconds before closing (default: 300)
+  -h, --help              Show this help message and exit.
+
+Examples:
+  term-closer -i 30 -t 180
+  term-closer &
+EOF
+}
+
+interval=60
+timeout=300
+
+TEMP=$(getopt -o 'i:t:h' --long 'interval:,timeout:,help' -n "${0##*/}" -- "$@")
+if [[ $? -ne 0 ]]; then
+  exit 1
+fi
+eval set -- "$TEMP"
+
+while true; do
+  case "$1" in
+    -i|--interval)
+      interval="$2"
+      shift 2
+      ;;
+    -t|--timeout)
+      timeout="$2"
+      shift 2
+      ;;
+    -h|--help)
+      print_help
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      echo "${0##*/}: internal error" >&2
+      exit 1
+      ;;
+  esac
+done
+
+if (( $# > 0 )); then
+  echo "${0##*/}: Unknown argument: $1" >&2
+  print_help >&2
+  exit 1
+fi
+
+target_tty=$(tty 2>/dev/null || true)
+if [[ -z "$target_tty" || "$target_tty" == "not a tty" ]]; then
+  target_tty=$(ps -o tty= -p $$ 2>/dev/null | tr -d ' ' || true)
+  if [[ -n "$target_tty" && "$target_tty" != "?" ]]; then
+    if [[ "$target_tty" != /* ]]; then
+      target_tty="/dev/$target_tty"
+    fi
+  else
+    echo "${0##*/}: Cannot determine target TTY." >&2
+    exit 1
+  fi
+fi
+
+if [[ ! -e "$target_tty" ]]; then
+  echo "${0##*/}: Target TTY ($target_tty) does not exist." >&2
+  exit 1
+fi
+
+function do_close() {
+  # Timeout reached! Ignore SIGHUP so we don't terminate ourselves before signaling others
+  trap '' HUP
+
+  local sid
+  local -a pids
+  mapfile -t pids < <(ps -t "$target_tty" -o pid= 2>/dev/null | tr -d ' ' | grep -E -v "^($$|$BASHPID)$" || true)
+  sid=$(ps -t "$target_tty" -o sid= 2>/dev/null | head -n1 | tr -d ' ' || true)
+
+  if (( ${#pids[@]} > 0 )); then
+    env kill -HUP "${pids[@]}" 2>/dev/null || true
+  fi
+
+  if [[ -n "$sid" ]]; then
+    env kill -HUP -- "-$sid" 2>/dev/null || env kill -HUP -- "$sid" 2>/dev/null || true
+  fi
+
+  exit 0
+}
+
+while true; do
+  sleep "$interval"
+
+  now=$(date +%s)
+  # Check TTY access time (%X = time of last access / typing) without updating it
+  atime=$(stat -c %X "$target_tty" 2>/dev/null || echo "$now")
+  idle=$(( now - atime ))
+
+  if (( idle >= timeout )); then
+    do_close
+  fi
+done

@@ -1,0 +1,140 @@
+#!/bin/bash
+# is-interactive-bash: Distinguishes whether the current (or specified) command
+# is running under an interactive bash shell versus a non-interactive execution
+# (e.g., gnome-terminal -- COMMAND, bash -c "...", or script files).
+#
+# Run the test script every time touching this script:
+#   ./is-interactive-bash_test.bash
+#
+
+set -e
+
+function print_help() {
+  cat <<'EOF'
+is-interactive-bash - Check if a command is running under an interactive bash shell.
+
+Usage:
+  is-interactive-bash [options]
+
+Options:
+  -p, --pid PID    Process ID to inspect (default: current shell $$)
+  -v, --verbose    Print explanation of the determination to stderr
+  -q, --quiet      Suppress all error and informational messages (exit status only)
+  -h, --help       Show this help message and exit
+
+Exit Status:
+  0  The session leader is an interactive bash shell.
+  1  The session leader is not bash, or is a non-interactive bash invocation.
+
+Examples:
+  is-interactive-bash && echo "Running interactively"
+  is-interactive-bash -p 1234 -v
+EOF
+}
+
+target_pid="$$"
+verbose=0
+quiet=0
+
+TEMP=$(getopt -o 'p:vqh' --long 'pid:,verbose,quiet,help' -n "${0##*/}" -- "$@")
+if [[ $? -ne 0 ]]; then
+  exit 1
+fi
+eval set -- "$TEMP"
+
+while true; do
+  case "$1" in
+    -p|--pid)
+      target_pid="$2"
+      shift 2
+      ;;
+    -v|--verbose)
+      verbose=1
+      shift
+      ;;
+    -q|--quiet)
+      quiet=1
+      shift
+      ;;
+    -h|--help)
+      print_help
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      echo "${0##*/}: internal error" >&2
+      exit 1
+      ;;
+  esac
+done
+
+if (( $# > 0 )); then
+  echo "${0##*/}: Unknown argument: $1" >&2
+  print_help >&2
+  exit 1
+fi
+
+if (( quiet )); then
+  exec 2>/dev/null
+  verbose=0
+fi
+
+# Get the Session Leader PID (the root process of the current terminal/window session)
+sid=$(ps -o sid= -p "$target_pid" 2>/dev/null | tr -d ' ' || true)
+if [[ -z "$sid" || "$sid" == "0" ]]; then
+  (( verbose )) && echo "PID $target_pid has no valid session leader." >&2
+  exit 1
+fi
+
+# Check if the Session Leader command name is bash
+comm=$(ps -o comm= -p "$sid" 2>/dev/null | tr -d ' ' || true)
+comm="${comm#-}" # Remove leading hyphen from login shells (e.g., -bash)
+if [[ "$comm" != "bash" ]]; then
+  (( verbose )) && echo "Session leader PID $sid command is '$comm', not 'bash'." >&2
+  exit 1
+fi
+
+# Check if the Session Leader is attached to a controlling TTY
+tty=$(ps -o tty= -p "$sid" 2>/dev/null | tr -d ' ' || true)
+if [[ -z "$tty" || "$tty" == "?" ]]; then
+  (( verbose )) && echo "Session leader PID $sid (bash) has no controlling TTY ($tty)." >&2
+  exit 1
+fi
+
+args=$(ps -o args= -p "$sid" 2>/dev/null || true)
+
+# If invoked with -c, it is non-interactive (e.g., gnome-terminal -- bash -c "...")
+if [[ "$args" =~ (^|[[:space:]])-c([[:space:]]|$) ]]; then
+  (( verbose )) && echo "Session leader PID $sid (bash) was invoked with -c ('$args')." >&2
+  exit 1
+fi
+
+# Check if file descriptor 255 is open (strong indicator of interactive bash with job control/readline)
+if [[ -e "/proc/$sid/fd/255" ]]; then
+  (( verbose )) && echo "Session leader PID $sid (bash) has TTY fd 255 open (interactive shell)." >&2
+  exit 0
+fi
+
+# Fallback check when /proc/$sid/fd/255 is unavailable (e.g., test mocking or restrictive permissions):
+# Verify there are no non-option arguments (which indicate a script filename being executed).
+set -f
+rest_args=()
+for w in $args; do
+  case "$w" in
+    bash|-bash|*/bash|sh|-sh|*/sh) continue ;;
+    -*|+*) continue ;;
+    *) rest_args+=("$w") ;;
+  esac
+done
+set +f
+
+if (( ${#rest_args[@]} > 0 )); then
+  (( verbose )) && echo "Session leader PID $sid (bash) has script argument(s): '${rest_args[*]}'." >&2
+  exit 1
+fi
+
+(( verbose )) && echo "Session leader PID $sid (bash) is an interactive shell." >&2
+exit 0
