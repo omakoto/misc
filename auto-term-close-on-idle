@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# Close the terminal on idle, unless we're on an interactive shell.
+# This is for auto-closing FZF/prowl window launched from Win-R.
+
+if ! is-interactive-bash; then
+  (term-closer -t 300  &)
+fi

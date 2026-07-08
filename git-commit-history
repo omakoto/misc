@@ -34,4 +34,6 @@ if [[ "${0##*/}" == "ggl" ]]; then
   exit $?
 fi
 
+auto-term-close-on-idle
+
 exec prowl --sort=path-desc --preview-height 70% --preview '_ggh_preview < {}' $HOME/history/commits/

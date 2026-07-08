@@ -39,4 +39,6 @@ if needs-term; then
   exec term --geometry=140x45 --no-wait -- gg "$@"
 fi
 
+auto-term-close-on-idle
+
 exec git meld-history "$@"

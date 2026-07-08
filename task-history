@@ -94,6 +94,8 @@ if [[ -n "$query" ]]; then
   prowl_args+=("--query" "$query")
 fi
 
+auto-term-close-on-idle
+
 selected="$(
   prowl "${prowl_args[@]}" "$TASKLOG_DIR" "$HOME/.gemini/antigravity-cli/brain"
 )"
