@@ -11,10 +11,18 @@ export MOCK_DIR=$(mktemp -d -t fzf-select-window-test-XXXXXX)
 trap 'rm -rf "$MOCK_DIR"' EXIT
 
 export HOME="$MOCK_DIR"
+export PATH="$MOCK_DIR:$PATH"
 mkdir -p "$MOCK_DIR/cbin"
 # Symlink misc so colors.bash can be resolved under mock HOME
 ln -s /home/omakoto/cbin/misc "$MOCK_DIR/cbin/misc"
 touch "$MOCK_DIR/cbin/common_rc"
+
+# Mock needs-term to bypass terminal spawning during tests
+cat > "$MOCK_DIR/needs-term" <<'EOF'
+#!/bin/bash
+exit 1
+EOF
+chmod +x "$MOCK_DIR/needs-term"
 
 cat > "$MOCK_DIR/mock-gnome-list-windows" <<EOF
 #!/bin/bash

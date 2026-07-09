@@ -7,13 +7,12 @@
 
 set -e
 
-# Sourcing mutil.sh for dir-normalize and cyan/colors
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-if [[ -f "$SCRIPT_DIR/mutil.sh" ]]; then
-  . "$SCRIPT_DIR/mutil.sh"
-else
-  . mutil.sh 2>/dev/null || true
+if needs-term ; then
+    exec t --no-wait -g 120x20 fzf-select-window
 fi
+
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+. mutil.sh
 
 # Locate dependencies, allowing overrides for testing
 : "${GNOME_LIST_WINDOWS:=$SCRIPT_DIR/../gnome-list-windows}"
