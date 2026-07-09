@@ -1,28 +1,118 @@
 #!/bin/bash
+# fzf-select-window - Select and activate a GNOME Shell window using fzf.
+#
+# Run the test script to verify changes:
+#   cd ~/cbin/misc && ./fzf-select-window_test.bash
+#
 
 set -e
-. mutil.sh
 
-# Move to a window selected by fzf
-
-
-selected="$(wmctrl -l | perl -e '
-while (<>) {
-    chomp;
-    m!^(\S+) \s+ \S+ \s \S+ \s+ (.*)!x;
-    my $title = $2;
-
-    next if $title =~ /^Desktop$/;
-
-    next if $title eq "*fzf-select-window"; # Exclude own GUI
-
-    print "$2\n";
-}
-' | sort --ignore-case | fzf)"
-
-if [[ "$selected" == "" ]] ; then
-    exit 1
+# Sourcing mutil.sh for dir-normalize and cyan/colors
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+if [[ -f "$SCRIPT_DIR/mutil.sh" ]]; then
+  . "$SCRIPT_DIR/mutil.sh"
+else
+  . mutil.sh 2>/dev/null || true
 fi
 
-wmctrl -F -a "$selected"
+# Locate dependencies, allowing overrides for testing
+: "${GNOME_LIST_WINDOWS:=$SCRIPT_DIR/../gnome-list-windows}"
+if [[ ! -x "$GNOME_LIST_WINDOWS" && "$GNOME_LIST_WINDOWS" == "$SCRIPT_DIR/../gnome-list-windows" ]]; then
+  GNOME_LIST_WINDOWS="gnome-list-windows"
+fi
 
+: "${FZF:=fzf}"
+: "${GDBUS:=gdbus}"
+
+function print_help() {
+  cat <<'EOF'
+fzf-select-window - Select and activate a GNOME Shell window using fzf.
+
+Usage:
+  fzf-select-window [options]
+
+Options:
+  -h, --help  Show this help message and exit.
+
+Examples:
+  fzf-select-window
+EOF
+}
+
+# Parse options using GNU getopt
+TEMP=$(getopt -o 'h' --long 'help' -n 'fzf-select-window' -- "$@")
+eval set -- "$TEMP"
+while true; do
+  case "$1" in
+    -h|--help)
+      print_help
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      echo "Internal error!" >&2
+      exit 1
+      ;;
+  esac
+done
+
+if (( $# > 0 )); then
+  echo "fzf-select-window: Unknown option or argument: $1" >&2
+  print_help >&2
+  exit 1
+fi
+
+list_windows_formatted() {
+  local windows_json
+  windows_json=$( "$GNOME_LIST_WINDOWS" --jsonl )
+  if [[ $? -ne 0 || -z "$windows_json" ]]; then
+    echo "Error: Failed to get window list from $GNOME_LIST_WINDOWS" >&2
+    return 1
+  fi
+
+  # Parse JSON lines in a single pass using jq to speed it up and avoid subprocesses in loop
+  local line id title cwd comm normalized_cwd cyan_cwd byellow_comm
+  # Read tab-separated values from jq output
+  jq -r '[.id, .title, .cwd, .comm] | @tsv' <<< "$windows_json" | while IFS=$'\t' read -r id title cwd comm; do
+    if [[ -z "$id" || "$id" == "null" ]]; then
+      continue
+    fi
+    if [[ "$cwd" == "?" || -z "$cwd" || "$cwd" == "null" ]]; then
+      normalized_cwd="?"
+    else
+      normalized_cwd=$(dir-normalize "$cwd")
+    fi
+    if [[ -z "$comm" || "$comm" == "null" ]]; then
+      comm="?"
+    fi
+    cyan_cwd=$(cyan -f -n "$normalized_cwd")
+    byellow_comm=$(byellow -f -n "$comm")
+    printf "%s\t%-20s\t%s\t%s\n" "$id" "[$byellow_comm]" "$title" "$cyan_cwd"
+  done
+}
+
+# Clean FZF_DEFAULT_OPTS to remove --header options to avoid displaying empty lines in fzf
+if [[ -n "$FZF_DEFAULT_OPTS" ]]; then
+  FZF_DEFAULT_OPTS=$(echo "$FZF_DEFAULT_OPTS" | perl -pe 's/--header(?:[= ]\s*(\x27[^\x27]*\x27|"[^"]*"|\S+))//g')
+  export FZF_DEFAULT_OPTS
+fi
+
+# Main execution
+# Run fzf on the formatted window list
+selected=$(list_windows_formatted | "$FZF" --ansi --delimiter=$'\t' --with-nth=2.. --no-multi)
+
+if [[ -n "$selected" ]]; then
+  # Extract ID (first tab-separated field)
+  id=$(echo "$selected" | cut -f1)
+  if [[ -n "$id" ]]; then
+    # Activate the window using the Window Calls D-Bus interface
+    "$GDBUS" call --session \
+                 --dest org.gnome.Shell \
+                 --object-path /org/gnome/Shell/Extensions/Windows \
+                 --method org.gnome.Shell.Extensions.Windows.Activate \
+                 "uint32 $id" >/dev/null
+  fi
+fi
