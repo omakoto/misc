@@ -88,9 +88,9 @@ list_windows_formatted() {
     if [[ -z "$comm" || "$comm" == "null" ]]; then
       comm="?"
     fi
-    cyan_cwd=$(cyan -f -n "$normalized_cwd")
-    byellow_comm=$(byellow -f -n "$comm")
-    printf "%s\t%-20s\t%s\t%s\n" "$id" "[$byellow_comm]" "$title" "$cyan_cwd"
+    cyan_cwd=$'\e[36m'"# $normalized_cwd"$'\e[0m'
+    byellow_comm=$'\e[1;33m'"[$comm]"$'\e[0m'
+    printf "%s\t%-30s %-40s\t%s\n" "$id" "$byellow_comm" "$title" "$cyan_cwd"
   done
 }
 

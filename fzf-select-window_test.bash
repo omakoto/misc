@@ -82,7 +82,7 @@ actual_output() {
 
   # Check that fzf input contains bold-yellow bash and correct order/formatting
   local expected_line
-  expected_line=$(printf "222\t[\e[1;33mbash\e[0m]   \tTerminal\t\e[36m/a/m/f/b/\e[0m")
+  expected_line=$(printf "222\t\e[1;33m[bash]\e[0m              Terminal                                \t\e[36m# /a/m/f/b/\e[0m")
   if ! grep -F -q "$expected_line" "$MOCK_DIR/fzf_input"; then
     echo "FAIL: fzf input formatting incorrect. Expected line containing '$expected_line', got:"
     cat "$MOCK_DIR/fzf_input"
