@@ -74,9 +74,15 @@ list_windows_formatted() {
   fi
 
   # Parse JSON lines in a single pass using jq to speed it up and avoid subprocesses in loop
-  local line id title cwd comm normalized_cwd cyan_cwd byellow_comm
+  local line id title cwd comm normalized_cwd cyan_cwd byellow_comm is_first=1
   # Read tab-separated values from jq output
   jq -r '[.id, .title, .cwd, .comm] | @tsv' <<< "$windows_json" | while IFS=$'\t' read -r id title cwd comm; do
+    if (( is_first )); then
+      is_first=0
+      if [[ "$title" == "*fzf-select-window" ]]; then
+        continue
+      fi
+    fi
     if [[ -z "$id" || "$id" == "null" ]]; then
       continue
     fi

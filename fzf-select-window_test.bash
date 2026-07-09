@@ -19,9 +19,11 @@ touch "$MOCK_DIR/cbin/common_rc"
 cat > "$MOCK_DIR/mock-gnome-list-windows" <<EOF
 #!/bin/bash
 cat <<'JSON'
+{"id": 999, "pid": 1111, "wm_class": "terminal", "cwd": "?", "comm": "bash", "title": "*fzf-select-window"}
 {"id": 111, "pid": 1234, "wm_class": "code", "cwd": "$HOME/cbin", "comm": "code", "title": "VS Code"}
 {"id": 222, "pid": 5678, "wm_class": "terminal", "cwd": "/android/main/frameworks/base", "comm": "bash", "title": "Terminal"}
 {"id": 333, "pid": 9999, "wm_class": "browser", "cwd": "?", "comm": "chrome", "title": "Browser"}
+{"id": 444, "pid": 2222, "wm_class": "terminal", "cwd": "?", "comm": "bash", "title": "*fzf-select-window"}
 JSON
 EOF
 chmod +x "$MOCK_DIR/mock-gnome-list-windows"
@@ -86,6 +88,18 @@ actual_output() {
   if ! grep -F -q "$expected_line" "$MOCK_DIR/fzf_input"; then
     echo "FAIL: fzf input formatting incorrect. Expected line containing '$expected_line', got:"
     cat "$MOCK_DIR/fzf_input"
+    return 1
+  fi
+
+  # Check that fzf input does NOT contain the topmost skipped *fzf-select-window (ID 999)
+  if grep -q "^999" "$MOCK_DIR/fzf_input"; then
+    echo "FAIL: Topmost fzf-select-window (ID 999) was not skipped."
+    return 1
+  fi
+
+  # Check that fzf input DOES contain the non-topmost *fzf-select-window (ID 444)
+  if ! grep -q "^444" "$MOCK_DIR/fzf_input"; then
+    echo "FAIL: Non-topmost fzf-select-window (ID 444) was incorrectly skipped."
     return 1
   fi
 
