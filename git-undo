@@ -201,6 +201,9 @@ def main() -> None:
             else:
                 os.remove(abs_path)
 
+    for f in selected_files:
+        sys.stdout.write(f"{f}\n")
+
     sys.stdout.write("Rollback completed successfully.\n")
     sys.stdout.flush()
 

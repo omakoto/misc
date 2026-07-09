@@ -95,6 +95,8 @@ tag_name=$(get_tag_name)
 assert "[[ -n '$tag_name' ]]"
 # 3. Check that the tag has the modified content
 assert "[[ '$(git show $tag_name:file1.txt)' == *'modified content'* ]]"
+# 4. Check that the reverted filename is printed
+assert "grep -q '^file1.txt$' '$TEST_TMP_DIR/stdout'"
 
 # -------------------------------------------------------------
 # Test Case 2: Undo an untracked file (should delete it)
@@ -113,6 +115,8 @@ assert "[[ ! -f file2.txt ]]"
 tag_name=$(get_tag_name)
 assert "[[ -n '$tag_name' ]]"
 assert "[[ '$(git show $tag_name:file2.txt)' == 'untracked content' ]]"
+# 3. Check that the deleted filename is printed
+assert "grep -q '^file2.txt$' '$TEST_TMP_DIR/stdout'"
 
 # -------------------------------------------------------------
 # Test Case 3: Undo only one of two modified/untracked files
@@ -135,6 +139,9 @@ tag_name=$(get_tag_name)
 assert "[[ -n '$tag_name' ]]"
 assert "[[ '$(git show $tag_name:file2.txt)' == 'untracked file2' ]]"
 assert "[[ '$(git show $tag_name:file1.txt)' == *'modified file1'* ]]"
+# 4. Check that only the selected filename is printed
+assert "grep -q '^file2.txt$' '$TEST_TMP_DIR/stdout'"
+assert "! grep -q '^file1.txt$' '$TEST_TMP_DIR/stdout'"
 
 # Return to script directory
 cd "$SCRIPT_DIR"
