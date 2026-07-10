@@ -24,6 +24,13 @@ exit 1
 EOF
 chmod +x "$MOCK_DIR/needs-term"
 
+# Mock auto-term-close-on-idle to prevent spawning background processes during tests
+cat > "$MOCK_DIR/auto-term-close-on-idle" <<'EOF'
+#!/bin/bash
+:
+EOF
+chmod +x "$MOCK_DIR/auto-term-close-on-idle"
+
 cat > "$MOCK_DIR/mock-gnome-list-windows" <<EOF
 #!/bin/bash
 cat <<'JSON'
