@@ -139,3 +139,13 @@ fi
 
 cd $HME
 ee -b "$chrome" "${params[@]}" "$@"
+
+echo "Trying to bring the window to the FB..."
+n=0
+while ! gnome-focus-window -c google-chrome Chrome 2>/dev/null ; do
+  sleep 0.2
+  (( n++ )) || true
+  if (( n > 10 )) ; then
+    break
+  fi
+done
