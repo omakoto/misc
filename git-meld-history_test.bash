@@ -718,12 +718,15 @@ cd "$SCRIPT_DIR"
 # Test Case 25: Attempting to edit a commit already on remote using ctrl-g (should error)
 # -------------------------------------------------------------
 setup_git_repo
+default_branch=$(git branch --show-current)
 clear_test_state
 commit1_hash=$(git rev-parse --short HEAD~1)
 full_commit1_hash=$(git rev-parse HEAD~1)
 
-# Simulate pushing Commit 1 to remote by creating a remote tracking branch pointing to it
-git update-ref refs/remotes/origin/master "$full_commit1_hash"
+# Simulate pushing Commit 1 to remote by creating a remote tracking branch pointing to it and setting it as upstream
+git remote add origin http://example.com/repo.git
+git update-ref refs/remotes/origin/$default_branch "$full_commit1_hash"
+git branch --set-upstream-to=origin/$default_branch "$default_branch" -q
 
 export MOCK_FZF_KEY="ctrl-g"
 MOCK_FZF_SELECTION="$commit1_hash Commit 1"
@@ -742,13 +745,16 @@ export MOCK_FZF_KEY=""
 # Test Case 26: Attempting to squash commits already on remote using ctrl-s (should error)
 # -------------------------------------------------------------
 setup_git_repo
+default_branch=$(git branch --show-current)
 clear_test_state
 commit1_hash=$(git rev-parse --short HEAD~1)
 commit2_hash=$(git rev-parse --short HEAD)
 full_commit1_hash=$(git rev-parse HEAD~1)
 
 # Simulate pushing Commit 1 to remote
-git update-ref refs/remotes/origin/master "$full_commit1_hash"
+git remote add origin http://example.com/repo.git
+git update-ref refs/remotes/origin/$default_branch "$full_commit1_hash"
+git branch --set-upstream-to=origin/$default_branch "$default_branch" -q
 
 export MOCK_FZF_KEY="ctrl-s"
 MOCK_FZF_SELECTION="$commit2_hash Commit 2\n$commit1_hash Commit 1"
@@ -765,13 +771,16 @@ export MOCK_FZF_KEY=""
 # Test Case 27: Inject (ctrl-k) on remote commit should error
 # -------------------------------------------------------------
 setup_git_repo
+default_branch=$(git branch --show-current)
 echo "dirty changes" > file2.txt
 clear_test_state
 commit1_hash=$(git rev-parse --short HEAD~1)
 full_commit1_hash=$(git rev-parse HEAD~1)
 
 # Simulate pushing Commit 1 to remote
-git update-ref refs/remotes/origin/master "$full_commit1_hash"
+git remote add origin http://example.com/repo.git
+git update-ref refs/remotes/origin/$default_branch "$full_commit1_hash"
+git branch --set-upstream-to=origin/$default_branch "$default_branch" -q
 
 export MOCK_FZF_KEY="ctrl-k"
 MOCK_FZF_SELECTION="$commit1_hash Commit 1"
@@ -972,17 +981,18 @@ assert "[[ '${cwds[1]}' == *'/repo/mysub' ]]"
 # Test Case 33: Run passing a git reference as first argument
 # -------------------------------------------------------------
 setup_git_repo
+default_branch=$(git branch --show-current)
 clear_test_state
 
-# We run with a branch name "master"
-git-meld-history "master" 2> "$TEST_TMP_DIR/git_meld_err"
+# We run with the default branch name
+git-meld-history "$default_branch" 2> "$TEST_TMP_DIR/git_meld_err"
 
 # Verify that:
-# 1. fzf was called in the repository root (not a subdirectory named master)
+# 1. fzf was called in the repository root (not a subdirectory named after branch)
 assert "[[ -f '$TEST_TMP_DIR/fzf_cwds' ]]"
 assert "[[ '$(cat $TEST_TMP_DIR/fzf_cwds)' == *'/repo' ]]"
-# 2. git-history-fzf was called with 'master'
-assert "grep -q 'git-history-fzf.*master' '$TEST_TMP_DIR/git_meld_err'"
+# 2. git-history-fzf was called with the branch name
+assert "grep -q \"git-history-fzf.*$default_branch\" '$TEST_TMP_DIR/git_meld_err'"
 
 # -------------------------------------------------------------
 # Test Case 34: Verify only dirty submodule does not show (CURRENT) but shows submodule

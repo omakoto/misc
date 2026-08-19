@@ -138,9 +138,12 @@ complete -o filenames -o bashdefault -F _git_meld_history git-meld-history git-m
     sys.stdout.flush()
 
 def is_on_remote(commit: str) -> bool:
-    """Checks if a commit is already present on any remote branch."""
-    res = run_command(["git", "branch", "-r", "--contains", commit], capture_output=True, text=True)
-    return bool(res.stdout.strip())
+    """Checks if a commit is already present on the upstream tracking branch."""
+    # If no upstream tracking branch is configured, assume the commit is not on remote.
+    if run_command(["git", "rev-parse", "--verify", "--quiet", "@{u}"], capture_output=True).returncode != 0:
+        return False
+    res = run_command(["git", "merge-base", "--is-ancestor", commit, "@{u}"], capture_output=True)
+    return res.returncode == 0
 
 def is_dirty_repo() -> bool:
     """Checks if the Git repository has any uncommitted changes (tracked or untracked)."""

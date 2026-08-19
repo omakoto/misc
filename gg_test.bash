@@ -128,11 +128,12 @@ assert '[[ "$(cat "$TEST_TMP_DIR/calls")" == "git-meld-history called with: --au
 
 # 8. Valid git ref inside git dir
 rm -f "$TEST_TMP_DIR/calls"
-out=$(run_gg_in_dir "$GIT_DIR" "master" 2>&1)
+default_branch=$(git -C "$GIT_DIR" branch --show-current)
+out=$(run_gg_in_dir "$GIT_DIR" "$default_branch" 2>&1)
 exit_code=$?
 assert '[[ $exit_code -eq 0 ]]'
 assert '[[ -f "$TEST_TMP_DIR/calls" ]]'
-assert '[[ "$(cat "$TEST_TMP_DIR/calls")" == "git-meld-history called with: master" ]]'
+assert '[[ "$(cat "$TEST_TMP_DIR/calls")" == "git-meld-history called with: '"$default_branch"'" ]]'
 
 # 9. Invalid git ref inside git dir
 rm -f "$TEST_TMP_DIR/calls"
