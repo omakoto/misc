@@ -13,15 +13,15 @@ from decimal import Decimal
 import fileinput
 from fractions import Fraction
 import math
-import numpy as np
+try:
+    import numpy as np
+except ImportError:
+    np = None
 import re
 import sys
 import time
 import typing
 
-# Refer the following packages to prevent from getting removed
-np
-math
 
 # Custom print wrapper to highlight the first non-comment line in bold-yellow
 _original_print = print
@@ -224,30 +224,32 @@ def format_fraction(fr: Fraction) -> str:
     return str(fr)
 
 
-def show_result(result: typing.Any) -> None:
+def show_result(result: typing.Any, interactive: bool = False) -> None:
     global _primary_printed
     _primary_printed = False
 
     if isinstance(result, Fraction):
-        print(format_fraction(result))
-        if result.denominator == 1:
-            result = int(result)
-        else:
+        if result.denominator != 1:
+            print(format_fraction(result))
             result = float(result)
-    elif isinstance(result, Decimal):
+        else:
+            result = int(result)
+
+        if interactive:
+            print_with_grouped(f'{result}', 3)
+            _primary_printed = True
+            return
+    elif isinstance(result, (Decimal, float)):
         try:
             fr = Fraction(result).limit_denominator()
             if fr.denominator > 1 and fr.denominator < 1000000:
                 print(f'# Fraction: {format_fraction(fr)}')
         except (ValueError, OverflowError):
             pass
-    elif isinstance(result, float):
-        try:
-            fr = Fraction(result).limit_denominator()
-            if fr.denominator > 1 and fr.denominator < 1000000:
-                print(f'# Fraction: {format_fraction(fr)}')
-        except (ValueError, OverflowError):
-            pass
+        if interactive:
+            print_with_grouped(f'{result}', 3)
+            _primary_printed = True
+            return
 
     if isinstance(result, bool) or not isinstance(result, (int, float, Decimal)):
         print(result)
@@ -255,6 +257,10 @@ def show_result(result: typing.Any) -> None:
         return
 
     print_with_grouped(f'{result}', 3)
+    if interactive:
+        _primary_printed = True
+        return
+
     value = int(result)
     print_with_grouped(f'{value:b}', 4, '0b')
     print_with_grouped(f'{value:x}', 4, '0x')
@@ -353,7 +359,7 @@ def run_repl(use_fraction: bool, globals_dict: dict[str, typing.Any]) -> None:
                 code = compile(new_tree, "<string>", "eval")
                 result = eval(code, globals_dict)
 
-            show_result(result)
+            show_result(result, interactive=True)
         except Exception as e:
             print(f"Error: {e}")
 

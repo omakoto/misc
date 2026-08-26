@@ -194,11 +194,26 @@ class TestCalcExecution(unittest.TestCase):
         out = self.run_calc(["-i"])
         self.assertIn("calc.py Interactive REPL", out)
         self.assertIn("3", out)
-        
-        # Test interactive repl with fraction mode
+        self.assertNotIn("0b11", out)
+        self.assertNotIn("# 32 bits", out)
+        self.assertNotIn("# 64 bits", out)
+
+        # Test interactive repl with fraction mode (shows fraction and decimal only)
         mock_input.side_effect = ["1/3 + 1/6", "exit"]
         out_frac = self.run_calc(["-i", "-f"])
         self.assertIn("1/2", out_frac)
+        self.assertIn("0.5", out_frac)
+        self.assertNotIn("0b0", out_frac)
+        self.assertNotIn("# 32 bits", out_frac)
+        self.assertNotIn("# 64 bits", out_frac)
+
+        # Test interactive repl with float in -n mode
+        mock_input.side_effect = ["0.25", "exit"]
+        out_dec = self.run_calc(["-i", "-n"])
+        self.assertIn("# Fraction: 1/4", out_dec)
+        self.assertIn("0.25", out_dec)
+        self.assertNotIn("0b0", out_dec)
+        self.assertNotIn("# 32 bits", out_dec)
 
         # Test help commands in interactive repl
         for cmd in ("help", "h", "?", "/help"):
