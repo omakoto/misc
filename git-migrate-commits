@@ -30,6 +30,8 @@ Usage:
 
 Options:
   -h, --help             Show this help message.
+  --[no-]autostash       Automatically stash and restore uncommitted changes in
+                         the target repository (default: enabled).
   --bash-completion      Print bash completion script.
 
 Examples:
@@ -53,7 +55,7 @@ _git_migrate_commits() {
     cword=$COMP_CWORD
   fi
 
-  local opts="-h --help --bash-completion"
+  local opts="-h --help --autostash --no-autostash --bash-completion"
 
   if [[ "$cur" == -* ]]; then
     COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
@@ -82,31 +84,40 @@ complete -o filenames -o bashdefault -F _git_migrate_commits git-migrate-commits
 EOF
 }
 
-# Check for special options before getopts loop
-if [[ "$1" == "--help" ]]; then
-  print_help
-  exit 0
-fi
+autostash=1
 
-if [[ "$1" == "--bash-completion" ]]; then
-  print_completion
-  exit 0
-fi
-
-
-while getopts "h" opt; do
-  case "$opt" in
-    h)
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
       print_help
       exit 0
       ;;
-    *)
+    --autostash)
+      autostash=1
+      shift
+      ;;
+    --no-autostash)
+      autostash=0
+      shift
+      ;;
+    --bash-completion)
+      print_completion
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      echo "Error: Unknown option $1" >&2
       print_help
       exit 1
       ;;
+    *)
+      break
+      ;;
   esac
 done
-shift $((OPTIND - 1))
 
 target_dir="$1"
 if [[ -z "$target_dir" ]]; then
@@ -121,7 +132,7 @@ if [[ ! -d "$target_dir" ]]; then
 fi
 
 # Find the actual git top directory of the target
-target_git_root=$(git -C "$target_dir" rev-parse --show-toplevel 2>/dev/null)
+target_git_root=$(git -C "$target_dir" rev-parse --show-toplevel 2>/dev/null || true)
 if [[ -z "$target_git_root" ]]; then
   echo "Error: Target directory '$target_dir' is not inside a Git repository." >&2
   exit 1
@@ -166,7 +177,22 @@ done
 
 echo "Migrating ${#reversed_hashes[@]} commits to $target_git_root..."
 
+# Save uncommitted changes in the target repository before applying patches
+has_autostash=0
+if (( autostash )); then
+  if [[ -n "$(git -C "$target_git_root" status --porcelain --untracked-files=no)" ]]; then
+    echo "Target repository has uncommitted changes; creating autostash..."
+    if git -C "$target_git_root" stash push -m "autostash: git-migrate-commits" >/dev/null; then
+      has_autostash=1
+    else
+      echo "Error: Failed to create autostash in target repository '$target_git_root'." >&2
+      exit 1
+    fi
+  fi
+fi
+
 # Generate patches and apply them
+am_rc=0
 (
   for hash in "${reversed_hashes[@]}"; do
     git format-patch -k --stdout -1 "$hash"
@@ -177,4 +203,22 @@ echo "Migrating ${#reversed_hashes[@]} commits to $target_git_root..."
   else
     git -C "$target_git_root" am -3 -k
   fi
-)
+) || am_rc=$?
+
+if (( am_rc != 0 )); then
+  if (( has_autostash )); then
+    echo "Note: Uncommitted changes in target repository were saved to stash (autostash: git-migrate-commits)." >&2
+    echo "After resolving or aborting the am session, restore your changes with:" >&2
+    echo "  git -C \"$target_git_root\" stash pop" >&2
+  fi
+  exit $am_rc
+fi
+
+if (( has_autostash )); then
+  echo "Restoring autostash in target repository..."
+  if ! git -C "$target_git_root" stash pop; then
+    echo "Warning: Restoring autostash resulted in merge conflicts." >&2
+    echo "The stash entry has been preserved. Run 'git -C \"$target_git_root\" stash list' to see it." >&2
+    exit 1
+  fi
+fi

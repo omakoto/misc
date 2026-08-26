@@ -63,8 +63,8 @@ cd "$DIR"
 # Helper to run the test
 run_test_migration() {
   local mock_fzf_output="$1"
-  local target_dir="$2"
-  
+  shift
+
   # Create a mock git-history-fzf script
   local mock_fzf="$TEST_TMP_DIR/mock-git-history-fzf"
   cat <<EOF > "$mock_fzf"
@@ -72,12 +72,12 @@ run_test_migration() {
 echo -e "$mock_fzf_output"
 EOF
   chmod +x "$mock_fzf"
-  
+
   # Run git-migrate-commits from the source repository directory
   (
     cd "$SRC_REPO"
     export GIT_HISTORY_FZF="$mock_fzf"
-    "$DIR/git-migrate-commits" "$target_dir"
+    "$DIR/git-migrate-commits" "$@"
   )
 }
 
@@ -136,8 +136,57 @@ assert "run_test_migration \"$mock_out_c2\" \"$DST_SUBDIR\""
 assert "[[ -f \"$DST_REPO/file2.txt\" ]]"
 assert "[[ \$(cat \"$DST_REPO/file2.txt\") == \"file2 content\" ]]"
 
-# Test Case 4: --bash-completion
+# Test Case 4: Autostash with dirty working directory in target repository
+# Reset DST_REPO to initial commit
+git -C "$DST_REPO" reset --hard $(git -C "$DST_REPO" rev-list --max-parents=0 HEAD)
+rm -f "$DST_REPO/file1.txt" "$DST_REPO/file2.txt" "$DST_REPO/file3.txt"
+
+# Make dirty modifications in DST_REPO
+echo "dirty uncommitted content" >> "$DST_REPO/init.txt"
+
+mock_out_c2="$C2 [2026-06-09] <test@example.com> Commit 2"
+assert "run_test_migration \"$mock_out_c2\" \"$DST_REPO\""
+
+# Verify that commit was applied and dirty change was restored
+assert "[[ -f \"$DST_REPO/file2.txt\" ]]"
+assert "[[ \$(cat \"$DST_REPO/file2.txt\") == \"file2 content\" ]]"
+assert "[[ \$(cat \"$DST_REPO/init.txt\") == *\"dirty uncommitted content\"* ]]"
+assert "[[ -n \$(git -C \"$DST_REPO\" status --porcelain --untracked-files=no) ]]"
+
+# Test Case 5: --no-autostash fails when working tree has conflicts with patch
+# Reset DST_REPO and create an uncommitted modification to a file that the patch touches
+git -C "$DST_REPO" reset --hard HEAD~1
+rm -f "$DST_REPO/file1.txt" "$DST_REPO/file2.txt" "$DST_REPO/file3.txt"
+echo "initial file2 content" > "$DST_REPO/file2.txt"
+git -C "$DST_REPO" add file2.txt
+git -C "$DST_REPO" commit -m "Add file2 in dst"
+echo "uncommitted conflicting edit" >> "$DST_REPO/file2.txt"
+
+assert "! run_test_migration \"$mock_out_c2\" --no-autostash \"$DST_REPO\""
+# Clean up the failed am session
+git -C "$DST_REPO" am --abort 2>/dev/null || true
+
+# Test Case 6: Explicit --autostash flag with staged changes
+# Reset DST_REPO
+git -C "$DST_REPO" reset --hard $(git -C "$DST_REPO" rev-list --max-parents=0 HEAD)
+rm -f "$DST_REPO/file1.txt" "$DST_REPO/file2.txt" "$DST_REPO/file3.txt"
+echo "staged content" >> "$DST_REPO/init.txt"
+git -C "$DST_REPO" add init.txt
+
+assert "run_test_migration \"$mock_out_c2\" --autostash \"$DST_REPO\""
+assert "[[ -f \"$DST_REPO/file2.txt\" ]]"
+assert "[[ \$(cat \"$DST_REPO/init.txt\") == *\"staged content\"* ]]"
+
+# Test Case 7: Error handling for invalid options and non-git target
+NON_GIT_DIR="$TEST_TMP_DIR/nongit"
+mkdir -p "$NON_GIT_DIR"
+assert "! \"$DIR/git-migrate-commits\" \"$NON_GIT_DIR\""
+assert "! \"$DIR/git-migrate-commits\" --invalid-flag \"$DST_REPO\""
+
+# Test Case 8: --bash-completion
 assert '[[ "$("$DIR/git-migrate-commits" --bash-completion)" == *"_git_migrate_commits"* ]]'
+assert '[[ "$("$DIR/git-migrate-commits" --bash-completion)" == *"--autostash"* ]]'
+assert '[[ "$("$DIR/git-migrate-commits" --bash-completion)" == *"--no-autostash"* ]]'
 
 done_testing
 
