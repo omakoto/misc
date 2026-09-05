@@ -54,23 +54,6 @@ mock_cmd json_pp
 mock_cmd hd
 mock_cmd zcat
 mock_cmd dpkg
-# Mock `pandoc` to write a dummy HTML file so that `sed -i` in `1` doesn't fail on it
-cat <<'EOF' > "$MOCK_DIR/pandoc"
-#!/bin/bash
-echo "[$0] ARGS: $*" >> "$TEST_LOG"
-output_file=""
-while (( $# > 0 )); do
-  if [[ "$1" == "-o" ]]; then
-    output_file="$2"
-    break
-  fi
-  shift
-done
-if [[ -n "$output_file" ]]; then
-  echo "<body></body>" > "$output_file"
-fi
-EOF
-chmod +x "$MOCK_DIR/pandoc"
 mock_cmd sqliteman
 
 # Mock `istext` command so it identifies text/binary files properly for tests
@@ -184,10 +167,9 @@ assert_out -d run_1 "$MOCK_DIR/test.deb" <<'EOF'
 FILE_CONTENT([tmp]/test.deb-[pid]-list.txt):
 EOF
 
-# 8. Markdown file (renders with pandoc and opens HTML via 'c')
+# 8. Markdown file (opens directly in chrome via 'c')
 assert_out -d run_1 "$MOCK_DIR/test.md" <<'EOF'
-[[temp]/pandoc] ARGS: -f gfm -s -V maxwidth=min(95%, 120em) [temp]/test.md -o [tmp]/test.md-[pid].html
-[[temp]/c] ARGS: [tmp]/test.md-[pid].html
+[[temp]/c] ARGS: [temp]/test.md
 EOF
 
 # 9. SQLite DB file (opens with sqliteman in bg)
