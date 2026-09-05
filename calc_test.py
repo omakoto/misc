@@ -61,6 +61,12 @@ class TestHelperFunctions(unittest.TestCase):
         self.assertEqual(calc.preprocess_expression("2 ^ 3"), "2 ** 3")
         self.assertEqual(calc.preprocess_expression("2 * 3 ^ 2"), "2 * 3 ** 2")
 
+        # Test semicolon operator for addition in interactive mode
+        self.assertEqual(calc.preprocess_expression("1;1", interactive=True), "1+1")
+        self.assertEqual(calc.preprocess_expression("1;2;3", interactive=True), "1+2+3")
+        self.assertEqual(calc.preprocess_expression("1 ; 2", interactive=True), "1 + 2")
+        self.assertEqual(calc.preprocess_expression("1;1", interactive=False), "1;1")
+
 
 class TestCalcExecution(unittest.TestCase):
     def run_calc(self, args: list[str], stdin_data: str = "", stdout_class=io.StringIO) -> str:
@@ -221,6 +227,15 @@ class TestCalcExecution(unittest.TestCase):
             out_help = self.run_calc(["-i"])
             self.assertIn("Usage: calc.py", out_help)
 
+        # Test semicolon operator in interactive repl
+        mock_input.side_effect = ["1;1", "exit"]
+        out_semi = self.run_calc(["-i"])
+        self.assertIn("2", out_semi)
+
+        mock_input.side_effect = ["1;2;3", "exit"]
+        out_multi_semi = self.run_calc(["-i"])
+        self.assertIn("6", out_multi_semi)
+
     @patch('builtins.input')
     @patch('sys.stdin')
     def test_default_interactive_repl(self, mock_stdin: unittest.mock.MagicMock, mock_input: unittest.mock.MagicMock) -> None:
@@ -291,6 +306,10 @@ class TestCalcExecution(unittest.TestCase):
         
         self.run_calc(["-i"], stdout_class=TTYStringIO)
         mock_input.assert_called_with("\033[1;32mcalc> \033[0m")
+
+    def test_semicolon_in_non_interactive_mode(self) -> None:
+        with self.assertRaises(SyntaxError):
+            self.run_calc(["1;1"])
 
 
 if __name__ == '__main__':

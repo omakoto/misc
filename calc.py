@@ -152,6 +152,7 @@ Examples:
   calc.py -n "0.1 + 0.2"                      # Evaluate as float/decimal
   calc.py "Fraction(1, 3) + Fraction(1, 6)"
   calc.py 0.25
+  calc.py -i                                  # Interactive mode (supports ';' as '+')
 """)
 
 
@@ -178,13 +179,16 @@ class FractionTransformer(ast.NodeTransformer):
         return node
 
 
-def preprocess_expression(exp: str) -> str:
+def preprocess_expression(exp: str, interactive: bool = False) -> str:
     """Preprocesses the math expression string to support custom notations:
+    - Replaces ';' with '+' (interactive mode only)
     - Replaces 'x' representing multiplication (e.g. '2x3', '2 x 3', '1x 3', '2x3x4') with '*'
     - Strips commas and underscores between digits (e.g. '100,000' -> '100000', '100_000' -> '100000')
     - Replaces '^' with '**' to treat it as the power operator (e.g. '2^3' -> '2**3')
     - Ignores leading zeros in numbers to prevent python syntax errors (e.g. '07' -> '7')
     """
+    if interactive:
+        exp = exp.replace(';', '+')
     exp = re.sub(r'\bx\b|(?<!\b0)(?<=\d)\s*x\s*(?=\d|\(|[a-zA-Z_])', '*', exp)
     exp = re.sub(r'(?<=\d)[,_](?=\d)', '', exp)
     exp = exp.replace('^', '**')
@@ -309,7 +313,7 @@ def run_repl(use_fraction: bool, globals_dict: dict[str, typing.Any]) -> None:
     """Runs an interactive REPL loop."""
     print("calc.py Interactive REPL")
     lines = [
-        "Hint: Use '^' for power (e.g. 2^3) and '@' for fraction (e.g. 1@2)",
+        "Hint: Use '^' for power (e.g. 2^3), '@' for fraction (e.g. 1@2), and ';' for addition (e.g. 1;1)",
         "Type your expression and press Enter. Type 'exit' or 'quit' to exit."
     ]
     for line in lines:
@@ -343,7 +347,7 @@ def run_repl(use_fraction: bool, globals_dict: dict[str, typing.Any]) -> None:
             continue
 
         try:
-            line_str = preprocess_expression(line_str)
+            line_str = preprocess_expression(line_str, interactive=True)
             if use_fraction:
                 tree = ast.parse(line_str, mode="eval")
                 transformer = FractionTransformer()
