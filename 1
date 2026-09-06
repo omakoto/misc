@@ -154,7 +154,7 @@ function resolve_file() {
     done
   } | global-unique | fzf --ansi -1 | ansi-remove| sed -e 's/^[^ ]*  *//')
   if [[ "$selected" != "" ]] ; then
-    touch "$selected"
+    # touch "$selected"
     echo "$selected"
   fi
   return 0
