@@ -20,11 +20,15 @@ trap cleanup EXIT
 mkdir -p "$TEST_TMP_DIR/bin"
 export PATH="$TEST_TMP_DIR/bin:$PATH"
 
-# Create a dummy tasklog directory and brain directory
+# Create a dummy tasklog directory, reports directory, and brain directory
 export TASKLOG_DIR="$TEST_TMP_DIR/tasklog"
 mkdir -p "$TASKLOG_DIR/2026/06"
 touch "$TASKLOG_DIR/2026/06/test1.md"
 touch "$TASKLOG_DIR/2026/06/test2.md"
+
+export REPORTS_DIR="$TEST_TMP_DIR/reports"
+mkdir -p "$REPORTS_DIR/git"
+touch "$REPORTS_DIR/git/conflict-resolution.md"
 
 mkdir -p "$TEST_TMP_DIR/.gemini/antigravity-cli/brain"
 touch "$TEST_TMP_DIR/.gemini/antigravity-cli/brain/brain1.md"
@@ -76,6 +80,7 @@ assert "grep -q 'opened: $TASKLOG_DIR/2026/06/test1.md' '$TEST_TMP_DIR/1_calls'"
 assert "grep -q 'prowl_args:.*--preview' '$TEST_TMP_DIR/prowl_calls'"
 assert "grep -q 'prowl_args:.*--sort=path-desc' '$TEST_TMP_DIR/prowl_calls'"
 assert "grep -q 'prowl_args:.*-f \*\.md' '$TEST_TMP_DIR/prowl_calls'"
+assert "grep -q 'prowl_args:.*$REPORTS_DIR' '$TEST_TMP_DIR/prowl_calls'"
 
 # 3. Test run with query
 rm -f "$TEST_TMP_DIR/prowl_calls"
