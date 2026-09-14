@@ -78,10 +78,10 @@ assert "$TEST_TMP_DIR/task-history --help | grep -q 'Usage:'"
 )
 assert "grep -q 'opened: $TASKLOG_DIR/2026/06/test1.md' '$TEST_TMP_DIR/1_calls'"
 assert "grep -q 'prowl_args:.*--preview' '$TEST_TMP_DIR/prowl_calls'"
-assert "grep -q 'prowl_args:.*--sort=dir-desc' '$TEST_TMP_DIR/prowl_calls'"
 assert "grep -q 'prowl_args:.*--index-dir $TASKLOG_DIR/.prowl_index' '$TEST_TMP_DIR/prowl_calls'"
 assert "grep -q 'prowl_args:.*-f \*\.md' '$TEST_TMP_DIR/prowl_calls'"
 assert "grep -q \"prowl_args:.*$REPORTS_DIR.*$TASKLOG_DIR\" '$TEST_TMP_DIR/prowl_calls'"
+assert "! grep -q -- '--sort=' '$TEST_TMP_DIR/prowl_calls'"
 
 # 3. Test run with query
 rm -f "$TEST_TMP_DIR/prowl_calls"

@@ -89,7 +89,6 @@ REAL_SCRIPT=$(readlink -f "$0")
 
 prowl_args=(
   "--preview-height" "70%"
-  "--sort=dir-desc"
   "--index-dir" "$TASKLOG_DIR/.prowl_index"
   "--preview" "glow2 --color=always {}"
   "-f" "*.md"
