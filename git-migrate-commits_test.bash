@@ -187,6 +187,65 @@ assert "! \"$DIR/git-migrate-commits\" --invalid-flag \"$DST_REPO\""
 assert '[[ "$("$DIR/git-migrate-commits" --bash-completion)" == *"_git_migrate_commits"* ]]'
 assert '[[ "$("$DIR/git-migrate-commits" --bash-completion)" == *"--autostash"* ]]'
 assert '[[ "$("$DIR/git-migrate-commits" --bash-completion)" == *"--no-autostash"* ]]'
+assert '[[ "$("$DIR/git-migrate-commits" --bash-completion)" == *"HEAD"* ]]'
+
+# Test Case 9: Explicit commit hash argument bypasses fzf
+# Reset DST_REPO
+git -C "$DST_REPO" reset --hard $(git -C "$DST_REPO" rev-list --max-parents=0 HEAD)
+rm -f "$DST_REPO/file1.txt" "$DST_REPO/file2.txt" "$DST_REPO/file3.txt"
+
+# Provide failing GIT_HISTORY_FZF to verify fzf is never invoked
+assert '(
+  cd "$SRC_REPO"
+  export GIT_HISTORY_FZF="/bin/false"
+  "$DIR/git-migrate-commits" "$DST_REPO" "$C2"
+)'
+assert "[[ -f \"$DST_REPO/file2.txt\" ]]"
+assert "[[ \$(cat \"$DST_REPO/file2.txt\") == \"file2 content\" ]]"
+assert "[[ ! -f \"$DST_REPO/file1.txt\" ]]"
+assert "[[ ! -f \"$DST_REPO/file3.txt\" ]]"
+
+# Test Case 10: Multiple explicit commit arguments applied in given order
+git -C "$DST_REPO" reset --hard $(git -C "$DST_REPO" rev-list --max-parents=0 HEAD)
+rm -f "$DST_REPO/file1.txt" "$DST_REPO/file2.txt" "$DST_REPO/file3.txt"
+
+assert '(
+  cd "$SRC_REPO"
+  export GIT_HISTORY_FZF="/bin/false"
+  "$DIR/git-migrate-commits" "$DST_REPO" "$C1" "$C3"
+)'
+assert "[[ -f \"$DST_REPO/file1.txt\" ]]"
+assert "[[ -f \"$DST_REPO/file3.txt\" ]]"
+assert "[[ ! -f \"$DST_REPO/file2.txt\" ]]"
+assert_out -d print_dst_log <<'EOF'
+Commit 3
+Commit 1
+Initial commit in dst
+EOF
+
+# Test Case 11: Git revision specifiers (e.g. HEAD~1)
+git -C "$DST_REPO" reset --hard $(git -C "$DST_REPO" rev-list --max-parents=0 HEAD)
+rm -f "$DST_REPO/file1.txt" "$DST_REPO/file2.txt" "$DST_REPO/file3.txt"
+
+assert '(
+  cd "$SRC_REPO"
+  export GIT_HISTORY_FZF="/bin/false"
+  "$DIR/git-migrate-commits" "$DST_REPO" "HEAD~1"
+)'
+assert "[[ -f \"$DST_REPO/file2.txt\" ]]"
+assert "[[ \$(cat \"$DST_REPO/file2.txt\") == \"file2 content\" ]]"
+
+# Test Case 12: Invalid commit argument fails
+assert '!(
+  cd "$SRC_REPO"
+  "$DIR/git-migrate-commits" "$DST_REPO" "nonexistent_commit_hash_123"
+)'
+
+# Test Case 13: Running outside a git repository fails
+assert '!(
+  cd "$NON_GIT_DIR"
+  "$DIR/git-migrate-commits" "$DST_REPO" "$C2"
+)'
 
 done_testing
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 # git-migrate-commits: Migrate selected commits to a target directory.
-# It launches git-history-fzf to let the user pick multiple changes,
-# and applies them to the target directory's git repository.
+# It applies specified commits to the target directory's git repository,
+# or launches git-history-fzf to let the user pick multiple changes.
 #
 # Run the test script to verify changes:
 #   ./git-migrate-commits_test.bash
@@ -26,7 +26,7 @@ print_help() {
 git-migrate-commits - Migrate selected commits to a target directory
 
 Usage:
-  git-migrate-commits [options] TARGET_DIR
+  git-migrate-commits [options] TARGET_DIR [COMMIT...]
 
 Options:
   -h, --help             Show this help message.
@@ -36,6 +36,8 @@ Options:
 
 Examples:
   git-migrate-commits /path/to/target/repo
+  git-migrate-commits /path/to/target/repo HEAD~1
+  git-migrate-commits /path/to/target/repo commit1 commit2
 EOF
 }
 
@@ -77,6 +79,12 @@ _git_migrate_commits() {
 
   if (( num_args == 0 )); then
     COMPREPLY=( $(compgen -d -- "$cur") )
+  else
+    local branches remotes tags
+    branches=$(git branch --format='%(refname:short)' 2>/dev/null)
+    remotes=$(git branch -r --format='%(refname:short)' 2>/dev/null | grep -v '/HEAD$')
+    tags=$(git tag 2>/dev/null)
+    COMPREPLY=( $(compgen -W "$branches $remotes $tags HEAD" -- "$cur") )
   fi
 }
 
@@ -120,6 +128,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 target_dir="$1"
+shift || true
+
 if [[ -z "$target_dir" ]]; then
   echo "Error: Target directory is required." >&2
   print_help
@@ -138,44 +148,67 @@ if [[ -z "$target_git_root" ]]; then
   exit 1
 fi
 
-if [[ -z "${GIT_HISTORY_FZF:-}" ]]; then
-  GIT_HISTORY_FZF="$SCRIPT_DIR/git-history-fzf"
-  if [[ ! -x "$GIT_HISTORY_FZF" ]]; then
-    # Fallback to PATH if not in same directory (though it should be)
-    GIT_HISTORY_FZF="git-history-fzf"
+# Ensure the current directory is inside a Git repository
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "Error: Current directory is not inside a Git repository." >&2
+  exit 1
+fi
+
+commits_to_migrate=()
+if [[ $# -gt 0 ]]; then
+  # Commits were explicitly specified as command-line arguments
+  for commit in "$@"; do
+    resolved_hash=$(git rev-parse --verify "$commit^{commit}" 2>/dev/null || true)
+    if [[ -z "$resolved_hash" ]]; then
+      echo "Error: '$commit' is not a valid commit in the current repository." >&2
+      exit 1
+    fi
+    commits_to_migrate+=("$resolved_hash")
+  done
+else
+  # No commits specified; launch git-history-fzf to let the user select commits
+  if [[ -z "${GIT_HISTORY_FZF:-}" ]]; then
+    GIT_HISTORY_FZF="$SCRIPT_DIR/git-history-fzf"
+    if [[ ! -x "$GIT_HISTORY_FZF" ]]; then
+      # Fallback to PATH if not in same directory (though it should be)
+      GIT_HISTORY_FZF="git-history-fzf"
+    fi
   fi
+
+  # Launch git-history-fzf
+  if ! selected=$("$GIT_HISTORY_FZF"); then
+    # User cancelled or error
+    exit $?
+  fi
+
+  if [[ -z "$selected" ]]; then
+    echo "No commits selected."
+    exit 0
+  fi
+
+  # Extract hashes and reverse them so oldest commits are applied first
+  hashes=()
+  while read -r line; do
+    # Strip ANSI escape codes (using bash expansion for ESC)
+    clean_line=$(echo "$line" | sed $'s/\e\\[[0-9;]*m//g')
+    # Get first word (hash)
+    hash=$(echo "$clean_line" | awk '{print $1}')
+    if [[ -n "$hash" ]]; then
+      hashes+=("$hash")
+    fi
+  done <<< "$selected"
+
+  for ((i=${#hashes[@]}-1; i>=0; i--)); do
+    commits_to_migrate+=("${hashes[i]}")
+  done
 fi
 
-# Launch git-history-fzf
-if ! selected=$("$GIT_HISTORY_FZF"); then
-  # User cancelled or error
-  exit $?
-fi
-
-if [[ -z "$selected" ]]; then
+if [[ ${#commits_to_migrate[@]} -eq 0 ]]; then
   echo "No commits selected."
   exit 0
 fi
 
-# Extract hashes and reverse them
-hashes=()
-while read -r line; do
-  # Strip ANSI escape codes (using bash expansion for ESC)
-  clean_line=$(echo "$line" | sed $'s/\e\\[[0-9;]*m//g')
-  # Get first word (hash)
-  hash=$(echo "$clean_line" | awk '{print $1}')
-  if [[ -n "$hash" ]]; then
-    hashes+=("$hash")
-  fi
-done <<< "$selected"
-
-# Reverse order (oldest first)
-reversed_hashes=()
-for ((i=${#hashes[@]}-1; i>=0; i--)); do
-  reversed_hashes+=("${hashes[i]}")
-done
-
-echo "Migrating ${#reversed_hashes[@]} commits to $target_git_root..."
+echo "Migrating ${#commits_to_migrate[@]} commits to $target_git_root..."
 
 # Save uncommitted changes in the target repository before applying patches
 has_autostash=0
@@ -194,7 +227,7 @@ fi
 # Generate patches and apply them
 am_rc=0
 (
-  for hash in "${reversed_hashes[@]}"; do
+  for hash in "${commits_to_migrate[@]}"; do
     git format-patch -k --stdout -1 "$hash"
   done
 ) | (
