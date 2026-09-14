@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # task-history - Interactive tasklog and report selector.
-# Lists files in ~/history/tasklog/, ~/history/reports/, and session brain directories and lets the user select one in prowl.
+# Lists files in ~/history/reports/, ~/history/tasklog/, and session brain directories and lets the user select one in prowl.
 # The selected file is opened using '1'.
 #
 # Run the test suite via `misc/task-history_test.bash` whenever making changes.
@@ -89,7 +89,8 @@ REAL_SCRIPT=$(readlink -f "$0")
 
 prowl_args=(
   "--preview-height" "70%"
-  "--sort=path-desc"
+  "--sort=dir-desc"
+  "--index-dir" "$TASKLOG_DIR/.prowl_index"
   "--preview" "glow2 --color=always {}"
   "-f" "*.md"
 )
@@ -97,10 +98,11 @@ if [[ -n "$query" ]]; then
   prowl_args+=("--query" "$query")
 fi
 
-search_dirs=("$TASKLOG_DIR")
+search_dirs=()
 if [[ -d "$REPORTS_DIR" ]]; then
   search_dirs+=("$REPORTS_DIR")
 fi
+search_dirs+=("$TASKLOG_DIR")
 if [[ -d "$HOME/.gemini/antigravity-cli/brain" ]]; then
   search_dirs+=("$HOME/.gemini/antigravity-cli/brain")
 fi
