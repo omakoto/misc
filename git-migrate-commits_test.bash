@@ -119,6 +119,58 @@ Initial commit in dst
 EOF
 
 
+# Test Case 2b: Migrate multiple commits selected in oldest-first order (C1 and C3)
+# Reset DST_REPO to root commit
+git -C "$DST_REPO" reset --hard $(git -C "$DST_REPO" rev-list --max-parents=0 HEAD)
+rm -f "$DST_REPO/file1.txt" "$DST_REPO/file2.txt" "$DST_REPO/file3.txt"
+
+# Mock fzf to output C1 and C3 (oldest first)
+mock_out_c1_c3="$C1 [2026-06-09] <test@example.com> Commit 1\n$C3 [2026-06-09] <test@example.com> Commit 3"
+
+assert "run_test_migration \"$mock_out_c1_c3\" \"$DST_REPO\""
+
+# Verify files
+assert "[[ -f \"$DST_REPO/file1.txt\" ]]"
+assert "[[ -f \"$DST_REPO/file3.txt\" ]]"
+assert "[[ ! -f \"$DST_REPO/file2.txt\" ]]"
+
+assert_out -d print_dst_log <<'EOF'
+Commit 3
+Commit 1
+Initial commit in dst
+EOF
+
+# Test Case 2c: Migrate dependent commits where output order is reversed (C4 then C1)
+# Reset DST_REPO to root commit
+git -C "$DST_REPO" reset --hard $(git -C "$DST_REPO" rev-list --max-parents=0 HEAD)
+rm -f "$DST_REPO/file1.txt" "$DST_REPO/file2.txt" "$DST_REPO/file3.txt"
+
+# Commit 4 modifies file1.txt which is introduced by C1. Mock fzf outputs Commit 4 first, then C1.
+echo "file1 updated content" >> "$SRC_REPO/file1.txt"
+git -C "$SRC_REPO" add file1.txt
+git -C "$SRC_REPO" commit -m "Commit 4"
+local_c4=$(git -C "$SRC_REPO" rev-parse HEAD)
+
+mock_out_c4_c1="$local_c4 [2026-06-09] <test@example.com> Commit 4\n$C1 [2026-06-09] <test@example.com> Commit 1"
+
+assert "run_test_migration \"$mock_out_c4_c1\" \"$DST_REPO\""
+
+# Verify file content reflects both commits
+assert "[[ -f \"$DST_REPO/file1.txt\" ]]"
+assert "[[ \$(cat \"$DST_REPO/file1.txt\") == *\"file1 updated content\"* ]]"
+
+# Clean up temporary commit from SRC_REPO
+git -C "$SRC_REPO" reset --hard "$C3"
+
+# Test Case 2d: Non-commit lines from fzf (such as status lines or decorators) are ignored
+git -C "$DST_REPO" reset --hard $(git -C "$DST_REPO" rev-list --max-parents=0 HEAD)
+rm -f "$DST_REPO/file1.txt" "$DST_REPO/file2.txt" "$DST_REPO/file3.txt"
+
+mock_out_with_status="(CURRENT) Local changes\n$C2 [2026-06-09] <test@example.com> Commit 2"
+assert "run_test_migration \"$mock_out_with_status\" \"$DST_REPO\""
+assert "[[ -f \"$DST_REPO/file2.txt\" ]]"
+
+
 # Test Case 3: Target directory is a subdirectory
 # Reset DST_REPO to initial commit (oldest commit)
 git -C "$DST_REPO" reset --hard $(git -C "$DST_REPO" rev-list --max-parents=0 HEAD)

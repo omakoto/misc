@@ -186,21 +186,26 @@ else
     exit 0
   fi
 
-  # Extract hashes and reverse them so oldest commits are applied first
+  # Extract valid commit hashes from selection
   hashes=()
-  while read -r line; do
+  while IFS= read -r line; do
     # Strip ANSI escape codes (using bash expansion for ESC)
     clean_line=$(echo "$line" | sed $'s/\e\\[[0-9;]*m//g')
     # Get first word (hash)
     hash=$(echo "$clean_line" | awk '{print $1}')
-    if [[ -n "$hash" ]]; then
-      hashes+=("$hash")
+    if [[ -n "$hash" ]] && resolved=$(git rev-parse --verify --quiet "$hash^{commit}" 2>/dev/null); then
+      hashes+=("$resolved")
     fi
   done <<< "$selected"
 
-  for ((i=${#hashes[@]}-1; i>=0; i--)); do
-    commits_to_migrate+=("${hashes[i]}")
-  done
+  # Sort selected commits in topological order (ancestor first) so dependent patches apply cleanly
+  if [[ ${#hashes[@]} -gt 0 ]]; then
+    while IFS= read -r sorted_hash; do
+      if [[ -n "$sorted_hash" ]]; then
+        commits_to_migrate+=("$sorted_hash")
+      fi
+    done < <(git log --no-walk --topo-order --reverse --format=%H "${hashes[@]}")
+  fi
 fi
 
 if [[ ${#commits_to_migrate[@]} -eq 0 ]]; then
