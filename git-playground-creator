@@ -19,9 +19,11 @@ function print_help() {
 Usage: git-playground-creator [options]
 
 Create a temporary Git repository playground for testing.
-The playground will include two branches:
+The playground will include branches:
   - clean-branch: Can be cleanly merged to main.
   - conflict-branch: Will conflict against main on file5-1.txt, file5-2.txt, and file1-2.txt.
+  - conflicting: Has 4 local commits where early commits conflict with main,
+                 but the final commit self-heals the conflict (ideal for testing git-rebase-jj).
 
 Options:
   -h, --help  Show this help message.
@@ -158,6 +160,34 @@ git-create-playground() {
     printf "Conflict content on file1-2.txt from main\n" > file1-2.txt
     git add file5-1.txt file5-2.txt file1-2.txt
     git commit -m "Modify conflict files on main"
+
+    # Create conflicting branch with 4 local commits to simulate transient/self-healing conflicts
+    git checkout -b conflicting main~1
+    
+    # Commit 1: WIP changes to file5-1.txt and file5-2.txt (conflicts with main)
+    printf "WIP conflict content on file5-1.txt from conflicting branch\n" > file5-1.txt
+    printf "WIP conflict content on file5-2.txt from conflicting branch\n" > file5-2.txt
+    git add file5-1.txt file5-2.txt
+    git commit -m "C1: WIP changes to file5-1 and file5-2"
+    
+    # Commit 2: Add independent clean feature
+    printf "Clean feature module from conflicting branch\n" > file-conflicting-feature.txt
+    git add file-conflicting-feature.txt
+    git commit -m "C2: Add feature module"
+    
+    # Commit 3: Adopt main design for file5-1.txt and file5-2.txt (resolves/self-heals conflict)
+    printf "Conflict content on file5-1.txt from main\n" > file5-1.txt
+    printf "Conflict content on file5-2.txt from main\n" > file5-2.txt
+    git add file5-1.txt file5-2.txt
+    git commit -m "C3: Adopt main design for file5-1 and file5-2"
+    
+    # Commit 4: Add documentation for feature module
+    printf "Documentation for feature module\n" > file-conflicting-docs.txt
+    git add file-conflicting-docs.txt
+    git commit -m "C4: Add documentation"
+
+    # Switch back to main
+    git checkout main
     
     # Post-commit modifications (leave as unstaged/modified)
     echo "aaa" > file1-1.txt
@@ -173,6 +203,9 @@ git-create-playground() {
     echo "  - clean-branch: Can be cleanly merged to main."
     echo "  - conflict-branch: Will conflict against main on file5-1.txt, file5-2.txt, file1-2.txt"
     echo "                     and cleanly merge file-conflict-clean.txt."
+    echo "  - conflicting: Has 4 local commits where early commits conflict with main,"
+    echo "                 but the final commit self-heals the conflict (ideal for testing git-rebase-jj)."
+    echo "                 To test: git checkout -f conflicting && git clean -fd && git-rebase-jj main"
   )
 }
 
