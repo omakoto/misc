@@ -4,7 +4,8 @@
 # Run from the misc/ directory: ./fzf-select-window_test.bash
 #
 
-. testutil.bash
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+. "$SCRIPT_DIR/testutil.bash"
 
 # Create temp mock directory and set HOME to isolate common_rc loading
 export MOCK_DIR=$(mktemp -d -t fzf-select-window-test-XXXXXX)
@@ -14,7 +15,7 @@ export HOME="$MOCK_DIR"
 export PATH="$MOCK_DIR:$PATH"
 mkdir -p "$MOCK_DIR/cbin"
 # Symlink misc so colors.bash can be resolved under mock HOME
-ln -s /home/omakoto/cbin/misc "$MOCK_DIR/cbin/misc"
+ln -s "$SCRIPT_DIR" "$MOCK_DIR/cbin/misc"
 touch "$MOCK_DIR/cbin/common_rc"
 
 # Mock needs-term to bypass terminal spawning during tests
@@ -37,6 +38,7 @@ cat <<'JSON'
 {"id": 999, "pid": 1111, "wm_class": "terminal", "cwd": "?", "comm": "bash", "title": "*fzf-select-window"}
 {"id": 111, "pid": 1234, "wm_class": "code", "cwd": "$HOME/cbin", "comm": "code", "title": "VS Code"}
 {"id": 222, "pid": 5678, "wm_class": "terminal", "cwd": "/android/main/frameworks/base", "comm": "bash", "title": "Terminal"}
+{"id": 555, "pid": 3333, "wm_class": "editor", "cwd": "?", "comm": "vim", "title": "notes.txt"}
 {"id": 333, "pid": 9999, "wm_class": "browser", "cwd": "?", "comm": "chrome", "title": "Browser"}
 {"id": 444, "pid": 2222, "wm_class": "terminal", "cwd": "?", "comm": "bash", "title": "*fzf-select-window"}
 JSON
@@ -115,6 +117,15 @@ actual_output() {
   # Check that fzf input DOES contain the non-topmost *fzf-select-window (ID 444)
   if ! grep -q "^444" "$MOCK_DIR/fzf_input"; then
     echo "FAIL: Non-topmost fzf-select-window (ID 444) was incorrectly skipped."
+    return 1
+  fi
+
+  # Check that windows are sorted case-insensitively by title:
+  # *fzf-select-window (444), Browser (333), notes.txt (555), Terminal (222), VS Code (111)
+  local actual_ids
+  actual_ids=$(cut -f1 "$MOCK_DIR/fzf_input" | paste -sd ',')
+  if [[ "$actual_ids" != "444,333,555,222,111" ]]; then
+    echo "FAIL: Windows not sorted by title as expected. Got IDs: $actual_ids"
     return 1
   fi
 
