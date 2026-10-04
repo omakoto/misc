@@ -45,6 +45,7 @@ fi
 function is-glinux() {
   [[ "$IS_GOOGLE_PC" == "1" ]]
 }
+export -f is-glinux
 
 . ~/cbin/common_rc
 . ~/cbin/misc/colors.bash
