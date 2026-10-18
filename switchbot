@@ -1,0 +1,972 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# switchbot: command line client for the SwitchBot Open API v1.1.
+#
+# Lists devices and scenes, shows device status and the commands a device
+# accepts, sends device commands and executes scenes. Devices and scenes can be given by ID or by name.
+#
+# Credentials are read from the config file named by $ESP32_CONFIG_TOML (the
+# same override file the ESP32 firmware projects bundle), using the keys
+# `switchbot_token` and `switchbot_key`. The file is parsed with the firmware's
+# simple `key = value` rules rather than as strict TOML, so that any file the
+# firmware accepts works here too. Never put credentials in this script:
+# this repository is public.
+#
+# API reference: https://github.com/OpenWonderLabs/SwitchBotAPI
+#
+# After modifying this script, run the tests:
+#   python3 -m unittest ~/cbin/misc/switchbot_test.py
+
+import argparse
+import base64
+import csv
+import hashlib
+import hmac
+import json
+import os
+import sys
+import time
+import urllib.error
+import urllib.request
+import uuid
+from dataclasses import dataclass
+from typing import Any, NoReturn, Optional
+
+API_BASE: str = "https://api.switch-bot.com/v1.1"
+CONFIG_ENV: str = "ESP32_CONFIG_TOML"
+TOKEN_KEY: str = "switchbot_token"
+SECRET_KEY: str = "switchbot_key"
+TIMEOUT_SECONDS: float = 15.0
+
+# statusCode values returned in the response body. Anything other than
+# STATUS_OK is an error, even when the HTTP status is 200.
+STATUS_OK: int = 100
+STATUS_MESSAGES: dict[int, str] = {
+    151: "device type error",
+    152: "device not found",
+    160: "command is not supported by this device",
+    161: "device offline",
+    171: "hub device offline",
+    190: "device internal error (often an invalid parameter or command)",
+}
+
+EPILOG: str = f"""\
+Credentials:
+  Read from the config file named by ${CONFIG_ENV} (or --config), using the
+  keys `{TOKEN_KEY}` and `{SECRET_KEY}`. Get them from the SwitchBot app:
+  Profile > Preferences > tap "App Version" 10 times > Developer Options.
+
+DEVICE and SCENE may be an ID, an exact name (case-insensitive), or a unique
+part of a name.
+
+Examples:
+  switchbot devices                     # List devices and IR remotes
+  switchbot scenes                      # List manual scenes
+  switchbot status "Living Bot"         # Show a device's status
+  switchbot status C271111EC0AB --json  # Raw JSON status
+  switchbot devices --csv > devices.csv # CSV (or --tsv) for spreadsheets/scripts
+  switchbot commands "Living Bot"       # Show the commands a device accepts
+  switchbot cmd "Living Bot" press      # Press a Bot
+  switchbot cmd Light turnOff
+  switchbot cmd Curtain setPosition 0,ff,80
+  switchbot cmd TV MyButton --customize # IR remote custom button
+  switchbot scene "Good night"          # Execute a scene
+"""
+
+
+class SwitchBotError(Exception):
+    pass
+
+
+@dataclass
+class Item:
+    """A device, IR remote or scene, reduced to what name lookup and listing need."""
+    id: str
+    name: str
+    kind: str
+    hub: str = ""
+    # For IR remotes, the appliance type (e.g. "TV"); `kind` then carries an "IR " prefix.
+    remote_type: Optional[str] = None
+
+
+def die(message: str) -> NoReturn:
+    print(f"switchbot: {message}", file=sys.stderr)
+    sys.exit(1)
+
+
+def parse_config(text: str) -> dict[str, str]:
+    """Parses `key = value` lines the same way the ESP32 firmware's ConfigManager does.
+
+    Values may be quoted. Unquoted values may have a trailing `# comment`.
+    Lines starting with `#` and lines without `=` are ignored. Later keys win.
+    """
+    config: dict[str, str] = {}
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, val = (part.strip() for part in line.split("=", 1))
+        if len(val) >= 2 and val[0] == val[-1] and val[0] in "\"'":
+            val = val[1:-1]
+        else:
+            val = val.split("#", 1)[0].strip()
+        if key:
+            config[key] = val
+    return config
+
+
+def load_credentials(path: Optional[str]) -> tuple[str, str]:
+    if not path:
+        path = os.environ.get(CONFIG_ENV, "")
+    if not path:
+        raise SwitchBotError(f"${CONFIG_ENV} is not set; use --config to specify the config file")
+    try:
+        with open(path, encoding="utf-8") as f:
+            config = parse_config(f.read())
+    except OSError as e:
+        raise SwitchBotError(f"cannot read {path}: {e.strerror}")
+
+    token = config.get(TOKEN_KEY, "")
+    secret = config.get(SECRET_KEY, "")
+    missing = [k for k, v in ((TOKEN_KEY, token), (SECRET_KEY, secret)) if not v]
+    if missing:
+        raise SwitchBotError(f"{path} has no {' or '.join(missing)}")
+    return token, secret
+
+
+def make_auth_headers(token: str, secret: str, t: Optional[str] = None,
+                      nonce: Optional[str] = None) -> dict[str, str]:
+    """Builds the signed headers the API requires on every request."""
+    t = t if t is not None else str(int(time.time() * 1000))
+    nonce = nonce if nonce is not None else str(uuid.uuid4())
+    digest = hmac.new(secret.encode(), (token + t + nonce).encode(), hashlib.sha256).digest()
+    return {
+        "Authorization": token,
+        "t": t,
+        "nonce": nonce,
+        "sign": base64.b64encode(digest).decode(),
+        "Content-Type": "application/json; charset=utf8",
+    }
+
+
+class Client:
+    def __init__(self, token: str, secret: str, verbose: bool = False) -> None:
+        self.token = token
+        self.secret = secret
+        self.verbose = verbose
+
+    def request(self, method: str, path: str, body: Optional[dict[str, Any]] = None) -> Any:
+        """Sends a request and returns the response's `body` field."""
+        url = API_BASE + path
+        data = json.dumps(body).encode() if body is not None else None
+        if self.verbose:
+            # Headers are omitted on purpose: they contain the token.
+            print(f"> {method} {url}", file=sys.stderr)
+            if data is not None:
+                print(f"> {data.decode()}", file=sys.stderr)
+
+        req = urllib.request.Request(url, data=data, method=method,
+                                     headers=make_auth_headers(self.token, self.secret))
+        try:
+            with urllib.request.urlopen(req, timeout=TIMEOUT_SECONDS) as res:
+                raw = res.read()
+        except urllib.error.HTTPError as e:
+            with e:
+                detail = e.read().decode(errors="replace").strip()
+            if e.code == 401:
+                raise SwitchBotError(f"HTTP 401: authentication failed; check {TOKEN_KEY} and {SECRET_KEY}")
+            raise SwitchBotError(f"HTTP {e.code} {e.reason}" + (f": {detail}" if detail else ""))
+        except urllib.error.URLError as e:
+            raise SwitchBotError(f"cannot reach {API_BASE}: {e.reason}")
+        except TimeoutError:
+            raise SwitchBotError(f"timed out after {TIMEOUT_SECONDS:g}s")
+
+        if self.verbose:
+            print(f"< {raw.decode(errors='replace')}", file=sys.stderr)
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError:
+            raise SwitchBotError(f"invalid JSON response: {raw[:200]!r}")
+
+        code = payload.get("statusCode")
+        if code != STATUS_OK:
+            message = payload.get("message") or STATUS_MESSAGES.get(code, "unknown error")
+            hint = STATUS_MESSAGES.get(code)
+            if hint and hint != message:
+                message = f"{message} ({hint})"
+            raise SwitchBotError(f"API error {code}: {message}")
+        return payload.get("body")
+
+    def devices(self) -> dict[str, Any]:
+        return self.request("GET", "/devices")
+
+    def scenes(self) -> list[dict[str, Any]]:
+        return self.request("GET", "/scenes")
+
+    def status(self, device_id: str) -> dict[str, Any]:
+        return self.request("GET", f"/devices/{device_id}/status")
+
+    def command(self, device_id: str, command: str, parameter: Any = "default",
+                command_type: str = "command") -> Any:
+        return self.request("POST", f"/devices/{device_id}/commands",
+                            {"command": command, "parameter": parameter, "commandType": command_type})
+
+    def execute_scene(self, scene_id: str) -> Any:
+        return self.request("POST", f"/scenes/{scene_id}/execute")
+
+
+def device_items(body: dict[str, Any]) -> list[Item]:
+    items = [Item(d["deviceId"], d.get("deviceName", ""), d.get("deviceType", ""), d.get("hubDeviceId", ""))
+             for d in body.get("deviceList") or []]
+    items += [Item(d["deviceId"], d.get("deviceName", ""), f"IR {d.get('remoteType', '')}".strip(),
+                   d.get("hubDeviceId", ""), d.get("remoteType", ""))
+              for d in body.get("infraredRemoteList") or []]
+    return items
+
+
+def scene_items(body: list[dict[str, Any]]) -> list[Item]:
+    return [Item(s["sceneId"], s.get("sceneName", ""), "scene") for s in body or []]
+
+
+def resolve(query: str, items: list[Item], what: str) -> Item:
+    """Finds an item by ID, then exact name, then unique name substring (case-insensitive)."""
+    for item in items:
+        if item.id == query:
+            return item
+    # Names set in the app can carry stray whitespace, so compare trimmed names.
+    q = query.strip().casefold()
+    for matcher in (lambda i: i.name.strip().casefold() == q, lambda i: q in i.name.casefold()):
+        matches = [i for i in items if matcher(i)]
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            names = ", ".join(f"{i.name!r} ({i.id})" for i in matches)
+            raise SwitchBotError(f"{what} {query!r} is ambiguous: {names}")
+    raise SwitchBotError(f"no {what} matches {query!r}; run 'switchbot {what}s' to see the list")
+
+
+def format_value(value: Any) -> str:
+    """Renders a status value as a single cell; nested values are written as JSON."""
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False)
+    return str(value)
+
+
+def print_rows(header: list[str], rows: list[list[str]], fmt: str) -> None:
+    """Prints a header and rows as an aligned table, TSV or CSV."""
+    match fmt:
+        case "csv":
+            writer = csv.writer(sys.stdout, lineterminator="\n")
+            writer.writerow(header)
+            writer.writerows(rows)
+        case "tsv":
+            # TSV has no quoting, so tabs and newlines inside cells become spaces
+            # to keep one record per line.
+            for row in [header] + rows:
+                print("\t".join(" ".join(cell.split("\t")).replace("\n", " ") for cell in row))
+        case _:
+            widths = [max(len(r[c]) for r in [header] + rows) for c in range(len(header))]
+            for row in [header] + rows:
+                print("  ".join(cell.ljust(w) for cell, w in zip(row, widths)).rstrip())
+
+
+def print_items(items: list[Item], with_hub: bool, fmt: str) -> None:
+    header = ["NAME", "TYPE", "ID"] + (["HUB"] if with_hub else [])
+    rows = [[i.name, i.kind, i.id] + ([i.hub] if with_hub else []) for i in items]
+    print_rows(header, rows, fmt)
+
+
+def print_json(value: Any) -> None:
+    print(json.dumps(value, indent=2, ensure_ascii=False))
+
+
+def device_commands(device: Item) -> tuple[list[tuple[str, str, str]], list[str]]:
+    """Returns the documented (command, parameter, description) rows for a device, plus notes."""
+    if device.remote_type is None:
+        rows = DEVICE_COMMANDS.get(device.kind)
+        if rows is None:
+            return [], [f"No commands are documented for device type {device.kind!r}; "
+                        "it may only support status, or be newer than this script's table."]
+        return rows, []
+
+    notes = ["Buttons added in the app can be sent by name with --customize "
+             '(e.g. switchbot cmd DEVICE "Button name" --customize).']
+    if device.remote_type == "Others":
+        return [], ['"Others" remotes only have custom buttons. ' + notes[0]]
+    # "DIY" remotes are learned button by button; their commands follow the base appliance type.
+    base = device.remote_type.removeprefix("DIY ")
+    if base != device.remote_type:
+        notes.append("This is a learned (DIY) remote; buttons it hasn't learned won't work, "
+                     "and learned buttons may need --customize.")
+    return IR_COMMON_COMMANDS + IR_COMMANDS.get(base, []), notes
+
+
+def parse_parameter(value: str, as_json: bool) -> Any:
+    if not as_json:
+        return value
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError as e:
+        raise SwitchBotError(f"invalid JSON parameter: {e}")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="switchbot",
+        description="Command line client for the SwitchBot Open API v1.1.",
+        epilog=EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("-C", "--config", metavar="FILE",
+                        help=f"credentials file (default: ${CONFIG_ENV})")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="print requests and raw responses to stderr (credentials are not printed)")
+    sub = parser.add_subparsers(dest="subcommand", metavar="SUBCOMMAND", required=True)
+
+    def add_format_options(p: argparse.ArgumentParser) -> None:
+        group = p.add_mutually_exclusive_group()
+        group.add_argument("-j", "--json", dest="format", action="store_const", const="json",
+                           help="print the raw JSON response body")
+        group.add_argument("-t", "--tsv", dest="format", action="store_const", const="tsv",
+                           help="print tab-separated values with a header row")
+        group.add_argument("-c", "--csv", dest="format", action="store_const", const="csv",
+                           help="print comma-separated values with a header row")
+        p.set_defaults(format="text")
+
+    p = sub.add_parser("devices", help="list devices and IR remotes")
+    add_format_options(p)
+
+    p = sub.add_parser("scenes", help="list manual scenes")
+    add_format_options(p)
+
+    p = sub.add_parser("status", help="show a device's status")
+    p.add_argument("device", metavar="DEVICE", help="device ID or name")
+    add_format_options(p)
+
+    p = sub.add_parser(
+        "commands", help="show the commands a device accepts",
+        description="Show the commands a device accepts, from a table built into this script. "
+                    "The table was generated from the API reference and may lag behind it; "
+                    "see https://github.com/OpenWonderLabs/SwitchBotAPI for the latest.")
+    p.add_argument("device", metavar="DEVICE", help="device ID or name")
+    add_format_options(p)
+
+    p = sub.add_parser(
+        "cmd", help="send a command to a device",
+        description="Send a command to a device. Command names are case-sensitive "
+                    "(e.g. press, turnOn, turnOff, setPosition). See the API reference "
+                    "for each device type's commands and parameters.")
+    p.add_argument("device", metavar="DEVICE", help="device ID or name")
+    p.add_argument("command", metavar="COMMAND", help="command name, or IR button name with --customize")
+    p.add_argument("parameter", metavar="PARAMETER", nargs="?", default="default",
+                   help='command parameter (default: "default")')
+    p.add_argument("-u", "--customize", action="store_true",
+                   help='send as commandType "customize" (custom IR remote buttons)')
+    p.add_argument("-J", "--json-param", action="store_true",
+                   help="parse PARAMETER as JSON instead of sending it as a string")
+
+    p = sub.add_parser("scene", help="execute a manual scene")
+    p.add_argument("scene", metavar="SCENE", help="scene ID or name")
+
+    return parser
+
+
+def run(args: argparse.Namespace) -> None:
+    token, secret = load_credentials(args.config)
+    client = Client(token, secret, verbose=args.verbose)
+
+    match args.subcommand:
+        case "devices":
+            body = client.devices()
+            if args.format == "json":
+                print_json(body)
+            else:
+                print_items(device_items(body), with_hub=True, fmt=args.format)
+        case "scenes":
+            body = client.scenes()
+            if args.format == "json":
+                print_json(body)
+            else:
+                print_items(scene_items(body), with_hub=False, fmt=args.format)
+        case "status":
+            device = resolve(args.device, device_items(client.devices()), "device")
+            body = client.status(device.id)
+            if args.format == "json":
+                print_json(body)
+            elif args.format in ("tsv", "csv"):
+                print_rows(["KEY", "VALUE"], [[k, format_value(v)] for k, v in body.items()], args.format)
+            else:
+                for key, value in body.items():
+                    print(f"{key}: {value}")
+        case "commands":
+            device = resolve(args.device, device_items(client.devices()), "device")
+            rows, notes = device_commands(device)
+            if args.format == "json":
+                print_json({
+                    "deviceId": device.id, "deviceName": device.name, "type": device.kind,
+                    "commands": [{"command": c, "parameter": p, "description": d} for c, p, d in rows],
+                    "notes": notes,
+                })
+                return
+            if args.format in ("tsv", "csv"):
+                print_rows(["COMMAND", "PARAMETER", "DESCRIPTION"], [list(r) for r in rows], args.format)
+                # Notes go to stderr so that stdout stays machine-readable.
+                for note in notes:
+                    print(f"switchbot: {note}", file=sys.stderr)
+                return
+            print(f"{device.name} ({device.kind}, {device.id})\n")
+            if rows:
+                print_rows(["COMMAND", "PARAMETER", "DESCRIPTION"], [list(r) for r in rows], "text")
+                if notes:
+                    print()
+            for note in notes:
+                print(f"Note: {note}")
+        case "cmd":
+            parameter = parse_parameter(args.parameter, args.json_param)
+            device = resolve(args.device, device_items(client.devices()), "device")
+            client.command(device.id, args.command, parameter,
+                           "customize" if args.customize else "command")
+            print(f"Sent {args.command} to {device.name} ({device.id})")
+        case "scene":
+            scene = resolve(args.scene, scene_items(client.scenes()), "scene")
+            client.execute_scene(scene.id)
+            print(f"Executed scene {scene.name} ({scene.id})")
+
+
+def main() -> None:
+    args = build_parser().parse_args()
+    try:
+        run(args)
+    except SwitchBotError as e:
+        die(str(e))
+    except KeyboardInterrupt:
+        sys.exit(130)
+
+
+# Commands per device type, as (command, parameter, description). Generated from the
+# "Control Commands" tables in https://github.com/OpenWonderLabs/SwitchBotAPI (2026-10-18).
+# DEVICE_COMMANDS is keyed by the `deviceType` returned by GET /devices, and
+# IR_COMMANDS by an IR remote's `remoteType`. IR_COMMON_COMMANDS apply to every
+# IR remote type except "Others".
+# BEGIN GENERATED COMMAND TABLES
+DEVICE_COMMANDS: dict[str, list[tuple[str, str, str]]] = {
+    'AI Art Frame': [
+        ('next', 'default', 'Switch to the next image'),
+        ('previous', 'default', 'Switch to the previous image'),
+        ('uploadImage', '{"imageUrl":"https://..."} OR {"imageBase64":"data:image/jpeg;base64,..."}', 'Upload an image (choose one of imageUrl / imageBase64)'),
+    ],
+    'Air Purifier PM2.5': [
+        ('turnOff', 'default', 'set to OFF state'),
+        ('turnOn', 'default', 'set to ON state'),
+        ('setMode', '{"mode": mode_int, "fanGear": fan_level_int}', 'set the mode. mode_int, 1, normal or fan mode; 2, auto mode; 3, sleep mode; 4, pet mode; fan_level_int, the fan level can only be set if mode_int is set to 1, 1~3'),
+        ('setChildLock', '0 or 1', 'enable or disable child lock. 1, enable; 0, disable'),
+    ],
+    'Air Purifier Table PM2.5': [
+        ('turnOff', 'default', 'set to OFF state'),
+        ('turnOn', 'default', 'set to ON state'),
+        ('setMode', '{"mode": mode_int, "fanGear": fan_level_int}', 'set the mode. mode_int, 1, normal or fan mode; 2, auto mode; 3, sleep mode; 4, pet mode; fan_level_int, the fan level can only be set if mode_int is set to 1, 1~3'),
+        ('setChildLock', '0 or 1', 'enable or disable child lock. 1, enable; 0, disable'),
+    ],
+    'Air Purifier Table VOC': [
+        ('turnOff', 'default', 'set to OFF state'),
+        ('turnOn', 'default', 'set to ON state'),
+        ('setMode', '{"mode": mode_int, "fanGear": fan_level_int}', 'set the mode. mode_int, 1, normal or fan mode; 2, auto mode; 3, sleep mode; 4, pet mode; fan_level_int, the fan level can only be set if mode_int is set to 1, 1~3'),
+        ('setChildLock', '0 or 1', 'enable or disable child lock. 1, enable; 0, disable'),
+    ],
+    'Air Purifier VOC': [
+        ('turnOff', 'default', 'set to OFF state'),
+        ('turnOn', 'default', 'set to ON state'),
+        ('setMode', '{"mode": mode_int, "fanGear": fan_level_int}', 'set the mode. mode_int, 1, normal or fan mode; 2, auto mode; 3, sleep mode; 4, pet mode; fan_level_int, the fan level can only be set if mode_int is set to 1, 1~3'),
+        ('setChildLock', '0 or 1', 'enable or disable child lock. 1, enable; 0, disable'),
+    ],
+    'Battery Circulator Fan': [
+        ('turnOff', 'default', 'Set to OFF state'),
+        ('turnOn', 'default', 'Set to ON state'),
+        ('setNightLightMode', 'off, 1, or 2', 'off, turn off nightlight, 1, bright 2, dim'),
+        ('setWindMode', 'direct, natural, sleep, or baby', 'Set fan mode. direct: direct mode. natural: natural mode. sleep: sleep mode. baby: ultra quiet mode'),
+        ('setWindSpeed', '{1-100} e.g. 10', 'Set fan speed.1~100'),
+        ('closeDelay', '{1-36000} e.g. 10', 'Set fan close time'),
+    ],
+    'Battery Circulator Fan 2 Pro': [
+        ('turnOff', 'default', 'set to OFF state'),
+        ('turnOn', 'default', 'set to ON state'),
+        ('setNightLightMode', 'off, 0, or 1', 'off, turn off; 0, bright; 1, soft'),
+        ('setWindMode', 'direct, natural, sleep, or hurricane', 'set fan mode'),
+        ('setWindSpeed', '{1-100}, e.g. 10', 'set fan speed'),
+    ],
+    'Blind Tilt': [
+        ('setPosition', 'direction;position e.g. up;60', 'direction: up/down position: 0~100 (0 means closed, 100 means open, it MUST be set to a multiple of 2. e.g. up;48 or up; 36)'),
+        ('fullyOpen', 'default', 'Set the position of Blind Tilt to open, equivalent to setting the position to up;100 or down;100'),
+        ('closeUp', 'default', 'Set the position of Blind Tilt to closed up, equivalent to setting the position to up;0'),
+        ('closeDown', 'default', 'Set the position of Blind Tilt to closed down, equivalent to setting the position to down;0'),
+    ],
+    'Bot': [
+        ('turnOff', 'default', 'set to OFF state'),
+        ('turnOn', 'default', 'set to ON state'),
+        ('press', 'default', 'trigger press'),
+    ],
+    'Candle Warmer Lamp': [
+        ('turnOn', 'default', 'set to ON state'),
+        ('turnOff', 'default', 'set to OFF state'),
+        ('toggle', 'default', 'toggle state'),
+        ('setBrightness', '{0-100}', 'set brightness'),
+    ],
+    'Ceiling Light': [
+        ('turnOn', 'default', 'set to ON state'),
+        ('turnOff', 'default', 'set to OFF state'),
+        ('toggle', 'default', 'toggle state'),
+        ('setBrightness', '{1-100}', 'set brightness'),
+        ('setColorTemperature', '{2700-6500}', 'set the color temperature'),
+    ],
+    'Ceiling Light Pro': [
+        ('turnOn', 'default', 'set to ON state'),
+        ('turnOff', 'default', 'set to OFF state'),
+        ('toggle', 'default', 'toggle state'),
+        ('setBrightness', '{1-100}', 'set brightness'),
+        ('setColorTemperature', '{2700-6500}', 'set the color temperature'),
+    ],
+    'Circulator Fan': [
+        ('turnOff', 'default', 'Set to OFF state'),
+        ('turnOn', 'default', 'Set to ON state'),
+        ('setNightLightMode', 'off, 1, or 2', 'off, turn off nightlight, 1, bright 2, dim'),
+        ('setWindMode', 'direct, natural, sleep, or baby', 'Set fan mode. direct: direct mode. natural: natural mode. sleep: sleep mode. baby: ultra quiet mode'),
+        ('setWindSpeed', '{1-100} e.g. 10', 'Set fan speed.1~100'),
+        ('closeDelay', '{1-36000} e.g. 10', 'Set fan close time'),
+    ],
+    'Color Bulb': [
+        ('turnOn', 'default', 'set to ON state'),
+        ('turnOff', 'default', 'set to OFF state'),
+        ('toggle', 'default', 'toggle state'),
+        ('setBrightness', '{1-100}', 'set brightness'),
+        ('setColor', '"{0-255}:{0-255}:{0-255}"', 'set RGB color value'),
+        ('setColorTemperature', '{2700-6500}', 'set color temperature'),
+    ],
+    'Curtain': [
+        ('setPosition', 'index0,mode0,position0 e.g. 0,ff,80', 'mode: 0 (Performance Mode), 1 (Silent Mode), ff (default mode) position: 0~100 (0 means open, 100 means closed)'),
+        ('turnOff', 'default', 'equivalent to set position to 100'),
+        ('turnOn', 'default', 'equivalent to set position to 0'),
+        ('pause', 'default', 'set to PAUSE state'),
+    ],
+    'Curtain 3': [
+        ('setPosition', 'index0,mode0,position0 e.g. 0,ff,80', 'mode: 0 (Performance Mode), 1 (Silent Mode), ff (default mode) position: 0~100 (0 means open, 100 means closed)'),
+        ('turnOff', 'default', 'equivalent to set position to 100'),
+        ('turnOn', 'default', 'equivalent to set position to 0'),
+        ('pause', 'default', 'set to PAUSE state'),
+    ],
+    'endTime': [
+        ('set the time the passcode becomes expired, mandatory for one-time passcode and temporary passcode. a 10-digit timestamp.', '', ''),
+        ('set the time the passcode becomes expired, mandatory for one-time passcode and temporary passcode. a 10-digit timestamp.', '', ''),
+        ('set the time the passcode becomes expired, mandatory for one-time passcode and temporary passcode. a 10-digit timestamp.', '', ''),
+        ('set the time the passcode becomes expired, mandatory for one-time passcode and temporary passcode. a 10-digit timestamp.', '', ''),
+    ],
+    'Floor Cleaning Robot S10': [
+        ('startClean', '{"action": clean_mode_str, "param": {"fanLevel": fan_level_int, "waterLevel": water_level_int, "times": clean_cycle_int}}', 'start cleaning. action, the cleaning mode, sweep or sweep_mop. fanLevel, the vacuum level, 1-4. waterLevel, the mop moisture level, 1-2. times, the number of cycles, 1-2639999, in theory.'),
+        ('addWaterForHumi', 'default', 'refill the mind blowing Evaporative Humidifier (Auto-refill).'),
+        ('pause', 'default', 'pause.'),
+        ('dock', 'default', 'return to Auto-empty Station and charge.'),
+        ('setVolume', '0-100', 'set volume, 1-100'),
+        ('selfClean', '1 or 2 or 3', 'mode 1, wash the mop. mode 2, dry itself. mode 3, terminate.'),
+        ('changeParam', '{"fanLevel": fan_level_int, "waterLevel": water_level_int, "times": clean_cycle_int}', 'fanLevel, the vacuum level, 1-4. waterLevel, the mop moisture level, 1-2. times, the number of cycles, 1-2639999, in theory.'),
+    ],
+    'Floor Lamp': [
+        ('turnOn', 'default', 'set to ON state'),
+        ('turnOff', 'default', 'set to OFF state'),
+        ('toggle', 'default', 'toggle state'),
+        ('setBrightness', '{0-100}', 'set brightness'),
+        ('setColor', '"{0-255}:{0-255}:{0-255}"', 'set RGB color value'),
+        ('setColorTemperature', '{2700-6500}', 'set color temperature'),
+    ],
+    'Garage Door Opener': [
+        ('turnOn', 'default', 'set to ON state'),
+        ('turnOff', 'default', 'set to OFF state'),
+    ],
+    'Humidifier': [
+        ('turnOff', 'default', 'set to OFF state'),
+        ('turnOn', 'default', 'set to ON state'),
+        ('setMode', 'auto or 101 or 102 or 103 or {0~100}', 'auto, set to Auto Mode, 101, set atomization efficiency to 34%, 102, set atomization efficiency to 67%, 103, set atomization efficiency to 100%'),
+    ],
+    'Humidifier2': [
+        ('turnOff', 'default', 'set to OFF state'),
+        ('turnOn', 'default', 'set to ON state'),
+        ('setMode', '{"mode": mode_int, "targetHumidify": humidity_int}', 'set the mode. mode_int, 1, level 4; 2, level 3; 3, level 2; 4, level 1; 5, humidity mode; 6, sleep mode; 7, auto mode; 8, drying mode; targetHumidify, the target humidity level in percentage, 0~100.'),
+        ('setChildLock', 'true or false', 'enable or disable child lock. true, enable; false, disable'),
+        ('turnOff', 'default', 'set to OFF state'),
+        ('turnOn', 'default', 'set to ON state'),
+        ('setMode', '{"mode": mode_int, "targetHumidify": humidity_int}', 'set the mode. mode_int, 1, level 4; 2, level 3; 3, level 2; 4, level 1; 5, humidity mode; 6, sleep mode; 7, auto mode; 8, drying mode; targetHumidify, the target humidity level in percentage, 0~100.'),
+        ('setChildLock', 'true or false', 'enable or disable child lock. true, enable; false, disable'),
+    ],
+    'id': [
+        ('the id of the passcode', '', ''),
+        ('the id of the passcode', '', ''),
+        ('the id of the passcode', '', ''),
+        ('the id of the passcode', '', ''),
+    ],
+    'K10+': [
+        ('start', 'default', 'start vacuuming'),
+        ('stop', 'default', 'stop vacuuming'),
+        ('dock', 'default', 'return to charging dock'),
+        ('PowLevel', '{0-3}', 'set suction power level: 0 (Quiet), 1 (Standard), 2 (Strong), 3 (MAX)'),
+    ],
+    'K10+ Pro': [
+        ('start', 'default', 'start vacuuming'),
+        ('stop', 'default', 'stop vacuuming'),
+        ('dock', 'default', 'return to charging dock'),
+        ('PowLevel', '{0-3}', 'set suction power level: 0 (Quiet), 1 (Standard), 2 (Strong), 3 (MAX)'),
+    ],
+    'K11+': [
+        ('startClean', '{"action": action_str, "param": {"fanLevel": fan_level_int, "times": clean_cycle_int}}', 'start cleaning. action_str, the cleaning mode, sweep or mop. fanLevel, the vacuum level, 1-4. times, the number of cycles, 1-2639999, in theory.'),
+        ('pause', 'default', 'pause.'),
+        ('dock', 'default', 'return to Auto-empty Station and charge.'),
+        ('setVolume', '0-100', 'set volume, 1-100'),
+        ('changeParam', '{"fanLevel": fan_level_int, "waterLevel": water_level_int, "times": clean_cycle_int}', 'fanLevel, the vacuum level, 1-4. waterLevel, the mop moisture level, 1-2. times, the number of cycles, 1-2639999, in theory.'),
+    ],
+    'K20+ Pro': [
+        ('startClean', '{"action": action_str, "param": {"fanLevel": fan_level_int, "times": clean_cycle_int}}', 'start cleaning. action_str, the cleaning mode, sweep or mop. fanLevel, the vacuum level, 1-4. times, the number of cycles, 1-2639999, in theory.'),
+        ('pause', 'default', 'pause cleaning'),
+        ('dock', 'default', 'return to charging dock'),
+        ('setVolume', '{0-100}', 'set the robot volume'),
+        ('changeParam', '{"fanLevel": fan_level_int, "waterLevel": water_level_int, "times": clean_cycle_int}', 'change clean parameters. fan_level_int, the vacuum level, 1-4; water_level_int, the mop moisture level, 1-2; times, the number of cycles, 1-2639999, in theory.'),
+    ],
+    'Kata Friends': [
+        ('mode', 'Normal, Standby, or Sleep', 'set mode'),
+        ('childLock', 'on or off', 'set child lock state'),
+        ('backHome', 'default', 'return home'),
+        ('pictureTaking', 'on or off', 'set album photo-taking switch'),
+        ('snapshots', 'on or off', 'set random snapshot switch'),
+        ('talk', 'on or off', 'set talk feature switch'),
+    ],
+    'Key Name': [
+        ('Description', '', ''),
+        ('Description', '', ''),
+        ('Description', '', ''),
+        ('Description', '', ''),
+        ('Description', '', ''),
+        ('Description', '', ''),
+        ('Description', '', ''),
+        ('Description', '', ''),
+    ],
+    'Keypad': [
+        ('createKey', '{ "name": passcode _name_str, "type": passcode_type_str, "password": passcode_str, "startTime": valid_from_long, "endTime": valid_to_long }', 'create a new passcode'),
+        ('deleteKey', '{ "id": passcode_id_int }', 'delete an existing passcode'),
+    ],
+    'Keypad Touch': [
+        ('createKey', '{ "name": passcode _name_str, "type": passcode_type_str, "password": passcode_str, "startTime": valid_from_long, "endTime": valid_to_long }', 'create a new passcode'),
+        ('deleteKey', '{ "id": passcode_id_int }', 'delete an existing passcode'),
+    ],
+    'Keypad Vision': [
+        ('createKey', '{ "name": passcode _name_str, "type": passcode_type_str, "password": passcode_str, "startTime": valid_from_long, "endTime": valid_to_long }', 'create a new passcode'),
+        ('deleteKey', '{ "id": passcode_id_int }', 'delete an existing passcode'),
+    ],
+    'Keypad Vision Pro': [
+        ('createKey', '{ "name": passcode _name_str, "type": passcode_type_str, "password": passcode_str, "startTime": valid_from_long, "endTime": valid_to_long }', 'create a new passcode'),
+        ('deleteKey', '{ "id": passcode_id_int }', 'delete an existing passcode'),
+    ],
+    'Lock': [
+        ('lock', 'default', 'rotate to locked position'),
+        ('unlock', 'default', 'rotate to unlocked position'),
+        ('deadbolt', 'default', 'disengage deadbolt or latch'),
+    ],
+    'Lock Lite': [
+        ('lock', 'default', 'rotate to locked position'),
+        ('unlock', 'default', 'rotate to unlocked position'),
+        ('deadbolt', 'default', 'disengage deadbolt or latch'),
+    ],
+    'Lock Pro': [
+        ('lock', 'default', 'rotate to locked position'),
+        ('unlock', 'default', 'rotate to unlocked position'),
+        ('deadbolt', 'default', 'disengage deadbolt or latch'),
+    ],
+    'Lock Ultra': [
+        ('lock', 'default', 'rotate to locked position'),
+        ('unlock', 'default', 'rotate to unlocked position'),
+        ('deadbolt', 'default', 'disengage deadbolt or latch'),
+    ],
+    'Lock Vision': [
+        ('lock', 'default', 'rotate to locked position'),
+        ('unlock', 'default', 'rotate to unlocked position'),
+        ('deleteKey', '{"id": ""}', 'delete a passcode by id'),
+        ('createKey', '{"name":"","type":"","password":"","startTime":0,"endTime":0}', 'create a passcode'),
+    ],
+    'Lock Vision Pro': [
+        ('lock', 'default', 'rotate to locked position'),
+        ('unlock', 'default', 'rotate to unlocked position'),
+        ('deleteKey', '{"id": ""}', 'delete a passcode by id'),
+        ('createKey', '{"name":"","type":"","password":"","startTime":0,"endTime":0}', 'create a passcode'),
+    ],
+    'name': [
+        ('a unique name for the passcode. duplicates under the same device are not allowed.', '', ''),
+        ('a unique name for the passcode. duplicates under the same device are not allowed.', '', ''),
+        ('a unique name for the passcode. duplicates under the same device are not allowed.', '', ''),
+        ('a unique name for the passcode. duplicates under the same device are not allowed.', '', ''),
+    ],
+    'password': [
+        ('a 6 to 12-digit passcode in plain text', '', ''),
+        ('a 6 to 12-digit passcode in plain text', '', ''),
+        ('a 6 to 12-digit passcode in plain text', '', ''),
+        ('a 6 to 12-digit passcode in plain text', '', ''),
+    ],
+    'Permanent Outdoor Lights': [
+        ('turnOn', 'default', 'set to ON state'),
+        ('turnOff', 'default', 'set to OFF state'),
+        ('toggle', 'default', 'toggle state'),
+        ('setBrightness', '{0-100}', 'set brightness'),
+        ('setColorTemperature', '{2700-6500}', 'set color temperature'),
+        ('setColor', '"{0-255}:{0-255}:{0-255}"', 'set RGB color value'),
+    ],
+    'Plug': [
+        ('turnOn', 'default', 'set to ON state'),
+        ('turnOff', 'default', 'set to OFF state'),
+    ],
+    'Plug Mini (EU)': [
+        ('turnOn', 'default', 'set to ON state'),
+        ('turnOff', 'default', 'set to OFF state'),
+        ('toggle', 'default', 'toggle state'),
+    ],
+    'Plug Mini (JP)': [
+        ('turnOn', 'default', 'set to ON state'),
+        ('turnOff', 'default', 'set to OFF state'),
+        ('toggle', 'default', 'toggle state'),
+    ],
+    'Plug Mini (US)': [
+        ('turnOn', 'default', 'set to ON state'),
+        ('turnOff', 'default', 'set to OFF state'),
+        ('toggle', 'default', 'toggle state'),
+    ],
+    'Relay Switch 1': [
+        ('turnOn', 'default', 'set to ON state'),
+        ('turnOff', 'default', 'set to OFF state'),
+        ('toggle', 'default', 'toggle state'),
+        ('setMode', '0~3', 'set the switch mode. 0, toggle mode; 1, edge switch mode; 2, detached switch mode; 3, momentary switch mode'),
+    ],
+    'Relay Switch 1PM': [
+        ('turnOn', 'default', 'set to ON state'),
+        ('turnOff', 'default', 'set to OFF state'),
+        ('toggle', 'default', 'toggle state'),
+        ('setMode', '0~3', 'set the switch mode. 0, toggle mode; 1, edge switch mode; 2, detached switch mode; 3, momentary switch mode'),
+    ],
+    'Relay Switch 2PM': [
+        ('turnOn', '“1”or"2"', 'set to ON state 1 represents channel 1 2 represents channel 2'),
+        ('turnOff', '“1”or"2"', 'set to OFF state 1 represents channel 1 2 represents channel 2'),
+        ('toggle', '“1”or"2"', 'toggle 1 represents channel 1 2 represents channel 2state'),
+        ('setMode', 'channel;mode e.g 1;0', 'The first item represents the switching of channel number, 1 represents channel number 1 and 2 represents channel number 2. The second item represents set the switch mode. 0, toggle mode; 1, edge switch mode; 2, detached switch mode; 3, momentary switch mode'),
+        ('setPosition', '0~100', 'Set roller blind opening and closing percentage. 0, Open All; 100, Close All'),
+    ],
+    'RGBIC Neon Rope Light': [
+        ('turnOn', 'default', 'set to ON state'),
+        ('turnOff', 'default', 'set to OFF state'),
+        ('toggle', 'default', 'toggle state'),
+        ('setBrightness', '{0-100}', 'set brightness'),
+        ('setColor', '"{0-255}:{0-255}:{0-255}"', 'set RGB color value'),
+    ],
+    'RGBIC Neon Wire Rope Light': [
+        ('turnOn', 'default', 'set to ON state'),
+        ('turnOff', 'default', 'set to OFF state'),
+        ('toggle', 'default', 'toggle state'),
+        ('setBrightness', '{0-100}', 'set brightness'),
+        ('setColor', '"{0-255}:{0-255}:{0-255}"', 'set RGB color value'),
+    ],
+    'RGBICWW Ceiling Light': [
+        ('turnOn', 'default', 'turn on all lights'),
+        ('turnOff', 'default', 'turn off all lights'),
+        ('toggle', 'default', 'toggle all lights'),
+        ('turnOnMainLight', 'default', 'turn on main light'),
+        ('turnOffMainLight', 'default', 'turn off main light'),
+        ('turnOnColorLight', 'default', 'turn on color light'),
+        ('turnOffColorLight', 'default', 'turn off color light'),
+        ('setMainLightBrightness', '{1-100}', 'set main light brightness'),
+        ('setMainLightColorTemp', '{2700-6500}', 'set main light color temp'),
+        ('setColorLightBrightness', '{1-100}', 'set color light brightness'),
+        ('setColorLightRGB', '"{0-255}:{0-255}:{0-255}"', 'set color light RGB value'),
+    ],
+    'RGBICWW Floor Lamp': [
+        ('turnOn', 'default', 'set to ON state'),
+        ('turnOff', 'default', 'set to OFF state'),
+        ('toggle', 'default', 'toggle state'),
+        ('setBrightness', '{0-100}', 'set brightness'),
+        ('setColorTemperature', '{2700-6500}', 'set color temperature'),
+        ('setColor', '"{0-255}:{0-255}:{0-255}"', 'set RGB color value'),
+    ],
+    'RGBICWW Strip Light': [
+        ('turnOn', 'default', 'set to ON state'),
+        ('turnOff', 'default', 'set to OFF state'),
+        ('toggle', 'default', 'toggle state'),
+        ('setBrightness', '{0-100}', 'set brightness'),
+        ('setColorTemperature', '{2700-6500}', 'set color temperature'),
+        ('setColor', '"{0-255}:{0-255}:{0-255}"', 'set RGB color value'),
+    ],
+    'Robot Vacuum Cleaner K10+ Pro Combo': [
+        ('startClean', '{"action": action_str, "param": {"fanLevel": fan_level_int, "times": clean_cycle_int}}', 'start cleaning. action_str, the cleaning mode, sweep or mop. fanLevel, the vacuum level, 1-4. times, the number of cycles, 1-2639999, in theory.'),
+        ('pause', 'default', 'pause cleaning'),
+        ('dock', 'default', 'return to charging dock'),
+        ('setVolume', '{0-100}', 'set the robot volume'),
+        ('changeParam', '{"fanLevel": fan_level_int, "times": clean_cycle_int}', 'change clean parameters. fan_level_int, the vacuum level, 1-4; times, the number of cycles, 1-2639999, in theory.'),
+    ],
+    'Robot Vacuum Cleaner S1': [
+        ('start', 'default', 'start vacuuming'),
+        ('stop', 'default', 'stop vacuuming'),
+        ('dock', 'default', 'return to charging dock'),
+        ('PowLevel', '{0-3}', 'set suction power level: 0 (Quiet), 1 (Standard), 2 (Strong), 3 (MAX)'),
+    ],
+    'Robot Vacuum Cleaner S1 Plus': [
+        ('start', 'default', 'start vacuuming'),
+        ('stop', 'default', 'stop vacuuming'),
+        ('dock', 'default', 'return to charging dock'),
+        ('PowLevel', '{0-3}', 'set suction power level: 0 (Quiet), 1 (Standard), 2 (Strong), 3 (MAX)'),
+    ],
+    'Roller Shade': [
+        ('setPosition', '0~100', '0, open; 100, closed'),
+    ],
+    'S20': [
+        ('startClean', '{"action": clean_mode_str, "param": {"fanLevel": fan_level_int, "waterLevel": water_level_int, "times": clean_cycle_int}}', 'start cleaning. action, the cleaning mode, sweep or sweep_mop. fanLevel, the vacuum level, 1-4. waterLevel, the mop moisture level, 1-2. times, the number of cycles, 1-2639999, in theory.'),
+        ('addWaterForHumi', 'default', 'refill the mind blowing Evaporative Humidifier (Auto-refill).'),
+        ('pause', 'default', 'pause.'),
+        ('dock', 'default', 'return to Auto-empty Station and charge.'),
+        ('setVolume', '0-100', 'set volume, 1-100'),
+        ('selfClean', '1 or 2 or 3', 'mode 1, wash the mop. mode 2, dry itself. mode 3, terminate.'),
+        ('changeParam', '{"fanLevel": fan_level_int, "waterLevel": water_level_int, "times": clean_cycle_int}', 'fanLevel, the vacuum level, 1-4. waterLevel, the mop moisture level, 1-2. times, the number of cycles, 1-2639999, in theory.'),
+    ],
+    'Smart Lock Pro Wifi': [
+        ('lock', 'default', 'rotate to locked position'),
+        ('unlock', 'default', 'rotate to unlocked position'),
+        ('nightLatchUnlock', 'default', 'unlock night latch (EU)'),
+        ('deadbolt', 'default', 'disengage deadbolt or latch'),
+    ],
+    'Smart Radiator Thermostat': [
+        ('turnOn', 'default', 'set to ON state'),
+        ('turnOff', 'default', 'set to OFF state'),
+        ('setMode', '0~5', 'set the switch mode. 0,0, schedule mode; 1,manual mode; 2, power off mode; 3, energy saving mode; 4, comfort mode;5, quick heating mode'),
+        ('setManualModeTemperature', '4~35', 'set the radiator thermostat temperature. Temperature range: 4–35 °C (inclusive)'),
+    ],
+    'Standing Fan': [
+        ('turnOff', 'default', 'Set to OFF state'),
+        ('turnOn', 'default', 'Set to ON state'),
+        ('setNightLightMode', 'off, 1, or 2', 'off, turn off nightlight, 1, bright 2, dim'),
+        ('setWindMode', 'direct, natural, sleep, or baby', 'Set fan mode. direct: direct mode. natural: natural mode. sleep: sleep mode. baby: ultra quiet mode'),
+        ('setWindSpeed', '{1-100} e.g. 10', 'Set fan speed.1~100'),
+        ('closeDelay', '{1-36000} e.g. 10', 'Set fan close time'),
+    ],
+    'startTime': [
+        ('set the time the passcode becomes valid from, mandatory for one-time passcode and temporary passcode. a 10-digit timestamp.', '', ''),
+        ('set the time the passcode becomes valid from, mandatory for one-time passcode and temporary passcode. a 10-digit timestamp.', '', ''),
+        ('set the time the passcode becomes valid from, mandatory for one-time passcode and temporary passcode. a 10-digit timestamp.', '', ''),
+        ('set the time the passcode becomes valid from, mandatory for one-time passcode and temporary passcode. a 10-digit timestamp.', '', ''),
+    ],
+    'Strip Light': [
+        ('turnOn', 'default', 'set to ON state'),
+        ('turnOff', 'default', 'set to OFF state'),
+        ('toggle', 'default', 'toggle state'),
+        ('setBrightness', '{1-100}', 'set brightness'),
+        ('setColor', '"{0-255}:{0-255}:{0-255}"', 'set RGB color value'),
+    ],
+    'Strip Light 3': [
+        ('turnOn', 'default', 'set to ON state'),
+        ('turnOff', 'default', 'set to OFF state'),
+        ('toggle', 'default', 'toggle state'),
+        ('setBrightness', '{0-100}', 'set brightness'),
+        ('setColor', '"{0-255}:{0-255}:{0-255}"', 'set RGB color value'),
+        ('setColorTemperature', '{2700-6500}', 'set color temperature'),
+    ],
+    'type': [
+        ('type of the passcode. permanent, a permanent passcode. timeLimit, a temporary passcode. disposable, a one-time passcode. urgent, an emergency passcode.', '', ''),
+        ('type of the passcode. permanent, a permanent passcode. timeLimit, a temporary passcode. disposable, a one-time passcode. urgent, an emergency passcode.', '', ''),
+        ('type of the passcode. permanent, a permanent passcode. timeLimit, a temporary passcode. disposable, a one-time passcode. urgent, an emergency passcode.', '', ''),
+        ('type of the passcode. permanent, a permanent passcode. timeLimit, a temporary passcode. disposable, a one-time passcode. urgent, an emergency passcode.', '', ''),
+    ],
+    'Video Doorbell': [
+        ('enableMotionDetection', 'default', 'Set to enabled state'),
+        ('disableMotionDetection', 'default', 'Set to disabled state'),
+    ],
+    'Weather Station': [
+        ('customQuote', 'custom text, e.g. "Oh sea, you have so much water!"', 'Set a custom quote'),
+        ('cancelCustom', 'default', 'Cancel the custom quote and revert to default'),
+        ('customPage', 'custom text, e.g. "Oh, the ocean is so huge!"', 'Set a custom page text'),
+    ],
+}
+
+IR_COMMON_COMMANDS: list[tuple[str, str, str]] = [
+    ('turnOn', 'default', 'every home appliance can be turned on by default'),
+    ('turnOff', 'default', 'every home appliance can be turned off by default'),
+]
+
+IR_COMMANDS: dict[str, list[tuple[str, str, str]]] = {
+    'Air Conditioner': [
+        ('setAll', '{temperature},{mode},{fan speed},{power state} e.g. 26,1,3,on', 'the unit of temperature is in celsius; modes include 0/1 (auto), 2 (cool), 3 (dry), 4 (fan), 5 (heat); fan speed includes 1 (auto), 2 (low), 3 (medium), 4 (high); power state includes on and off'),
+    ],
+    'DVD': [
+        ('setMute', 'default', 'mute/unmute'),
+        ('FastForward', 'default', 'fast forward'),
+        ('Rewind', 'default', 'rewind'),
+        ('Next', 'default', 'next track'),
+        ('Previous', 'default', 'last track'),
+        ('Pause', 'default', 'pause'),
+        ('Play', 'default', 'play/resume'),
+        ('Stop', 'default', 'stop'),
+    ],
+    'DVD Player': [
+        ('setMute', 'default', 'mute/unmute'),
+        ('FastForward', 'default', 'fast forward'),
+        ('Rewind', 'default', 'rewind'),
+        ('Next', 'default', 'next track'),
+        ('Previous', 'default', 'last track'),
+        ('Pause', 'default', 'pause'),
+        ('Play', 'default', 'play/resume'),
+        ('Stop', 'default', 'stop'),
+    ],
+    'Fan': [
+        ('swing', 'default', 'swing'),
+        ('timer', 'default', 'set timer'),
+        ('lowSpeed', 'default', 'set fan speed to low'),
+        ('middleSpeed', 'default', 'set fan speed to medium'),
+        ('highSpeed', 'default', 'set fan speed to high'),
+    ],
+    'IPTV': [
+        ('SetChannel', '{channel number}, e.g. 15', 'set the TV channel to switch to'),
+        ('volumeAdd', 'default', 'volume up'),
+        ('volumeSub', 'default', 'volume down'),
+        ('channelAdd', 'default', 'next channel'),
+        ('channelSub', 'default', 'previous channel'),
+    ],
+    'Light': [
+        ('brightnessUp', 'default', 'brightness up'),
+        ('brightnessDown', 'default', 'brightness down'),
+    ],
+    'Set Top Box': [
+        ('SetChannel', '{channel number}, e.g. 15', 'set the TV channel to switch to'),
+        ('volumeAdd', 'default', 'volume up'),
+        ('volumeSub', 'default', 'volume down'),
+        ('channelAdd', 'default', 'next channel'),
+        ('channelSub', 'default', 'previous channel'),
+    ],
+    'Speaker': [
+        ('setMute', 'default', 'mute/unmute'),
+        ('FastForward', 'default', 'fast forward'),
+        ('Rewind', 'default', 'rewind'),
+        ('Next', 'default', 'next track'),
+        ('Previous', 'default', 'last track'),
+        ('Pause', 'default', 'pause'),
+        ('Play', 'default', 'play/resume'),
+        ('Stop', 'default', 'stop'),
+        ('volumeAdd', 'default', 'volume up'),
+        ('volumeSub', 'default', 'volume down'),
+    ],
+    'Streamer': [
+        ('SetChannel', '{channel number}, e.g. 15', 'set the TV channel to switch to'),
+        ('volumeAdd', 'default', 'volume up'),
+        ('volumeSub', 'default', 'volume down'),
+        ('channelAdd', 'default', 'next channel'),
+        ('channelSub', 'default', 'previous channel'),
+    ],
+    'TV': [
+        ('SetChannel', '{channel number}, e.g. 15', 'set the TV channel to switch to'),
+        ('volumeAdd', 'default', 'volume up'),
+        ('volumeSub', 'default', 'volume down'),
+        ('channelAdd', 'default', 'next channel'),
+        ('channelSub', 'default', 'previous channel'),
+    ],
+}
+# END GENERATED COMMAND TABLES
+
+
+if __name__ == "__main__":
+    main()
