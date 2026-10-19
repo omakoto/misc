@@ -6,7 +6,7 @@
 set -e
 
 # check if an argument is provided
-if [ $# -eq 0 ]; then
+if [[ $# -eq 0 ]]; then
     echo "Usage: $0 <path-to-appimage>"
     exit 1
 fi
@@ -14,7 +14,7 @@ fi
 APPIMAGE_SRC="$1"
 
 # Check if file exists
-if [ ! -f "$APPIMAGE_SRC" ]; then
+if [[ ! -f "$APPIMAGE_SRC" ]]; then
     echo "Error: File $APPIMAGE_SRC not found."
     exit 1
 fi
@@ -44,29 +44,85 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 cd "$TMP_DIR"
 
 echo "Extracting desktop file and icon from AppImage..."
-# Extract just the .desktop and image files to avoid full extraction if possible
-# Note: some AppImages might not support selective extraction easily, 
-# but we'll try to find the desktop and icon in the squashfs-root.
-"$APP_INSTALL_PATH" --appimage-extract "*.desktop" > /dev/null 2>&1 || true
-"$APP_INSTALL_PATH" --appimage-extract "*.png" > /dev/null 2>&1 || true
-"$APP_INSTALL_PATH" --appimage-extract "*.svg" > /dev/null 2>&1 || true
+
+# Extract a single path (or glob) from the AppImage into ./squashfs-root.
+extract() {
+    "$APP_INSTALL_PATH" --appimage-extract "$1" > /dev/null 2>&1 || true
+}
+
+# AppImages usually ship the top-level .desktop file and icon as symlinks into
+# usr/share/..., and a selective extraction only extracts the link itself.
+# Follow the symlink chain, extracting each target, and print the final path.
+resolve() {
+    local path="$1"
+    local i target rel
+    for (( i = 0; i < 10; i++ )); do
+        [[ -L "$path" ]] || break
+        target=$(readlink "$path")
+        if [[ "$target" == /* ]]; then
+            # Absolute links are relative to the AppImage root.
+            rel="${target#/}"
+        else
+            rel=$(realpath -m -s --relative-to=squashfs-root "$(dirname "$path")/$target")
+        fi
+        extract "$rel"
+        path="squashfs-root/$rel"
+    done
+    echo "$path"
+}
+
+# Per the AppImage spec, the .desktop file, the icon and .DirIcon live at the
+# top level, so extract just those to avoid a full extraction.
+extract "*.desktop"
+extract "*.png"
+extract "*.svg"
+extract ".DirIcon"
 
 # Check if extraction worked
-if [ ! -d "squashfs-root" ]; then
+if [[ ! -d "squashfs-root" ]]; then
     echo "Warning: Could not extract metadata using --appimage-extract. Trying full extraction..."
     "$APP_INSTALL_PATH" --appimage-extract > /dev/null 2>&1
 fi
 
 # Find the extracted files
-DESKTOP_FILE=$(find squashfs-root -name "*.desktop" -print -quit)
-ICON_FILE=$(find squashfs-root \( -name "*.png" -o -name "*.svg" \) -print -quit)
+DESKTOP_FILE=$(find squashfs-root -maxdepth 1 -name "*.desktop" -print -quit)
+if [[ -n "$DESKTOP_FILE" ]]; then
+    DESKTOP_FILE=$(resolve "$DESKTOP_FILE")
+fi
 
-if [ -n "$DESKTOP_FILE" ]; then
-    DESKTOP_NAME=$(basename "$DESKTOP_FILE")
+# Prefer the icon named by the desktop file's Icon= key, then .DirIcon.
+ICON_FILE=""
+if [[ -f "$DESKTOP_FILE" ]]; then
+    ICON_KEY=$(sed -n 's/^Icon=//p' "$DESKTOP_FILE" | head -n 1)
+    for ext in svg png; do
+        if [[ -n "$ICON_KEY" && -e "squashfs-root/$ICON_KEY.$ext" ]]; then
+            ICON_FILE="squashfs-root/$ICON_KEY.$ext"
+            break
+        fi
+    done
+fi
+if [[ -z "$ICON_FILE" && -e "squashfs-root/.DirIcon" ]]; then
+    ICON_FILE="squashfs-root/.DirIcon"
+fi
+if [[ -z "$ICON_FILE" ]]; then
+    ICON_FILE=$(find squashfs-root \( -name "*.png" -o -name "*.svg" \) -print -quit)
+fi
+if [[ -n "$ICON_FILE" ]]; then
+    ICON_FILE=$(resolve "$ICON_FILE")
+    [[ -f "$ICON_FILE" ]] || ICON_FILE=""
+fi
+
+if [[ -f "$DESKTOP_FILE" ]]; then
+    # Use the top-level name, which may differ from the symlink target name.
+    DESKTOP_NAME=$(basename "$(find squashfs-root -maxdepth 1 -name "*.desktop" -print -quit)")
     
     # Prepare the icon
-    if [ -n "$ICON_FILE" ]; then
+    if [[ -n "$ICON_FILE" ]]; then
         ICON_NAME=$(basename "$ICON_FILE")
+        # .DirIcon may resolve to a file without a meaningful name or extension.
+        if [[ "$ICON_NAME" == .DirIcon ]]; then
+            ICON_NAME="${APP_FILENAME%.*}.png"
+        fi
         sudo mkdir -p "$ICON_DEST_DIR"
         sudo cp "$ICON_FILE" "$ICON_DEST_DIR/$ICON_NAME"
         ICON_REF="$ICON_DEST_DIR/$ICON_NAME"
