@@ -180,6 +180,20 @@ class DeviceCommandsTest(unittest.TestCase):
             item = switchbot.Item("01-9", "x", f"IR {remote_type}", remote_type=remote_type)
             self.assertGreater(len(self.commands_of(item)), 2, remote_type)
 
+    def test_device_commands_keys(self) -> None:
+        for key in switchbot.DEVICE_COMMANDS:
+            self.assertTrue(key, "device type key must not be empty")
+            self.assertTrue(key[0].isupper() or key[0].isdigit(),
+                            f"device type key must start with uppercase letter or digit: {key!r}")
+            self.assertNotIn(key, {"endTime", "id", "Key Name", "name", "password", "startTime", "type"})
+
+    def test_no_duplicate_command_rows(self) -> None:
+        for name, table in (("DEVICE_COMMANDS", switchbot.DEVICE_COMMANDS),
+                            ("IR_COMMANDS", switchbot.IR_COMMANDS)):
+            for key, rows in table.items():
+                self.assertEqual(len(rows), len(set(rows)),
+                                 f"duplicate command rows found in {name}[{key!r}]")
+
     def test_tables_are_clean(self) -> None:
         tables = list(switchbot.DEVICE_COMMANDS.values()) + list(switchbot.IR_COMMANDS.values())
         for row in [r for rows in tables for r in rows] + switchbot.IR_COMMON_COMMANDS:
@@ -188,6 +202,31 @@ class DeviceCommandsTest(unittest.TestCase):
             for cell in row:
                 self.assertNotIn("<br", cell, row)
                 self.assertNotIn("`", cell, row)
+                self.assertTrue(cell.isascii(), f"non-ASCII characters found in {cell!r}")
+
+    def test_keypad_commands(self) -> None:
+        item = switchbot.Item("KP01", "Front Door Keypad", "Keypad")
+        rows, notes = switchbot.device_commands(item)
+        self.assertEqual(notes, [])
+        self.assertEqual([cmd for cmd, _, _ in rows], ["createKey", "deleteKey"])
+
+    def test_humidifier_commands(self) -> None:
+        item1 = switchbot.Item("HM01", "Humidifier", "Humidifier")
+        rows1, _ = switchbot.device_commands(item1)
+        self.assertEqual([cmd for cmd, _, _ in rows1], ["turnOff", "turnOn", "setMode"])
+
+        item2 = switchbot.Item("HM02", "Humidifier 2", "Humidifier2")
+        rows2, _ = switchbot.device_commands(item2)
+        self.assertEqual([cmd for cmd, _, _ in rows2], ["turnOff", "turnOn", "setMode", "setChildLock"])
+
+    def test_relay_switch_2pm_commands(self) -> None:
+        item = switchbot.Item("RS02", "Relay 2PM", "Relay Switch 2PM")
+        rows, _ = switchbot.device_commands(item)
+        self.assertEqual([cmd for cmd, _, _ in rows], ["turnOn", "turnOff", "toggle", "setMode", "setPosition"])
+        for _, param, _ in rows:
+            self.assertTrue(param.isascii())
+            self.assertNotIn("“", param)
+            self.assertNotIn("”", param)
 
 
 class ClientTest(unittest.TestCase):
@@ -334,6 +373,25 @@ class RunTest(unittest.TestCase):
         self.assertEqual(data["commands"][2], {"command": "press", "parameter": "default",
                                                "description": "trigger press"})
         self.assertEqual(data["notes"], [])
+
+    def test_commands_keypad_and_humidifier(self) -> None:
+        client = MagicMock()
+        client.devices.return_value = {
+            "deviceList": [
+                {"deviceId": "KP01", "deviceName": "Keypad", "deviceType": "Keypad", "hubDeviceId": ""},
+                {"deviceId": "HM02", "deviceName": "Humidifier", "deviceType": "Humidifier2", "hubDeviceId": ""},
+            ],
+            "infraredRemoteList": [],
+        }
+        kp_out = self.run_cli(["commands", "Keypad"], client)
+        self.assertIn("createKey", kp_out)
+        self.assertIn("deleteKey", kp_out)
+
+        hm_out = self.run_cli(["commands", "Humidifier"], client)
+        self.assertIn("turnOff", hm_out)
+        self.assertIn("turnOn", hm_out)
+        self.assertIn("setMode", hm_out)
+        self.assertIn("setChildLock", hm_out)
 
     def test_format_options_are_exclusive(self) -> None:
         with patch("sys.stderr", new_callable=io.StringIO), self.assertRaises(SystemExit):

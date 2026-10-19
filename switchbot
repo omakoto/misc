@@ -444,7 +444,7 @@ def main() -> None:
         sys.exit(130)
 
 
-# Commands per device type, as (command, parameter, description). Generated from the
+# Commands per device type, as (command, parameter, description). Curated from the
 # "Control Commands" tables in https://github.com/OpenWonderLabs/SwitchBotAPI (2026-10-18).
 # DEVICE_COMMANDS is keyed by the `deviceType` returned by GET /devices, and
 # IR_COMMANDS by an IR remote's `remoteType`. IR_COMMON_COMMANDS apply to every
@@ -554,12 +554,6 @@ DEVICE_COMMANDS: dict[str, list[tuple[str, str, str]]] = {
         ('turnOn', 'default', 'equivalent to set position to 0'),
         ('pause', 'default', 'set to PAUSE state'),
     ],
-    'endTime': [
-        ('set the time the passcode becomes expired, mandatory for one-time passcode and temporary passcode. a 10-digit timestamp.', '', ''),
-        ('set the time the passcode becomes expired, mandatory for one-time passcode and temporary passcode. a 10-digit timestamp.', '', ''),
-        ('set the time the passcode becomes expired, mandatory for one-time passcode and temporary passcode. a 10-digit timestamp.', '', ''),
-        ('set the time the passcode becomes expired, mandatory for one-time passcode and temporary passcode. a 10-digit timestamp.', '', ''),
-    ],
     'Floor Cleaning Robot S10': [
         ('startClean', '{"action": clean_mode_str, "param": {"fanLevel": fan_level_int, "waterLevel": water_level_int, "times": clean_cycle_int}}', 'start cleaning. action, the cleaning mode, sweep or sweep_mop. fanLevel, the vacuum level, 1-4. waterLevel, the mop moisture level, 1-2. times, the number of cycles, 1-2639999, in theory.'),
         ('addWaterForHumi', 'default', 'refill the mind blowing Evaporative Humidifier (Auto-refill).'),
@@ -591,16 +585,6 @@ DEVICE_COMMANDS: dict[str, list[tuple[str, str, str]]] = {
         ('turnOn', 'default', 'set to ON state'),
         ('setMode', '{"mode": mode_int, "targetHumidify": humidity_int}', 'set the mode. mode_int, 1, level 4; 2, level 3; 3, level 2; 4, level 1; 5, humidity mode; 6, sleep mode; 7, auto mode; 8, drying mode; targetHumidify, the target humidity level in percentage, 0~100.'),
         ('setChildLock', 'true or false', 'enable or disable child lock. true, enable; false, disable'),
-        ('turnOff', 'default', 'set to OFF state'),
-        ('turnOn', 'default', 'set to ON state'),
-        ('setMode', '{"mode": mode_int, "targetHumidify": humidity_int}', 'set the mode. mode_int, 1, level 4; 2, level 3; 3, level 2; 4, level 1; 5, humidity mode; 6, sleep mode; 7, auto mode; 8, drying mode; targetHumidify, the target humidity level in percentage, 0~100.'),
-        ('setChildLock', 'true or false', 'enable or disable child lock. true, enable; false, disable'),
-    ],
-    'id': [
-        ('the id of the passcode', '', ''),
-        ('the id of the passcode', '', ''),
-        ('the id of the passcode', '', ''),
-        ('the id of the passcode', '', ''),
     ],
     'K10+': [
         ('start', 'default', 'start vacuuming'),
@@ -635,16 +619,6 @@ DEVICE_COMMANDS: dict[str, list[tuple[str, str, str]]] = {
         ('pictureTaking', 'on or off', 'set album photo-taking switch'),
         ('snapshots', 'on or off', 'set random snapshot switch'),
         ('talk', 'on or off', 'set talk feature switch'),
-    ],
-    'Key Name': [
-        ('Description', '', ''),
-        ('Description', '', ''),
-        ('Description', '', ''),
-        ('Description', '', ''),
-        ('Description', '', ''),
-        ('Description', '', ''),
-        ('Description', '', ''),
-        ('Description', '', ''),
     ],
     'Keypad': [
         ('createKey', '{ "name": passcode _name_str, "type": passcode_type_str, "password": passcode_str, "startTime": valid_from_long, "endTime": valid_to_long }', 'create a new passcode'),
@@ -694,18 +668,6 @@ DEVICE_COMMANDS: dict[str, list[tuple[str, str, str]]] = {
         ('deleteKey', '{"id": ""}', 'delete a passcode by id'),
         ('createKey', '{"name":"","type":"","password":"","startTime":0,"endTime":0}', 'create a passcode'),
     ],
-    'name': [
-        ('a unique name for the passcode. duplicates under the same device are not allowed.', '', ''),
-        ('a unique name for the passcode. duplicates under the same device are not allowed.', '', ''),
-        ('a unique name for the passcode. duplicates under the same device are not allowed.', '', ''),
-        ('a unique name for the passcode. duplicates under the same device are not allowed.', '', ''),
-    ],
-    'password': [
-        ('a 6 to 12-digit passcode in plain text', '', ''),
-        ('a 6 to 12-digit passcode in plain text', '', ''),
-        ('a 6 to 12-digit passcode in plain text', '', ''),
-        ('a 6 to 12-digit passcode in plain text', '', ''),
-    ],
     'Permanent Outdoor Lights': [
         ('turnOn', 'default', 'set to ON state'),
         ('turnOff', 'default', 'set to OFF state'),
@@ -746,9 +708,9 @@ DEVICE_COMMANDS: dict[str, list[tuple[str, str, str]]] = {
         ('setMode', '0~3', 'set the switch mode. 0, toggle mode; 1, edge switch mode; 2, detached switch mode; 3, momentary switch mode'),
     ],
     'Relay Switch 2PM': [
-        ('turnOn', '“1”or"2"', 'set to ON state 1 represents channel 1 2 represents channel 2'),
-        ('turnOff', '“1”or"2"', 'set to OFF state 1 represents channel 1 2 represents channel 2'),
-        ('toggle', '“1”or"2"', 'toggle 1 represents channel 1 2 represents channel 2state'),
+        ('turnOn', '"1" or "2"', 'set to ON state. 1 represents channel 1, 2 represents channel 2'),
+        ('turnOff', '"1" or "2"', 'set to OFF state. 1 represents channel 1, 2 represents channel 2'),
+        ('toggle', '"1" or "2"', 'toggle state. 1 represents channel 1, 2 represents channel 2'),
         ('setMode', 'channel;mode e.g 1;0', 'The first item represents the switching of channel number, 1 represents channel number 1 and 2 represents channel number 2. The second item represents set the switch mode. 0, toggle mode; 1, edge switch mode; 2, detached switch mode; 3, momentary switch mode'),
         ('setPosition', '0~100', 'Set roller blind opening and closing percentage. 0, Open All; 100, Close All'),
     ],
@@ -836,7 +798,7 @@ DEVICE_COMMANDS: dict[str, list[tuple[str, str, str]]] = {
         ('turnOn', 'default', 'set to ON state'),
         ('turnOff', 'default', 'set to OFF state'),
         ('setMode', '0~5', 'set the switch mode. 0,0, schedule mode; 1,manual mode; 2, power off mode; 3, energy saving mode; 4, comfort mode;5, quick heating mode'),
-        ('setManualModeTemperature', '4~35', 'set the radiator thermostat temperature. Temperature range: 4–35 °C (inclusive)'),
+        ('setManualModeTemperature', '4~35', 'set the radiator thermostat temperature. Temperature range: 4-35 C (inclusive)'),
     ],
     'Standing Fan': [
         ('turnOff', 'default', 'Set to OFF state'),
@@ -845,12 +807,6 @@ DEVICE_COMMANDS: dict[str, list[tuple[str, str, str]]] = {
         ('setWindMode', 'direct, natural, sleep, or baby', 'Set fan mode. direct: direct mode. natural: natural mode. sleep: sleep mode. baby: ultra quiet mode'),
         ('setWindSpeed', '{1-100} e.g. 10', 'Set fan speed.1~100'),
         ('closeDelay', '{1-36000} e.g. 10', 'Set fan close time'),
-    ],
-    'startTime': [
-        ('set the time the passcode becomes valid from, mandatory for one-time passcode and temporary passcode. a 10-digit timestamp.', '', ''),
-        ('set the time the passcode becomes valid from, mandatory for one-time passcode and temporary passcode. a 10-digit timestamp.', '', ''),
-        ('set the time the passcode becomes valid from, mandatory for one-time passcode and temporary passcode. a 10-digit timestamp.', '', ''),
-        ('set the time the passcode becomes valid from, mandatory for one-time passcode and temporary passcode. a 10-digit timestamp.', '', ''),
     ],
     'Strip Light': [
         ('turnOn', 'default', 'set to ON state'),
@@ -866,12 +822,6 @@ DEVICE_COMMANDS: dict[str, list[tuple[str, str, str]]] = {
         ('setBrightness', '{0-100}', 'set brightness'),
         ('setColor', '"{0-255}:{0-255}:{0-255}"', 'set RGB color value'),
         ('setColorTemperature', '{2700-6500}', 'set color temperature'),
-    ],
-    'type': [
-        ('type of the passcode. permanent, a permanent passcode. timeLimit, a temporary passcode. disposable, a one-time passcode. urgent, an emergency passcode.', '', ''),
-        ('type of the passcode. permanent, a permanent passcode. timeLimit, a temporary passcode. disposable, a one-time passcode. urgent, an emergency passcode.', '', ''),
-        ('type of the passcode. permanent, a permanent passcode. timeLimit, a temporary passcode. disposable, a one-time passcode. urgent, an emergency passcode.', '', ''),
-        ('type of the passcode. permanent, a permanent passcode. timeLimit, a temporary passcode. disposable, a one-time passcode. urgent, an emergency passcode.', '', ''),
     ],
     'Video Doorbell': [
         ('enableMotionDetection', 'default', 'Set to enabled state'),
