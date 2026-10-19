@@ -1,0 +1,243 @@
+#!/usr/bin/env python3
+"""
+bthome-sniff - Scan BLE advertisements and decode BTHome v2 packets (e.g. Shelly BLU buttons).
+
+Listens passively (no pairing, no connection) and prints each BTHome event once, even though
+the sender repeats every event 15-30 times. Useful for seeing exactly what a BLE button, remote
+or sensor broadcasts before writing a parser for it. It can also dump the raw advertisements
+of other devices (for example SwitchBot, which does not use BTHome).
+
+Usage:
+  bthome-sniff [-d SECONDS] [-a ADDRESS] [--uuid HEX16] [--all] [--repeats]
+
+Options:
+  -d, --duration SECONDS  How long to scan; 0 = until Ctrl-C. Default 60.
+  -a, --address ADDRESS   Only show this device (MAC address, e.g. AA:BB:CC:DD:EE:FF).
+  --uuid HEX16            Only show adverts carrying service data with this 16-bit UUID (hex,
+                          e.g. fd3d). A non-BTHome UUID implies --all.
+  --all                   Also show non-BTHome adverts (raw service/manufacturer data), once per
+                          distinct service data per device. Manufacturer data is ignored for
+                          change detection (it often holds a rolling counter) unless the
+                          device has no service data.
+  --repeats               Show every copy of every advert instead of only changes.
+  -h, --help              Show this help.
+
+Examples:
+  bthome-sniff                         # BTHome devices nearby, 60 s
+  bthome-sniff -d 0 -a AA:BB:CC:DD:EE:FF
+  bthome-sniff --uuid fd3d -d 30       # raw SwitchBot adverts (service data UUID 0xFD3D)
+
+Notes:
+  - Needs a Bluetooth adapter and BlueZ. The `bleak` library is installed on first use into a
+    private venv at ~/.cache/bthome-sniff/venv.
+  - Decoded objects: packet id, battery, button event, wheel/dimmer, channel (the ones Shelly
+    BLU remotes use). Encrypted payloads are shown as raw hex (a bindkey is needed to decode).
+  - BlueZ may collapse identical repeated adverts, so one line per event is expected.
+
+Tests:
+  Please run python3 bthome-sniff_test.py whenever touching this file.
+"""
+
+import argparse
+import asyncio
+import os
+import subprocess
+import sys
+import time
+from typing import Any, Optional
+
+VENV_DIR = os.path.expanduser("~/.cache/bthome-sniff/venv")
+
+
+def uuid16(value: int) -> str:
+    """Returns the 128-bit string form that bleak uses for a 16-bit service UUID."""
+    return f"0000{value:04x}-0000-1000-8000-00805f9b34fb"
+
+
+BTHOME_UUID = uuid16(0xFCD2)
+
+# object id -> (name, length in bytes, signed, scale)
+OBJECTS: dict[int, tuple[str, int, bool, float]] = {
+    0x00: ("packet_id", 1, False, 1),
+    0x01: ("battery_%", 1, False, 1),
+    0x02: ("temperature_C", 2, True, 0.01),
+    0x03: ("humidity_%", 2, False, 0.01),
+    0x05: ("illuminance_lux", 3, False, 0.01),
+    0x0C: ("voltage_V", 2, False, 0.001),
+    0x10: ("power", 1, False, 1),
+    0x11: ("opening", 1, False, 1),
+    0x15: ("battery_low", 1, False, 1),
+    0x21: ("motion", 1, False, 1),
+    0x2D: ("window", 1, False, 1),
+    0x3A: ("button", 1, False, 1),
+    0x3C: ("dimmer", 2, False, 1),
+    0x3F: ("rotation_deg", 2, True, 0.1),
+    0x40: ("distance_mm", 2, False, 1),
+    0x45: ("temperature_C", 2, True, 0.1),
+    0x60: ("channel", 1, False, 1),
+}
+
+BUTTON_EVENTS: dict[int, str] = {
+    0x00: "-", 0x01: "press", 0x02: "double_press", 0x03: "triple_press",
+    0x04: "long_press", 0x05: "long_double_press", 0x06: "long_triple_press",
+    0x80: "hold_press",
+}
+
+# The dimmer object (0x3C) is two separate bytes: event type, then step count.
+DIMMER_EVENTS: dict[int, str] = {0x00: "none", 0x01: "rotate_left", 0x02: "rotate_right"}
+
+
+def decode_bthome(data: bytes) -> str:
+    """Returns a one-line description of a BTHome v2 service-data payload."""
+    if not data:
+        return "(empty)"
+    info = data[0]
+    version = info >> 5
+    encrypted = bool(info & 1)
+    trigger = bool(info & 4)
+    head = f"v{version}{' ENCRYPTED' if encrypted else ''}{' trigger' if trigger else ''}"
+    if encrypted:
+        # The payload is AES-CCM sealed, so nothing is parseable without the device's bindkey.
+        return f"{head} payload={data[1:].hex()}"
+
+    parts: list[str] = []
+    buttons: list[str] = []
+    i = 1
+    while i < len(data):
+        oid = data[i]
+        spec = OBJECTS.get(oid)
+        if spec is None:
+            # Object lengths depend on the id, so an unknown id means the rest can't be split.
+            parts.append(f"unknown_obj_0x{oid:02x} rest={data[i + 1:].hex()}")
+            break
+        name, length, signed, scale = spec
+        raw = data[i + 1:i + 1 + length]
+        if len(raw) < length:
+            parts.append(f"{name}=TRUNCATED({raw.hex()})")
+            break
+        value = int.from_bytes(raw, "little", signed=signed)
+        if oid == 0x3C:
+            event = DIMMER_EVENTS.get(raw[0], f"event_0x{raw[0]:02x}")
+            parts.append(f"dimmer={event} steps={raw[1]}")
+        elif oid == 0x3A:
+            buttons.append(BUTTON_EVENTS.get(value, f"event_0x{value:02x}"))
+        else:
+            parts.append(f"{name}={value * scale:g}")
+        i += 1 + length
+    if buttons:
+        # Multi-button remotes send one button object per button, in button order.
+        parts.append("buttons=[" + ", ".join(f"{n + 1}:{b}" for n, b in enumerate(buttons)) + "]")
+    return head + " " + " ".join(parts)
+
+
+def advert_key(service: dict[str, str], mfg: dict[int, str]) -> Any:
+    """Returns what identifies a non-BTHome advert's content for change detection.
+
+    Service data usually holds a device's state, whereas manufacturer data often carries the
+    MAC address plus a rolling counter that changes on every advert. Comparing manufacturer data
+    would make every advert look new, so it is only used when there is no service data.
+    """
+    if service:
+        return tuple(sorted(service.items()))
+    return ("mfg", tuple(sorted(mfg.items())))
+
+
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    ap = argparse.ArgumentParser(
+        description="Scan BLE advertisements and decode BTHome v2 packets.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="Examples:\n"
+               "  bthome-sniff                         # BTHome devices nearby, 60 s\n"
+               "  bthome-sniff -d 0 -a AA:BB:CC:DD:EE:FF\n"
+               "  bthome-sniff --uuid fd3d -d 30       # raw SwitchBot adverts\n")
+    ap.add_argument("-d", "--duration", type=float, default=60,
+                    help="seconds to scan, 0 = until Ctrl-C (default 60)")
+    ap.add_argument("-a", "--address", help="only show this device address")
+    ap.add_argument("--uuid", metavar="HEX16",
+                    help="only show adverts with service data under this 16-bit UUID (hex)")
+    ap.add_argument("--all", action="store_true",
+                    help="also show non-BTHome adverts (raw), once per distinct payload")
+    ap.add_argument("--repeats", action="store_true",
+                    help="show every copy of every advert (default: only changes)")
+    return ap.parse_args(argv)
+
+
+def ensure_bleak() -> None:
+    """Imports bleak, first creating a private venv and re-running ourselves in it if needed."""
+    try:
+        import bleak  # noqa: F401
+        return
+    except ImportError:
+        pass
+    if os.path.realpath(sys.prefix) == os.path.realpath(VENV_DIR):
+        sys.exit(f"bleak is missing from {VENV_DIR}; delete that directory and retry.")
+    venv_python = os.path.join(VENV_DIR, "bin", "python")
+    if not os.path.exists(venv_python):
+        print(f"bleak not found; installing it into {VENV_DIR} ...", file=sys.stderr)
+        subprocess.run([sys.executable, "-m", "venv", VENV_DIR], check=True)
+        subprocess.run([venv_python, "-m", "pip", "install", "-q", "bleak"], check=True)
+    os.execv(venv_python, [venv_python, os.path.abspath(__file__)] + sys.argv[1:])
+
+
+async def scan(args: argparse.Namespace) -> None:
+    from bleak import BleakScanner
+
+    want: Optional[str] = args.address.upper() if args.address else None
+    want_uuid: Optional[str] = uuid16(int(args.uuid, 16)) if args.uuid else None
+    show_raw = args.all or (want_uuid is not None and want_uuid != BTHOME_UUID)
+    t0 = time.monotonic()
+    # A sender repeats each event's advertisement many times; the packet ID inside a BTHome
+    # payload changes per event, so an identical payload straight after another is a repeat.
+    last_bthome: dict[str, bytes] = {}
+    seen_raw: dict[str, set[Any]] = {}
+
+    def on_adv(dev: Any, adv: Any) -> None:
+        if want and dev.address.upper() != want:
+            return
+        if want_uuid and want_uuid not in adv.service_data:
+            return
+        stamp = f"{time.monotonic() - t0:7.2f}s"
+        name = adv.local_name or dev.name or "?"
+        sd = adv.service_data.get(BTHOME_UUID)
+        if sd is not None:
+            raw = bytes(sd)
+            if not args.repeats and last_bthome.get(dev.address) == raw:
+                return
+            last_bthome[dev.address] = raw
+            print(f"{stamp} {dev.address} rssi={adv.rssi:4d} name={name} raw={raw.hex()} "
+                  f"| {decode_bthome(raw)}", flush=True)
+            return
+        if not show_raw:
+            return
+        service = {k: bytes(v).hex() for k, v in adv.service_data.items()}
+        mfg = {k: bytes(v).hex() for k, v in adv.manufacturer_data.items()}
+        key = advert_key(service, mfg)
+        if not args.repeats:
+            seen = seen_raw.setdefault(dev.address, set())
+            if key in seen:
+                return
+            seen.add(key)
+        print(f"{stamp} {dev.address} rssi={adv.rssi:4d} name={name} "
+              f"service_data={service} mfg={mfg}", flush=True)
+
+    limit = "until Ctrl-C" if args.duration == 0 else f"{args.duration:g}s"
+    print(f"Scanning ({limit}); press the buttons now...", flush=True)
+    async with BleakScanner(on_adv):
+        if args.duration == 0:
+            await asyncio.Event().wait()
+        else:
+            await asyncio.sleep(args.duration)
+
+
+def main(argv: list[str]) -> int:
+    args = parse_args(argv)
+    ensure_bleak()
+    try:
+        asyncio.run(scan(args))
+    except KeyboardInterrupt:
+        pass
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
