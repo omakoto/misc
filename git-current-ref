@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Print the current branch name (e.g. "main"), or the commit SHA if HEAD is detached.
+# Simple script, no help needed.
+
 set -e
 
 export SUBDIRECTORY_OK=1
@@ -9,8 +12,6 @@ require_work_tree_exists
 
 cd_to_toplevel
 
-HEAD=$(cat $(git rev-parse --git-dir)/HEAD)
-
-sed -e 's!^ref: *!!' -e 's!^refs/heads/!!' <<<$HEAD
-
-
+# Ask git rather than reading $GIT_DIR/HEAD directly, so this works with any
+# ref storage backend (e.g. with reftable, the HEAD file is only a stub).
+git symbolic-ref --short -q HEAD || git rev-parse HEAD
