@@ -2,8 +2,24 @@
 
 # Shorten/normalize directory names.
 # Delegated to the dir-normalize() shell function.
+#
+# Usage: dir-normalize [-r|--reverse] PATH...
+#   Prints one normalized path per line, in the same order as the arguments.
+#   Accepting multiple paths lets callers that normalize many paths (e.g.
+#   prompt-history) do it with a single process.
+#
 # Run test: cd ~/cbin/misc && ./dir-normalize_test.bash
+
+# Simple script, no help needed.
 
 declare -f dir-normalize > /dev/null || . mutil.sh
 
-dir-normalize "$@"
+flags=()
+if [[ "$1" == "-r" || "$1" == "--reverse" ]]; then
+  flags=("$1")
+  shift
+fi
+
+for path in "$@"; do
+  dir-normalize "${flags[@]}" "$path"
+done

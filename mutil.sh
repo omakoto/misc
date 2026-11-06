@@ -886,16 +886,24 @@ export -f label
 #      - ~/cbin/foo                               -> ~/c/foo
 #   3. Android prefix replacement:
 #      - /android/foo                             -> /a/foo
-#      - /android/main                            -> /a/m
-#      - /android/main1                           -> /a/m1
-#      - /android/main-without-vendor             -> /a/mwv
-#      - /android/main-without-vendor2            -> /a/mwv2
-#   4. frameworks/ replacement (inside /a/mXXX/ or /a/mwvXXX/):
-#      - /android/main1/frameworks                -> /a/m1/f/
-#      - /android/main1/frameworks/base           -> /a/m1/f/b/
-#      - /android/main1/frameworks/base/core      -> /a/m1/f/b/core
+#      - /android/main                            -> m
+#      - /android/main1                           -> m1
+#      - /android/main1/foo                       -> m1/foo
+#      - /android/main-without-vendor             -> mwv
+#      - /android/main-without-vendor2            -> mwv2
+#      The main trees are used so often that they drop the /a/ prefix
+#      entirely, which makes them look like relative paths.
+#   4. frameworks/ replacement (inside mXXX/ or mwvXXX/):
+#      - /android/main1/frameworks                -> m1/f/
+#      - /android/main1/frameworks/base           -> m1/f/b/
+#      - /android/main1/frameworks/base/core      -> m1/f/b/core
+#      - /android/main1/frameworks/base/ravenwood -> m1/f/b/r/
 #
 #   All reverse conversions are supported using the -r or --reverse flag.
+#   In reverse mode, a path is treated as a main tree only when it doesn't
+#   start with / or ~ and its first component starts with "m" (or "mwv").
+#   The older /a/mXXX and /a/mwvXXX forms are accepted too, so that
+#   paths shortened by older versions (e.g. in terminal titles) still resolve.
 #
 # Run test: cd ~/cbin/misc && ./dir-normalize_test.bash
 dir-normalize() {
@@ -910,7 +918,7 @@ dir-normalize() {
 
   # 1. Reverse Mode (Short -> Long)
   if (( $reverse )); then
-    if [[ "$path" =~ ^/a/(m|mwv)[^/]*/ ]]; then
+    if [[ "$path" =~ ^(/a/)?(m|mwv)[^/]*/ ]]; then
       path="${path//\/f\/b\/r\//\/frameworks\/base\/ravenwood\/}"
       if [[ "$path" == */f/b/r/ ]]; then
         path="${path%/f/b/r/}/frameworks/base/ravenwood/"
@@ -931,10 +939,10 @@ dir-normalize() {
       fi
     fi
 
-    if [[ "$path" =~ ^/a/mwv(.*)$ ]]; then
-      path="/android/main-without-vendor${BASH_REMATCH[1]}"
-    elif [[ "$path" =~ ^/a/m(.*)$ ]]; then
-      path="/android/main${BASH_REMATCH[1]}"
+    if [[ "$path" =~ ^(/a/)?mwv(.*)$ ]]; then
+      path="/android/main-without-vendor${BASH_REMATCH[2]}"
+    elif [[ "$path" =~ ^(/a/)?m(.*)$ ]]; then
+      path="/android/main${BASH_REMATCH[2]}"
     elif [[ "$path" =~ ^/a(.*)$ ]]; then
       path="/android${BASH_REMATCH[1]}"
     fi
@@ -972,15 +980,21 @@ dir-normalize() {
     path="~/c${path:6}"
   fi
 
+  # Only shorten frameworks/ inside main trees. Track this with a flag rather
+  # than by matching the shortened form, because the shortened form ("m1/...")
+  # is indistinguishable from an arbitrary relative input path.
+  local in_main_tree=0
   if [[ "$path" =~ ^/android/main-without-vendor(.*)$ ]]; then
-    path="/a/mwv${BASH_REMATCH[1]}"
+    path="mwv${BASH_REMATCH[1]}"
+    in_main_tree=1
   elif [[ "$path" =~ ^/android/main(.*)$ ]]; then
-    path="/a/m${BASH_REMATCH[1]}"
+    path="m${BASH_REMATCH[1]}"
+    in_main_tree=1
   elif [[ "$path" =~ ^/android(.*)$ ]]; then
     path="/a${BASH_REMATCH[1]}"
   fi
 
-  if [[ "$path" =~ ^/a/(m|mwv)[^/]*/ ]]; then
+  if (( $in_main_tree )) && [[ "$path" == */* ]]; then
     path="${path//\/frameworks\/base\/ravenwood\///f/b/r/}"
     if [[ "$path" == */frameworks/base/ravenwood ]]; then
       path="${path%/frameworks/base/ravenwood}/f/b/r/"
