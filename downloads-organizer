@@ -25,8 +25,11 @@ def v(message):
         print(message)
 
 def main(args):
-    target = f'{os.environ["HOME"]}/Downloads/'
+    target = os.path.join(os.path.expanduser("~"), "Downloads")
     threshold = 30 # Archive files this old
+
+    if not os.path.isdir(target):
+        return
 
     os.chdir(target)
 
@@ -40,7 +43,10 @@ def main(args):
     for file in sorted(os.listdir(".")):
         if file.startswith(PREFIX):
             continue
-        stat = os.stat(file)
+        try:
+            stat = os.lstat(file)
+        except OSError:
+            continue
         t = stat.st_mtime
         age = (now - t) / (24 * 60 * 60)
 
