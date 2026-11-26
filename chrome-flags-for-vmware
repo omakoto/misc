@@ -3,5 +3,6 @@
 # Prints '--disable-gpu' if running under VMware.
 
 if [[ "$IS_VMWARE" == "1" ]] || { [[ -f /sys/class/dmi/id/product_name ]] && grep -qi "^vmware" /sys/class/dmi/id/product_name 2>/dev/null; }; then
-  echo "--disable-gpu"
+#  echo "--disable-gpu"
+  echo "--ignore-gpu-blocklist"
 fi
